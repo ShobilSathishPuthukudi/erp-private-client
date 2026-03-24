@@ -1,0 +1,158 @@
+import { useState } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+} from '@tanstack/react-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  searchKey?: string;
+  searchPlaceholder?: string;
+  isLoading?: boolean;
+}
+
+export function DataTable<TData, TValue>({ 
+  columns, 
+  data, 
+  searchKey, 
+  searchPlaceholder = "Search...",
+  isLoading 
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    state: {
+      sorting,
+      globalFilter,
+    },
+    initialState: {
+      pagination: { pageSize: 25 }
+    }
+  });
+
+  return (
+    <div className="space-y-4">
+      {searchKey && (
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-slate-400" aria-hidden="true" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
+            placeholder={searchPlaceholder}
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+          />
+        </div>
+      )}
+
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <th 
+                        key={header.id} 
+                        className="px-6 py-4 font-medium whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center space-x-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <span className="w-4 h-4 ml-1 flex-shrink-0">
+                            {{
+                              asc: <ChevronUp className="w-4 h-4" />,
+                              desc: <ChevronDown className="w-4 h-4" />,
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </span>
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    {columns.map((_, colIdx) => (
+                      <td key={colIdx} className="px-6 py-4">
+                        <div className="h-4 bg-slate-200 rounded w-full max-w-[150px]"></div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-6 py-4 text-slate-600">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-8 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                        <Search className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <p className="text-base font-medium">No results found.</p>
+                      <p className="text-sm">Try adjusting your search criteria.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50">
+          <div className="text-sm text-slate-500">
+            Page <span className="font-medium text-slate-900">{table.getState().pagination.pageIndex + 1}</span> of{' '}
+            <span className="font-medium text-slate-900">{table.getPageCount() || 1}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="p-1 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="p-1 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
