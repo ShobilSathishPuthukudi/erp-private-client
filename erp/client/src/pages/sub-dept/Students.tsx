@@ -1,37 +1,48 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { DataTable } from '@/components/shared/DataTable';
-import { Modal } from '@/components/shared/Modal';
-import type { ColumnDef } from '@tanstack/react-table';
-import { ShieldCheck, XCircle, FileText, CheckCircle } from 'lucide-react';
+import { 
+  Users, 
+  Search, 
+  MapPin, 
+  GraduationCap, 
+  Layers,
+  ShieldCheck,
+  Building2,
+  Clock
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Student {
   id: number;
   name: string;
   enrollStatus: string;
+  subDeptReviewStatus: string;
   feeStatus: string;
   program?: { name: string, duration: number };
-  department?: { name: string }; // Study center
-  verificationLogs?: any[];
-  remarks?: string;
+  center?: { name: string };
+  reviewStage?: 'SUB_DEPT' | 'OPS' | 'FINANCE';
+  attemptCount?: number;
 }
 
 export default function Students() {
+  const { unit } = useParams();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [remarks, setRemarks] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/sub-dept/students');
+      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
+      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
+      
+      const res = await api.get('/academic/students', {
+        params: { subDeptId }
+      });
       setStudents(res.data);
     } catch (error) {
-      toast.error('Failed to fetch students');
+      toast.error('Failed to access student execution registry');
     } finally {
       setIsLoading(false);
     }
@@ -39,149 +50,135 @@ export default function Students() {
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [unit]);
 
-  const openVerifyModal = (student: Student) => {
-    setSelectedStudent(student);
-    setRemarks('');
-    setIsModalOpen(true);
-  };
-
-  const handleVerify = async (status: 'approved' | 'rejected') => {
-    try {
-      await api.put(`/sub-dept/students/${selectedStudent?.id}/verify-documents`, { status, remarks });
-      toast.success(`Verification ${status} successfully`);
-      setIsModalOpen(false);
-      fetchStudents();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Verification protocol failure');
-    }
-  };
-
-  const columns: ColumnDef<Student>[] = [
-    { accessorKey: 'id', header: 'Student ID' },
-    { 
-      accessorKey: 'name', 
-      header: 'Full Name',
-      cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span>
-    },
-    { 
-      id: 'program', 
-      header: 'Enrolled Program',
-      cell: ({ row }) => row.original.program?.name || <span className="text-slate-400 italic">Unknown</span>
-    },
-    { 
-      id: 'center', 
-      header: 'Study Center',
-      cell: ({ row }) => row.original.department?.name || <span className="text-slate-400 italic">Unassigned</span>
-    },
-    { 
-      accessorKey: 'enrollStatus', 
-      header: 'Enrollment Status',
-      cell: ({ row }) => {
-        const s = row.original.enrollStatus;
-        let color = 'bg-slate-100 text-slate-700';
-        if (s === 'active') color = 'bg-green-100 text-green-700';
-        if (s === 'graduated') color = 'bg-blue-100 text-blue-700';
-        if (s === 'dropped') color = 'bg-red-100 text-red-700';
-        return <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>{s}</span>;
-      }
-    },
-    { 
-      accessorKey: 'feeStatus', 
-      header: 'Fee Status',
-      cell: ({ row }) => {
-        const s = row.original.feeStatus;
-        return (
-          <span className={`px-2 py-1 text-[10px] rounded-sm uppercase font-bold ${s === 'verified' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {s}
-          </span>
-        );
-      }
-    },
-    {
-      id: 'actions',
-      header: 'Institutional Audit',
-      cell: ({ row }) => {
-        const s = row.original.enrollStatus;
-        if (s === 'pending_subdept') {
-            return (
-                <button 
-                    onClick={() => openVerifyModal(row.original)}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors"
-                >
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>Verify Docs</span>
-                </button>
-            );
-        }
-        return <span className="text-[10px] font-bold text-slate-400 uppercase italic">Queue: {s.split('_')[1] || s}</span>;
-      }
-    }
-  ];
+  const filteredStudents = students.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.id.toString().includes(searchTerm)
+  );
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
+    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-           <h1 className="text-2xl font-bold text-slate-900">Enrolled Students</h1>
-           <p className="text-slate-500">Monitor all students actively enrolled within your sub-department's curriculum</p>
+           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+              <Users className="w-8 h-8 text-blue-600" />
+              Student <span className="text-blue-600 font-outline-1">Execution</span> Roster
+           </h1>
+           <p className="text-slate-500 font-medium tracking-tight">Read-only institutional roster for departmental execution monitoring.</p>
+        </div>
+        
+        <div className="relative w-full md:w-96 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+          <input 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name or identity ID..." 
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium text-sm"
+          />
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
-        <DataTable 
-          columns={columns} 
-          data={students} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Search students..." 
-        />
+      <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-6 flex flex-wrap gap-6 items-center">
+         <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-black uppercase text-slate-600 tracking-widest">Total Roster: {students.length}</span>
+         </div>
+         <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">Jurisdiction: {unit?.toUpperCase()}</span>
+         </div>
+         <div className="ml-auto flex items-center gap-2 bg-white px-4 py-1.5 rounded-xl border border-blue-200">
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Read-Only Mode Active</span>
+         </div>
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={`Institutional Document Verification: ${selectedStudent?.name}`}
-      >
-        <div className="space-y-6">
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex items-start gap-3">
-                <FileText className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div className="text-xs text-amber-800 leading-relaxed">
-                    <p className="font-bold uppercase mb-1">Audit Requirement</p>
-                    Please verify that the academic credentials submitted by the Study Center match the program criteria for <b>{selectedStudent?.program?.name}</b>.
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1,2,3,4,5,6,7,8].map(i => (
+            <div key={i} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 space-y-4 animate-pulse">
+                <div className="w-16 h-16 bg-slate-100 rounded-2xl" />
+                <div className="h-4 bg-slate-100 rounded w-2/3" />
+                <div className="h-3 bg-slate-50 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredStudents.map((student) => {
+            const stage = student.reviewStage || 'SUB_DEPT';
+            return (
+              <div key={student.id} className="group bg-white border border-slate-200 rounded-[2.5rem] p-8 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-6">
+                   <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all overflow-hidden border border-slate-100">
+                      <Users className="w-8 h-8" />
+                   </div>
+                   <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg ${
+                      student.enrollStatus === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                   }`}>
+                      {student.enrollStatus}
+                   </span>
                 </div>
-            </div>
 
-            <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Verification Remarks</label>
-                <textarea 
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    rows={3}
-                    placeholder="Document authenticity confirmed..."
-                />
-            </div>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-lg leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight">{student.name}</h3>
+                    <p className="text-[10px] font-mono text-slate-400 mt-1 uppercase">ID: ARCH-{student.id}</p>
+                  </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
-                <button 
-                    onClick={() => handleVerify('rejected')}
-                    className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
-                >
-                    <XCircle className="w-4 h-4" />
-                    Reject
-                </button>
-                <button 
-                    onClick={() => handleVerify('approved')}
-                    className="px-8 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-shadow shadow-lg shadow-slate-200 flex items-center gap-2"
-                >
-                    <CheckCircle className="w-4 h-4" />
-                    Approve Documents
-                </button>
-            </div>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                        <GraduationCap className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">{student.program?.name || 'Unassigned Program'}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">{student.center?.name || 'Center Pending'}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-50 flex flex-col gap-2">
+                     <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Workflow Stage</span>
+                        <div className="flex items-center gap-1.5">
+                            {stage === 'FINANCE' ? <ShieldCheck className="w-3 h-3 text-emerald-500" /> : <Clock className="w-3 h-3 text-amber-500" />}
+                            <span className={`text-[10px] font-bold uppercase ${
+                                stage === 'FINANCE' ? 'text-emerald-600' : 'text-amber-600'
+                            }`}>{stage}</span>
+                        </div>
+                     </div>
+                     <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Finance State</span>
+                        <span className={`text-[10px] font-black uppercase tracking-tighter ${
+                            student.feeStatus === 'paid' ? 'text-indigo-600' : 'text-rose-500'
+                        }`}>{student.feeStatus || 'UNPAID'}</span>
+                     </div>
+                     {student.attemptCount && student.attemptCount > 1 && (
+                        <div className="px-3 py-1 bg-rose-50 rounded-lg text-rose-600 text-[9px] font-black uppercase tracking-tight text-center">
+                            Re-submission Attempt #{student.attemptCount}
+                        </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* Aesthetic background accent */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/10 transition-colors" />
+              </div>
+            );
+          })}
         </div>
-      </Modal>
+      )}
+
+      {filteredStudents.length === 0 && !isLoading && (
+        <div className="bg-white border border-dashed border-slate-300 rounded-[3rem] p-20 text-center space-y-4">
+            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
+                <Users className="w-10 h-10" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 uppercase">No roster records detected</h3>
+            <p className="text-slate-500 max-w-sm mx-auto font-medium">Try adjusting your search filters or check another institutional unit.</p>
+        </div>
+      )}
     </div>
   );
 }

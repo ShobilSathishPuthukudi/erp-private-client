@@ -1,19 +1,21 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
-import { verifyToken } from '../middleware/verifyToken.js';
+import { verifyToken, isAcademicOrAdmin, isOpsOrAdmin } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { universitySchema, programSchema } from '../lib/schemas.js';
 import { logAction } from '../lib/audit.js';
 
 const router = express.Router();
-const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment } = models;
+const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept } = models;
 
-const isAcademicOrAdmin = (req, res, next) => {
-  const allowed = ['academic', 'org-admin', 'system-admin'];
-  if (!allowed.includes(req.user.role)) {
-    return res.status(403).json({ error: 'Access denied: Academic privileges required' });
-  }
-  next();
+const getSubDeptId = (name) => {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  if (n.includes('openschool')) return 8;
+  if (n.includes('online')) return 9;
+  if (n.includes('skill')) return 10;
+  if (n.includes('bvoc')) return 11;
+  return null;
 };
 
 // ==========================================
@@ -22,13 +24,26 @@ const isAcademicOrAdmin = (req, res, next) => {
 
 router.get('/stats', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
-    const totalUniversities = await Department.count({ where: { type: 'university' } });
-    const activePrograms = await Program.count(); // Count all structural program nodes
-    const pendingReviews = await Student.count({ where: { enrollStatus: 'pending' } });
+    const subDeptId = getSubDeptId(req.user.subDepartment);
+    const whereClause = req.user.role === 'SUB_DEPT_ADMIN' ? { 
+      subDeptId: subDeptId 
+    } : {};
     
-    // Simple revenue approximation (sum of all payments for academic students)
+    // For students, filter by program.subDeptId
+    const studentWhere = req.user.role === 'SUB_DEPT_ADMIN' ? {
+      programId: { [Op.in]: sequelize.literal(`(SELECT id FROM programs WHERE subDeptId = ${subDeptId})`) }
+    } : {};
+
+    const totalUniversities = await Department.count({ where: { type: 'university' } });
+    const activePrograms = await Program.count({ where: whereClause });
+    const pendingReviews = await Student.count({ where: { ...studentWhere, enrollStatus: 'pending' } });
+    
+    // Revenue isolation
     const payments = await Payment.findAll({
       attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
+      where: req.user.role === 'SUB_DEPT_ADMIN' ? {
+        studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId}))`) }
+      } : {},
       raw: true
     });
     const revenue = payments[0]?.total || 0;
@@ -152,14 +167,23 @@ router.get('/centers', verifyToken, isAcademicOrAdmin, async (req, res) => {
 
 // ==========================================
 // ACADEMIC PROGRAMS
-// ==========================================
-
 router.get('/programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
+    const { subDeptId } = req.query;
+    const whereClause = {};
+    
+    if (req.user.role === 'SUB_DEPT_ADMIN') {
+      whereClause.subDeptId = getSubDeptId(req.user.subDepartment);
+    } else if (subDeptId) {
+      whereClause.subDeptId = subDeptId;
+    }
+
     const programs = await Program.findAll({
+      where: whereClause,
       include: [
         { model: Department, as: 'university', attributes: ['name'] },
-        { model: ProgramFee, as: 'fees', attributes: ['id', 'name', 'isActive'] }
+        { model: ProgramFee, as: 'fees', attributes: ['id', 'name', 'isActive'] },
+        { model: Subject, as: 'subjects', attributes: ['id', 'name', 'credits'] }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -180,6 +204,11 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
             model: ProgramOffering, 
             as: 'offeringCenters',
             include: [{ model: Department, as: 'center', attributes: ['id', 'name'] }]
+        },
+        {
+            model: Subject,
+            as: 'subjects',
+            include: [{ model: Module, as: 'modules', attributes: ['id', 'description'] }]
         }
       ]
     });
@@ -224,10 +253,18 @@ router.put('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
     const { id } = req.params;
     const { name, universityId, duration, subDeptId, intakeCapacity } = req.body;
     
-    const p = await Program.findByPk(id);
-    if (!p) return res.status(404).json({ error: 'Program core not found' });
+    if (subDeptId && subDeptId !== p.subDeptId) {
+      const studentCount = await Student.count({ where: { programId: id } });
+      if (studentCount > 0) {
+        return res.status(400).json({ error: 'Governance Error: Cannot reassign Sub-Department while students are enrolled in this program.' });
+      }
+    }
 
-    await p.update({ name, universityId: universityId || null, duration, subDeptId: subDeptId || 0, intakeCapacity: intakeCapacity || 0 });
+    await p.update({ 
+      ...req.body,
+      universityId: universityId || p.universityId, 
+      subDeptId: subDeptId || p.subDeptId 
+    });
     res.json(p);
   } catch (error) {
     res.status(500).json({ error: 'Failed to apply program edits' });
@@ -253,13 +290,108 @@ router.delete('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) 
 
 router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
+    const { status, programId, stage, subDeptId } = req.query;
+    const whereClause = {};
+    if (status) whereClause.enrollStatus = status;
+    if (programId) whereClause.programId = programId;
+    if (stage) whereClause.reviewStage = stage;
+    if (subDeptId) whereClause.subDepartmentId = subDeptId;
+
+    // Isolation: Sub-Dept Admin only sees their unit's students
+    if (req.user.role === 'SUB_DEPT_ADMIN') {
+      whereClause.subDepartmentId = getSubDeptId(req.user.subDepartment);
+    }
+
     const students = await Student.findAll({
-      include: [{ model: Program, attributes: ['name'] }],
+      where: whereClause,
+      include: [
+        { model: Program, attributes: ['id', 'name', 'subDeptId'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ],
       order: [['createdAt', 'DESC']]
     });
     res.json(students);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch global student roster' });
+    res.status(500).json({ error: 'Failed to fetch academic candidates' });
+  }
+});
+
+router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks, stageOverride } = req.body;
+    
+    const student = await Student.findByPk(id, {
+      include: [
+        { model: Department, as: 'center' },
+        { model: Program, attributes: ['id', 'type', 'subDeptId'] }
+      ]
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
+    const isOpsAdmin = ['academic', 'org-admin', 'system-admin'].includes(req.user.role);
+
+    // 1. Sub-Dept Admin Review Phase
+    if (isSubDeptAdmin) {
+        if (student.reviewStage !== 'SUB_DEPT') {
+            return res.status(400).json({ error: 'Governance Error: Student has already passed unit-level review.' });
+        }
+        
+        const nextStage = status === 'approved' ? 'OPS' : 'SUB_DEPT';
+        await student.update({
+            reviewStage: nextStage,
+            reviewedBy: req.user.uid,
+            remarks: remarks || student.remarks,
+            subDeptReviewStatus: status // Backward compatibility
+        });
+        return res.json({ message: `Sub-department review ${status} recorded. Stage: ${nextStage}`, student });
+    }
+
+    // 2. Academic/Ops Admin Review Phase
+    if (isOpsAdmin) {
+        if (student.reviewStage === 'SUB_DEPT' && !stageOverride) {
+            return res.status(400).json({ error: 'Institutional Guardrail: Sub-Department clearance required. Use stageOverride to bypass.' });
+        }
+
+        if (status === 'approved') {
+            // Guardrail: Cannot approve student without approved center
+            if (!student.centerId) {
+              return res.status(400).json({ error: 'Compliance Violation: Student is not assigned to a Study Center.' });
+            }
+            if (!student.center || student.center.auditStatus !== 'approved') {
+              return res.status(400).json({ error: `Institutional Guardrail: Associated Study Center [${student.center?.name || 'Unknown'}] must be Approved.` });
+            }
+
+            const logs = student.verificationLogs || [];
+            logs.push({ step: 'Ops Review', time: new Date(), status, by: req.user.uid, remarks });
+
+            await student.update({
+              enrollStatus: 'pending_eligibility', // Moving to finance/eligibility phase
+              reviewStage: 'FINANCE',
+              reviewedBy: req.user.uid,
+              verificationLogs: logs,
+              remarks: remarks || student.remarks
+            });
+        } else {
+            // Rejection flow
+            await student.update({
+              enrollStatus: 'rejected',
+              reviewStage: 'SUB_DEPT', // Push back to start
+              resubmittedTo: 'SUB_DEPT',
+              attemptCount: (student.attemptCount || 1) + 1,
+              lastRejectionReason: remarks,
+              remarks: remarks || student.remarks
+            });
+        }
+        
+        return res.json({ message: `Administrative review ${status} successfully processed.`, student });
+    }
+
+    res.status(403).json({ error: 'Access denied: Review privileges required' });
+  } catch (error) {
+    console.error('Verify eligibility error:', error);
+    res.status(500).json({ error: 'Failed to process academic review' });
   }
 });
 
@@ -285,16 +417,37 @@ router.put('/students/:id/marks', verifyToken, isAcademicOrAdmin, async (req, re
   }
 });
 
+router.post('/students/bulk-verify', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { studentIds, status, remarks } = req.body;
+    
+    const results = await Student.update(
+      { enrollStatus: status === 'approved' ? 'pending_eligibility' : 'rejected', remarks },
+      { where: { id: studentIds, enrollStatus: 'pending' } }
+    );
+
+    res.json({ message: `Bulk processed ${results[0]} students successfully` });
+  } catch (error) {
+    res.status(500).json({ error: 'Bulk processing protocol failure' });
+  }
+});
+
 // ==========================================
 // ACADEMIC SESSIONS (BATCHES)
 // ==========================================
 
 router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
+    const whereClause = {};
+    if (req.user.role === 'SUB_DEPT_ADMIN') {
+        whereClause.subDeptId = getSubDeptId(req.user.subDepartment);
+    }
+
     const sessions = await AdmissionSession.findAll({
+      where: whereClause,
       include: [
         { model: Program, attributes: ['name', 'type'] },
-        { model: Department, as: 'subDept', attributes: ['name'] }
+        { model: Department, as: 'center', attributes: ['name'] }
       ],
       attributes: {
         include: [
@@ -309,40 +462,144 @@ router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   }
 });
 
-router.post('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const { name, programId, startDate, endDate, maxCapacity } = req.body;
+    const { name, programId, centerId, startDate, endDate, maxCapacity } = req.body;
     
+    // 1. Program Validation
     const program = await Program.findByPk(programId);
     if (!program) return res.status(404).json({ error: 'Program core not found' });
 
-    // Auto-trigger finance if Skill dept
-    const financeStatus = program.type === 'Skill' ? 'pending' : 'approved';
-    const isActive = financeStatus === 'approved';
+    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
+    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user.subDepartment) : program.subDeptId;
+
+    if (isSubDeptAdmin && program.subDeptId !== subDeptId) {
+        return res.status(403).json({ error: 'Jurisdictional Violation: Program does not belong to your academic unit.' });
+    }
+
+    // 2. Center Validation
+    const center = await Department.findOne({ where: { id: centerId, type: 'center' } });
+    if (!center) return res.status(404).json({ error: 'Study Center not located' });
+    
+    if (center.auditStatus !== 'approved') {
+        return res.status(400).json({ error: `Institutional Guardrail: Center [${center.name}] must be Approved/Audited before batch generation.` });
+    }
+
+    // 3. Sub-Dept Support Validation
+    const subDeptMapReverse = { 8: 'OpenSchool', 9: 'Online', 10: 'Skill', 11: 'BVoc' };
+    const subDeptName = subDeptMapReverse[subDeptId];
+    const mapping = await CenterSubDept.findOne({ where: { centerId, subDeptName } });
+    if (!mapping) {
+        return res.status(400).json({ error: `Jurisdictional Conflict: Center [${center.name}] is not accredited to support ${subDeptName} operations.` });
+    }
+
+    // 4. Status Logic
+    const requiresFinance = program.type === 'Skill';
+    const approvalStatus = isSubDeptAdmin ? 'DRAFT' : 'APPROVED';
+    const isActive = !isSubDeptAdmin && !requiresFinance;
 
     const session = await AdmissionSession.create({
       name,
       programId,
-      subDeptId: program.subDeptId,
+      subDeptId,
+      centerId,
       startDate,
       endDate,
       maxCapacity,
-      financeStatus,
-      isActive
+      financeStatus: requiresFinance ? 'pending' : 'approved',
+      isActive,
+      createdBySubDept: isSubDeptAdmin,
+      createdBy: req.user.uid,
+      approvalStatus
     });
 
     await logAction({
        userId: req.user.uid,
-       action: 'CREATE',
+       action: 'CREATE_BATCH',
        entity: 'AdmissionSession',
-       details: `Initialized academic batch: ${session.name} [Finance: ${financeStatus}]`,
-       module: 'Academic'
+       entityId: session.id,
+       remarks: `Initialized academic batch: ${session.name} [Status: ${approvalStatus}]`
     });
 
-    res.status(201).json(session);
+    res.status(201).json({ message: isSubDeptAdmin ? 'Batch generated as DRAFT. Please submit for institutional review.' : 'Academic batch deployed successfully.', session });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to initialize session node' });
+    console.error('Session creation error:', error);
+    res.status(500).json({ error: 'Failed to deploy academic batch node' });
   }
+});
+
+router.put('/sessions/:id/submit', verifyToken, isOpsOrAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const session = await AdmissionSession.findByPk(id);
+        if (!session) return res.status(404).json({ error: 'Batch node not found' });
+
+        if (session.approvalStatus !== 'DRAFT') {
+            return res.status(400).json({ error: 'Protocol Conflict: Batch is already submitted or approved.' });
+        }
+
+        await session.update({ approvalStatus: 'PENDING_APPROVAL' });
+        
+        await logAction({
+            userId: req.user.uid,
+            action: 'SUBMIT_BATCH',
+            entity: 'AdmissionSession',
+            entityId: id,
+            remarks: 'Batch submitted for institutional review'
+        });
+
+        res.json({ message: 'Batch submitted for operational review.', session });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to submit batch for review' });
+    }
+});
+
+router.put('/sessions/:id/approve', verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, remarks } = req.body; // status: 'APPROVED' or 'REJECTED'
+        
+        const isAcademic = req.user.role === 'academic' || req.user.role === 'org-admin' || req.user.role === 'system-admin' || req.user.role === 'OPS_ADMIN';
+        const isFinance = req.user.role === 'finance';
+
+        if (!isAcademic && !isFinance) {
+            return res.status(403).json({ error: 'Access denied: Approval privileges required' });
+        }
+
+        const session = await AdmissionSession.findByPk(id, {
+            include: [{ model: Program }]
+        });
+        if (!session) return res.status(404).json({ error: 'Batch not found' });
+
+        if (status === 'APPROVED') {
+            const isSkill = session.program?.type === 'Skill';
+            
+            if (isSkill && !isFinance && session.financeStatus !== 'approved') {
+                return res.status(400).json({ error: 'Guardrail: Skill batches require Finance clearance first.' });
+            }
+
+            // Update status
+            await session.update({ 
+                approvalStatus: 'APPROVED',
+                isActive: isSkill ? (session.financeStatus === 'approved') : true 
+            });
+        } else {
+            // Rejection logic: push back to DRAFT
+            await session.update({ approvalStatus: 'DRAFT', isActive: false });
+        }
+
+        await logAction({
+            userId: req.user.uid,
+            action: `${status}_BATCH`,
+            entity: 'AdmissionSession',
+            entityId: id,
+            remarks: remarks || `Batch ${status.toLowerCase()} by ${req.user.role}`
+        });
+
+        res.json({ message: `Batch ${status.toLowerCase()} successfully.`, session });
+    } catch (error) {
+        res.status(500).json({ error: 'Approval protocol failure' });
+    }
 });
 
 router.put('/sessions/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {

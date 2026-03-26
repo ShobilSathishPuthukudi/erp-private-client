@@ -8,7 +8,7 @@ const User = sequelize.define('user', {
   },
   email: {
     type: DataTypes.STRING,
-    unique: true,
+    unique: 'idx_user_email',
     allowNull: false,
   },
   password: {
@@ -33,6 +33,10 @@ const User = sequelize.define('user', {
   },
   avatar: {
     type: DataTypes.STRING,
+    allowNull: true,
+  },
+  subDepartment: {
+    type: DataTypes.STRING, // e.g., 'Skill', 'Online', 'OpenSchool', 'BVoc'
     allowNull: true,
   },
   referralCode: {

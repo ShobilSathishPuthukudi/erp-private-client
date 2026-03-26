@@ -14,6 +14,14 @@ import ReferredLeads from './ReferredLeads';
 import FinanceRequests from './FinanceRequests';
 import Exams from './Exams';
 import MarksEntry from './MarksEntry';
+import CenterAudit from './CenterAudit';
+import AccreditationRequests from '../sub-dept/AccreditationRequests';
+import SyllabusManager from './SyllabusManager';
+import OpsDashboard from './OpsDashboard';
+import PipelineTracking from './PipelineTracking';
+import ResubmissionLogs from './ResubmissionLogs';
+import CenterPerformance from './CenterPerformance';
+import SubDeptOverview from './SubDeptOverview';
 import { 
   Building2, 
   BookOpen, 
@@ -223,6 +231,16 @@ export default function AcademicDashboard() {
       <Route path="announcements" element={<Announcements />} />
       <Route path="referrals" element={<ReferredLeads />} />
       <Route path="finance-requests" element={<FinanceRequests />} />
+
+      {/* New Operations Module Routes */}
+      <Route path="overview" element={<OpsDashboard />} />
+      <Route path="center-audit" element={<CenterAudit />} />
+      <Route path="accreditation" element={<AccreditationRequests />} />
+      <Route path="center-performance" element={<CenterPerformance />} />
+      <Route path="sub-dept-overview" element={<SubDeptOverview />} />
+      <Route path="syllabus" element={<SyllabusManager />} />
+      <Route path="pipeline" element={<PipelineTracking />} />
+      <Route path="resubmissions" element={<ResubmissionLogs />} />
     </Routes>
   );
 }

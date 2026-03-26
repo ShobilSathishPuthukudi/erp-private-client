@@ -19,6 +19,10 @@ const AdmissionSession = sequelize.define('admission_session', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  centerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   startDate: {
     type: DataTypes.DATEONLY,
     allowNull: false,
@@ -38,6 +42,18 @@ const AdmissionSession = sequelize.define('admission_session', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  createdBySubDept: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  createdBy: {
+    type: DataTypes.STRING, // User UID
+    allowNull: true,
+  },
+  approvalStatus: {
+    type: DataTypes.ENUM('DRAFT', 'PENDING_APPROVAL', 'APPROVED'),
+    defaultValue: 'DRAFT',
   }
 });
 

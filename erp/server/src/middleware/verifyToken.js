@@ -17,7 +17,11 @@ export const verifyToken = (req, res, next) => {
     req.user = payload;
     
     // Run all subsequent operations within the user context for auditing (GAP-5)
-    context.run({ userId: payload.uid, userRole: payload.role }, () => {
+    context.run({ 
+      userId: payload.uid, 
+      userRole: payload.role,
+      subDepartment: payload.subDepartment 
+    }, () => {
       next();
     });
   } catch (error) {
@@ -34,3 +38,8 @@ export const roleGuard = (allowedRoles) => {
     next();
   };
 };
+
+export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin']);
+export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN']);
+export const isSubDeptAdmin = roleGuard(['SUB_DEPT_ADMIN']);
+export const isSystemAdmin = roleGuard(['system-admin', 'org-admin']);

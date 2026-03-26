@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Calendar, BookOpen, Users, Plus, History, CheckCircle2, Clock, AlertCircle, LayoutList, ClipboardCheck } from 'lucide-react';
+import { Calendar, Plus, CheckCircle2, Clock, AlertCircle, ClipboardCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -121,7 +121,7 @@ export default function Exams() {
           className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
         >
           <ClipboardCheck className="w-3.5 h-3.5" />
-          Enter Marks
+          Record academic performance
         </button>
       )
     }
@@ -188,7 +188,7 @@ export default function Exams() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Batch / Intake Cycle</label>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Academic Batch / Intake</label>
               <input
                 {...register('batch', { required: true })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"

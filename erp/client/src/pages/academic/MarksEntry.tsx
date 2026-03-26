@@ -7,10 +7,8 @@ import {
   Save, 
   User, 
   BookOpen, 
-  GraduationCap, 
   AlertCircle, 
   CheckCircle2,
-  FileSpreadsheet,
   Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -132,7 +130,7 @@ export default function MarksEntry() {
                         <h1 className="text-3xl font-black tracking-tight">{exam?.name}</h1>
                         <p className="text-slate-400 font-bold uppercase text-[11px] tracking-widest flex items-center gap-2">
                             <BookOpen className="w-3.5 h-3.5" />
-                            {exam?.program?.name} • Batch {exam?.batch}
+                            {exam?.program?.name} • Academic Batch {exam?.batch}
                         </p>
                     </div>
                 </div>

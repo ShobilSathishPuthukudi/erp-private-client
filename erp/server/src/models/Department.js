@@ -54,6 +54,18 @@ const Department = sequelize.define('department', {
   affiliationDoc: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  auditStatus: {
+    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    defaultValue: 'pending',
+  },
+  rejectionReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  infrastructureDetails: {
+    type: DataTypes.JSON,
+    allowNull: true,
   }
 });
 

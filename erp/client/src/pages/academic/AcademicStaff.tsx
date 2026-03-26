@@ -1,12 +1,7 @@
-import { Users, Shield, Mail, Phone, Bookmark } from 'lucide-react';
+import { Users, Shield, Mail, Phone } from 'lucide-react';
 
 export default function AcademicStaff() {
-  const staff = [
-    { name: 'Dr. Sarah Chen', role: 'Head of Operations', email: 's.chen@iits.edu', phone: '+91 98765 43210', status: 'Active' },
-    { name: 'Rajesh Kumar', role: 'Senior Registrar', email: 'r.kumar@iits.edu', phone: '+91 98765 43211', status: 'Active' },
-    { name: 'Anjali Sharma', role: 'Academic Auditor', email: 'a.sharma@iits.edu', phone: '+91 98765 43212', status: 'Active' },
-    { name: 'David Miller', role: 'Credential Specialist', email: 'd.miller@iits.edu', phone: '+91 98765 43213', status: 'Away' },
-  ];
+  const staff: any[] = [];
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
@@ -23,7 +18,7 @@ export default function AcademicStaff() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {staff.map((s, i) => (
+        {staff.length > 0 ? staff.map((s, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition-colors">
@@ -47,7 +42,15 @@ export default function AcademicStaff() {
                 </div>
             </div>
           </div>
-        ))}
+        )) : (
+            <div className="col-span-full bg-white p-16 rounded-[3rem] border border-slate-200 text-center shadow-sm">
+                <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                    <Users className="w-10 h-10 text-slate-200" />
+                </div>
+                <h3 className="text-xl font-black text-slate-300 uppercase tracking-widest">Directory Empty</h3>
+                <p className="text-slate-400 font-medium mt-2">No personnel records are currently mapped to the Academic Department.</p>
+            </div>
+        )}
       </div>
     </div>
   );

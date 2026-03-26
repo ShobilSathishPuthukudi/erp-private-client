@@ -1,5 +1,6 @@
 import express from 'express';
 import { models } from '../models/index.js';
+import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
@@ -8,13 +9,22 @@ const { Program, Student, Department, AccreditationRequest, ProgramOffering, Pay
 const isSubDeptAdmin = (req, res, next) => {
   const role = req.user.role?.toLowerCase();
   const deptId = req.user.deptId || req.user.departmentId;
-  const allowedRoles = ['dept-admin', 'dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic'];
+  const allowedRoles = ['dept-admin', 'dept_admin', 'sub_dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic'];
   
-  if (!allowedRoles.includes(role) || !deptId) {
-    return res.status(403).json({ error: 'Access denied: Must be a Sub-department Admin or Academic Admin with an assigned department' });
+  if (!allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Access denied: Insufficient privileges' });
   }
-  
-  // Normalize deptId for subsequent handlers
+
+  // Academic admins can bypass deptId requirement
+  if (role === 'academic' && !deptId) {
+    return next();
+  }
+
+  if (!deptId) {
+    return res.status(403).json({ error: 'Access denied: Must have an assigned department' });
+  }
+
+  // Normalize deptId
   req.user.deptId = deptId;
   next();
 };
@@ -67,8 +77,11 @@ router.get('/stats', verifyToken, isSubDeptAdmin, async (req, res) => {
 // --- Programs Management ---
 router.get('/programs', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
+    const { subDeptId: querySubDeptId } = req.query;
+    const deptId = querySubDeptId || req.user.deptId;
+    
     const programs = await Program.findAll({
-      where: { subDeptId: req.user.deptId },
+      where: { subDeptId: deptId },
       include: [
         { model: Department, as: 'university', attributes: ['id', 'name'] },
         { model: ProgramOffering, as: 'offeringCenters', attributes: ['id'] }
@@ -161,20 +174,35 @@ router.put('/students/:id/verify-documents', verifyToken, isSubDeptAdmin, async 
 // --- Accreditation Interest Requests ---
 router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
-    // Current mapping: SubDept Admin can see requests that match their handled Type
+    console.log("Accreditation Request Audit - USER:", {
+      id: req.user.uid,
+      role: req.user.role,
+      deptId: req.user.deptId
+    });
+
+    const { unit } = req.query;
+    const targetType = unit || (req.user.role === 'academic' ? null : req.user.role);
+    
+    console.log("Accreditation Request Filter:", { unit, targetType });
+
     const requests = await AccreditationRequest.findAll({
       where: { 
           status: 'pending',
-          type: req.user.role === 'academic' ? { [models.Sequelize.Op.ne]: null } : req.user.role
+          type: targetType ? targetType : { [Op.ne]: null }
       },
       include: [
         { model: Department, as: 'center', attributes: ['id', 'name'] }
       ]
     });
+
+    console.log(`Found ${requests.length} pending accreditation requests`);
     res.json(requests);
   } catch (error) {
-    console.error('Fetch accreditation requests error:', error);
-    res.status(500).json({ error: 'Failed to fetch accreditation requests' });
+    console.error("Accreditation API Error:", error);
+    res.status(500).json({ 
+      error: 'Failed to fetch accreditation requests',
+      message: error.message 
+    });
   }
 });
 

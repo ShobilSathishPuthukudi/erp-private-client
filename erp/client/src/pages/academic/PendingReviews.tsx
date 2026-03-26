@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ShieldCheck, CheckCircle2, XCircle, FileText, UserCircle2, Landmark, BookOpen, Search } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, FileText, UserCircle2, Landmark, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Student {
@@ -15,6 +15,7 @@ interface Student {
   university?: { name: string };
   marks?: any;
   createdAt: string;
+  documents?: { name: string, path: string }[];
 }
 
 export default function PendingReviews() {
@@ -184,21 +185,21 @@ export default function PendingReviews() {
                     <h3 className="text-white font-black text-sm uppercase tracking-widest">Candidacy Telemetry</h3>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                         <p className="text-[10px] font-bold text-white/40 uppercase mb-1">10th Marks</p>
                         <p className="text-lg font-black text-white">{selectedStudent?.marks?.tenth || 'N/A'}%</p>
                     </div>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                         <p className="text-[10px] font-bold text-white/40 uppercase mb-1">12th Marks</p>
                         <p className="text-lg font-black text-white">{selectedStudent?.marks?.twelfth || 'N/A'}%</p>
                     </div>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                         <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Vertical</p>
                         <p className="text-lg font-black text-white">{selectedStudent?.subDept || 'N/A'}</p>
                     </div>
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                    <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                         <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Status</p>
-                        <p className="text-sm font-black text-amber-400 uppercase leading-tight">Stage-1 Review</p>
+                        <p className="text-[11px] font-bold text-amber-400 uppercase leading-tight">Stage-1 Review</p>
                     </div>
                 </div>
             </div>
@@ -211,12 +212,29 @@ export default function PendingReviews() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-slate-900 uppercase tracking-tight">Institutional Dossier</p>
-                        <p className="text-[10px] text-slate-500 font-medium">Verified PDF attachments for eligibility matching.</p>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                            {selectedStudent?.documents?.length ? `${selectedStudent.documents.length} verified PDF attachments.` : 'No documents uploaded.'}
+                        </p>
                     </div>
                 </div>
-                <button className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                    View Documents
-                </button>
+                <div className="flex flex-col gap-2">
+                    {selectedStudent?.documents?.map((doc, idx) => (
+                        <a 
+                            key={idx}
+                            href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${doc.path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <FileText className="w-3 h-3 text-blue-500" />
+                            {doc.name}
+                        </a>
+                    )) || (
+                        <button disabled className="bg-slate-200 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold cursor-not-allowed">
+                            None
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="space-y-4">
@@ -251,14 +269,14 @@ export default function PendingReviews() {
                 <button 
                     onClick={handleReject}
                     disabled={!rejectionReason}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 text-red-600 font-black hover:bg-red-50 rounded-2xl transition-all active:scale-95 disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-red-600 font-bold hover:bg-red-50 rounded-2xl transition-all active:scale-95 disabled:opacity-50 text-sm"
                 >
                     <XCircle className="w-5 h-5" />
                     Issue Rejection
                 </button>
                 <button 
                     onClick={handleApprove}
-                    className="flex-[2] flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20"
+                    className="flex-[2] flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 text-sm"
                 >
                     <CheckCircle2 className="w-5 h-5" />
                     Approve Eligibility

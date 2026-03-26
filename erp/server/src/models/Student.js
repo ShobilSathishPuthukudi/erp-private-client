@@ -46,6 +46,38 @@ const Student = sequelize.define('student', {
   remarks: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  documents: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  attemptCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+  },
+  lastRejectionReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  reviewStage: {
+    type: DataTypes.ENUM('SUB_DEPT', 'OPS', 'FINANCE'),
+    defaultValue: 'SUB_DEPT',
+  },
+  reviewedBy: {
+    type: DataTypes.STRING, // User UID
+    allowNull: true,
+  },
+  subDepartmentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  resubmittedTo: {
+    type: DataTypes.ENUM('SUB_DEPT', 'OPS'),
+    allowNull: true,
+  },
+  resubmissionDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
   }
 // }, {
 //   indexes: [{ fields: ['deptId', 'enrollStatus'] }]

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -11,13 +11,12 @@ import {
   Bell,
   Activity,
   Settings,
-  Megaphone,
   TrendingUp,
   RefreshCw,
   ShieldCheck,
   PieChart,
   ChevronDown,
-  ChevronRight,
+  ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -191,7 +190,18 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'academic': [
-    { name: 'Dashboard', path: '/dashboard/academic', icon: Home },
+    { name: 'Academic Dashboard', path: '/dashboard/academic/overview', icon: Home },
+    {
+      name: 'Operations Panel',
+      icon: Activity,
+      isGroup: true,
+      items: [
+        { name: 'Center Audit', path: '/dashboard/academic/center-audit' },
+        { name: 'Accreditation Queue', path: '/dashboard/academic/accreditation' },
+        { name: 'Center Performance', path: '/dashboard/academic/center-performance' },
+        { name: 'Sub-Dept Overview', path: '/dashboard/academic/sub-dept-overview' },
+      ]
+    },
     {
       name: 'Architecture',
       icon: Database,
@@ -199,6 +209,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Universities', path: '/dashboard/academic/universities' },
         { name: 'Programs', path: '/dashboard/academic/programs' },
+        { name: 'Syllabus Management', path: '/dashboard/academic/syllabus' },
       ]
     },
     {
@@ -207,11 +218,13 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Pending Reviews', path: '/dashboard/academic/pending-reviews' },
+        { name: 'Pipeline View', path: '/dashboard/academic/pipeline' },
+        { name: 'Resubmission Logs', path: '/dashboard/academic/resubmissions' },
         { name: 'All Students', path: '/dashboard/academic/students' },
       ]
     },
     {
-      name: 'Marks & Sessions',
+      name: 'Assessment & Marks',
       icon: BookOpen,
       isGroup: true,
       items: [
@@ -229,11 +242,12 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
-      name: 'Operational Support',
-      icon: Activity,
+      name: 'Support Services',
+      icon: Bell,
       isGroup: true,
       items: [
         { name: 'Staff Details', path: '/dashboard/academic/staff' },
+        { name: 'Team Governance', path: '/dashboard/academic/team' },
         { name: 'Task Management', path: '/dashboard/academic/tasks' },
         { name: 'Announcements', path: '/dashboard/academic/announcements' },
         { name: 'Referred Leads', path: '/dashboard/academic/referrals' },
@@ -255,90 +269,95 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'openschool': [
-    { name: 'Dashboard', path: '/dashboard/openschool', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/openschool', icon: Home },
     {
-      name: 'Academic',
-      icon: BookOpen,
-      isGroup: true,
-      items: [
-        { name: 'Programs', path: '/dashboard/openschool/programs' },
-        { name: 'Students', path: '/dashboard/openschool/students' },
-      ]
-    },
-    {
-      name: 'Team',
+      name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/openschool/team' },
-        { name: 'Tasks', path: '/dashboard/openschool/tasks' },
-        { name: 'Team Leave', path: '/dashboard/openschool/leaves' },
+        { name: 'My Students', path: '/dashboard/subdept/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+      ]
+    },
+    {
+      name: 'Academic Desk',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Assigned Programs', path: '/dashboard/subdept/openschool/programs' },
+        { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
+        { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
+        { name: 'Student Roster', path: '/dashboard/subdept/openschool/students' },
       ]
     }
   ],
   'online': [
-    { name: 'Dashboard', path: '/dashboard/online', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/online', icon: Home },
     {
-      name: 'Academic',
-      icon: BookOpen,
-      isGroup: true,
-      items: [
-        { name: 'Programs', path: '/dashboard/online/programs' },
-        { name: 'Students', path: '/dashboard/online/students' },
-      ]
-    },
-    {
-      name: 'Team',
+      name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/online/team' },
-        { name: 'Tasks', path: '/dashboard/online/tasks' },
-        { name: 'Team Leave', path: '/dashboard/online/leaves' },
+        { name: 'My Students', path: '/dashboard/subdept/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+      ]
+    },
+    {
+      name: 'Academic Desk',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Assigned Programs', path: '/dashboard/subdept/online/programs' },
+        { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
+        { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
+        { name: 'Student Roster', path: '/dashboard/subdept/online/students' },
       ]
     }
   ],
   'skill': [
-    { name: 'Dashboard', path: '/dashboard/skill', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/skill', icon: Home },
     {
-      name: 'Academic',
-      icon: BookOpen,
-      isGroup: true,
-      items: [
-        { name: 'Programs', path: '/dashboard/skill/programs' },
-        { name: 'Students', path: '/dashboard/skill/students' },
-      ]
-    },
-    {
-      name: 'Team',
+      name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/skill/team' },
-        { name: 'Tasks', path: '/dashboard/skill/tasks' },
-        { name: 'Team Leave', path: '/dashboard/skill/leaves' },
+        { name: 'My Students', path: '/dashboard/subdept/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+      ]
+    },
+    {
+      name: 'Academic Desk',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Assigned Programs', path: '/dashboard/subdept/skill/programs' },
+        { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
+        { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
+        { name: 'Student Roster', path: '/dashboard/subdept/skill/students' },
       ]
     }
   ],
   'bvoc': [
-    { name: 'Dashboard', path: '/dashboard/bvoc', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/bvoc', icon: Home },
     {
-      name: 'Academic',
-      icon: BookOpen,
-      isGroup: true,
-      items: [
-        { name: 'Programs', path: '/dashboard/bvoc/programs' },
-        { name: 'Students', path: '/dashboard/bvoc/students' },
-      ]
-    },
-    {
-      name: 'Team',
+      name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/bvoc/team' },
-        { name: 'Tasks', path: '/dashboard/bvoc/tasks' },
-        { name: 'Team Leave', path: '/dashboard/bvoc/leaves' },
+        { name: 'My Students', path: '/dashboard/subdept/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'Credential Requests', path: '/dashboard/subdept/bvoc/credentials' },
+      ]
+    },
+    {
+      name: 'Academic Desk',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Assigned Programs', path: '/dashboard/subdept/bvoc/programs' },
+        { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
+        { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
+        { name: 'Student Roster', path: '/dashboard/subdept/bvoc/students' },
       ]
     }
   ],
@@ -400,6 +419,29 @@ const menus: Record<string, MenuLink[]> = {
       ]
     }
   ],
+  'SUB_DEPT_ADMIN': [
+    { name: 'Unit Dashboard', path: '/dashboard/subdept/portal', icon: Home },
+    {
+      name: 'Unit Operations',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Students', path: '/dashboard/subdept/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+      ]
+    },
+    {
+      name: 'Academic Desk',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Assigned Programs', path: '/dashboard/subdept/:unit/programs' },
+        { name: 'Enrollment Intakes', path: '/dashboard/subdept/:unit/sessions' },
+        { name: 'Academic Performance', path: '/dashboard/subdept/:unit/exams' },
+        { name: 'Student Roster', path: '/dashboard/subdept/:unit/students' },
+      ]
+    }
+  ],
   'default': [
     { name: 'Home', path: '/dashboard', icon: Home },
     {
@@ -417,7 +459,26 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const user = useAuthStore(state => state.user);
   const location = useLocation();
   const role = user?.role || 'default';
-  const links = menus[role as keyof typeof menus] || menus['default'];
+  const unit = user?.subDepartment?.toLowerCase() || 'portal';
+  
+  const links = useMemo(() => {
+    const rawLinks = menus[role as keyof typeof menus] || menus['default'];
+    return rawLinks.map(link => {
+      if (link.isGroup) {
+        return {
+          ...link,
+          items: link.items.map((item: { name: string, path: string }) => ({
+            ...item,
+            path: item.path.replace(':unit', unit)
+          }))
+        };
+      }
+      return {
+         ...link,
+         path: link.path.replace(':unit', unit)
+      } as any;
+    });
+  }, [role, unit]);
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -425,17 +486,22 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   useEffect(() => {
     const currentPath = location.pathname;
     const initialExpanded: Record<string, boolean> = {};
+    let hasChanges = false;
     
     links.forEach(link => {
       if (link.isGroup) {
-        if (link.items.some(item => currentPath === item.path)) {
+        const isActive = link.items.some((item: any) => currentPath === item.path);
+        if (isActive && !expandedGroups[link.name]) {
           initialExpanded[link.name] = true;
+          hasChanges = true;
         }
       }
     });
 
-    setExpandedGroups(prev => ({ ...prev, ...initialExpanded }));
-  }, [location.pathname, links]);
+    if (hasChanges) {
+      setExpandedGroups(prev => ({ ...prev, ...initialExpanded }));
+    }
+  }, [location.pathname, links, expandedGroups]);
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups(prev => ({

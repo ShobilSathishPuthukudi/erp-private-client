@@ -44,6 +44,7 @@ import credentialRoutes from './routes/credentialReveal.js';
 import distributionRoutes from './routes/distribution.js';
 import metricRoutes from './routes/dashboardMetrics.js';
 import orgAdminRoutes from './routes/orgAdmin.js';
+import operationsRoutes from './routes/operations.js';
 import { initCronJobs } from './jobs/cronJobs.js';
 
 dotenv.config();
@@ -106,6 +107,7 @@ app.use('/api/credentials', credentialRoutes);
 app.use('/api/distribution', distributionRoutes);
 app.use('/api/dashboard', metricRoutes);
 app.use('/api/org-admin', orgAdminRoutes);
+app.use('/api/operations', operationsRoutes);
 
 // Socket.io Setup
 io.on('connection', (socket) => {
@@ -118,21 +120,44 @@ io.on('connection', (socket) => {
 // Initialize Background Daemon
 initCronJobs(io);
 
-// Start Server
-const PORT = process.env.PORT || 3000;
+const cleanupDuplicateIndexes = async () => {
+  try {
+    const [results] = await sequelize.query(`
+      SELECT INDEX_NAME 
+      FROM information_schema.statistics 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'users' 
+      AND COLUMN_NAME = 'email' 
+      AND NON_UNIQUE = 0
+    `);
 
-sequelize.authenticate().then(() => {
-  console.log('Institutional Database Engine authenticated successfully.');
-  
-  httpServer.listen(PORT, '0.0.0.0', async () => {
-    console.log(`Server is running on port ${PORT} with DB Authenticated & Crons Seeded`);
+    // Keep idx_user_email, drop others
+    const redundant = results
+      .map(r => r.INDEX_NAME)
+      .filter(name => name !== 'idx_user_email' && name !== 'PRIMARY');
+
+    for (const indexName of redundant) {
+      console.log(`Dropping redundant index: ${indexName}`);
+      await sequelize.query(`ALTER TABLE users DROP INDEX ${indexName}`).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Index cleanup skipped:', err.message);
+  }
+};
+
+const startServer = (port) => {
+  const server = httpServer.listen(port, '0.0.0.0', async () => {
+    console.log(`[ERP] Server is running on port ${port} with DB Authenticated & Crons Seeded`);
     
     try {
-      // Sync all models (GAP-3)
-      await sequelize.sync();
-      console.log('Models synchronized with database.');
+      // 1. Sanitize Database Indexes
+      await cleanupDuplicateIndexes();
 
-      // Seed standard institutional cron jobs (GAP-3)
+      // 2. Sync all models (GAP-3)
+      await sequelize.sync();
+      console.log('[ERP] Models synchronized with database.');
+
+      // 3. Seed standard institutional cron jobs (GAP-3)
       const { CronJob } = models;
       const existingJobs = await CronJob.count();
       if (existingJobs === 0) {
@@ -142,10 +167,26 @@ sequelize.authenticate().then(() => {
           { name: 'emi-overdue', schedule: '0 2 * * *', status: 'active' }
         ]);
       }
-    } catch (syncErr) {
-      console.error('Error during DB sync/seed:', syncErr);
+    } catch (err) {
+      console.error('[ERP] Startup Error:', err);
     }
   });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[ERP] Port ${port} is in use, retrying on ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('[ERP] Server Error:', err);
+    }
+  });
+};
+
+const PORT = process.env.PORT || 3000;
+
+sequelize.authenticate().then(() => {
+  console.log('Institutional Database Engine authenticated successfully.');
+  startServer(parseInt(PORT, 10));
 }).catch(err => {
   console.error('Failed to authenticate database:', err);
 });

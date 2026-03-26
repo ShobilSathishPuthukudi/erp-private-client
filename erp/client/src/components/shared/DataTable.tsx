@@ -115,7 +115,7 @@ export function DataTable<TData, TValue>({
                     return (
                       <th 
                         key={header.id} 
-                        className="px-6 py-4 font-medium whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors"
+                        className="px-4 py-4 font-medium whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className="flex items-center space-x-1">
@@ -138,7 +138,7 @@ export function DataTable<TData, TValue>({
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     {columns.map((_, colIdx) => (
-                      <td key={colIdx} className="px-6 py-4">
+                      <td key={colIdx} className="px-4 py-4">
                         <div className="h-4 bg-slate-200 rounded w-full max-w-[150px]"></div>
                       </td>
                     ))}
@@ -148,7 +148,7 @@ export function DataTable<TData, TValue>({
                 table.getRowModel().rows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-6 py-4 text-slate-600">
+                      <td key={cell.id} className="px-4 py-4 text-slate-600">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -156,7 +156,7 @@ export function DataTable<TData, TValue>({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-16 h-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center">
                         <Search className="w-8 h-8 text-slate-400" />

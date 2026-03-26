@@ -41,6 +41,9 @@ import PaymentDistribution from './PaymentDistribution.js';
 import OrgConfig from './OrgConfig.js';
 import CustomField from './CustomField.js';
 import CEOPanel from './CEOPanel.js';
+import Subject from './Subject.js';
+import Module from './Module.js';
+import CenterSubDept from './CenterSubDept.js';
 
 // Department -> User (Admin)
 Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
@@ -215,6 +218,20 @@ Student.hasMany(Result, { foreignKey: 'studentId' });
 Result.belongsTo(Program, { foreignKey: 'programId' });
 Program.hasMany(Result, { foreignKey: 'programId' });
 
+// --- Syllabus Management ---
+Program.hasMany(Subject, { foreignKey: 'programId', as: 'subjects' });
+Subject.belongsTo(Program, { foreignKey: 'programId' });
+
+Subject.hasMany(Module, { foreignKey: 'subjectId', as: 'modules' });
+Module.belongsTo(Subject, { foreignKey: 'subjectId' });
+
+// --- Sub-Department Portals ---
+Department.hasMany(CenterSubDept, { as: 'subDepts', foreignKey: 'centerId' });
+CenterSubDept.belongsTo(Department, { foreignKey: 'centerId' });
+
+// Support for direct sub-dept filtering on students/programs/sessions
+// These already have subDeptId/type but we can add descriptive helpers if needed
+
 // ChangeRequest -> Center
 ChangeRequest.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
 Department.hasMany(ChangeRequest, { foreignKey: 'centerId' });
@@ -281,7 +298,10 @@ const models = {
   PaymentDistribution,
   OrgConfig,
   CustomField,
-  CEOPanel
+  CEOPanel,
+  Subject,
+  Module,
+  CenterSubDept
 };
 
 // GAP-5: Global Audit Interceptor

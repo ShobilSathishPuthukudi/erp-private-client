@@ -42,6 +42,10 @@ const Program = sequelize.define('program', {
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  syllabusDoc: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 });
 

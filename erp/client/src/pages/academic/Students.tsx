@@ -108,19 +108,19 @@ export default function Students() {
 
   const columns: ColumnDef<Student>[] = [
     { accessorKey: 'id', header: 'SID', cell: ({ row }) => <span className="font-mono text-slate-500">S-{row.original.id}</span> },
-    { accessorKey: 'name', header: 'Student Identity', cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span> },
+    { accessorKey: 'name', header: 'Student', cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span> },
     { 
       id: 'program', 
-      header: 'Enrolled Track', 
+      header: 'Track', 
       cell: ({ row }) => (
-        <span className="text-slate-700 bg-slate-100 px-2 py-1 text-xs rounded border border-slate-200">
+        <div className="inline-block text-slate-700 bg-slate-100 px-2 py-1 text-xs rounded border border-slate-200 leading-normal max-w-[140px]">
           {row.original.program?.name || 'Unassigned Core'}
-        </span>
+        </div>
       )
     },
     { 
       accessorKey: 'enrollStatus', 
-      header: 'Academic Status', 
+      header: 'Status', 
       cell: ({ row }) => {
         const s = row.original.enrollStatus;
         return (
@@ -130,10 +130,10 @@ export default function Students() {
         );
       }
     },
-    { accessorKey: 'feeStatus', header: 'Financial Clear', cell: ({ row }) => <span className="uppercase text-[10px] text-slate-500 font-bold">{row.original.feeStatus}</span> },
+    { accessorKey: 'feeStatus', header: 'Finance', cell: ({ row }) => <span className="uppercase text-[10px] text-slate-500 font-bold">{row.original.feeStatus}</span> },
     {
       id: 'grades',
-      header: 'Recorded Marks',
+      header: 'Marks',
       cell: ({ row }) => {
         const m = row.original.marks || {};
         const count = Object.keys(m).length;
@@ -143,7 +143,7 @@ export default function Students() {
     },
     {
       id: 'actions',
-      header: 'Audit Control',
+      header: 'Actions',
       cell: ({ row }) => {
         const s = row.original.enrollStatus;
         const item = row.original;
@@ -152,7 +152,7 @@ export default function Students() {
             return (
                 <button 
                     onClick={() => openVerifyModal(item)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
                 >
                     <ShieldCheck className="w-3 h-3" />
                     <span>Eligibility Check</span>
@@ -163,7 +163,7 @@ export default function Students() {
         return (
             <button 
               onClick={() => openGradeModal(item)} 
-              className="flex items-center space-x-1 text-xs font-semibold text-white bg-slate-900 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-800 transition-colors"
+              className="flex items-center space-x-1 text-xs font-semibold text-white bg-slate-900 px-2 py-1 rounded-lg shadow-sm hover:bg-slate-800 transition-colors"
             >
               <FileEdit className="w-3 h-3" />
               <span>Review Board</span>
@@ -225,17 +225,17 @@ export default function Students() {
                 />
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 uppercase">
+            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 uppercase text-xs">
                 <button 
                     onClick={() => handleVerify('rejected')}
-                    className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
+                    className="px-4 py-1.5 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
                 >
                     <XCircle className="w-4 h-4" />
                     Reject
                 </button>
                 <button 
                     onClick={() => handleVerify('approved')}
-                    className="px-8 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-shadow shadow-lg shadow-slate-200 flex items-center gap-2"
+                    className="px-6 py-1.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-shadow shadow-lg shadow-slate-200 flex items-center gap-2"
                 >
                     <CheckCircle className="w-4 h-4" />
                     Advance to Sub-Dept

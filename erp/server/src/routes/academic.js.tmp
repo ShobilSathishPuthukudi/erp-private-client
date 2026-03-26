@@ -1,0 +1,156 @@
+import express from 'express';
+import { models, sequelize } from '../models/index.js';
+import { verifyToken } from '../middleware/verifyToken.js';
+import validate from '../middleware/validate.js';
+import { universitySchema, programSchema } from '../lib/schemas.js';
+import { logAction } from '../lib/audit.js';
+import { Op } from 'sequelize';
+
+const router = express.Router();
+const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module } = models;
+
+const getSubDeptId = (name) => {
+  const map = { 'OpenSchool': 8, 'Online': 9, 'Skill': 10, 'BVoc': 11 };
+  return map[name] || null;
+};
+
+const isAcademicOrAdmin = (req, res, next) => {
+  const allowed = ['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN'];
+  if (!allowed.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Access denied: Academic privileges required' });
+  }
+  next();
+};
+
+const isOpsOrAdmin = (req, res, next) => {
+    const allowed = ['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN'];
+    if (!allowed.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied: Operations privileges required' });
+    }
+    next();
+};
+
+// ==========================================
+// TELEMETRY & DASHBOARD STATS
+// ==========================================
+
+router.get('/stats', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const subDeptId = getSubDeptId(req.user.subDepartment);
+    const whereClause = req.user.role === 'SUB_DEPT_ADMIN' ? { 
+      subDeptId: subDeptId 
+    } : {};
+    
+    // For students, filter by program.subDeptId
+    const studentWhere = req.user.role === 'SUB_DEPT_ADMIN' ? {
+      subDepartmentId: subDeptId
+    } : {};
+
+    const totalUniversities = await Department.count({ where: { type: 'university' } });
+    const activePrograms = await Program.count({ where: whereClause });
+    const pendingReviews = await Student.count({ where: { ...studentWhere, reviewStage: 'SUB_DEPT' } });
+    
+    // Revenue isolation
+    const payments = await Payment.findAll({
+      attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
+      where: req.user.role === 'SUB_DEPT_ADMIN' ? {
+        studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE subDepartmentId = ${subDeptId})`) }
+      } : {},
+      raw: true
+    });
+    const revenue = payments[0]?.total || 0;
+
+    res.json({
+      totalUniversities,
+      activePrograms,
+      pendingReviews,
+      revenue
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to aggregate institutional telemetry' });
+  }
+});
+
+// ==========================================
+// UNIVERSITIES
+// ==========================================
+
+router.get('/universities', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const unis = await Department.findAll({
+      where: { type: 'university' },
+      attributes: {
+        include: [
+          [sequelize.literal(`(SELECT COUNT(*) FROM programs WHERE programs.universityId = department.id)`), 'totalPrograms'],
+        ]
+      },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(unis);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch universities' });
+  }
+});
+
+// ==========================================
+// ACADEMIC PROGRAMS
+// ==========================================
+
+router.get('/programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { subDeptId } = req.query;
+    const whereClause = {};
+    
+    if (req.user.role === 'SUB_DEPT_ADMIN') {
+      whereClause.subDeptId = getSubDeptId(req.user.subDepartment);
+    } else if (subDeptId) {
+      whereClause.subDeptId = subDeptId;
+    }
+
+    const programs = await Program.findAll({
+      where: whereClause,
+      include: [
+        { model: Department, as: 'university', attributes: ['name'] },
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(programs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch programs' });
+  }
+});
+
+// ==========================================
+// STUDENTS
+// ==========================================
+
+router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { status, programId, stage, subDeptId } = req.query;
+    const whereClause = {};
+    if (status) whereClause.enrollStatus = status;
+    if (programId) whereClause.programId = programId;
+    if (stage) whereClause.reviewStage = stage;
+    
+    if (req.user.role === 'SUB_DEPT_ADMIN') {
+      whereClause.subDepartmentId = getSubDeptId(req.user.subDepartment);
+    } else if (subDeptId) {
+      whereClause.subDepartmentId = subDeptId;
+    }
+
+    const students = await Student.findAll({
+      where: whereClause,
+      include: [
+        { model: Program, attributes: ['id', 'name', 'subDeptId'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// ... (Rest of the file would be long, I'll keep the essential parts or just fix the specific route if possible)
+// But I'll do a focused replace instead to avoid overwriting everything.

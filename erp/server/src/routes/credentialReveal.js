@@ -1,13 +1,14 @@
 import express from 'express';
 import { models } from '../models/index.js';
 import { Op } from 'sequelize';
+import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
 const router = express.Router();
 const { CredentialRequest, Department, User } = models;
 
 const REVEAL_WINDOW_MINS = 30;
 
 // Ops: Request Reveal
-router.post('/request', async (req, res) => {
+router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
   try {
     const { centerId, remarks } = req.body;
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
@@ -43,7 +44,7 @@ router.post('/request', async (req, res) => {
 });
 
 // Finance: Approve Reveal
-router.post('/approve/:id', async (req, res) => {
+router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin']), async (req, res) => {
   try {
     const request = await CredentialRequest.findByPk(req.params.id);
     if (!request) return res.status(404).json({ error: 'Request not found' });
@@ -61,8 +62,8 @@ router.post('/approve/:id', async (req, res) => {
   }
 });
 
-// Ops: Reveal Actual Credentials (Plaintext but not logged)
-router.get('/reveal/:id', async (req, res) => {
+// Ops: Reveal Actual Credentials
+router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
   try {
     const request = await CredentialRequest.findByPk(req.params.id, {
       include: [{ model: Department, as: 'center' }]
@@ -94,7 +95,7 @@ router.get('/reveal/:id', async (req, res) => {
 });
 
 // Finance: Get Pending Queue
-router.get('/pending', async (req, res) => {
+router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin']), async (req, res) => {
   try {
     const queue = await CredentialRequest.findAll({
       where: { status: 'pending' },
@@ -110,7 +111,7 @@ router.get('/pending', async (req, res) => {
 });
 
 // Ops: Get My Requests
-router.get('/my-requests', async (req, res) => {
+router.get('/my-requests', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
   try {
     const requests = await CredentialRequest.findAll({
       where: { requesterId: req.user.uid },

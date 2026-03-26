@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Calendar, BookOpen, Users, ShieldCheck, Plus, History, Timer, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Calendar, BookOpen, Users, ShieldCheck, Plus, History, Timer, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -18,8 +18,10 @@ interface Session {
   maxCapacity: number;
   enrolledCount: number;
   financeStatus: 'pending' | 'approved' | 'rejected';
+  approvalStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
   isActive: boolean;
   program?: { name: string; type: string };
+  center?: { name: string };
   subDept?: { name: string };
 }
 
@@ -145,6 +147,23 @@ export default function Sessions() {
       }
     },
     { 
+      id: 'status', 
+      header: 'Workflow Status',
+      cell: ({ row }) => {
+        const s = row.original.approvalStatus;
+        return (
+          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
+            s === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 
+            s === 'PENDING_APPROVAL' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+            'bg-slate-100 text-slate-600 border border-slate-200'
+          }`}>
+            {s === 'APPROVED' ? <CheckCircle2 className="w-3 h-3" /> : (s === 'PENDING_APPROVAL' ? <Timer className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />)}
+            {s.replace('_', ' ')}
+          </span>
+        );
+      }
+    },
+    { 
       accessorKey: 'financeStatus', 
       header: 'Finance Clearance',
       cell: ({ row }) => {
@@ -183,6 +202,23 @@ export default function Sessions() {
             >
                 <Edit2 className="w-4 h-4" />
             </button>
+            {row.original.approvalStatus === 'PENDING_APPROVAL' && (
+              <button 
+                onClick={async () => {
+                  try {
+                    await api.put(`/academic/sessions/${row.original.id}/approve`, { status: 'APPROVED' });
+                    toast.success('Batch approved and activated');
+                    fetchData();
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.error || 'Approval failed');
+                  }
+                }}
+                className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-all active:scale-95 shadow-sm border border-emerald-100 bg-white"
+                title="Approve Batch"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+            )}
         </div>
       )
     }

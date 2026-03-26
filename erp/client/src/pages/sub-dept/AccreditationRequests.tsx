@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { CheckCircle, XCircle, FileText, Info, ShieldCheck, Link as LinkIcon } from 'lucide-react';
+import { CheckCircle, Info, ShieldCheck, Link as LinkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AccreditationRequest {
@@ -22,6 +23,7 @@ interface Program {
 }
 
 export default function AccreditationRequests() {
+  const { unit } = useParams();
   const [requests, setRequests] = useState<AccreditationRequest[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,9 +35,12 @@ export default function AccreditationRequests() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
+      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
+
       const [reqRes, progRes] = await Promise.all([
-        api.get('/sub-dept/accreditation-requests'),
-        api.get('/sub-dept/programs')
+        api.get('/sub-dept/accreditation-requests', { params: { unit } }),
+        api.get('/sub-dept/programs', { params: { subDeptId } })
       ]);
       setRequests(reqRes.data);
       setPrograms(progRes.data);
@@ -48,7 +53,7 @@ export default function AccreditationRequests() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [unit]);
 
   const openApproveModal = (request: AccreditationRequest) => {
     setSelectedRequest(request);
@@ -76,7 +81,7 @@ export default function AccreditationRequests() {
     { accessorKey: 'id', header: 'REQ-ID', cell: ({ row }) => <span className="font-mono text-xs">#ACC-{row.original.id}</span> },
     { accessorKey: 'center.name', header: 'Center Name', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.center?.name}</span> },
     { accessorKey: 'courseName', header: 'Requested Course', cell: ({ row }) => <span className="text-slate-700">{row.original.courseName}</span> },
-    { accessorKey: 'universityName', header: 'Target University', cell: ({ row }) => <span className="text-slate-600 italic">{row.original.universityName}</span> },
+    { accessorKey: 'universityName', header: 'Target University', cell: ({ row }) => <span className="text-slate-600">{row.original.universityName}</span> },
     {
       id: 'actions',
       header: 'Review Protocol',

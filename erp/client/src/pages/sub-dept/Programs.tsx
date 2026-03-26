@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Program {
@@ -14,13 +16,19 @@ interface Program {
 }
 
 export default function Programs() {
+  const { unit } = useParams();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchPrograms = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/sub-dept/programs');
+      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
+      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
+      
+      const res = await api.get('/academic/programs', { 
+        params: { subDeptId } 
+      });
       setPrograms(res.data);
     } catch (error) {
       toast.error('Failed to fetch programs');
@@ -31,7 +39,7 @@ export default function Programs() {
 
   useEffect(() => {
     fetchPrograms();
-  }, []);
+  }, [unit]);
 
   const columns: ColumnDef<Program>[] = [
     { accessorKey: 'id', header: 'Prog ID' },
@@ -43,7 +51,7 @@ export default function Programs() {
     { 
       id: 'university', 
       header: 'Partner University',
-      cell: ({ row }) => row.original.university?.name || <span className="text-slate-400 italic">No University Linked</span>
+      cell: ({ row }) => row.original.university?.name || <span className="text-slate-400">No University Linked</span>
     },
     {
       id: 'centers',
@@ -76,29 +84,11 @@ export default function Programs() {
             }`}>
               {program.status}
             </span>
-            {(isActive || isOpen) && (
-                <button 
-                    onClick={() => handleToggleStatus(program.id, isOpen ? 'active' : 'open')}
-                    className={`text-[10px] font-bold underline transition-colors ${isOpen ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'}`}
-                >
-                    {isOpen ? 'Close Admissions' : 'Open Admissions'}
-                </button>
-            )}
           </div>
         );
       }
     }
   ];
-
-  const handleToggleStatus = async (id: number, newStatus: string) => {
-    try {
-      await api.put(`/sub-dept/programs/${id}/status`, { status: newStatus });
-      toast.success(`Program admissions ${newStatus === 'open' ? 'opened' : 'closed'} successfully`);
-      fetchPrograms();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Status toggle protocol failure');
-    }
-  };
 
   const getUniqueUniversities = () => {
     const unis = programs.map(p => p.university).filter(Boolean);
@@ -110,8 +100,12 @@ export default function Programs() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-end shrink-0">
         <div>
-           <h1 className="text-2xl font-bold text-slate-900">Institutional Portfolio</h1>
-           <p className="text-slate-500">Track and manage curriculum structures assigned to your specific sub-department</p>
+           <div className="flex items-center gap-2 text-blue-600 mb-1 font-black uppercase tracking-[0.2em] text-[10px]">
+               <BookOpen className="w-4 h-4" />
+               Academic Architecture
+           </div>
+           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Assigned <span className="text-blue-600 font-outline-1">Programs</span></h1>
+           <p className="text-slate-500 font-medium">Read-only portfolio from Academic (Operations) Architecture</p>
         </div>
         <div className="flex gap-2">
             {getUniqueUniversities().map(u => u && (
@@ -123,13 +117,13 @@ export default function Programs() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
+      <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100 rounded-[2rem] flex flex-col overflow-hidden">
         <DataTable 
           columns={columns} 
           data={programs} 
           isLoading={isLoading} 
           searchKey="name" 
-          searchPlaceholder="Search programs..." 
+          searchPlaceholder="Identify program..." 
         />
       </div>
     </div>

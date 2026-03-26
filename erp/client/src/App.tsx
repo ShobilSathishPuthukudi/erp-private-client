@@ -74,10 +74,8 @@ export default function App() {
             <Route path="study-center/*" element={<ProtectedRoute allowedRoles={['study-center']}><StudyCenterDashboard /></ProtectedRoute>} />
             <Route path="student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
             <Route path="employee/*" element={<ProtectedRoute allowedRoles={['employee']}><EmployeePortal /></ProtectedRoute>} />
-            <Route path="openschool/*" element={<ProtectedRoute allowedRoles={['openschool']}><SubDeptDashboard /></ProtectedRoute>} />
-            <Route path="online/*" element={<ProtectedRoute allowedRoles={['online']}><SubDeptDashboard /></ProtectedRoute>} />
-            <Route path="skill/*" element={<ProtectedRoute allowedRoles={['skill']}><SubDeptDashboard /></ProtectedRoute>} />
-            <Route path="bvoc/*" element={<ProtectedRoute allowedRoles={['bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
+            
+            <Route path="subdept/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'academic', 'openschool', 'online', 'skill', 'bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
             
             <Route index element={<Navigate to={user ? `/dashboard/${user.role}` : '/login'} replace />} />
           </Route>

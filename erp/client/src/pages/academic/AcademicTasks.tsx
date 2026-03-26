@@ -1,12 +1,7 @@
-import { CheckSquare, Clock, AlertCircle, Plus, LayoutList } from 'lucide-react';
+import { CheckSquare, Clock, Plus, LayoutList } from 'lucide-react';
 
 export default function AcademicTasks() {
-  const tasks = [
-    { title: 'University Affiliation Audit', priority: 'High', due: '2025-07-20', status: 'Pending' },
-    { title: 'Batch July-25 Capacity Lock', priority: 'Critical', due: '2025-07-15', status: 'In Progress' },
-    { title: 'Update BVoc Skill Mapping', priority: 'Medium', due: '2025-07-25', status: 'Pending' },
-    { title: 'Credential Reveal Audit (June)', priority: 'High', due: '2025-07-30', status: 'Completed' },
-  ];
+  const tasks: any[] = [];
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
@@ -34,7 +29,7 @@ export default function AcademicTasks() {
             </h3>
         </div>
         <div className="divide-y divide-slate-100">
-            {tasks.map((t, i) => (
+            {tasks.length > 0 ? tasks.map((t, i) => (
                 <div key={i} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4">
                         <div className={`w-2 h-2 rounded-full ${t.priority === 'Critical' ? 'bg-red-500 animate-pulse' : (t.priority === 'High' ? 'bg-amber-500' : 'bg-blue-500')}`} />
@@ -55,7 +50,12 @@ export default function AcademicTasks() {
                         </button>
                     </div>
                 </div>
-            ))}
+            )) : (
+                <div className="p-12 text-center">
+                    <LayoutList className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                    <p className="text-slate-400 font-medium tracking-tight italic">No institutional directives currently active in the pipeline.</p>
+                </div>
+            )}
         </div>
       </div>
     </div>
