@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Menu, Bell, User as UserIcon, LogOut } from 'lucide-react';
+import { Menu, User as UserIcon, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/shared/Modal';
+import NotificationCenter from '@/components/shared/NotificationCenter';
 
 export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void }) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -28,16 +29,13 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
         <button onClick={toggleSidebar} className="p-2 mr-4 md:hidden text-slate-500 hover:bg-slate-100 rounded-md">
           <Menu className="w-5 h-5" />
         </button>
-        <h2 className="text-lg font-semibold text-slate-800 capitalize hidden md:block">
-          {user?.role ? user.role.replace('-', ' ') : 'Dashboard'}
+        <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] hidden md:block font-display">
+          {user?.role === 'org-admin' ? 'Organization Admin' : (user?.role ? user.role.replace('-', ' ') : 'Dashboard')}
         </h2>
       </div>
       
       <div className="flex items-center space-x-4">
-        <button className="p-2 text-slate-400 hover:text-slate-600 relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <NotificationCenter />
         
         <div className="flex items-center space-x-3 border-l pl-4 border-slate-200">
           <button 

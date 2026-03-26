@@ -42,8 +42,10 @@ export default function Departments() {
       setIsLoading(true);
       const res = await api.get('/departments');
       setDepartments(res.data);
-    } catch (error) {
-      toast.error('Failed to fetch departments');
+    } catch (error: any) {
+      if (error.response?.status !== 404) {
+        toast.error(error.response?.data?.error || 'Failed to fetch departments');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -149,6 +151,8 @@ export default function Departments() {
         isLoading={isLoading} 
         searchKey="name" 
         searchPlaceholder="Search departments..." 
+        emptyMessage="No departments defined yet."
+        emptyDescription="Get started by creating your first organizational department."
       />
 
       <Modal

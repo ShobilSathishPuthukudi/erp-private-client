@@ -22,6 +22,38 @@ const Department = sequelize.define('department', {
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active',
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  logo: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  sourceLeadId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  bdeId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  accreditation: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  websiteUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  affiliationDoc: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 });
 

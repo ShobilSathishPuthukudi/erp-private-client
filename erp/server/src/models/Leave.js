@@ -35,6 +35,8 @@ const Leave = sequelize.define('leave', {
     type: DataTypes.ENUM('pending_step1', 'pending_step2', 'approved', 'rejected_step1', 'rejected_step2'),
     defaultValue: 'pending_step1',
   }
+}, {
+  indexes: [{ fields: ['employeeId', 'status'] }]
 });
 
 export default Leave;

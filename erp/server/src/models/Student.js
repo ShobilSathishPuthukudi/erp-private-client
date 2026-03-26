@@ -30,7 +30,25 @@ const Student = sequelize.define('student', {
   feeStatus: {
     type: DataTypes.STRING,
     defaultValue: 'unpaid',
+  },
+  marks: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  feeSchemaId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  verificationLogs: {
+    type: DataTypes.JSON, // History of Ops -> Sub-Dept -> Finance approvals
+    allowNull: true,
+  },
+  remarks: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   }
+// }, {
+//   indexes: [{ fields: ['deptId', 'enrollStatus'] }]
 });
 
 export default Student;

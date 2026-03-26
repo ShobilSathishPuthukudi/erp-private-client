@@ -31,6 +31,8 @@ const Payment = sequelize.define('payment', {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
   }
+}, {
+  indexes: [{ fields: ['studentId', 'status'] }]
 });
 
 export default Payment;

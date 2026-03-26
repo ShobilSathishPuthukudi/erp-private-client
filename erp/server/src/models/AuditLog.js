@@ -27,6 +27,14 @@ const AuditLog = sequelize.define('auditLog', {
     type: DataTypes.JSON,
     allowNull: true,
   },
+  remarks: {
+    type: DataTypes.TEXT,
+    allowNull: true, // Will be mandatory for financial edits via middleware
+  },
+  ipAddress: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   module: {
     type: DataTypes.STRING,
     allowNull: false,

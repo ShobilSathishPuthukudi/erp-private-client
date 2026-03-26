@@ -34,6 +34,11 @@ const User = sequelize.define('user', {
   avatar: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  referralCode: {
+    type: DataTypes.STRING,
+    unique: false,
+    allowNull: true,
   }
 });
 

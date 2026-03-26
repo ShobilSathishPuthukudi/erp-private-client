@@ -31,6 +31,8 @@ const Task = sequelize.define('task', {
     type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'overdue'),
     defaultValue: 'pending',
   }
+}, {
+  indexes: [{ fields: ['assignedTo', 'status'] }]
 });
 
 export default Task;

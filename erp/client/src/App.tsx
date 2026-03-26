@@ -4,27 +4,33 @@ import { useAuthStore } from '@/store/authStore';
 
 // Layout
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 
 // Pages
 import LoginPage from '@/pages/login';
 import ProfilePage from '@/pages/profile';
+import Preferences from '@/pages/profile/Preferences';
 import OrgAdminDashboard from '@/pages/org-admin';
+import SystemHealth from '@/pages/org-admin/SystemHealth';
+import DataManagement from '@/pages/org-admin/DataManagement';
+import CronMonitoring from '@/pages/org-admin/CronMonitoring';
+import FinanceDashboard from '@/pages/finance';
+import AcademicDashboard from '@/pages/academic';
+import HRDashboard from '@/pages/hr';
+import DeptAdminDashboard from '@/pages/dept-admin';
+import SubDeptDashboard from '@/pages/sub-dept';
+import StudyCenterDashboard from '@/pages/study-center';
+import StudentPortal from '@/pages/student';
+import EmployeePortal from '@/pages/employee';
+import SalesDashboard from '@/pages/sales';
+import ReferralForm from '@/pages/public/ReferralForm';
+
+import CEODashboard from '@/pages/ceo';
+import SurveyCreator from '@/pages/org-admin/SurveyCreator';
+import SurveyHub from '@/pages/shared/SurveyHub';
+import NotFound from '@/pages/NotFound';
 
 // Portals - Placeholders
-const CEODashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">CEO Dashboard</h1></div>;
-const DeptAdminDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Dept Admin Dashboard</h1></div>;
-const AcademicDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Academic Dashboard</h1></div>;
-const FinanceDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Finance Dashboard</h1></div>;
-const HRDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">HR Dashboard</h1></div>;
-const SalesDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Sales Dashboard</h1></div>;
-const StudyCenterDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Study Center Dashboard</h1></div>;
-const StudentPortal = () => <div><h1 className="text-2xl font-bold text-slate-900">Student Portal</h1></div>;
-const EmployeePortal = () => <div><h1 className="text-2xl font-bold text-slate-900">Employee Portal</h1></div>;
-const OpenSchoolDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">OpenSchool Dashboard</h1></div>;
-const OnlineDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Online Dashboard</h1></div>;
-const SkillDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">Skill Dashboard</h1></div>;
-const BVocDashboard = () => <div><h1 className="text-2xl font-bold text-slate-900">BVoc Dashboard</h1></div>;
-
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const user = useAuthStore((state) => state.user);
   
@@ -33,7 +39,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
   }
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />; 
+    return <Navigate to="/404" replace />; 
   }
   
   return <>{children}</>;
@@ -43,35 +49,48 @@ export default function App() {
   const user = useAuthStore((state) => state.user);
 
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" />
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to={`/dashboard/${user.role}`} replace /> : <LoginPage />} />
-        
-        {/* Dashboards wrapped in DashboardLayout */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-          <Route path="org-admin/*" element={<ProtectedRoute allowedRoles={['org-admin']}><OrgAdminDashboard /></ProtectedRoute>} />
-          <Route path="ceo/*" element={<ProtectedRoute allowedRoles={['ceo']}><CEODashboard /></ProtectedRoute>} />
-          <Route path="dept-admin/*" element={<ProtectedRoute allowedRoles={['dept-admin']}><DeptAdminDashboard /></ProtectedRoute>} />
-          <Route path="academic/*" element={<ProtectedRoute allowedRoles={['academic']}><AcademicDashboard /></ProtectedRoute>} />
-          <Route path="finance/*" element={<ProtectedRoute allowedRoles={['finance']}><FinanceDashboard /></ProtectedRoute>} />
-          <Route path="hr/*" element={<ProtectedRoute allowedRoles={['hr']}><HRDashboard /></ProtectedRoute>} />
-          <Route path="sales/*" element={<ProtectedRoute allowedRoles={['sales']}><SalesDashboard /></ProtectedRoute>} />
-          <Route path="study-center/*" element={<ProtectedRoute allowedRoles={['study-center']}><StudyCenterDashboard /></ProtectedRoute>} />
-          <Route path="student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
-          <Route path="employee/*" element={<ProtectedRoute allowedRoles={['employee']}><EmployeePortal /></ProtectedRoute>} />
-          <Route path="openschool/*" element={<ProtectedRoute allowedRoles={['openschool']}><OpenSchoolDashboard /></ProtectedRoute>} />
-          <Route path="online/*" element={<ProtectedRoute allowedRoles={['online']}><OnlineDashboard /></ProtectedRoute>} />
-          <Route path="skill/*" element={<ProtectedRoute allowedRoles={['skill']}><SkillDashboard /></ProtectedRoute>} />
-          <Route path="bvoc/*" element={<ProtectedRoute allowedRoles={['bvoc']}><BVocDashboard /></ProtectedRoute>} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to={`/dashboard/${user.role}`} replace /> : <LoginPage />} />
           
-          <Route index element={<Navigate to={user ? `/dashboard/${user.role}` : '/login'} replace />} />
-        </Route>
-        
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Dashboards wrapped in DashboardLayout */}
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+            <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="profile/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />
+            <Route path="org-admin/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><OrgAdminDashboard /></ProtectedRoute>} />
+            <Route path="org-admin/system-health" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><SystemHealth /></ProtectedRoute>} />
+            <Route path="org-admin/data" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><DataManagement /></ProtectedRoute>} />
+            <Route path="org-admin/cron" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><CronMonitoring /></ProtectedRoute>} />
+            <Route path="org-admin/surveys" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'academic']}><SurveyCreator /></ProtectedRoute>} />
+            <Route path="shared/surveys" element={<ProtectedRoute><SurveyHub /></ProtectedRoute>} />
+            <Route path="ceo/*" element={<ProtectedRoute allowedRoles={['ceo']}><CEODashboard /></ProtectedRoute>} />
+            <Route path="dept-admin/*" element={<ProtectedRoute allowedRoles={['dept-admin']}><DeptAdminDashboard /></ProtectedRoute>} />
+            <Route path="academic/*" element={<ProtectedRoute allowedRoles={['academic']}><AcademicDashboard /></ProtectedRoute>} />
+            <Route path="finance/*" element={<ProtectedRoute allowedRoles={['finance']}><FinanceDashboard /></ProtectedRoute>} />
+            <Route path="hr/*" element={<ProtectedRoute allowedRoles={['hr']}><HRDashboard /></ProtectedRoute>} />
+            <Route path="sales/*" element={<ProtectedRoute allowedRoles={['sales']}><SalesDashboard /></ProtectedRoute>} />
+            <Route path="study-center/*" element={<ProtectedRoute allowedRoles={['study-center']}><StudyCenterDashboard /></ProtectedRoute>} />
+            <Route path="student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
+            <Route path="employee/*" element={<ProtectedRoute allowedRoles={['employee']}><EmployeePortal /></ProtectedRoute>} />
+            <Route path="openschool/*" element={<ProtectedRoute allowedRoles={['openschool']}><SubDeptDashboard /></ProtectedRoute>} />
+            <Route path="online/*" element={<ProtectedRoute allowedRoles={['online']}><SubDeptDashboard /></ProtectedRoute>} />
+            <Route path="skill/*" element={<ProtectedRoute allowedRoles={['skill']}><SubDeptDashboard /></ProtectedRoute>} />
+            <Route path="bvoc/*" element={<ProtectedRoute allowedRoles={['bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
+            
+            <Route index element={<Navigate to={user ? `/dashboard/${user.role}` : '/login'} replace />} />
+          </Route>
+          
+          {/* Public Referral Link */}
+          <Route path="/referral/:code" element={<ReferralForm />} />
+          
+          {/* Global Fallbacks */}
+          <Route path="/404" element={<NotFound />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

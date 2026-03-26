@@ -20,27 +20,36 @@ router.get('/', verifyToken, isOrgAdmin, async (req, res) => {
     res.json(departments);
   } catch (error) {
     console.error('Fetch departments error:', error);
-    res.status(500).json({ error: 'Failed to fetch departments' });
+    res.status(500).json({ error: error.message || 'Failed to fetch departments' });
   }
 });
 
 router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
   try {
-    const { name, type, adminId, status } = req.body;
+    const { name, type, adminId, status, features, activateNow } = req.body;
     
     const existing = await Department.findOne({ where: { name } });
     if (existing) {
       return res.status(400).json({ error: 'Department name already exists' });
     }
 
+    // Handle status consistency
+    let finalStatus = 'active';
+    if (status) finalStatus = status.toLowerCase();
+    else if (activateNow !== undefined) finalStatus = activateNow ? 'active' : 'inactive';
+
     const newDept = await Department.create({
-      name, type, adminId: adminId || null, status: status || 'active'
+      name, 
+      type, 
+      adminId: adminId || null, 
+      status: finalStatus,
+      metadata: features ? { features } : null
     });
 
     res.status(201).json(newDept);
   } catch (error) {
     console.error('Create department error:', error);
-    res.status(500).json({ error: 'Failed to create department' });
+    res.status(500).json({ error: error.message || 'Failed to create department' });
   }
 });
 

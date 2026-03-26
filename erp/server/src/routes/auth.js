@@ -6,6 +6,8 @@ import path from 'path';
 import fs from 'fs';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import validate from '../middleware/validate.js';
+import { loginSchema } from '../lib/schemas.js';
 
 const router = express.Router();
 const { User } = models;
@@ -36,7 +38,7 @@ const upload = multer({
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     

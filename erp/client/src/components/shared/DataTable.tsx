@@ -8,7 +8,8 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -16,6 +17,9 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string;
   searchPlaceholder?: string;
   isLoading?: boolean;
+  exportFileName?: string;
+  emptyMessage?: string;
+  emptyDescription?: string;
 }
 
 export function DataTable<TData, TValue>({ 
@@ -23,7 +27,10 @@ export function DataTable<TData, TValue>({
   data, 
   searchKey, 
   searchPlaceholder = "Search...",
-  isLoading 
+  isLoading,
+  exportFileName,
+  emptyMessage = "No results found.",
+  emptyDescription = "Try adjusting your search criteria."
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -46,22 +53,57 @@ export function DataTable<TData, TValue>({
     }
   });
 
+  const handleExport = () => {
+    if (!data.length) return;
+    
+    // Prepare data for Excel
+    const exportData = data.map((row: any) => {
+      const entry: any = {};
+      columns.forEach((col: any) => {
+        if (col.header && typeof col.header === 'string') {
+          const value = typeof col.accessor === 'function' 
+            ? col.accessor(row) 
+            : row[col.accessor || ''];
+          entry[col.header] = value;
+        }
+      });
+      return entry;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+    XLSX.writeFile(workbook, `${exportFileName || 'export'}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
-      {searchKey && (
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400" aria-hidden="true" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {searchKey && (
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" aria-hidden="true" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
+              placeholder={searchPlaceholder}
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
-            placeholder={searchPlaceholder}
-            value={globalFilter ?? ''}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
-        </div>
-      )}
+        )}
+
+        {exportFileName && (
+          <button 
+            onClick={handleExport}
+            className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
+          </button>
+        )}
+      </div>
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -119,8 +161,8 @@ export function DataTable<TData, TValue>({
                       <div className="w-16 h-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center">
                         <Search className="w-8 h-8 text-slate-400" />
                       </div>
-                      <p className="text-base font-medium">No results found.</p>
-                      <p className="text-sm">Try adjusting your search criteria.</p>
+                      <p className="text-base font-medium">{emptyMessage}</p>
+                      <p className="text-sm">{emptyDescription}</p>
                     </div>
                   </td>
                 </tr>
