@@ -114,15 +114,17 @@ export default function Exams() {
     },
     {
       id: 'actions',
-      header: 'Operations',
+      header: () => <div className="text-right pr-4 min-w-[220px]">Operations</div>,
       cell: ({ row }) => (
-        <button 
-          onClick={() => navigate(`/dashboard/academic/exams/${row.original.id}/marks`)}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
-        >
-          <ClipboardCheck className="w-3.5 h-3.5" />
-          Record academic performance
-        </button>
+        <div className="flex justify-end pr-2 min-w-[220px]">
+          <button 
+            onClick={() => navigate(`/dashboard/academic/exams/${row.original.id}/marks`)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20 whitespace-nowrap"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            Record academic performance
+          </button>
+        </div>
       )
     }
   ];
