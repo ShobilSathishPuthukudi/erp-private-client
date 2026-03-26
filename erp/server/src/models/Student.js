@@ -86,6 +86,10 @@ const Student = sequelize.define('student', {
   resubmissionDate: {
     type: DataTypes.DATE,
     allowNull: true,
+  },
+  sessionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   }
 // }, {
 //   indexes: [{ fields: ['deptId', 'enrollStatus'] }]

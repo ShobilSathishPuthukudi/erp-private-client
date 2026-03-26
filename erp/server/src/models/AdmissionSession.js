@@ -17,11 +17,11 @@ const AdmissionSession = sequelize.define('admission_session', {
   },
   subDeptId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   centerId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   startDate: {
     type: DataTypes.DATEONLY,
@@ -54,6 +54,14 @@ const AdmissionSession = sequelize.define('admission_session', {
   approvalStatus: {
     type: DataTypes.ENUM('DRAFT', 'PENDING_APPROVAL', 'APPROVED'),
     defaultValue: 'DRAFT',
+  },
+  sessionType: {
+    type: DataTypes.ENUM('ACADEMIC', 'ADMISSION'),
+    defaultValue: 'ADMISSION',
+  },
+  academicSessionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Self-reference for Admission sessions to link to Academic sessions
   }
 });
 

@@ -26,6 +26,10 @@ const Exam = sequelize.define('exam', {
   status: {
     type: DataTypes.ENUM('scheduled', 'completed', 'published'),
     defaultValue: 'scheduled',
+  },
+  sessionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   }
 });
 

@@ -3,7 +3,7 @@ import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
-const { Student, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering } = models;
+const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering } = models;
 
 const requireRole = (role) => (req, res, next) => {
   if (req.user.role !== role) {
@@ -30,7 +30,7 @@ router.get('/study-center/students', verifyToken, requireRole('study-center'), a
 
 router.post('/study-center/admission', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
-    const { name, programId, feeSchemaId, marks, marksProof } = req.body;
+    const { name, programId, sessionId, feeSchemaId, marks, marksProof } = req.body;
     
     // Validate center
     const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
@@ -40,6 +40,19 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
     const program = await Program.findByPk(programId);
     if (!program || program.status !== 'open') {
       return res.status(400).json({ error: 'Admissions are not currently open for this program' });
+    }
+
+    // Validate active session
+    if (!sessionId) return res.status(400).json({ error: 'Admission Intake session is required for enrollment' });
+    const session = await AdmissionSession.findOne({ 
+        where: { id: sessionId, programId, isActive: true, approvalStatus: 'APPROVED' } 
+    });
+    if (!session) return res.status(400).json({ error: 'No active/approved admission batch located for this program' });
+
+    // Validate capacity
+    const enrolledCount = await Student.count({ where: { sessionId, enrollStatus: ['active', 'pending_eligibility', 'pending_validation'] } });
+    if (enrolledCount >= session.maxCapacity) {
+        return res.status(400).json({ error: 'Selected batch has reached maximum intake capacity' });
     }
 
     // Validate fee schema
@@ -53,6 +66,7 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
       deptId: program.universityId, // Linked to university for academic tracking
       centerId: center.id,
       programId,
+      sessionId,
       feeSchemaId,
       enrollStatus: 'pending_eligibility',
       marks,

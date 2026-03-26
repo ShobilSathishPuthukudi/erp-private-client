@@ -1,6 +1,6 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
-import { verifyToken, isAcademicOrAdmin, isOpsOrAdmin } from '../middleware/verifyToken.js';
+import { verifyToken, isAcademicOrAdmin, isOpsOrAdmin, isArchitectureAdmin } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { universitySchema, programSchema } from '../lib/schemas.js';
 import { logAction } from '../lib/audit.js';
@@ -93,7 +93,7 @@ router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
   }
 });
 
-router.post('/universities', verifyToken, isAcademicOrAdmin, validate(universitySchema), async (req, res) => {
+router.post('/universities', verifyToken, isArchitectureAdmin, validate(universitySchema), async (req, res) => {
   try {
     const { name, status, accreditation, websiteUrl, affiliationDoc } = req.body;
     const uni = await Department.create({
@@ -119,7 +119,7 @@ router.post('/universities', verifyToken, isAcademicOrAdmin, validate(university
   }
 });
 
-router.put('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.put('/universities/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, status, accreditation, websiteUrl, affiliationDoc } = req.body;
@@ -133,7 +133,7 @@ router.put('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
   }
 });
 
-router.delete('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const uni = await Department.findOne({ where: { id, type: 'university' } });
@@ -216,7 +216,7 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
   }
 });
 
-router.post('/programs', verifyToken, isAcademicOrAdmin, validate(programSchema), async (req, res) => {
+router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchema), async (req, res) => {
   try {
     const { name, universityId, duration, type, intakeCapacity } = req.body;
     
@@ -245,7 +245,7 @@ router.post('/programs', verifyToken, isAcademicOrAdmin, validate(programSchema)
   }
 });
 
-router.put('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, universityId, duration, subDeptId, intakeCapacity } = req.body;
@@ -268,7 +268,7 @@ router.put('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
   }
 });
 
-router.delete('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const p = await Program.findByPk(id);
@@ -462,7 +462,7 @@ router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
 
 router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const { name, programId, centerId, startDate, endDate, maxCapacity } = req.body;
+    const { name, programId, centerId, startDate, endDate, maxCapacity, sessionType, academicSessionId } = req.body;
     
     // 1. Program Validation
     const program = await Program.findByPk(programId);
@@ -509,7 +509,9 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
       isActive,
       createdBySubDept: isSubDeptAdmin,
       createdBy: req.user.uid,
-      approvalStatus
+      approvalStatus,
+      sessionType: sessionType || 'ADMISSION',
+      academicSessionId: academicSessionId || null
     });
 
     await logAction({
@@ -578,10 +580,23 @@ router.put('/sessions/:id/approve', verifyToken, async (req, res) => {
             }
 
             // Update status
-            await session.update({ 
-                approvalStatus: 'APPROVED',
-                isActive: isSkill ? (session.financeStatus === 'approved') : true 
-            });
+            const updateData = { 
+                approvalStatus: 'APPROVED'
+            };
+            
+            // Skill sessions only become active if Finance has already approved or if this IS Finance approving
+            if (isSkill) {
+                if (isFinance) {
+                    updateData.financeStatus = 'approved';
+                    updateData.isActive = (session.approvalStatus === 'APPROVED' || status === 'APPROVED');
+                } else {
+                    updateData.isActive = (session.financeStatus === 'approved');
+                }
+            } else {
+                updateData.isActive = true;
+            }
+
+            await session.update(updateData);
         } else {
             // Rejection logic: push back to DRAFT
             await session.update({ approvalStatus: 'DRAFT', isActive: false });

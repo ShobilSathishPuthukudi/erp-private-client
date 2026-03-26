@@ -27,6 +27,7 @@ interface Program {
 export default function Exams() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -36,12 +37,14 @@ export default function Exams() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [examRes, progRes] = await Promise.all([
+      const [examRes, progRes, sessRes] = await Promise.all([
         api.get('/academic/exams'),
-        api.get('/academic/programs')
+        api.get('/academic/programs'),
+        api.get('/academic/sessions')
       ]);
       setExams(examRes.data);
       setPrograms(progRes.data);
+      setSessions(sessRes.data.filter((s: any) => s.approvalStatus === 'APPROVED'));
     } catch (error) {
       toast.error('Failed to access examination registry');
     } finally {
@@ -78,12 +81,17 @@ export default function Exams() {
     { 
       id: 'program', 
       header: 'Academic Context',
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-700">{row.original.program?.name}</span>
-          <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{row.original.batch}</span>
-        </div>
-      )
+      cell: ({ row }) => {
+        const session = sessions.find(s => s.id === (row.original as any).sessionId);
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-slate-700">{row.original.program?.name}</span>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+              {session?.name || row.original.batch || 'General Batch'}
+            </span>
+          </div>
+        );
+      }
     },
     { 
       accessorKey: 'date', 
@@ -143,7 +151,7 @@ export default function Exams() {
         </div>
         <button 
           onClick={() => { reset(); setIsModalOpen(true); }}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold"
+          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-100/10 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold"
         >
           <Plus className="w-5 h-5" />
           <span>Schedule New Exam</span>
@@ -189,16 +197,20 @@ export default function Exams() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Academic Batch / Intake</label>
-              <input
-                {...register('batch', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                placeholder="e.g. 2024-2026"
-              />
+            <div className="col-span-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Active Admission Intake</label>
+              <select
+                {...register('sessionId', { required: true })}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+              >
+                <option value="">-- Select Approved Batch --</option>
+                {sessions.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} [{s.program?.name}]</option>
+                ))}
+              </select>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Commencement Date</label>
               <input
                 type="date"

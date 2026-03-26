@@ -26,6 +26,7 @@ interface Student {
   enrollStatus: string;
   status: string;
   program?: { name: string };
+  session?: { name: string };
   center?: { id: number, name: string };
   documents?: any;
   lastRejectionReason?: string;
@@ -109,13 +110,18 @@ export default function StudentValidation() {
       )
     },
     {
-      accessorKey: 'program.name',
-      header: 'Program Context',
+      id: 'program', 
+      header: 'Academic Context',
       cell: ({ row }) => (
-         <div className="flex items-center gap-2">
-            <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
-            <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]">
-                {row.original.program?.name}
+         <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]">
+                    {row.original.program?.name}
+                </span>
+            </div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 ml-5">
+                Batch: {row.original.session?.name || 'Manual Intake'}
             </span>
          </div>
       )
@@ -255,6 +261,15 @@ export default function StudentValidation() {
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase">Academic Program</label>
                         <p className="font-black text-slate-800 uppercase text-sm">{selectedStudent.program?.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-sm">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Enrollment Intake</label>
+                        <p className="font-black text-slate-800 uppercase text-sm">{selectedStudent.session?.name || 'Institutional Batch'}</p>
                       </div>
                     </div>
                   </div>
