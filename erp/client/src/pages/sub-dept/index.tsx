@@ -10,7 +10,6 @@ import DashboardLanding from './DashboardLanding';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SubDeptDashboard() {
-  const { unit } = useParams();
   const user = useAuthStore(state => state.user);
   
   return (

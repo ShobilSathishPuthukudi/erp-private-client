@@ -38,7 +38,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
   
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase()) && !allowedRoles.includes(user.role)) {
     return <Navigate to="/404" replace />; 
   }
   
@@ -79,9 +79,9 @@ export default function App() {
             
             <Route index element={<Navigate to={
                 user 
-                   ? (['openschool', 'online', 'skill', 'bvoc'].includes(user.role) 
-                        ? `/dashboard/subdept/${user.role}` 
-                        : `/dashboard/${user.role}`)
+                   ? (['openschool', 'online', 'skill', 'bvoc'].includes(user.role.toLowerCase()) 
+                        ? `/dashboard/subdept/${user.role.toLowerCase()}` 
+                        : `/dashboard/${user.role.toLowerCase()}`)
                    : '/login'
             } replace />} />
           </Route>

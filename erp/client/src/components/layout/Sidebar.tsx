@@ -458,7 +458,7 @@ const menus: Record<string, MenuLink[]> = {
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const user = useAuthStore(state => state.user);
   const location = useLocation();
-  const role = user?.role || 'default';
+  const role = user?.role?.toLowerCase() || 'default';
   const unit = user?.subDepartment?.toLowerCase() || 'portal';
   
   const links = useMemo(() => {
