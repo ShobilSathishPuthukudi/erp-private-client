@@ -269,14 +269,14 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'openschool': [
-    { name: 'Unit Dashboard', path: '/dashboard/openschool', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/subdept/openschool/portal', icon: Home },
     {
       name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/students' },
-        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'My Students', path: '/dashboard/subdept/openschool/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/openschool/centers' },
       ]
     },
     {
@@ -292,14 +292,14 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'online': [
-    { name: 'Unit Dashboard', path: '/dashboard/online', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/subdept/online/portal', icon: Home },
     {
       name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/students' },
-        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'My Students', path: '/dashboard/subdept/online/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/online/centers' },
       ]
     },
     {
@@ -315,14 +315,14 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'skill': [
-    { name: 'Unit Dashboard', path: '/dashboard/skill', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/subdept/skill/portal', icon: Home },
     {
       name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/students' },
-        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'My Students', path: '/dashboard/subdept/skill/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/skill/centers' },
       ]
     },
     {
@@ -338,14 +338,14 @@ const menus: Record<string, MenuLink[]> = {
     }
   ],
   'bvoc': [
-    { name: 'Unit Dashboard', path: '/dashboard/bvoc', icon: Home },
+    { name: 'Unit Dashboard', path: '/dashboard/subdept/bvoc/portal', icon: Home },
     {
       name: 'Unit Operations',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/students' },
-        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'My Students', path: '/dashboard/subdept/bvoc/students' },
+        { name: 'My Centers', path: '/dashboard/subdept/bvoc/centers' },
         { name: 'Credential Requests', path: '/dashboard/subdept/bvoc/credentials' },
       ]
     },

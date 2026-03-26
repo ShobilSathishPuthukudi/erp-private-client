@@ -29,8 +29,6 @@ export default function SubDeptDashboard() {
       
       {/* Fallback for role-specific unit landing */}
       <Route path="*" element={<Navigate to={user?.subDepartment?.toLowerCase() || user?.role?.toLowerCase() || 'portal'} replace />} />
-      
-      <Route path="*" element={<div className="p-12 text-center text-slate-400">Select a sub-department portal from the Operations menu. ({unit})</div>} />
     </Routes>
   );
 }

@@ -77,7 +77,13 @@ export default function App() {
             
             <Route path="subdept/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'academic', 'openschool', 'online', 'skill', 'bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
             
-            <Route index element={<Navigate to={user ? `/dashboard/${user.role}` : '/login'} replace />} />
+            <Route index element={<Navigate to={
+                user 
+                   ? (['openschool', 'online', 'skill', 'bvoc'].includes(user.role) 
+                        ? `/dashboard/subdept/${user.role}` 
+                        : `/dashboard/${user.role}`)
+                   : '/login'
+            } replace />} />
           </Route>
           
           {/* Public Referral Link */}
