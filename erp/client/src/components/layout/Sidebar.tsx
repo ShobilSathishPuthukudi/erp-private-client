@@ -287,7 +287,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/openschool/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
-        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/openschool/students' },
+        { name: 'Institutional Roster', path: '/dashboard/subdept/openschool/students' },
       ]
     }
   ],
@@ -310,7 +310,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/online/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
-        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/online/students' },
+        { name: 'Institutional Roster', path: '/dashboard/subdept/online/students' },
       ]
     }
   ],
@@ -333,7 +333,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/skill/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
-        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/skill/students' },
+        { name: 'Institutional Roster', path: '/dashboard/subdept/skill/students' },
       ]
     }
   ],
@@ -357,7 +357,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/bvoc/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
-        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/bvoc/students' },
+        { name: 'Institutional Roster', path: '/dashboard/subdept/bvoc/students' },
       ]
     }
   ],
@@ -438,7 +438,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/:unit/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/:unit/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/:unit/exams' },
-        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/:unit/students' },
+        { name: 'Institutional Roster', path: '/dashboard/subdept/:unit/students' },
       ]
     }
   ],

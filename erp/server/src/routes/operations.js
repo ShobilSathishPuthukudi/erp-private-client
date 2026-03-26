@@ -163,16 +163,26 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     // Base stats
     const whereClause = subDeptId ? { subDepartmentId: subDeptId } : {};
 
-    const [totalStudents, pendingReviews, rejections] = await Promise.all([
+    const [totalStudents, pendingReviews, rejections, statusData] = await Promise.all([
       Student.count({ where: whereClause }),
-      Student.count({ where: { ...whereClause, reviewStage: { [Op.ne]: 'FINANCE' } } }),
-      Student.count({ where: { ...whereClause, enrollStatus: 'rejected' } })
+      Student.count({ where: { ...whereClause, status: 'PENDING_REVIEW' } }),
+      Student.count({ where: { ...whereClause, status: 'REJECTED' } }),
+      Student.findAll({
+        where: whereClause,
+        attributes: [
+          'status',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['status'],
+        raw: true
+      })
     ]);
 
     const stats = {
       totalStudents,
       pendingReviews,
       approvalRate: totalStudents > 0 ? (((totalStudents - rejections) / totalStudents) * 100).toFixed(1) : 0,
+      statusDistribution: statusData.map(s => ({ name: s.status, value: parseInt(s.count) }))
     };
 
     // If Ops Admin, add breakdown
