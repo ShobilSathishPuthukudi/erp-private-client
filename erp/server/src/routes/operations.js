@@ -6,13 +6,13 @@ import { Op } from 'sequelize';
 const router = express.Router();
 const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog } = models;
 
-const getSubDeptId = (name) => {
-  if (!name) return null;
-  const n = name.toLowerCase();
-  if (n.includes('openschool')) return 8;
-  if (n.includes('online')) return 9;
-  if (n.includes('skill')) return 10;
-  if (n.includes('bvoc')) return 11;
+const getSubDeptId = (user) => {
+  if (!user) return null;
+  const unitStr = (user.subDepartment || user.role || '').toLowerCase();
+  if (unitStr.includes('openschool')) return 8;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
   return null;
 };
 
@@ -25,9 +25,13 @@ router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
     const whereClause = { type: 'center', auditStatus: 'pending' };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit
-    if (req.user.role === 'SUB_DEPT_ADMIN') {
+    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
+      const subDeptMapReverse = { 8: 'openschool', 9: 'online', 10: 'skill', 11: 'bvoc' };
+      const subDeptId = getSubDeptId(req.user);
+      const subDeptName = subDeptMapReverse[subDeptId] || req.user.subDepartment;
+
       const mappedCenterIds = await CenterSubDept.findAll({
-        where: { subDeptName: req.user.subDepartment },
+        where: { subDeptName: { [Op.like]: `%${subDeptName}%` } },
         attributes: ['centerId']
       }).then(res => res.map(c => c.centerId));
       
@@ -153,8 +157,8 @@ router.put('/programs/:id/syllabus', verifyToken, isOpsOrAdmin, async (req, res)
 router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
-    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
-    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user.subDepartment) : querySubDeptId;
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
+    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
     
     // Base stats
     const whereClause = subDeptId ? { subDepartmentId: subDeptId } : {};
@@ -237,7 +241,8 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
   try {
     const { subDeptId: querySubDeptId } = req.query;
     const whereClause = { type: 'center' };
-    const subDeptId = req.user.role === 'SUB_DEPT_ADMIN' ? getSubDeptId(req.user.subDepartment) : querySubDeptId;
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
+    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
 
     if (subDeptId) {
       // If we have a subDeptId, we need to filter by mapping or by students/programs
@@ -257,8 +262,8 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
       where: whereClause,
       attributes: [
         'id', 'name', 'status',
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${req.user.role === 'SUB_DEPT_ADMIN' ? `AND students.programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId})` : ''})`), 'studentCount'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM program_offerings WHERE program_offerings.centerId = department.id ${req.user.role === 'SUB_DEPT_ADMIN' ? `AND program_offerings.programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId})` : ''})`), 'activePrograms']
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${isSubDeptAdmin ? `AND students.subDepartmentId = ${subDeptId}` : ''})`), 'studentCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM program_offerings WHERE program_offerings.centerId = department.id ${isSubDeptAdmin ? `AND program_offerings.programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId})` : ''})`), 'activePrograms']
       ]
     });
     res.json(centers);
@@ -273,8 +278,8 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
 
 router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
-    const subDeptId = getSubDeptId(req.user.subDepartment);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
+    const subDeptId = getSubDeptId(req.user);
     const whereClause = isSubDeptAdmin ? { subDepartmentId: subDeptId } : {};
 
     const stats = await Student.findAll({

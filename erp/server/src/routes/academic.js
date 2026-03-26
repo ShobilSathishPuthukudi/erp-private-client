@@ -8,13 +8,13 @@ import { logAction } from '../lib/audit.js';
 const router = express.Router();
 const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept } = models;
 
-const getSubDeptId = (name) => {
-  if (!name) return null;
-  const n = name.toLowerCase();
-  if (n.includes('openschool')) return 8;
-  if (n.includes('online')) return 9;
-  if (n.includes('skill')) return 10;
-  if (n.includes('bvoc')) return 11;
+const getSubDeptId = (user) => {
+  if (!user) return null;
+  const unitStr = (user.subDepartment || user.role || '').toLowerCase();
+  if (unitStr.includes('openschool')) return 8;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
   return null;
 };
 
@@ -24,24 +24,21 @@ const getSubDeptId = (name) => {
 
 router.get('/stats', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
-    const subDeptId = getSubDeptId(req.user.subDepartment);
-    const whereClause = req.user.role === 'SUB_DEPT_ADMIN' ? { 
-      subDeptId: subDeptId 
-    } : {};
-    
-    // For students, filter by program.subDeptId
-    const studentWhere = req.user.role === 'SUB_DEPT_ADMIN' ? {
-      programId: { [Op.in]: sequelize.literal(`(SELECT id FROM programs WHERE subDeptId = ${subDeptId})`) }
-    } : {};
+    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
 
     const totalUniversities = await Department.count({ where: { type: 'university' } });
-    const activePrograms = await Program.count({ where: whereClause });
-    const pendingReviews = await Student.count({ where: { ...studentWhere, enrollStatus: 'pending' } });
+    const activePrograms = await Program.count({ where: isSubDeptAdmin ? { subDeptId: subDeptId } : {} });
+    const pendingReviews = await Student.count({ 
+      where: isSubDeptAdmin 
+        ? { programId: { [Op.in]: sequelize.literal(`(SELECT id FROM programs WHERE subDeptId = ${subDeptId})`) }, enrollStatus: 'pending' } 
+        : { enrollStatus: 'pending' } 
+    });
     
     // Revenue isolation
     const payments = await Payment.findAll({
       attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
-      where: req.user.role === 'SUB_DEPT_ADMIN' ? {
+      where: isSubDeptAdmin ? {
         studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId}))`) }
       } : {},
       raw: true
@@ -172,8 +169,8 @@ router.get('/programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
     const { subDeptId } = req.query;
     const whereClause = {};
     
-    if (req.user.role === 'SUB_DEPT_ADMIN') {
-      whereClause.subDeptId = getSubDeptId(req.user.subDepartment);
+    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
+      whereClause.subDeptId = getSubDeptId(req.user);
     } else if (subDeptId) {
       whereClause.subDeptId = subDeptId;
     }
@@ -298,8 +295,8 @@ router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
     if (subDeptId) whereClause.subDepartmentId = subDeptId;
 
     // Isolation: Sub-Dept Admin only sees their unit's students
-    if (req.user.role === 'SUB_DEPT_ADMIN') {
-      whereClause.subDepartmentId = getSubDeptId(req.user.subDepartment);
+    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+      whereClause.subDepartmentId = getSubDeptId(req.user);
     }
 
     const students = await Student.findAll({
@@ -329,7 +326,8 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
     });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+
     const isOpsAdmin = ['academic', 'org-admin', 'system-admin'].includes(req.user.role);
 
     // 1. Sub-Dept Admin Review Phase
@@ -439,8 +437,8 @@ router.post('/students/bulk-verify', verifyToken, isAcademicOrAdmin, async (req,
 router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const whereClause = {};
-    if (req.user.role === 'SUB_DEPT_ADMIN') {
-        whereClause.subDeptId = getSubDeptId(req.user.subDepartment);
+    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+        whereClause.subDeptId = getSubDeptId(req.user);
     }
 
     const sessions = await AdmissionSession.findAll({
@@ -470,8 +468,9 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
     const program = await Program.findByPk(programId);
     if (!program) return res.status(404).json({ error: 'Program core not found' });
 
-    const isSubDeptAdmin = req.user.role === 'SUB_DEPT_ADMIN';
-    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user.subDepartment) : program.subDeptId;
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+
+    const subDeptId = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role) ? getSubDeptId(req.user) : program.subDeptId;
 
     if (isSubDeptAdmin && program.subDeptId !== subDeptId) {
         return res.status(403).json({ error: 'Jurisdictional Violation: Program does not belong to your academic unit.' });

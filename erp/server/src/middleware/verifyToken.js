@@ -32,14 +32,22 @@ export const verifyToken = (req, res, next) => {
 
 export const roleGuard = (allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user || !req.user.role) {
+      return res.status(403).json({ error: 'Forbidden: Role missing' });
+    }
+    const userRole = req.user.role.toLowerCase();
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+    
+    if (!normalizedAllowed.includes(userRole)) {
       return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
     }
     next();
   };
 };
 
-export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin']);
-export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN']);
-export const isSubDeptAdmin = roleGuard(['SUB_DEPT_ADMIN']);
+const UNIT_ROLES = ['openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+
+export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', ...UNIT_ROLES]);
+export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', ...UNIT_ROLES]);
+export const isSubDeptAdmin = roleGuard(['SUB_DEPT_ADMIN', ...UNIT_ROLES]);
 export const isSystemAdmin = roleGuard(['system-admin', 'org-admin']);
