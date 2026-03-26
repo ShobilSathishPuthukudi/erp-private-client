@@ -21,6 +21,7 @@ interface Request {
   id: number;
   centerId: number;
   status: 'pending' | 'approved' | 'rejected';
+  type: 'VIEW' | 'RESET';
   remarks: string;
   revealUntil: string | null;
   createdAt: string;
@@ -40,7 +41,7 @@ export default function CredentialRequests() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [revealedCreds, setRevealedCreds] = useState<{username: string, password: string} | null>(null);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, getValues, formState: { isSubmitting } } = useForm();
 
   const fetchData = async () => {
     try {
@@ -104,6 +105,17 @@ export default function CredentialRequests() {
       )
     },
     { 
+      accessorKey: 'type', 
+      header: 'Protocol Type',
+      cell: ({ row }) => (
+        <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${
+          row.original.type === 'RESET' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+        }`}>
+          {row.original.type}
+        </span>
+      )
+    },
+    { 
       accessorKey: 'status', 
       header: 'Audit Status',
       cell: ({ row }) => {
@@ -135,7 +147,7 @@ export default function CredentialRequests() {
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
               >
                 <Eye className="w-3.5 h-3.5" />
-                Reveal Key
+                {row.original.type === 'RESET' ? 'Reveal New Key' : 'Reveal Key'}
               </button>
             ) : isApproved && isExpired ? (
               <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Window Expired</span>
@@ -252,6 +264,31 @@ export default function CredentialRequests() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Initialize Reveal Request">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-2">
           <div className="space-y-6">
+            <div>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 ml-1">Protocol Type</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  type="button"
+                  onClick={() => reset({ ...getValues(), type: 'VIEW' })}
+                  className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    (watch('type') || 'VIEW') === 'VIEW' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-200 hover:border-blue-400'
+                  }`}
+                >
+                  View Only
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => reset({ ...getValues(), type: 'RESET' })}
+                  className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    watch('type') === 'RESET' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-400 border-slate-200 hover:border-rose-400'
+                  }`}
+                >
+                  Reset Key
+                </button>
+                <input type="hidden" {...register('type')} defaultValue="VIEW" />
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 ml-1">Target Study Center</label>
               <div className="relative group">

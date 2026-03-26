@@ -7,10 +7,10 @@ const { CredentialRequest, Department, User } = models;
 
 const REVEAL_WINDOW_MINS = 30;
 
-// Ops: Request Reveal
+// Ops: Request Reveal/Reset
 router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
   try {
-    const { centerId, remarks } = req.body;
+    const { centerId, remarks, type } = req.body;
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
 
     // 1. Create forensic request
@@ -19,6 +19,7 @@ router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'o
       requesterId: req.user.uid,
       remarks,
       ipAddress,
+      type: type || 'VIEW',
       status: 'pending'
     });
 
@@ -33,8 +34,7 @@ router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'o
     });
 
     if (repeats >= 2) {
-       // Risk flag logic (placeholder for CEO dashboard sync)
-       console.log(`[RISK] Repeated reveal request: Admin ${req.user.uid} for Center ${centerId}`);
+       console.log(`[RISK] Repeated ${type} request: Admin ${req.user.uid} for Center ${centerId}`);
     }
 
     res.status(201).json(request);
@@ -43,10 +43,14 @@ router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'o
   }
 });
 
-// Finance: Approve Reveal
+// Finance: Approve Reveal/Reset
 router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin']), async (req, res) => {
+  const t = await models.sequelize.transaction();
   try {
-    const request = await CredentialRequest.findByPk(req.params.id);
+    const request = await CredentialRequest.findByPk(req.params.id, {
+      include: [{ model: Department, as: 'center' }],
+      transaction: t
+    });
     if (!request) return res.status(404).json({ error: 'Request not found' });
 
     const revealUntil = new Date(new Date().getTime() + REVEAL_WINDOW_MINS * 60 * 1000);
@@ -54,15 +58,34 @@ router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin']), as
     request.status = 'approved';
     request.revealUntil = revealUntil;
     request.approvedBy = req.user.uid;
-    await request.save();
+    await request.save({ transaction: t });
 
+    // Handle RESET logic: Generate new institutional password
+    if (request.type === 'RESET') {
+      const newPassword = Math.random().toString(36).slice(-10).toUpperCase();
+      await request.center.update({ password: newPassword }, { transaction: t });
+      
+      // Log to AuditLog (GAP-5)
+      await models.AuditLog.create({
+        entity: 'StudyCenter',
+        action: 'PASSWORD_RESET',
+        userId: req.user.uid,
+        after: { centerId: request.centerId, centerName: request.center.name },
+        remarks: `Authorized password reset via forensic request #${request.id}`,
+        ipAddress: req.ip || '0.0.0.0',
+        module: 'Academic'
+      }, { transaction: t });
+    }
+
+    await t.commit();
     res.json(request);
   } catch (error) {
+    await t.rollback();
     res.status(400).json({ error: error.message });
   }
 });
 
-// Ops: Reveal Actual Credentials
+// Ops: Reveal Actual Credentials (or Reset confirmation)
 router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
   try {
     const request = await CredentialRequest.findByPk(req.params.id, {
@@ -81,14 +104,21 @@ router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 
        return res.status(403).json({ error: 'Access restricted to requester' });
     }
 
-    // Reveal credentials (institutional logic)
-    // NOTE: We only return the sensitive data here. We do NOT log this specific response.
-    const credentials = {
-       username: request.center.uid,
-       password: request.center.password // Assumption: exists in StudyCenter
-    };
+    // Log the reveal event
+    await models.AuditLog.create({
+      entity: 'CredentialReveal',
+      action: request.type === 'VIEW' ? 'REVEAL' : 'RESET_REVEAL',
+      userId: req.user.uid,
+      remarks: `Accessed credentials for ${request.center.name} (Request #${request.id}, Type: ${request.type})`,
+      ipAddress: req.ip || '0.0.0.0',
+      module: 'Academic'
+    });
 
-    res.json(credentials);
+    res.json({
+       username: request.center.uid,
+       password: request.center.password,
+       type: request.type
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -101,7 +131,7 @@ router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin']), async (
       where: { status: 'pending' },
       include: [
         { model: Department, as: 'center', attributes: ['name', 'uid'] },
-        { model: User, as: 'requester', attributes: ['name', 'uid'] }
+        { model: User, as: 'requester', attributes: ['name'] }
       ]
     });
     res.json(queue);
