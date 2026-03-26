@@ -1,14 +1,14 @@
 import express from 'express';
-import { models } from '../models/index.js';
+import { sequelize, models } from '../models/index.js';
 import { Op } from 'sequelize';
-import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
+import { verifyToken, roleGuard, isAcademicOrAdmin, isSystemAdmin } from '../middleware/verifyToken.js';
 const router = express.Router();
 const { CredentialRequest, Department, User } = models;
 
 const REVEAL_WINDOW_MINS = 30;
 
 // Ops: Request Reveal/Reset
-router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
+router.post('/request', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const { centerId, remarks, type } = req.body;
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
@@ -44,8 +44,8 @@ router.post('/request', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'o
 });
 
 // Finance: Approve Reveal/Reset
-router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin']), async (req, res) => {
-  const t = await models.sequelize.transaction();
+router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const request = await CredentialRequest.findByPk(req.params.id, {
       include: [{ model: Department, as: 'center' }],
@@ -86,7 +86,7 @@ router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin']), as
 });
 
 // Ops: Reveal Actual Credentials (or Reset confirmation)
-router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
+router.get('/reveal/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const request = await CredentialRequest.findByPk(req.params.id, {
       include: [{ model: Department, as: 'center' }]
@@ -115,7 +115,7 @@ router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 
     });
 
     res.json({
-       username: request.center.uid,
+       username: request.center.id.toString(), // Alias id as username/uid if needed
        password: request.center.password,
        type: request.type
     });
@@ -125,12 +125,12 @@ router.get('/reveal/:id', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 
 });
 
 // Finance: Get Pending Queue
-router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin']), async (req, res) => {
+router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
   try {
     const queue = await CredentialRequest.findAll({
       where: { status: 'pending' },
       include: [
-        { model: Department, as: 'center', attributes: ['name', 'uid'] },
+        { model: Department, as: 'center', attributes: ['name', ['id', 'uid']] },
         { model: User, as: 'requester', attributes: ['name'] }
       ]
     });
@@ -141,11 +141,11 @@ router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin']), async (
 });
 
 // Ops: Get My Requests
-router.get('/my-requests', verifyToken, roleGuard(['academic', 'SUB_DEPT_ADMIN', 'org-admin']), async (req, res) => {
+router.get('/my-requests', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const requests = await CredentialRequest.findAll({
       where: { requesterId: req.user.uid },
-      include: [{ model: Department, as: 'center', attributes: ['name', 'uid'] }],
+      include: [{ model: Department, as: 'center', attributes: ['name', ['id', 'uid']] }],
       order: [['createdAt', 'DESC']]
     });
     res.json(requests);

@@ -168,6 +168,7 @@ CredentialRequest.belongsTo(Department, { foreignKey: 'centerId', as: 'center' }
 
 // User -> CredentialRequest
 User.hasMany(CredentialRequest, { foreignKey: 'requesterId', sourceKey: 'uid', as: 'requests' });
+CredentialRequest.belongsTo(User, { foreignKey: 'requesterId', targetKey: 'uid', as: 'requester' });
 // Program -> DistributionConfig
 Program.hasMany(DistributionConfig, { foreignKey: 'programId', as: 'distributions' });
 DistributionConfig.belongsTo(Program, { foreignKey: 'programId' });

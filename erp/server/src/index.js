@@ -196,8 +196,8 @@ const startServer = (port) => {
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[ERP] Port ${port} is in use, retrying on ${port + 1}...`);
-      startServer(port + 1);
+      console.error(`[ERP] Port ${port} is already in use. Please kill the zombie process and restart.`);
+      process.exit(1);
     } else {
       console.error('[ERP] Server Error:', err);
     }
