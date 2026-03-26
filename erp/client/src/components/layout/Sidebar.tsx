@@ -287,7 +287,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/openschool/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
-        { name: 'Student Roster', path: '/dashboard/subdept/openschool/students' },
       ]
     }
   ],
@@ -310,7 +309,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/online/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
-        { name: 'Student Roster', path: '/dashboard/subdept/online/students' },
       ]
     }
   ],
@@ -333,7 +331,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/skill/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
-        { name: 'Student Roster', path: '/dashboard/subdept/skill/students' },
       ]
     }
   ],
@@ -357,7 +354,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/bvoc/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
-        { name: 'Student Roster', path: '/dashboard/subdept/bvoc/students' },
       ]
     }
   ],
@@ -438,7 +434,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/:unit/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/:unit/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/:unit/exams' },
-        { name: 'Student Roster', path: '/dashboard/subdept/:unit/students' },
       ]
     }
   ],
