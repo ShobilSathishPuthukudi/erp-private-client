@@ -242,6 +242,8 @@ Program.hasMany(AdmissionSession, { foreignKey: 'programId' });
 
 // AdmissionSession -> SubDept
 AdmissionSession.belongsTo(Department, { as: 'subDept', foreignKey: 'subDeptId' });
+AdmissionSession.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
+Department.hasMany(AdmissionSession, { foreignKey: 'centerId', as: 'sessions' });
 
 // Announcement -> Program/University (for Ops filtering)
 Announcement.belongsTo(Program, { foreignKey: 'programId', as: 'program' });

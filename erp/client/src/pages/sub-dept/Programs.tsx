@@ -91,9 +91,9 @@ export default function Programs() {
   ];
 
   const getUniqueUniversities = () => {
-    const unis = programs.map(p => p.university).filter(Boolean);
-    const uniqueIds = Array.from(new Set(unis.map(u => u?.id)));
-    return uniqueIds.map(id => unis.find(u => u?.id === id));
+    const unis = programs.map(p => p.university).filter((u): u is { id: number, name: string } => !!u && typeof u.id === 'number');
+    const uniqueIds = Array.from(new Set(unis.map(u => u.id)));
+    return uniqueIds.map(id => unis.find(u => u.id === id)).filter(Boolean);
   };
 
   return (
