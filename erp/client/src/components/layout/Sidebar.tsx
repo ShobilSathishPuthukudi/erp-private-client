@@ -275,7 +275,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/openschool/students' },
+        { name: 'Student Validation', path: '/dashboard/subdept/openschool/validation' },
         { name: 'My Centers', path: '/dashboard/subdept/openschool/centers' },
       ]
     },
@@ -287,6 +287,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/openschool/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
+        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/openschool/students' },
       ]
     }
   ],
@@ -297,7 +298,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/online/students' },
+        { name: 'Student Validation', path: '/dashboard/subdept/online/validation' },
         { name: 'My Centers', path: '/dashboard/subdept/online/centers' },
       ]
     },
@@ -309,6 +310,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/online/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
+        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/online/students' },
       ]
     }
   ],
@@ -319,7 +321,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/skill/students' },
+        { name: 'Student Validation', path: '/dashboard/subdept/skill/validation' },
         { name: 'My Centers', path: '/dashboard/subdept/skill/centers' },
       ]
     },
@@ -331,6 +333,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/skill/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
+        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/skill/students' },
       ]
     }
   ],
@@ -341,7 +344,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/bvoc/students' },
+        { name: 'Student Validation', path: '/dashboard/subdept/bvoc/validation' },
         { name: 'My Centers', path: '/dashboard/subdept/bvoc/centers' },
         { name: 'Credential Requests', path: '/dashboard/subdept/bvoc/credentials' },
       ]
@@ -354,6 +357,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/bvoc/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
+        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/bvoc/students' },
       ]
     }
   ],
@@ -422,8 +426,8 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Students', path: '/dashboard/subdept/students' },
-        { name: 'My Centers', path: '/dashboard/subdept/centers' },
+        { name: 'Student Validation', path: '/dashboard/subdept/:unit/validation' },
+        { name: 'My Centers', path: '/dashboard/subdept/:unit/centers' },
       ]
     },
     {
@@ -434,6 +438,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/:unit/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/:unit/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/:unit/exams' },
+        { name: 'Institutional Roster (Read-Only)', path: '/dashboard/subdept/:unit/students' },
       ]
     }
   ],

@@ -1,4 +1,4 @@
-import { Routes, Route, useParams, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Programs from './Programs';
 import Students from './Students';
 import Centers from './Centers';
@@ -7,6 +7,7 @@ import Exams from '../academic/Exams';
 import MarksEntry from '../academic/MarksEntry';
 import CredentialRequests from './CredentialRequests';
 import DashboardLanding from './DashboardLanding';
+import StudentValidation from './StudentValidation';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SubDeptDashboard() {
@@ -19,6 +20,7 @@ export default function SubDeptDashboard() {
         <Route path="portal" element={<DashboardLanding />} />
         <Route path="programs" element={<Programs />} />
         <Route path="students" element={<Students />} />
+        <Route path="validation" element={<StudentValidation />} />
         <Route path="centers" element={<Centers />} />
         <Route path="sessions" element={<Sessions />} />
         <Route path="exams" element={<Exams />} />

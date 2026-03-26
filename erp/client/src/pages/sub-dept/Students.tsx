@@ -63,7 +63,7 @@ export default function Students() {
         <div>
            <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
               <Users className="w-8 h-8 text-blue-600" />
-              Student <span className="text-blue-600 font-outline-1">Execution</span> Roster
+              Institutional <span className="text-blue-600 font-outline-1">Roster</span> (Read-Only)
            </h1>
            <p className="text-slate-500 font-medium tracking-tight">Read-only institutional roster for departmental execution monitoring.</p>
         </div>

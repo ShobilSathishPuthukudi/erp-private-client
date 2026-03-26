@@ -171,6 +171,103 @@ router.put('/students/:id/verify-documents', verifyToken, isSubDeptAdmin, async 
   }
 });
 
+// --- Student Validation Workflow (Phase 2) ---
+router.get('/students/pending', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const students = await Student.findAll({
+      where: { status: 'PENDING_REVIEW' },
+      include: [
+        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ]
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch pending validation queue' });
+  }
+});
+
+router.get('/students/approved', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const students = await Student.findAll({
+      where: { status: 'OPS_APPROVED' },
+      include: [
+        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ]
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch approved student archive' });
+  }
+});
+
+router.get('/students/rejected', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const students = await Student.findAll({
+      where: { status: 'REJECTED' },
+      include: [
+        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ]
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch rejected student logs' });
+  }
+});
+
+router.post('/students/:id/approve', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findOne({
+      where: { id },
+      include: [{ model: Program, where: { subDeptId: req.user.deptId } }]
+    });
+
+    if (!student) return res.status(404).json({ error: 'Student not found in jurisdictional queue' });
+
+    await student.update({
+      status: 'OPS_APPROVED',
+      reviewedBy: req.user.uid,
+      reviewedAt: new Date(),
+      enrollStatus: 'pending_finance' // For legacy compatibility
+    });
+
+    res.json({ message: 'Student application approved and routed to Finance', student });
+  } catch (error) {
+    res.status(500).json({ error: 'Approval protocol failed' });
+  }
+});
+
+router.post('/students/:id/reject', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) return res.status(400).json({ error: 'Mandatory: Rejection reason required' });
+
+    const student = await Student.findOne({
+      where: { id },
+      include: [{ model: Program, where: { subDeptId: req.user.deptId } }]
+    });
+
+    if (!student) return res.status(404).json({ error: 'Student not found in jurisdictional queue' });
+
+    await student.update({
+      status: 'REJECTED',
+      lastRejectionReason: reason,
+      reviewedBy: req.user.uid,
+      reviewedAt: new Date(),
+      enrollStatus: 'rejected_subdept' // For legacy compatibility
+    });
+
+    res.json({ message: 'Student application rejected', student });
+  } catch (error) {
+    res.status(500).json({ error: 'Rejection protocol failed' });
+  }
+});
+
 // --- Accreditation Interest Requests ---
 router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {

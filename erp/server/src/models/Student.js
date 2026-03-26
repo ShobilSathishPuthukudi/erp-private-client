@@ -71,6 +71,14 @@ const Student = sequelize.define('student', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  status: {
+    type: DataTypes.ENUM('PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED'),
+    defaultValue: 'PENDING_REVIEW',
+  },
+  reviewedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   resubmittedTo: {
     type: DataTypes.ENUM('SUB_DEPT', 'OPS'),
     allowNull: true,
