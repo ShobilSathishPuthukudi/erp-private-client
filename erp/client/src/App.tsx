@@ -75,6 +75,12 @@ export default function App() {
             <Route path="student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
             <Route path="employee/*" element={<ProtectedRoute allowedRoles={['employee']}><EmployeePortal /></ProtectedRoute>} />
             
+            {/* Unit Role Redirects (Legacy support) */}
+            <Route path="openschool/*" element={<Navigate to="/dashboard/subdept/openschool/portal" replace />} />
+            <Route path="online/*" element={<Navigate to="/dashboard/subdept/online/portal" replace />} />
+            <Route path="skill/*" element={<Navigate to="/dashboard/subdept/skill/portal" replace />} />
+            <Route path="bvoc/*" element={<Navigate to="/dashboard/subdept/bvoc/portal" replace />} />
+            
             <Route path="subdept/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'academic', 'openschool', 'online', 'skill', 'bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
             
             <Route index element={<Navigate to={
