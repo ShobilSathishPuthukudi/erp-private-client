@@ -29,9 +29,9 @@ export default function PendingReviews() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      // Fetch students with status 'pending' (Stage 1)
-      const res = await api.get('/academic/students?status=pending');
-      setStudents(res.data.filter((s: any) => s.enrollStatus === 'pending'));
+      // Fetch students with status 'PENDING_REVIEW' (Stage 1)
+      const res = await api.get('/academic/students?status=PENDING_REVIEW');
+      setStudents(res.data);
     } catch (error) {
       toast.error('Failed to access eligibility queue');
     } finally {
@@ -53,11 +53,11 @@ export default function PendingReviews() {
   const handleApprove = async () => {
     if (!selectedStudent) return;
     try {
-      await api.put(`/academic/students/${selectedStudent.id}/verify-eligibility`, {
+      const res = await api.put(`/academic/students/${selectedStudent.id}/verify-eligibility`, {
         status: 'approved',
         remarks: remarks || 'Academic eligibility criteria matched.'
       });
-      toast.success('Appraisal Decided: Advanced to Sub-Dept');
+      toast.success(res.data.message || 'Application approved and routed to Finance');
       setIsReviewModalOpen(false);
       fetchData();
     } catch (error: any) {

@@ -15,6 +15,14 @@ const Department = sequelize.define('department', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  loginId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   adminId: {
     type: DataTypes.STRING,
     allowNull: true,

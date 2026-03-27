@@ -30,6 +30,38 @@ const Task = sequelize.define('task', {
   status: {
     type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'overdue'),
     defaultValue: 'pending',
+  },
+  evidenceUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  remarks: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  completedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  escalatedFrom: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  escalationReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  escalationLevel: {
+    type: DataTypes.ENUM('EMPLOYEE', 'MANAGER', 'CEO'),
+    defaultValue: 'EMPLOYEE',
+  },
+  escalatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
   }
 }, {
   indexes: [{ fields: ['assignedTo', 'status'] }]

@@ -41,6 +41,21 @@ export default function DailyAdmissionReport() {
 
   if (loading) return <div className="p-12 text-center text-slate-300 font-black animate-pulse uppercase">Syncing Admission Stream...</div>;
 
+  if (!report) return (
+    <div className="p-12 text-center">
+      <div className="inline-block p-8 bg-red-50 rounded-[32px] border border-red-100">
+        <h2 className="text-red-900 font-black uppercase tracking-tighter text-xl">System Synchronization Failure</h2>
+        <p className="text-red-600 font-medium italic mt-2">The institutional admission stream is currently offline or unreachable.</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-6 bg-red-600 text-white px-6 py-2 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all"
+        >
+          Re-establish Connection
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">

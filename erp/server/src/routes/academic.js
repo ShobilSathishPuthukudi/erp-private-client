@@ -288,8 +288,17 @@ router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res
 router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const { status, programId, stage, subDeptId } = req.query;
-    const whereClause = {};
-    if (status) whereClause.enrollStatus = status;
+    const { Op } = sequelize;
+    const whereClause = {
+      status: { [Op.ne]: 'DRAFT' } // Isolation: Only see submitted candidates
+    };
+    if (status) {
+      if (['PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED', 'DRAFT'].includes(status)) {
+        whereClause.status = status;
+      } else {
+        whereClause.enrollStatus = status;
+      }
+    }
     if (programId) whereClause.programId = programId;
     if (stage) whereClause.reviewStage = stage;
     if (subDeptId) whereClause.subDepartmentId = subDeptId;
@@ -365,11 +374,19 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             logs.push({ step: 'Ops Review', time: new Date(), status, by: req.user.uid, remarks });
 
             await student.update({
-              enrollStatus: 'pending_eligibility', // Moving to finance/eligibility phase
+              status: 'FINANCE_PENDING',
+              enrollStatus: 'pending_payment', 
               reviewStage: 'FINANCE',
               reviewedBy: req.user.uid,
               verificationLogs: logs,
               remarks: remarks || student.remarks
+            });
+
+            // Trigger Institutional Event
+            erpEvents.emit('STUDENT_APPROVED', { 
+                studentId: student.id, 
+                deptId: student.deptId, 
+                by: req.user.uid 
             });
         } else {
             // Rejection flow
@@ -383,7 +400,7 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             });
         }
         
-        return res.json({ message: `Administrative review ${status} successfully processed.`, student });
+        return res.json({ message: `Application approved and routed to Finance for payment verification.`, student });
     }
 
     res.status(403).json({ error: 'Access denied: Review privileges required' });
@@ -687,16 +704,20 @@ router.get('/credentials/reveal/:id', verifyToken, isAcademicOrAdmin, async (req
     if (!request) return res.status(404).json({ error: 'Request node not found' });
     if (request.status !== 'approved') return res.status(403).json({ error: 'Awaiting Finance clearance for reveal' });
     
-    // Check reveal expiration
-    if (request.revealUntil && new Date() > new Date(request.revealUntil)) {
-      return res.status(403).json({ error: 'Credential reveal window has expired' });
+    // PRD Rule: 60-Second Security Window
+    if (!request.expiresAt) {
+      return res.status(403).json({ error: 'Security protocol: Must trigger view activation first.' });
+    }
+
+    if (new Date() > new Date(request.expiresAt)) {
+      return res.status(403).json({ error: 'Institutional Guardrail: Credential reveal window (60s) has expired. Please re-verify.' });
     }
 
     await logAction({
        userId: req.user.uid,
-       action: 'REVEAL',
+       action: 'SECURE_REVEAL',
        entity: 'CredentialReveal',
-       details: `REVEALED credentials for center: ${request.center.name}`,
+       details: `SENSITIVE: Credentials revealed for ${request.center.name}. IP: ${req.ip}`,
        module: 'Academic'
     });
 
@@ -707,6 +728,40 @@ router.get('/credentials/reveal/:id', verifyToken, isAcademicOrAdmin, async (req
   } catch (error) {
     res.status(500).json({ error: 'Failed to reveal credentials from vault' });
   }
+});
+
+router.post('/credentials/:id/trigger-view', verifyToken, isAcademicOrAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const request = await CredentialRequest.findByPk(id);
+        if (!request) return res.status(404).json({ error: 'Request not found.' });
+
+        if (request.status !== 'approved') {
+            return res.status(403).json({ error: 'Credential access not yet approved by Finance.' });
+        }
+
+        const now = new Date();
+        const expiry = new Date(now.getTime() + 60000); // 60 seconds
+
+        await request.update({
+            viewedAt: now,
+            expiresAt: expiry,
+            viewedBy: req.user.uid,
+            ipAddress: req.ip || request.ipAddress
+        });
+
+        await logAction({
+            userId: req.user.uid,
+            action: 'TRIGGER_VIEW',
+            entity: 'CredentialReveal',
+            details: `Visibility window activated (60s) for request #${id}.`,
+            module: 'Academic'
+        });
+
+        res.json({ message: 'Security gate opened. You have 60 seconds to view credentials.', expiresAt: expiry });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to trigger security window.' });
+    }
 });
 
 // ==========================================

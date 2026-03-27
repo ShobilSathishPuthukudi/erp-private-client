@@ -35,6 +35,14 @@ const Invoice = sequelize.define('invoice', {
   status: {
     type: DataTypes.ENUM('draft', 'issued', 'paid', 'cancelled'),
     defaultValue: 'draft',
+  },
+  salesUserId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  centerId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   }
 });
 

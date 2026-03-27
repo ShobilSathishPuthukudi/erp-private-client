@@ -7,8 +7,8 @@ import toast from 'react-hot-toast';
 interface Student {
   id: number;
   name: string;
-  enrollStatus: string;
-  feeStatus: string;
+  status: 'DRAFT' | 'PENDING_REVIEW' | 'OPS_APPROVED' | 'FINANCE_APPROVED' | 'REJECTED' | 'ENROLLED';
+  invoiceId?: number;
   program?: { name: string, duration: number };
 }
 
@@ -28,12 +28,23 @@ export default function Students() {
     }
   };
 
+  const handleSubmitRecord = async (id: number) => {
+    try {
+      if (!window.confirm('Are you certain you wish to submit this manifold for institutional review? No further edits are permitted after this protocol.')) return;
+      await api.post(`/portals/study-center/students/${id}/submit`);
+      toast.success('Record successfully synchronized with Sub-Department review queue');
+      fetchStudents();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Submission protocol failure');
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, []);
 
   const columns: ColumnDef<Student>[] = [
-    { accessorKey: 'id', header: 'Student ID' },
+    { accessorKey: 'id', header: 'ID' },
     { 
       accessorKey: 'name', 
       header: 'Full Name',
@@ -41,32 +52,48 @@ export default function Students() {
     },
     { 
       id: 'program', 
-      header: 'Enrolled Program',
+      header: 'Program',
       cell: ({ row }) => row.original.program?.name || <span className="text-slate-400 italic">Unknown</span>
     },
     { 
-      accessorKey: 'enrollStatus', 
-      header: 'Enrollment Status',
+      accessorKey: 'status', 
+      header: 'Review Status',
       cell: ({ row }) => {
-        const s = row.original.enrollStatus;
+        const s = row.original.status;
         let color = 'bg-slate-100 text-slate-700';
-        if (s === 'active') color = 'bg-green-100 text-green-700';
-        if (s === 'graduated') color = 'bg-blue-100 text-blue-700';
-        if (s === 'dropped') color = 'bg-red-100 text-red-700';
-        return <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>{s}</span>;
+        if (s === 'DRAFT') color = 'bg-slate-900 text-white font-black';
+        if (s === 'PENDING_REVIEW') color = 'bg-amber-100 text-amber-700 font-bold';
+        if (s === 'OPS_APPROVED') color = 'bg-blue-100 text-blue-700';
+        if (s === 'FINANCE_APPROVED') color = 'bg-emerald-100 text-emerald-700';
+        if (s === 'ENROLLED') color = 'bg-green-600 text-white';
+        if (s === 'REJECTED') color = 'bg-red-100 text-red-700';
+        return <span className={`px-2 py-1 text-[9px] rounded-full font-black uppercase tracking-tighter ${color}`}>{s?.replace('_', ' ')}</span>;
       }
     },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          {row.original.status === 'DRAFT' && (
+            <button 
+              onClick={() => handleSubmitRecord(row.original.id)}
+              className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+            >
+              Submit to Sub-Dept
+            </button>
+          )}
+        </div>
+      )
+    },
     { 
-      accessorKey: 'feeStatus', 
-      header: 'Fee Status',
-      cell: ({ row }) => {
-        const s = row.original.feeStatus;
-        return (
-          <span className={`px-2 py-1 text-[10px] rounded-sm uppercase font-bold ${s === 'paid' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {s}
-          </span>
-        );
-      }
+      id: 'billing',
+      header: 'Initial Billing',
+      cell: ({ row }) => (
+        <span className="text-[10px] font-mono font-bold text-slate-500">
+          {row.original.invoiceId ? `Linked (#${row.original.invoiceId})` : 'Unlinked'}
+        </span>
+      )
     }
   ];
 

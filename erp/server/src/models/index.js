@@ -36,6 +36,7 @@ import IncentivePayout from './IncentivePayout.js';
 import ReregRequest from './ReregRequest.js';
 import ReregConfig from './ReregConfig.js';
 import CredentialRequest from './CredentialRequest.js';
+import Vacancy from './Vacancy.js';
 import DistributionConfig from './DistributionConfig.js';
 import PaymentDistribution from './PaymentDistribution.js';
 import OrgConfig from './OrgConfig.js';
@@ -44,6 +45,8 @@ import CEOPanel from './CEOPanel.js';
 import Subject from './Subject.js';
 import Module from './Module.js';
 import CenterSubDept from './CenterSubDept.js';
+import EMI from './EMI.js';
+import Attendance from './Attendance.js';
 
 // Department -> User (Admin)
 Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
@@ -101,6 +104,16 @@ Payment.hasOne(Invoice, { foreignKey: 'paymentId' });
 // Invoice -> Student
 Invoice.belongsTo(Student, { foreignKey: 'studentId' });
 Student.hasMany(Invoice, { foreignKey: 'studentId' });
+
+// Student -> Invoice (Gated activation link)
+Student.belongsTo(Invoice, { as: 'invoice', foreignKey: 'invoiceId' });
+Invoice.hasMany(Student, { foreignKey: 'invoiceId' });
+
+// EMI -> Student/Invoice
+Student.hasMany(EMI, { foreignKey: 'studentId', as: 'emis' });
+EMI.belongsTo(Student, { foreignKey: 'studentId' });
+Invoice.hasMany(EMI, { foreignKey: 'invoiceId', as: 'installments' });
+EMI.belongsTo(Invoice, { foreignKey: 'invoiceId' });
 
 // Task -> User (assignedTo / assignedBy)
 Task.belongsTo(User, { as: 'assignee', foreignKey: 'assignedTo' });
@@ -169,6 +182,19 @@ CredentialRequest.belongsTo(Department, { foreignKey: 'centerId', as: 'center' }
 // User -> CredentialRequest
 User.hasMany(CredentialRequest, { foreignKey: 'requesterId', sourceKey: 'uid', as: 'requests' });
 CredentialRequest.belongsTo(User, { foreignKey: 'requesterId', targetKey: 'uid', as: 'requester' });
+
+// User Hierarchy (Self-reference)
+User.belongsTo(User, { as: 'manager', foreignKey: 'reportingManagerUid', targetKey: 'uid' });
+User.hasMany(User, { as: 'subordinates', foreignKey: 'reportingManagerUid', sourceKey: 'uid' });
+
+// User -> Vacancy
+User.belongsTo(Vacancy, { foreignKey: 'vacancyId', as: 'hiringVacancy' });
+Vacancy.hasMany(User, { foreignKey: 'vacancyId', as: 'employees' });
+
+// User -> Attendance
+User.hasMany(Attendance, { foreignKey: 'userId', sourceKey: 'uid', as: 'attendanceRecords' });
+Attendance.belongsTo(User, { foreignKey: 'userId', targetKey: 'uid' });
+
 // Program -> DistributionConfig
 Program.hasMany(DistributionConfig, { foreignKey: 'programId', as: 'distributions' });
 DistributionConfig.belongsTo(Program, { foreignKey: 'programId' });
@@ -304,7 +330,10 @@ const models = {
   CEOPanel,
   Subject,
   Module,
-  CenterSubDept
+  CenterSubDept,
+  Vacancy,
+  EMI,
+  Attendance
 };
 
 // GAP-5: Global Audit Interceptor

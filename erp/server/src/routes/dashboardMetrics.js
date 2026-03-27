@@ -40,7 +40,7 @@ router.get('/metrics/:deptId', async (req, res) => {
     // 3. Admission-to-Enrollment Cycle Time (Ops)
     // Simplified logic: Avg(Payment.verifiedAt - Student.createdAt)
     const cycleTimes = await Student.findAll({
-       where: { enrollmentStatus: 'enrolled', createdAt: { [Op.gt]: thirtyDaysAgo } },
+       where: { status: 'ENROLLED', createdAt: { [Op.gt]: thirtyDaysAgo } },
        include: [{ model: Payment, as: 'payments', where: { status: 'verified' } }]
     });
 
@@ -79,7 +79,7 @@ router.get('/reports/daily-admissions', async (req, res) => {
     const enrollments = await Student.findAll({
       where: { 
         createdAt: { [Op.gte]: startOfDay },
-        enrollmentStatus: 'enrolled'
+        status: 'ENROLLED'
       },
       include: [
         { model: Department, as: 'center', attributes: ['name'] },
@@ -96,7 +96,8 @@ router.get('/reports/daily-admissions', async (req, res) => {
 
     // Target comparison
     const monthlyTarget = await Target.findOne({
-       where: { metricType: 'revenue', period: 'monthly' } // Simplified
+       where: { metric: 'revenue', status: 'active' },
+       order: [['startDate', 'DESC']]
     });
 
     res.json({
@@ -104,7 +105,7 @@ router.get('/reports/daily-admissions', async (req, res) => {
       count: enrollments.length,
       revenue: revenue || 0,
       monthlyTotal: (revenue || 0) * 12, // Mocking monthly aggregation
-      target: monthlyTarget?.targetValue || 1000000,
+      target: monthlyTarget?.value || 1000000,
       details: enrollments
     });
   } catch (error) {

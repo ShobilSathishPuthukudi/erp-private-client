@@ -1,8 +1,9 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
+import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
 const router = express.Router();
-const { DistributionConfig, PaymentDistribution, Program, Payment, StudyCenter, Student, University } = models;
+const { DistributionConfig, PaymentDistribution, Program, Payment, Department, Student } = models;
 
 // Finance: Set/Update Program Split
 router.post('/configs', async (req, res) => {
@@ -38,7 +39,7 @@ router.post('/configs', async (req, res) => {
 });
 
 // Finance: Get Distribution Dashboard Data
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
   try {
     const programs = await Program.findAll({
       include: [
@@ -63,14 +64,15 @@ router.get('/dashboard', async (req, res) => {
 });
 
 // Finance: Aging Report
-router.get('/reports/aging', async (req, res) => {
+router.get('/reports/aging', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
   try {
     const today = new Date();
-    const centers = await StudyCenter.findAll({
-      attributes: ['id', 'name', 'uid'],
+    const centers = await Department.findAll({
+      where: { type: 'center' },
+      attributes: ['name', ['id', 'uid']],
       include: [{
         model: Student,
-        as: 'students',
+        as: 'enrolledStudents',
         attributes: ['id', 'name', 'uid'],
         include: [{
            model: Payment,
@@ -83,7 +85,7 @@ router.get('/reports/aging', async (req, res) => {
     const agingData = centers.map(center => {
       let current = 0, d30 = 0, d60 = 0, d90 = 0;
       
-      center.students?.forEach(student => {
+      center.enrolledStudents?.forEach(student => {
         student.payments?.forEach(payment => {
           const dueDate = new Date(payment.createdAt); // Assumption: createdAt is billing date
           const diffDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
@@ -98,7 +100,6 @@ router.get('/reports/aging', async (req, res) => {
       return {
         centerId: center.id,
         name: center.name,
-        uid: center.uid,
         buckets: { current, d30, d60, d90 },
         total: current + d30 + d60 + d90
       };
@@ -111,9 +112,9 @@ router.get('/reports/aging', async (req, res) => {
 });
 
 // Finance: University Payment Report & Cash Flow (90-day)
-router.get('/reports/university/:id', async (req, res) => {
+router.get('/reports/university/:id', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
   try {
-    const university = await University.findByPk(req.params.id);
+    const university = await Department.findOne({ where: { id: req.params.id, type: 'university' } });
     if (!university) return res.status(404).json({ error: 'University not found' });
 
     // Total Owed vs Paid
@@ -121,11 +122,10 @@ router.get('/reports/university/:id', async (req, res) => {
       where: { partnerType: 'university', partnerId: req.params.id }
     });
     
-    const totalOwed = distributions.reduce((sum, d) => sum + Number(d.amount), 0);
-    const totalPaid = distributions.filter(d => d.status === 'distributed').reduce((sum, d) => sum + Number(d.amount), 0);
+    const totalOwed = distributions.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+    const totalPaid = distributions.filter(d => d.status === 'distributed').reduce((sum, d) => sum + Number(d.amount || 0), 0);
 
     // Cash Flow Projection (Next 90 Days)
-    // Formula: Students in programs linked to this uni * remaining cycle installments
     const students = await Student.findAll({
        include: [{
           model: Program,
@@ -133,11 +133,10 @@ router.get('/reports/university/:id', async (req, res) => {
        }]
     });
 
-    // Mock Projection Logic for forensic demonstration
     const projections = {
-      d30: students.length * 5000, 
-      d60: students.length * 5200,
-      d90: students.length * 4800
+      d30: (students?.length || 0) * 5000, 
+      d60: (students?.length || 0) * 5200,
+      d90: (students?.length || 0) * 4800
     };
 
     res.json({ university, totalOwed, totalPaid, pending: totalOwed - totalPaid, projections });

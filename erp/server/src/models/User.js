@@ -43,6 +43,27 @@ const User = sequelize.define('user', {
     type: DataTypes.STRING,
     unique: false,
     allowNull: true,
+  },
+  reportingManagerUid: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  reporting_manager_id: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Alias for reportingManagerUid to align with ERP architecture'
+  },
+  vacancyId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  baseSalary: {
+    type: DataTypes.DECIMAL(12, 2),
+    defaultValue: 0,
+  },
+  leaveBalance: {
+    type: DataTypes.INTEGER,
+    defaultValue: 20,
   }
 });
 

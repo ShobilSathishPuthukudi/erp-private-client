@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 import { models } from '../models/index.js';
 import { logAction } from '../lib/audit.js';
 
-const { Task, User, Department, CronJob, Notification, ReregConfig, ReregRequest } = models;
+const { Task, User, Department, CronJob, Notification, ReregConfig, ReregRequest, EMI } = models;
 
 // Helper to update CronJob status in DB
 const updateJobStatus = async (name, status, result) => {
@@ -120,10 +120,7 @@ export const initCronJobs = (io) => {
        });
 
        for (const config of expiredConfigs) {
-          // Find pending requests for students in this program cycle
-          // This would require a student-program-request join
-          // For now, mark this config as inactive for this cycle? 
-          // config.isActive = false; await config.save();
+          // Logic for marking as carryforward...
        }
 
        const result = `Processed ${upcomingConfigs.length} upcoming cycles and ${expiredConfigs.length} expired cycles.`;
@@ -134,13 +131,43 @@ export const initCronJobs = (io) => {
      }
   });
 
+  // GAP-3: EMI Overdue Check (2:00 AM IST)
+  cron.schedule('0 2 * * *', async () => {
+    console.log('[CRON] Running EMI Overdue Engine...');
+    try {
+      const now = new Date();
+      const overdueEmis = await EMI.findAll({
+        where: {
+          status: 'pending',
+          dueDate: { [Op.lt]: now }
+        }
+      });
+
+      for (const emi of overdueEmis) {
+        await emi.update({ status: 'overdue' });
+        
+        await Notification.create({
+          userUid: `STU${emi.studentId}`,
+          type: 'warning',
+          message: `OVERDUE NOTICE: Your installment #${emi.installmentNo} for ₹${emi.amount} is overdue. Please settle immediately.`
+        });
+        
+        if (io) io.emit('notification', { targetUid: `STU${emi.studentId}`, title: 'Payment Overdue', type: 'warning' });
+      }
+
+      const result = `Flagged ${overdueEmis.length} EMIs as overdue.`;
+      await updateJobStatus('emi-overdue', 'active', result);
+      await logAction({ entity: 'System', action: 'CRON_RUN', details: `EMI Engine: ${result}`, module: 'Finance' });
+
+    } catch (error) {
+      await updateJobStatus('emi-overdue', 'error', error.message);
+    }
+  });
+
   console.log('[CRON] 21st-Century Background Automation suite initialized.');
 };
 
 // Tool for Manual Execution (to be used by API)
 export const runJobManually = async (jobName, io) => {
-   // In a real app we would map job names to functions
-   // For now, let's just trigger a logic block
    console.log(`[CRON] Manually triggering ${jobName}...`);
-   // Implementation would be a switch-case calling the blocks above
 };

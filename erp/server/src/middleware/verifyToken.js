@@ -50,8 +50,8 @@ const UNIT_ROLES = ['openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Onli
 // Architecture Admin: Can create/edit Universities, Programs (Academic Ops)
 export const isArchitectureAdmin = roleGuard(['academic', 'org-admin', 'system-admin']);
 
-// Academic Read/Operations: Units + Architecture Admins
-export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', ...UNIT_ROLES]);
+// Academic Read/Operations: Units + Architecture Admins + Finance/Ops for config
+export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'finance', 'operations', 'OPS_ADMIN', ...UNIT_ROLES]);
 
 // Ops/Review Admin: Can perform student verification
 export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', ...UNIT_ROLES]);

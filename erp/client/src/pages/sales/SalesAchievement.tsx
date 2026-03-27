@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Target, TrendingUp, Users, DollarSign, Award } from 'lucide-react';
+import { Target, TrendingUp, Users, DollarSign, Award, CheckCircle2 } from 'lucide-react';
 
 interface AchievementData {
   target: {
+    id: number;
     metric: string;
     value: number;
     startDate: string;
     endDate: string;
+    rules?: {
+      structure: { achievement: number, reward: number }[];
+    }
   };
   current: number;
   percentage: number;
@@ -24,7 +28,6 @@ export default function SalesAchievement() {
   const fetchAchievement = async () => {
     try {
       const res = await api.get('/targets/my-targets');
-      // For each target, fetch actual achievement
       const detailed = await Promise.all(res.data.map(async (t: any) => {
         const ach = await api.get(`/targets/achievement/${t.id}`);
         return ach.data;
@@ -37,10 +40,22 @@ export default function SalesAchievement() {
     }
   };
 
+  const calculateIncentive = (ach: AchievementData) => {
+    const rules = ach.target.rules?.structure || [];
+    if (rules.length === 0) return 0;
+    
+    // Sort rules by achievement required
+    const sortedRules = [...rules].sort((a, b) => b.achievement - a.achievement);
+    const applicableRule = sortedRules.find(r => ach.percentage >= r.achievement);
+    
+    return applicableRule ? applicableRule.reward : 0;
+  };
+
   const getStatusColor = (percentage: number) => {
-    if (percentage < 50) return 'bg-rose-100 text-rose-700 border-rose-200';
-    if (percentage < 80) return 'bg-amber-100 text-amber-700 border-amber-200';
-    return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (percentage < 50) return 'bg-rose-50 text-rose-600 border-rose-100';
+    if (percentage < 80) return 'bg-amber-50 text-amber-600 border-amber-100';
+    if (percentage < 100) return 'bg-blue-50 text-blue-600 border-blue-100';
+    return 'bg-emerald-50 text-emerald-600 border-emerald-100';
   };
 
   const getMetricIcon = (metric: string) => {
@@ -52,53 +67,73 @@ export default function SalesAchievement() {
     }
   };
 
-  if (loading) return <div className="animate-pulse h-64 bg-slate-50 rounded-2xl" />;
+  if (loading) return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+       {[1,2,3].map(i => <div key={i} className="animate-pulse h-64 bg-slate-50 rounded-[2rem] border-2 border-slate-100" />)}
+    </div>
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {achievements.map((ach, idx) => (
-        <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-xl ${getStatusColor(ach.percentage).split(' ').slice(0, 2).join(' ')}`}>
-              {getMetricIcon(ach.target.metric)}
+      {achievements.map((ach, idx) => {
+        const reward = calculateIncentive(ach);
+        return (
+          <div key={idx} className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all group">
+            <div className="flex justify-between items-start mb-6">
+              <div className={`p-4 rounded-2xl ${getStatusColor(ach.percentage).split(' ').slice(0, 2).join(' ')} group-hover:scale-110 transition-transform`}>
+                {getMetricIcon(ach.target.metric)}
+              </div>
+              <div className="text-right">
+                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getStatusColor(ach.percentage)}`}>
+                  {ach.target.metric.replace('_', ' ')}
+                </span>
+                <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tight">Period: {new Date(ach.target.startDate).toLocaleDateString()}</p>
+              </div>
             </div>
-            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full border ${getStatusColor(ach.percentage)}`}>
-              {ach.target.metric.replace('_', ' ')}
-            </span>
-          </div>
-          
-          <div className="space-y-1">
-            <p className="text-3xl font-black text-slate-900">
-              {ach.target.metric === 'revenue' ? `₹${ach.current.toLocaleString()}` : ach.current}
-            </p>
-            <p className="text-xs text-slate-500 font-medium tracking-tight">
-              Target: {ach.target.metric === 'revenue' ? `₹${ach.target.value.toLocaleString()}` : ach.target.value}
-            </p>
-          </div>
+            
+            <div className="space-y-1">
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl font-black text-slate-900 tracking-tighter italic">
+                  {ach.target.metric === 'revenue' ? `₹${ach.current.toLocaleString()}` : ach.current}
+                </p>
+                {ach.percentage >= 100 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+              </div>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                Quota: {ach.target.metric === 'revenue' ? `₹${ach.target.value.toLocaleString()}` : ach.target.value}
+              </p>
+            </div>
 
-          <div className="mt-6 space-y-2">
-            <div className="flex justify-between text-xs font-bold text-slate-700">
-              <span>Progress</span>
-              <span>{ach.percentage.toFixed(1)}%</span>
-            </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-1000 ${
-                  ach.percentage < 50 ? 'bg-rose-500' : ach.percentage < 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${Math.min(ach.percentage, 100)}%` }}
-              />
+            <div className="mt-8 space-y-4">
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 shadow-sm ${
+                    ach.percentage < 50 ? 'bg-rose-500' : ach.percentage < 80 ? 'bg-amber-500' : ach.percentage < 100 ? 'bg-blue-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(ach.percentage, 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Achieved {ach.percentage.toFixed(1)}%</span>
+                {reward > 0 && (
+                  <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg flex items-center gap-1.5">
+                    <Award className="w-3 h-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">₹{reward.toLocaleString()} Est. Payout</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {achievements.length === 0 && (
-        <div className="col-span-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center">
-          <Award className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-900">No Active Targets</h3>
-          <p className="text-slate-500 max-w-xs mx-auto text-sm mt-1">
-            Finance has not assigned any institutional goals for your profile yet.
+        <div className="col-span-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-16 text-center">
+          <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+             <Target className="w-8 h-8 text-slate-200" />
+          </div>
+          <h3 className="text-xl font-black text-slate-300 uppercase tracking-tighter">No Active Institutional Targets</h3>
+          <p className="text-slate-400 max-w-xs mx-auto text-xs mt-2 font-medium italic">
+            Finance has not synchronized your revenue milestones for this period.
           </p>
         </div>
       )}

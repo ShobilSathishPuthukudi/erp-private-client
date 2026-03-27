@@ -170,11 +170,13 @@ const menus: Record<string, MenuLink[]> = {
   'hr': [
     { name: 'Dashboard', path: '/dashboard/hr', icon: Home },
     {
-      name: 'People',
+      name: 'Workforce Control',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'Employees', path: '/dashboard/hr/employees' },
+        { name: 'Workforce Planning', path: '/dashboard/hr/vacancies' },
+        { name: 'Personnel Hub', path: '/dashboard/hr/employees' },
+        { name: 'Performance Audit', path: '/dashboard/hr/performance' },
         { name: 'Leave Approv.', path: '/dashboard/hr/leaves' },
         { name: 'Attendance', path: '/dashboard/hr/attendance' },
       ]
@@ -184,8 +186,8 @@ const menus: Record<string, MenuLink[]> = {
       icon: Bell,
       isGroup: true,
       items: [
-        { name: 'Announcements', path: '/dashboard/hr/announcements' },
-        { name: 'Holidays', path: '/dashboard/hr/holidays' },
+        { name: 'Internal Notices', path: '/dashboard/hr/announcements' },
+        { name: 'Holiday Calendar', path: '/dashboard/hr/holidays' },
       ]
     }
   ],

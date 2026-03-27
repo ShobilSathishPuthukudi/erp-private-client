@@ -3,6 +3,7 @@ import Payments from './Payments';
 import Invoices from './Invoices';
 import FeeConfig from './FeeConfig';
 // import AdmissionQueue from './AdmissionQueue'; // Temporarily removed if missing
+import FinanceMainDashboard from './FinanceMainDashboard';
 import InstitutionalApprovals from './InstitutionalApprovals';
 import StudentFinancials from './StudentFinancials';
 import TargetManager from './TargetManager';
@@ -17,12 +18,7 @@ import DailyAdmissionReport from './DailyAdmissionReport';
 export default function FinanceDashboard() {
   return (
     <Routes>
-      <Route path="/" element={
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-slate-900 mb-4">Finance Dashboard</h1>
-          <p className="text-slate-500">Welcome to the central finance portal. Manage incoming tuition, staff payroll, and global automated invoicing.</p>
-        </div>
-      } />
+      <Route path="/" element={<FinanceMainDashboard />} />
       <Route path="payments" element={<Payments />} />
       <Route path="invoices" element={<Invoices />} />
       <Route path="fee-config" element={<FeeConfig />} />

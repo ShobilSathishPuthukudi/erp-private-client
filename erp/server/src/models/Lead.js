@@ -20,8 +20,12 @@ const Lead = sequelize.define('lead', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('lead', 'contacted', 'site_visit', 'agreement', 'converted', 'lost'),
-    defaultValue: 'lead',
+    type: DataTypes.ENUM('NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'LOST'),
+    defaultValue: 'NEW',
+  },
+  lossReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   source: {
     type: DataTypes.STRING,

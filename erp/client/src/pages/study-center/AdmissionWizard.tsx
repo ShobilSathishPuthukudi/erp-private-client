@@ -78,8 +78,19 @@ export default function AdmissionWizard() {
                     twelfth: data.twelfthMarks
                 }
             };
-            await api.post('/portals/study-center/admission', payload);
-            toast.success('Institutional admission protocol initiated. Awaiting eligibility check.');
+            const response = await api.post('/portals/study-center/admission', payload);
+            const { invoice } = response.data;
+            
+            toast.success(
+                <div className="flex flex-col">
+                    <span className="font-bold">Admission Node Provisioned</span>
+                    <span className="text-xs opacity-80">Status: DRAFT (Pending Submission)</span>
+                    <span className="text-xs opacity-80 mt-1 font-mono italic">Invoice Linked: {invoice.invoiceNo}</span>
+                    <span className="text-[10px] mt-2 text-blue-600 font-bold uppercase">Submit this record from the 'Assigned Students' portal to trigger review.</span>
+                </div>, 
+                { duration: 8000 }
+            );
+            
             reset();
             setStep(1);
             setSelectedProgram(null);

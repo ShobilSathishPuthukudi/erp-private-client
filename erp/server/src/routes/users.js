@@ -43,6 +43,12 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const generatedUid = `${role.toUpperCase().substring(0,3)}-${Date.now().toString().slice(-6)}`;
 
+    // ENFORCE WORKFORCE CONTROL: No employee creation without vacancy
+    const workforceRoles = ['employee', 'staff', 'faculty', 'bde', 'counselor'];
+    if (workforceRoles.includes(role.toLowerCase()) && !req.body.vacancyId) {
+      return res.status(400).json({ error: 'STRICT RULE: Employee creation requires an active vacancy. Please use the HR module.' });
+    }
+
     const newUser = await User.create({
       uid: generatedUid, 
       email, 
@@ -50,7 +56,10 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
       role, 
       name, 
       status: status || 'active', 
-      deptId: deptId || null
+      deptId: deptId || null,
+      reportingManagerUid: req.body.reportingManagerUid || null,
+      reporting_manager_id: req.body.reportingManagerUid || null,
+      vacancyId: req.body.vacancyId || null
     });
 
     const userObj = newUser.toJSON();

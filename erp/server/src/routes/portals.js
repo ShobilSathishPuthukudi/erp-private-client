@@ -1,6 +1,7 @@
 import express from 'express';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import sequelize from '../config/db.js';
 
 const router = express.Router();
 const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering } = models;
@@ -61,24 +62,79 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
       return res.status(400).json({ error: 'Invalid fee schema selected' });
     }
 
-    const student = await Student.create({
-      name,
-      deptId: program.universityId, // Linked to university for academic tracking
-      centerId: center.id,
-      programId,
-      sessionId,
-      feeSchemaId,
-      enrollStatus: 'pending_eligibility',
-      marks,
-      verificationLogs: [
-        { step: 'Center', time: new Date(), status: 'submitted', by: req.user.uid }
-      ]
+    // Phase 2: Transactional Admission & Invoice Logic
+    const result = await sequelize.transaction(async (t) => {
+      // 1. Create Student
+      const student = await Student.create({
+        name,
+        deptId: program.universityId,
+        centerId: center.id,
+        programId,
+        sessionId,
+        feeSchemaId,
+        status: 'DRAFT',
+        enrollStatus: 'pending_eligibility', // Keep for backward compatibility if needed, but status is primary
+        marks,
+        verificationLogs: [
+          { step: 'Center', time: new Date(), status: 'submitted', by: req.user.uid }
+        ]
+      }, { transaction: t });
+
+      // 2. Identify First Installment for Invoice
+      const installments = feeSchema.schema.installments || [];
+      const firstInstallment = installments[0] || { amount: 0 };
+      const baseAmount = parseFloat(firstInstallment.amount);
+      const gstAmount = baseAmount * 0.18; // Standard 18% Institutional GST
+      const totalAmount = baseAmount + gstAmount;
+
+      // 3. Generate Invoice
+      const invoice = await Invoice.create({
+        studentId: student.id,
+        invoiceNo: `INV-${Date.now()}-${student.id}`,
+        amount: baseAmount,
+        gst: gstAmount,
+        total: totalAmount,
+        status: 'issued'
+      }, { transaction: t });
+
+      // 4. Link Invoice to Student
+      await student.update({ invoiceId: invoice.id }, { transaction: t });
+
+      return { student, invoice };
     });
 
-    res.status(201).json(student);
+    res.status(201).json(result);
   } catch (error) {
     console.error('Admission initiation error:', error);
     res.status(500).json({ error: 'Failed to initiate admission protocol' });
+  }
+});
+
+router.post('/study-center/students/:id/submit', verifyToken, requireRole('study-center'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    if (!center) return res.status(404).json({ error: 'Center profile not found' });
+
+    const student = await Student.findOne({ where: { id, centerId: center.id } });
+    if (!student) return res.status(404).json({ error: 'Student asset not located' });
+
+    if (student.status !== 'DRAFT') {
+      return res.status(400).json({ error: 'Submission protocol failure: Only DRAFT students can be submitted.' });
+    }
+
+    const logs = student.verificationLogs || [];
+    logs.push({ step: 'Center_Submission', time: new Date(), status: 'PENDING_REVIEW', by: req.user.uid });
+
+    await student.update({ 
+      status: 'PENDING_REVIEW',
+      verificationLogs: logs
+    });
+
+    res.json({ message: 'Student successfully submitted to Sub-Department for review.', student });
+  } catch (error) {
+    console.error('Student submission error:', error);
+    res.status(500).json({ error: 'Failed to submit student record' });
   }
 });
 
@@ -102,6 +158,36 @@ router.get('/student/invoices', verifyToken, requireRole('student'), async (req,
   }
 });
 
+router.get('/student/profile', verifyToken, requireRole('student'), async (req, res) => {
+  try {
+    const studentIdStr = req.user.uid.replace('STU', '');
+    const studentId = parseInt(studentIdStr);
+    
+    if (isNaN(studentId)) return res.status(400).json({ error: 'Invalid Student ID mapping' });
+
+    const student = await Student.findOne({
+      where: { id: studentId },
+      include: [
+        { model: Program, attributes: ['name', 'duration', 'type'] },
+        { model: AdmissionSession, attributes: ['name', 'startDate', 'endDate'] },
+        { 
+            model: Invoice, 
+            as: 'invoice', // Current outstanding invoice
+            attributes: ['id', 'invoiceNo', 'total', 'status'] 
+        },
+        { model: Department, as: 'center', attributes: ['name'] }
+      ]
+    });
+    
+    if (!student) return res.status(404).json({ error: 'Student profile not located' });
+    
+    res.json(student);
+  } catch (error) {
+    console.error('Fetch student profile error:', error);
+    res.status(500).json({ error: 'Failed to synchronize student portal profile' });
+  }
+});
+
 // --- EMPLOYEE PORTAL ---
 router.get('/employee/tasks', verifyToken, requireRole('employee'), async (req, res) => {
   try {
@@ -115,7 +201,6 @@ router.get('/employee/tasks', verifyToken, requireRole('employee'), async (req, 
     res.status(500).json({ error: 'Failed to fetch your tasks' });
   }
 });
-
 router.put('/employee/tasks/:id/status', verifyToken, requireRole('employee'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -129,6 +214,54 @@ router.put('/employee/tasks/:id/status', verifyToken, requireRole('employee'), a
   } catch (error) {
     console.error('Update employee task error:', error);
     res.status(500).json({ error: 'Failed to update task status' });
+  }
+});
+
+router.put('/employee/tasks/:id/complete', verifyToken, requireRole('employee'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { remarks, evidenceUrl } = req.body;
+    
+    const task = await Task.findOne({ where: { id, assignedTo: req.user.uid } });
+    if (!task) return res.status(404).json({ error: 'Task not found or unauthorized' });
+
+    if (task.status === 'completed') return res.status(400).json({ error: 'Task is already completed' });
+
+    await task.update({ 
+      status: 'completed', 
+      remarks: remarks || task.remarks,
+      evidenceUrl: evidenceUrl || task.evidenceUrl,
+      completedAt: new Date()
+    });
+
+    res.json({ message: 'Task completed successfully with evidence recorded.', task });
+  } catch (error) {
+    console.error('Complete task error:', error);
+    res.status(500).json({ error: 'Failed to finalize task execution' });
+  }
+});
+
+router.get('/employee/performance', verifyToken, requireRole('employee'), async (req, res) => {
+  try {
+    const tasks = await Task.findAll({ where: { assignedTo: req.user.uid } });
+    
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const pending = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length;
+    const overdue = tasks.filter(t => t.status === 'overdue').length;
+    
+    const completionRate = total > 0 ? (completed / total) * 100 : 0;
+
+    res.json({
+      total,
+      completed,
+      pending,
+      overdue,
+      completionRate: Math.round(completionRate)
+    });
+  } catch (error) {
+    console.error('Fetch employee performance error:', error);
+    res.status(500).json({ error: 'Failed to calculate performance metrics' });
   }
 });
 

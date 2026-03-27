@@ -1,10 +1,12 @@
 import express from 'express';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
+import { verifyToken } from '../middleware/verifyToken.js';
+import { Op } from 'sequelize';
 const router = express.Router();
 const { Target, IncentiveRule, User, Department, Student, Invoice } = models;
 
 // Create Target + Rule (Finance Only)
-router.post('/finance/targets', async (req, res) => {
+router.post('/finance/targets', verifyToken, async (req, res) => {
   try {
     const { targetableType, targetableId, metric, value, startDate, endDate, rules } = req.body;
     
@@ -33,7 +35,7 @@ router.post('/finance/targets', async (req, res) => {
 });
 
 // Get Achievement (Shared)
-router.get('/achievement/:targetId', async (req, res) => {
+router.get('/achievement/:targetId', verifyToken, async (req, res) => {
   try {
     const target = await Target.findByPk(req.params.targetId, {
       include: [{ model: IncentiveRule, as: 'rules' }]
@@ -45,14 +47,14 @@ router.get('/achievement/:targetId', async (req, res) => {
       // Count students enrolled in period
       current = await Student.count({
         where: {
-          createdAt: { [models.Sequelize.Op.between]: [target.startDate, target.endDate] }
+          createdAt: { [Op.between]: [target.startDate, target.endDate] }
           // Add filters for BDE or Center if applicable
         }
       });
     } else if (target.metric === 'revenue') {
       const invoices = await Invoice.findAll({
         where: {
-          createdAt: { [models.Sequelize.Op.between]: [target.startDate, target.endDate] },
+          createdAt: { [Op.between]: [target.startDate, target.endDate] },
           status: 'paid'
         }
       });
@@ -67,7 +69,7 @@ router.get('/achievement/:targetId', async (req, res) => {
 });
 
 // My Targets (Sales/Study Center)
-router.get('/my-targets', async (req, res) => {
+router.get('/my-targets', verifyToken, async (req, res) => {
   try {
     const targets = await Target.findAll({
       where: {

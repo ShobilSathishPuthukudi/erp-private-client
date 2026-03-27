@@ -131,7 +131,7 @@ router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin', 'system-a
       where: { status: 'pending' },
       include: [
         { model: Department, as: 'center', attributes: ['name', ['id', 'uid']] },
-        { model: User, as: 'requester', attributes: ['name'] }
+        { model: User, as: 'requester', attributes: ['name', 'uid'] }
       ]
     });
     res.json(queue);
@@ -145,11 +145,12 @@ router.get('/my-requests', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const requests = await CredentialRequest.findAll({
       where: { requesterId: req.user.uid },
-      include: [{ model: Department, as: 'center', attributes: ['name', ['id', 'uid']] }],
+      include: [{ model: Department, as: 'center', attributes: ['name', 'id'] }],
       order: [['createdAt', 'DESC']]
     });
     res.json(requests);
   } catch (error) {
+    console.error('[CREDENTIAL_REVEAL] Error in my-requests:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -22,24 +22,37 @@ interface Department {
   name: string;
 }
 
+interface Vacancy {
+  id: number;
+  title: string;
+  departmentId: number;
+  subDepartment: string;
+  status: 'OPEN' | 'CLOSED';
+}
+
 export default function Employees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
 
   const fetchInitialData = async () => {
     try {
       setIsLoading(true);
-      const [empRes, deptRes] = await Promise.all([
+      const [empRes, deptRes, vacRes] = await Promise.all([
         api.get('/hr/employees'),
-        api.get('/departments')
+        api.get('/departments'),
+        api.get('/hr/vacancies')
       ]);
       setEmployees(empRes.data);
+      setAllEmployees(empRes.data);
       setDepartments(deptRes.data);
+      setVacancies(vacRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
@@ -51,20 +64,31 @@ export default function Employees() {
     fetchInitialData();
   }, []);
 
+  const selectedVacancyId = watch('vacancyId');
+  useEffect(() => {
+    if (selectedVacancyId) {
+      const v = vacancies.find(v => v.id === parseInt(selectedVacancyId));
+      if (v) {
+        reset((prev) => ({ ...prev, deptId: v.departmentId }));
+      }
+    }
+  }, [selectedVacancyId, vacancies, reset]);
+
   const openCreateModal = () => {
     setEditingEmployee(null);
-    reset({ name: '', email: '', password: '', status: 'active', deptId: '' });
+    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '' });
     setIsModalOpen(true);
   };
 
-  const openEditModal = (employee: Employee) => {
+  const openEditModal = (employee: any) => {
     setEditingEmployee(employee);
     reset({ 
       name: employee.name, 
       email: employee.email, 
       password: '', 
       status: employee.status,
-      deptId: employee.deptId || ''
+      deptId: employee.deptId || '',
+      reportingManagerUid: employee.reportingManagerUid || ''
     });
     setIsModalOpen(true);
   };
@@ -112,9 +136,19 @@ export default function Employees() {
     { accessorKey: 'email', header: 'Email Address' },
     { 
       id: 'department',
-      header: 'Department',
+      header: 'Org Structure',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-slate-700">{row.original.department?.name || 'Unassigned'}</span>
+          <span className="text-[10px] text-slate-400 font-bold uppercase">{(row.original as any).subDepartment || 'General'}</span>
+        </div>
+      )
+    },
+    { 
+      id: 'manager',
+      header: 'Reporting Manager',
       cell: ({ row }) => {
-        return row.original.department?.name || <span className="text-slate-400 italic">Unassigned</span>;
+        return (row.original as any).manager?.name || <span className="text-slate-400 italic">None</span>;
       }
     },
     { 
@@ -206,14 +240,46 @@ export default function Employees() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Department assignment</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Department assignment {selectedVacancyId && <span className="text-blue-600 font-bold">(Allocated via Vacancy)</span>}
+            </label>
             <select
               {...register('deptId')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+              disabled={!!selectedVacancyId}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-slate-50 disabled:opacity-70 cursor-not-allowed"
             >
               <option value="">-- No Department Assigned --</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {!editingEmployee && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Select Vacancy (Required)</label>
+              <select
+                {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+              >
+                <option value="">-- Select Open Vacancy --</option>
+                {vacancies.filter(v => v.status === 'OPEN').map((v) => (
+                  <option key={v.id} value={v.id}>{v.title}</option>
+                ))}
+              </select>
+              {errors.vacancyId && <p className="text-red-500 text-xs mt-1">{errors.vacancyId.message as string}</p>}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Reporting Manager</label>
+            <select
+              {...register('reportingManagerUid')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+            >
+              <option value="">-- No Direct Manager --</option>
+              {allEmployees.filter(e => e.uid !== (editingEmployee as any)?.uid).map((e) => (
+                <option key={e.uid} value={e.uid}>{e.name} ({e.uid})</option>
               ))}
             </select>
           </div>

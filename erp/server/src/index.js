@@ -42,6 +42,7 @@ import incentiveRoutes from './routes/incentives.js';
 import reregRoutes from './routes/rereg.js';
 import credentialRoutes from './routes/credentialReveal.js';
 import distributionRoutes from './routes/distribution.js';
+import emiRoutes from './routes/emi.js';
 import metricRoutes from './routes/dashboardMetrics.js';
 import orgAdminRoutes from './routes/orgAdmin.js';
 import operationsRoutes from './routes/operations.js';
@@ -105,6 +106,7 @@ app.use('/api/incentives', incentiveRoutes);
 app.use('/api/rereg', reregRoutes);
 app.use('/api/credentials', credentialRoutes);
 app.use('/api/distribution', distributionRoutes);
+app.use('/api/emi', emiRoutes);
 app.use('/api/dashboard', metricRoutes);
 app.use('/api/org-admin', orgAdminRoutes);
 app.use('/api/operations', operationsRoutes);
@@ -159,6 +161,40 @@ const cleanupDuplicateIndexes = async () => {
       if (indexName === 'invoiceNo') continue; // Safety check
       console.log(`Dropping redundant invoice index: ${indexName}`);
       await sequelize.query(`ALTER TABLE invoices DROP INDEX ${indexName}`).catch(() => {});
+    }
+
+    // 3. Ensure Student Model schema reconciliation (Phase 4.2 Fix)
+    const [columns] = await sequelize.query('SHOW COLUMNS FROM students');
+    const columnNames = columns.map(c => c.Field);
+    
+    if (!columnNames.includes('invoiceId')) {
+      console.log('Adding missing invoiceId column to students...');
+      await sequelize.query('ALTER TABLE students ADD COLUMN invoiceId INT NULL').catch(err => console.error(err.message));
+    }
+    if (!columnNames.includes('paidAmount')) {
+      console.log('Adding missing paidAmount column to students...');
+      await sequelize.query('ALTER TABLE students ADD COLUMN paidAmount DECIMAL(10, 2) DEFAULT 0').catch(err => console.error(err.message));
+    }
+    if (!columnNames.includes('pendingAmount')) {
+      console.log('Adding missing pendingAmount column to students...');
+      await sequelize.query('ALTER TABLE students ADD COLUMN pendingAmount DECIMAL(10, 2) DEFAULT 0').catch(err => console.error(err.message));
+    }
+    if (!columnNames.includes('uid')) {
+      console.log('Adding missing uid column to students...');
+      await sequelize.query('ALTER TABLE students ADD COLUMN uid VARCHAR(255) UNIQUE NULL').catch(err => console.error(err.message));
+    }
+
+    // 4. Ensure Department Model schema reconciliation (Phase 4.3 Fix)
+    const [deptCols] = await sequelize.query('SHOW COLUMNS FROM departments');
+    const deptColNames = deptCols.map(c => c.Field);
+
+    if (!deptColNames.includes('loginId')) {
+      console.log('Adding missing loginId column to departments...');
+      await sequelize.query('ALTER TABLE departments ADD COLUMN loginId VARCHAR(255) NULL').catch(err => console.error(err.message));
+    }
+    if (!deptColNames.includes('password')) {
+      console.log('Adding missing password column to departments...');
+      await sequelize.query('ALTER TABLE departments ADD COLUMN password VARCHAR(255) NULL').catch(err => console.error(err.message));
     }
   } catch (err) {
     console.warn('Index cleanup skipped:', err.message);

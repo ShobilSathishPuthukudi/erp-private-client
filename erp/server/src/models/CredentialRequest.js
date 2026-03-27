@@ -45,6 +45,18 @@ const CredentialRequest = sequelize.define('credential_request', {
   rejectionRemarks: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  viewedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  expiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  viewedBy: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 });
 

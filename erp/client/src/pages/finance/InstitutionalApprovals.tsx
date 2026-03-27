@@ -23,10 +23,20 @@ interface AdmissionSession {
   financeStatus: string;
 }
 
+interface StudentApproval {
+  id: number;
+  name: string;
+  center: { name: string };
+  program: { name: string };
+  invoice?: { status: string, invoiceNo: string };
+  status: string;
+}
+
 export default function InstitutionalApprovals() {
-  const [activeTab, setActiveTab] = useState<'affiliation' | 'sessions'>('affiliation');
+  const [activeTab, setActiveTab] = useState<'affiliation' | 'sessions' | 'enrollment'>('enrollment');
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [sessions, setSessions] = useState<AdmissionSession[]>([]);
+  const [students, setStudents] = useState<StudentApproval[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Approval Modal State
@@ -38,12 +48,14 @@ export default function InstitutionalApprovals() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [crRes, sRes] = await Promise.all([
+      const [crRes, sRes, stuRes] = await Promise.all([
         api.get('/finance/change-requests'),
-        api.get('/finance/admission-sessions')
+        api.get('/finance/admission-sessions'),
+        api.get('/finance/approvals/students')
       ]);
       setChangeRequests(crRes.data);
       setSessions(sRes.data);
+      setStudents(stuRes.data);
     } catch (error) {
       toast.error('Failed to sync institutional approval queues');
     } finally {
@@ -58,17 +70,29 @@ export default function InstitutionalApprovals() {
   const handleAction = async () => {
     if (remarks.length < 50) return toast.error('Audit remarks must be at least 50 characters');
     try {
-      const endpoint = activeTab === 'affiliation' 
-        ? `/finance/change-requests/${selectedId}/approve` 
-        : `/finance/admission-sessions/${selectedId}/approve`;
+      let endpoint = '';
+      let method: 'put' | 'post' = 'put';
+
+      if (activeTab === 'affiliation') {
+        endpoint = `/finance/change-requests/${selectedId}/approve`;
+      } else if (activeTab === 'sessions') {
+        endpoint = `/finance/admission-sessions/${selectedId}/approve`;
+      } else if (activeTab === 'enrollment') {
+        endpoint = `/finance/approvals/students/${selectedId}/finalize`;
+        method = 'post';
+      }
       
-      await api.put(endpoint, { status: actionType === 'approve' ? 'approved' : 'rejected', remarks });
-      toast.success(`Action ${actionType} d successfully`);
+      const payload = { status: actionType === 'approve' ? 'approved' : 'rejected', remarks };
+      
+      if (method === 'put') await api.put(endpoint, payload);
+      else await api.post(endpoint, payload);
+
+      toast.success(`Action ${actionType}d successfully`);
       setIsModalOpen(false);
       setRemarks('');
       fetchData();
-    } catch (error) {
-      toast.error('Approval protocol failure');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Approval protocol failure');
     }
   };
 
@@ -127,6 +151,35 @@ export default function InstitutionalApprovals() {
       }
   ];
 
+  const stuColumns: ColumnDef<StudentApproval>[] = [
+    { accessorKey: 'name', header: 'Student Identity', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.name}</span> },
+    { accessorKey: 'center.name', header: 'Source Center' },
+    { accessorKey: 'program.name', header: 'Academic Node' },
+    { 
+        id: 'billing', 
+        header: 'Invoice Status',
+        cell: ({ row }) => {
+            const hasPaid = row.original.invoice?.status === 'paid';
+            return (
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${hasPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {hasPaid ? 'Payment Confirmed' : 'Payment Awaiting'}
+                </span>
+            );
+        }
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
+        <button 
+          onClick={() => { setSelectedId(row.original.id); setActionType('approve'); setIsModalOpen(true); }}
+          className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200"
+        >
+          Finalize & Enroll
+        </button>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex justify-between items-end shrink-0">
@@ -147,15 +200,19 @@ export default function InstitutionalApprovals() {
             >
                 Admission Sessions
             </button>
+            <button 
+                onClick={() => setActiveTab('enrollment')}
+                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'enrollment' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+                Enrollment Finalization
+            </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
-        {activeTab === 'affiliation' ? (
-           <DataTable columns={crColumns} data={changeRequests} isLoading={isLoading} searchKey="reason" />
-        ) : (
-           <DataTable columns={sColumns} data={sessions} isLoading={isLoading} searchKey="name" />
-        )}
+        {activeTab === 'affiliation' && <DataTable columns={crColumns} data={changeRequests} isLoading={isLoading} searchKey="reason" />}
+        {activeTab === 'sessions' && <DataTable columns={sColumns} data={sessions} isLoading={isLoading} searchKey="name" />}
+        {activeTab === 'enrollment' && <DataTable columns={stuColumns} data={students} isLoading={isLoading} searchKey="name" />}
       </div>
 
       <Modal

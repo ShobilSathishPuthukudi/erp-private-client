@@ -72,8 +72,8 @@ const Student = sequelize.define('student', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED'),
-    defaultValue: 'PENDING_REVIEW',
+    type: DataTypes.ENUM('DRAFT', 'PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_PENDING', 'PAYMENT_VERIFIED', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED'),
+    defaultValue: 'DRAFT',
   },
   reviewedAt: {
     type: DataTypes.DATE,
@@ -90,6 +90,35 @@ const Student = sequelize.define('student', {
   sessionId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  invoiceId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  uid: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: true,
+  },
+  paidAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  pendingAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  currentSemester: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+  },
+  nextSessionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  reregStatus: {
+    type: DataTypes.ENUM('none', 'pending', 'approved', 'carried_forward'),
+    defaultValue: 'none',
   }
 // }, {
 //   indexes: [{ fields: ['deptId', 'enrollStatus'] }]

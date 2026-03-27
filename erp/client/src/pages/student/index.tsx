@@ -1,28 +1,171 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import Invoices from './Invoices';
 import Documents from './Documents';
 import Transcript from './Transcript';
 import { useAuthStore } from '@/store/authStore';
+import { 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle, 
+  FileText, 
+  CreditCard, 
+  BookOpen,
+  ArrowRight
+} from 'lucide-react';
 
 export default function StudentPortal() {
   const user = useAuthStore(state => state.user);
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/portals/student/profile');
+        setProfile(res.data);
+      } catch (error) {
+        console.error('Failed to load profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const Dashboard = () => {
+    if (isLoading) return <div className="p-8 text-center animate-pulse font-mono font-bold text-slate-400">LOADING PROFILE...</div>;
+
+    const status = profile?.status || 'UNKNOWN';
+    const stages = [
+      { id: 'DRAFT', label: 'Draft', color: 'bg-slate-200 text-slate-600' },
+      { id: 'PENDING_REVIEW', label: 'In Review', color: 'bg-amber-100 text-amber-700' },
+      { id: 'OPS_APPROVED', label: 'Verified', color: 'bg-blue-100 text-blue-700' },
+      { id: 'ENROLLED', label: 'Active', color: 'bg-green-600 text-white' }
+    ];
+
+    const currentStageIndex = stages.findIndex(s => s.id === status);
+
+    return (
+      <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Student Gateway</h1>
+            <p className="text-slate-500 font-medium mt-1">Institutional enrollment node: <span className="text-slate-900 font-bold">{user?.uid}</span></p>
+          </div>
+          <div className="flex items-center gap-3">
+             <span className={`px-4 py-2 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg ${
+               status === 'ENROLLED' ? 'bg-green-600 text-white shadow-green-200' :
+               status === 'REJECTED' ? 'bg-red-600 text-white shadow-red-200' :
+               'bg-blue-600 text-white shadow-blue-200'
+             }`}>
+               Current: {status.replace('_', ' ')}
+             </span>
+          </div>
+        </div>
+
+        {/* Lifecycle Stepper */}
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Admission Lifecycle Pipeline</h3>
+          <div className="relative flex justify-between items-center max-w-4xl mx-auto">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-100 -z-0" />
+            <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-blue-600 transition-all duration-1000 -z-0`} style={{ width: `${(currentStageIndex / (stages.length - 1)) * 100}%` }} />
+            
+            {stages.map((st, idx) => {
+              const isActive = idx <= currentStageIndex;
+              const isCurrent = idx === currentStageIndex;
+              return (
+                <div key={st.id} className="relative z-10 flex flex-col items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 shadow-md ${
+                    isCurrent ? 'bg-blue-600 text-white scale-125 ring-4 ring-blue-50' :
+                    isActive ? 'bg-white border-2 border-blue-600 text-blue-600' :
+                    'bg-white border-2 border-slate-200 text-slate-300'
+                  }`}>
+                    {isActive ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-300'}`}>{st.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {profile?.status === 'REJECTED' && (
+          <div className="bg-red-50 border-2 border-red-100 p-6 rounded-3xl flex items-start gap-4 animate-bounce">
+            <AlertCircle className="w-6 h-6 text-red-600 mt-1" />
+            <div>
+              <p className="text-sm font-black text-red-900 uppercase tracking-widest leading-none mb-2">Academic Rejection Note</p>
+              <p className="text-sm text-red-700 font-medium">{profile?.lastRejectionReason || 'Please contact your Study Center for reconciliation instructions.'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Overview Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Program Card */}
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+               <BookOpen className="w-24 h-24" />
+            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Enrolled Program</p>
+            <h2 className="text-2xl font-black leading-tight mb-2">{profile?.program?.name || 'Academic Path Initializing...'}</h2>
+            <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">{profile?.program?.type} | {profile?.program?.duration} Years</p>
+            <div className="mt-8 pt-6 border-t border-slate-800">
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Assigned Center</p>
+               <p className="font-bold text-slate-300">{profile?.center?.name || 'General Batch'}</p>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="space-y-6">
+             <Link to="transcript" className="block bg-white p-6 rounded-3xl border border-slate-200 hover:border-blue-500 transition-all group">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                      <FileText className="w-6 h-6" />
+                   </div>
+                   <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 transition-all" />
+                </div>
+                <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Academic Transcript</h4>
+                <p className="text-slate-500 text-xs font-medium mt-1">View subjects and marksheet</p>
+             </Link>
+             
+             <Link to="invoices" className="block bg-white p-6 rounded-3xl border border-slate-200 hover:border-emerald-500 transition-all group">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                      <CreditCard className="w-6 h-6" />
+                   </div>
+                   <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-600 transition-all" />
+                </div>
+                <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Financial Ledger</h4>
+                <p className="text-slate-500 text-xs font-medium mt-1">₹{parseFloat(profile?.pendingAmount || 0).toLocaleString()} Outstanding</p>
+             </Link>
+          </div>
+
+          {/* Activity/Next Steps */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 flex flex-col justify-between">
+             <div>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Instructional Notice</h3>
+                {status === 'DRAFT' && <p className="text-sm font-bold text-slate-700 leading-relaxed italic">Your admission manifold is currently being finalized by the center. Please check back for submission alerts.</p>}
+                {status === 'PENDING_REVIEW' && <p className="text-sm font-bold text-slate-700 leading-relaxed italic">Your profile is currently undergoing sub-departmental eligibility verification. No action required.</p>}
+                {status === 'OPS_APPROVED' && <p className="text-sm font-black text-blue-600 leading-relaxed">Verification Successful! Please proceed to the financial ledger to settle outstanding dues for final activation.</p>}
+                {status === 'ENROLLED' && <p className="text-sm font-black text-emerald-600 leading-relaxed">Account Fully Activated. Welcome to the institutional framework!</p>}
+             </div>
+             
+             <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] font-black text-slate-300 uppercase italic">IITS RPS Governance v4.0</span>
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+             </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Routes>
-      <Route path="/" element={
-        <div className="p-6 mt-10 text-center">
-          <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome, {user?.name}!</h1>
-          <p className="text-slate-500 max-w-lg mx-auto">
-            This is your personal student gateway. Here you can efficiently access your fee history, download generated invoices, and manage your important academic documents.
-          </p>
-        </div>
-      } />
+      <Route path="/" element={<Dashboard />} />
       <Route path="invoices" element={<Invoices />} />
       <Route path="documents" element={<Documents />} />
       <Route path="transcript" element={<Transcript />} />
