@@ -19,6 +19,14 @@ const Payment = sequelize.define('payment', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  transactionId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  receiptUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   status: {
     type: DataTypes.ENUM('pending', 'verified', 'failed'),
     defaultValue: 'pending',

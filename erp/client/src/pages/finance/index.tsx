@@ -14,6 +14,9 @@ import DistributionDashboard from './DistributionDashboard';
 import AgingReport from './AgingReport';
 import UniversityFinancialReport from './UniversityFinancialReport';
 import DailyAdmissionReport from './DailyAdmissionReport';
+import DepartmentTeam from '@/components/team/DepartmentTeam';
+import DepartmentTasks from '@/components/team/DepartmentTasks';
+import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 
 export default function FinanceDashboard() {
   return (
@@ -33,6 +36,9 @@ export default function FinanceDashboard() {
       <Route path="university-reports" element={<UniversityFinancialReport />} />
       <Route path="daily-admissions" element={<DailyAdmissionReport />} />
       <Route path="students/:id" element={<StudentFinancials />} />
+      <Route path="team" element={<DepartmentTeam />} />
+      <Route path="tasks" element={<DepartmentTasks />} />
+      <Route path="leaves" element={<DepartmentLeaves />} />
     </Routes>
   );
 }

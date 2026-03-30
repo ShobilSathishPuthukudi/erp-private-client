@@ -34,27 +34,30 @@ export default function FinanceMainDashboard() {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        // In a real system, these would be aggregated from specific endpoints
         const [pRes, aRes, fRes] = await Promise.all([
-          api.get('/finance/payments'),
-          api.get('/finance/approvals/students'),
-          api.get('/finance/invoices')
+          api.get('/finance/payments').catch(() => ({ data: [] })),
+          api.get('/finance/approvals/students').catch(() => ({ data: [] })),
+          api.get('/finance/invoices').catch(() => ({ data: [] }))
         ]);
 
-        const revenue = pRes.data.filter((p: any) => p.status === 'verified').reduce((acc: number, p: any) => acc + parseFloat(p.amount), 0);
-        const pendingApprovals = aRes.data.length;
-        const pendingFees = fRes.data.filter((i: any) => i.status === 'issued').reduce((acc: number, i: any) => acc + parseFloat(i.total), 0);
-        const riskAlerts = aRes.data.filter((s: any) => s.invoice?.status !== 'paid').length;
+        const payments = pRes?.data || [];
+        const approvals = aRes?.data || [];
+        const invoices = fRes?.data || [];
+
+        const revenue = payments.filter((p: any) => p.status === 'verified').reduce((acc: number, p: any) => acc + parseFloat(p.amount || 0), 0);
+        const pendingApprovalsLoad = approvals.length;
+        const pendingFees = invoices.filter((i: any) => i.status === 'issued').reduce((acc: number, i: any) => acc + parseFloat(i.total || 0), 0);
+        const riskAlerts = approvals.filter((s: any) => s.invoice?.status !== 'paid').length;
 
         setStats({
           revenue,
-          pendingApprovals,
+          pendingApprovals: pendingApprovalsLoad,
           pendingFees,
           riskAlerts,
-          recentActions: [] // Placeholder
+          recentActions: []
         });
       } catch (error) {
-        console.error('Failed to fetch finance stats');
+        console.error('CRITICAL: Failed to load Finance HUD', error);
       } finally {
         setLoading(false);
       }
@@ -77,7 +80,7 @@ export default function FinanceMainDashboard() {
           </p>
         </div>
         <div className="flex gap-4">
-           <Link to="/finance/approvals" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center gap-3">
+           <Link to="/dashboard/finance/approvals" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center gap-3">
               <Zap className="w-4 h-4 text-emerald-400 fill-emerald-400" /> Finalize Queues
            </Link>
         </div>
@@ -143,7 +146,7 @@ export default function FinanceMainDashboard() {
                </div>
                <div className="pt-8 border-t border-slate-100 mt-8 flex justify-between items-center">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Automated Fraud Detection Active</p>
-                  <Link to="/finance/aging" className="text-blue-600 font-bold text-xs flex items-center gap-2 hover:translate-x-1 transition-all">
+                  <Link to="/dashboard/finance/aging" className="text-blue-600 font-bold text-xs flex items-center gap-2 hover:translate-x-1 transition-all">
                      View Receivables Aging <ArrowUpRight className="w-4 h-4" />
                   </Link>
                </div>
@@ -155,10 +158,10 @@ export default function FinanceMainDashboard() {
             <div className="space-y-8">
                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Protocol Shortcuts</h3>
                <div className="space-y-4">
-                  <ControlItem title="Fee Config" to="/finance/fee-config" />
-                  <ControlItem title="Credential Review" to="/finance/credentials" />
-                  <ControlItem title="Reregistering Manager" to="/finance/rereg" />
-                  <ControlItem title="Target Settings" to="/finance/performance" />
+                  <ControlItem title="Fee Config" to="/dashboard/finance/fee-config" />
+                  <ControlItem title="Credential Review" to="/dashboard/finance/credentials" />
+                  <ControlItem title="Reregistering Manager" to="/dashboard/finance/rereg" />
+                  <ControlItem title="Target Settings" to="/dashboard/finance/performance" />
                </div>
             </div>
             <div className="mt-12 bg-white/5 p-6 rounded-3xl border border-white/10">

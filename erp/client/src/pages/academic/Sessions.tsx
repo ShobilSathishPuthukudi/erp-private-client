@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
+import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Calendar, BookOpen, Users, ShieldCheck, Plus, History, Timer, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar, BookOpen, Users, ShieldCheck, History, Timer, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -236,13 +237,22 @@ export default function Sessions() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Govern academic batches, temporal windows, and intake capacity safeguards.</p>
         </div>
-        <button 
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
+              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+              Batch Matrix Control
+           </div>
+        </div>
+      </div>
+
+      <div className="max-w-md">
+        <DashCard 
+          title="Initialize Academic Session"
+          description="Deploy new academic batches and set temporal constraints for intake."
           onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Deploy New Batch</span>
-        </button>
+          icon={Calendar}
+          actionLabel="Deploy New Batch"
+        />
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
@@ -255,100 +265,123 @@ export default function Sessions() {
         />
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingItem ? "Reconcile Batch Schema" : "Initialize Academic Session"}
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Session / Batch Designation</label>
-              <div className="relative group">
-                <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input
-                  {...register('name', { required: true })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                  placeholder="e.g. Batch July 2025 - BCA Phase 1"
-                />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
+        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+          <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
+                  {editingItem ? 'Edit Configuration' : 'Academic Session'}
+                </p>
+                <h2 className="text-xl font-bold tracking-tight">
+                  {editingItem ? `Modify ${editingItem.name}` : 'Registration Form'}
+                </h2>
               </div>
             </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Program Specification</label>
-              <div className="relative group">
-                <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <select
-                  {...register('programId', { required: true })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-                >
-                  <option value="">-- Academic Program Required --</option>
-                  {programs.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} [{p.type}]</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (Start)</label>
-              <input
-                type="date"
-                {...register('startDate', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (End)</label>
-              <input
-                type="date"
-                {...register('endDate', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Batch Seating Capacity</label>
-              <div className="relative group">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input
-                  type="number"
-                  {...register('maxCapacity', { required: true, valueAsNumber: true })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                  min="1"
-                />
-              </div>
-            </div>
-
-            {selectedProgramId && programs.find(p => p.id === parseInt(selectedProgramId))?.type === 'Skill' && (
-               <div className="col-span-2 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                        <p className="text-xs font-black text-amber-900 uppercase tracking-tight">Finance Trigger Warning</p>
-                        <p className="text-sm text-amber-800 font-medium">Deploying a session for **Skill** development triggers a mandatory financial clearance request. This session will remain inactive until Finance approval.</p>
-                    </div>
-               </div>
-            )}
+            <button 
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-all hover:scale-110 active:scale-90 text-white/60 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="pt-6 flex justify-end gap-3 mt-4 border-t border-slate-100">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Session / Batch Designation</label>
+                <div className="relative group">
+                    <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    {...register('name', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    placeholder="Batch July 2025 - BCA Phase 1"
+                    />
+                </div>
+                </div>
+
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Program Specification</label>
+                <div className="relative group">
+                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <select
+                    {...register('programId', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                    >
+                    <option value="">-- Academic Program Required --</option>
+                    {programs.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} [{p.type}]</option>
+                    ))}
+                    </select>
+                </div>
+                </div>
+
+                <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (Start)</label>
+                <input
+                    type="date"
+                    {...register('startDate', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                />
+                </div>
+
+                <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (End)</label>
+                <input
+                    type="date"
+                    {...register('endDate', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                />
+                </div>
+
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Batch Seating Capacity</label>
+                <div className="relative group">
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    type="number"
+                    {...register('maxCapacity', { required: true, valueAsNumber: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    min="1"
+                    />
+                </div>
+                </div>
+
+                {selectedProgramId && programs.find(p => p.id === parseInt(selectedProgramId))?.type === 'Skill' && (
+                <div className="col-span-2 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+                        <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-xs font-black text-amber-900 uppercase tracking-tight">Finance Trigger Warning</p>
+                            <p className="text-sm text-amber-800 font-medium">Deploying a session for **Skill** development triggers a mandatory financial clearance request. This session will remain inactive until Finance approval.</p>
+                        </div>
+                </div>
+                )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
-              Abort
+              Abort Routine
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Serialize Changes' : 'Execute Generation')}
             </button>
           </div>
         </form>
+       </div>
       </Modal>
     </div>
   );

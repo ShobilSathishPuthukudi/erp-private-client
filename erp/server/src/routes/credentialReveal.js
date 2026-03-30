@@ -127,16 +127,18 @@ router.get('/reveal/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
 // Finance: Get Pending Queue
 router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
   try {
+    console.log("[CREDENTIALS] Fetching pending reveal queue...");
     const queue = await CredentialRequest.findAll({
       where: { status: 'pending' },
       include: [
-        { model: Department, as: 'center', attributes: ['name', ['id', 'uid']] },
-        { model: User, as: 'requester', attributes: ['name', 'uid'] }
+        { model: Department, as: 'center', attributes: ['name', ['id', 'centerId']], required: false },
+        { model: User, as: 'requester', attributes: ['name', 'uid'], required: false }
       ]
     });
-    res.json(queue);
+    res.json(queue || []);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -148,10 +150,10 @@ router.get('/my-requests', verifyToken, isAcademicOrAdmin, async (req, res) => {
       include: [{ model: Department, as: 'center', attributes: ['name', 'id'] }],
       order: [['createdAt', 'DESC']]
     });
-    res.json(requests);
+    res.json(requests || []);
   } catch (error) {
-    console.error('[CREDENTIAL_REVEAL] Error in my-requests:', error);
-    res.status(500).json({ error: error.message });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 

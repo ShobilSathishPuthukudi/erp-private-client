@@ -3,7 +3,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import http from 'http';
-import { Server } from 'socket.io';
 import { sequelize, models } from './models/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -46,19 +45,14 @@ import emiRoutes from './routes/emi.js';
 import metricRoutes from './routes/dashboardMetrics.js';
 import orgAdminRoutes from './routes/orgAdmin.js';
 import operationsRoutes from './routes/operations.js';
+import publicRoutes from './routes/public.js';
 import { initCronJobs } from './jobs/cronJobs.js';
 
 dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }
-});
+const io = null; 
 
 // Middleware
 app.use(cors({
@@ -68,9 +62,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Inject Socket.io into requests
+// Inject Socket.io into requests (NO-OP)
 app.use((req, res, next) => {
-  req.io = io;
+  req.io = null;
   next();
 });
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -110,17 +104,21 @@ app.use('/api/emi', emiRoutes);
 app.use('/api/dashboard', metricRoutes);
 app.use('/api/org-admin', orgAdminRoutes);
 app.use('/api/operations', operationsRoutes);
+app.use('/api/public', publicRoutes);
 
-// Socket.io Setup
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('[GLOBAL ERROR]:', err);
+  res.status(500).json({ 
+    message: err.message || 'Internal Server Error',
+    module: 'GLOBAL'
   });
 });
 
+// Socket.io Setup (REMOVED)
+
 // Initialize Background Daemon
-initCronJobs(io);
+initCronJobs();
 
 const cleanupDuplicateIndexes = async () => {
   try {
@@ -208,6 +206,10 @@ const startServer = (port) => {
     try {
       // 1. Sanitize Database Indexes to prevent ER_TOO_MANY_KEYS
       await cleanupDuplicateIndexes();
+
+      // 1.1 FORCE SYNC CRITICAL GOVERNANCE MODELS (GAP-5)
+      await models.Role.sync({ alter: true });
+      await models.Permission.sync({ alter: true });
 
       // 2. Sync models with a soft fail (Sync already verified manually via DESC)
       await sequelize.sync({ alter: true }).catch(err => {

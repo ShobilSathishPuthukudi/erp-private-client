@@ -6,7 +6,8 @@ import {
   Activity,
   PieChart,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import jsPDF from 'jspdf';
@@ -153,14 +154,14 @@ export default function AuditComplianceReport() {
           <select 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
           >
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
           <select 
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
           >
             {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -216,7 +217,7 @@ export default function AuditComplianceReport() {
                   {(reportData.flaggedActions || []).length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-8 py-20 text-center text-slate-400">
-                        <p className="font-bold italic">No exceptions flagged for review in this period.</p>
+                        <p className="font-bold">No exceptions flagged for review in this period.</p>
                       </td>
                     </tr>
                   ) : (reportData.flaggedActions || []).map((item: any) => (
@@ -250,15 +251,21 @@ export default function AuditComplianceReport() {
             <div className="space-y-4">
               <button 
                 onClick={handleDownloadPDF}
-                className="w-full py-4 bg-white text-slate-900 font-bold rounded-2xl flex items-center justify-center hover:scale-[1.02] active:scale-[0.98] transition-all group/btn"
+                className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
                 title="Generate standard compliance PDF"
               >
-                <FileCheck className="w-5 h-5 mr-3 text-blue-600" />
-                Generate Board PDF
+                <div className="flex items-center">
+                  <FileCheck className="w-5 h-5 mr-3 text-blue-400" />
+                  Generate PDF
+                </div>
+                <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
               </button>
-              <button className="w-full py-4 bg-slate-800 text-white font-bold rounded-2xl flex items-center justify-center hover:bg-slate-700 transition-all">
-                <Download className="w-4 h-4 mr-3" />
-                Excel Data Export
+              <button className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold">
+                <div className="flex items-center text-emerald-400">
+                  <Download className="w-5 h-5 mr-3" />
+                  Excel Data Export
+                </div>
+                <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>

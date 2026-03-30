@@ -6,8 +6,9 @@ const router = express.Router();
 const { Department, User } = models;
 
 const isOrgAdmin = (req, res, next) => {
-  if (req.user.role !== 'org-admin') {
-    return res.status(403).json({ error: 'Access denied: Requires org-admin role' });
+  const allowedRoles = ['org-admin', 'finance', 'hr', 'academic', 'system-admin'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Access denied: Requires administrative or institutional role' });
   }
   next();
 };
@@ -15,6 +16,7 @@ const isOrgAdmin = (req, res, next) => {
 router.get('/', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     const departments = await Department.findAll({
+      include: [{ model: User, as: 'admin', attributes: ['name', 'email', 'uid'] }],
       order: [['createdAt', 'DESC']]
     });
     res.json(departments);
@@ -56,14 +58,18 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
 router.put('/:id', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, adminId, status } = req.body;
+    const { name, type, adminId, status, features } = req.body;
 
     const dept = await Department.findByPk(id);
     if (!dept) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
-    await dept.update({ name, type, adminId: adminId || null, status });
+    const updateData = { name, type, adminId: adminId || null, status };
+    if (features) updateData.metadata = { features };
+
+    await dept.update(updateData);
+    await dept.reload({ include: [{ model: User, as: 'admin', attributes: ['name', 'email', 'uid'] }] });
     res.json(dept);
   } catch (error) {
     console.error('Update department error:', error);

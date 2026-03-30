@@ -1,20 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
+import { UserPlus, Clock, CheckCircle, Search, Filter, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { clsx } from 'clsx';
+import { Modal } from '@/components/shared/Modal';
+import AdmissionWizard from './AdmissionWizard';
 
 interface Student {
   id: number;
   name: string;
-  status: 'DRAFT' | 'PENDING_REVIEW' | 'OPS_APPROVED' | 'FINANCE_APPROVED' | 'REJECTED' | 'ENROLLED';
+  status: string;
   invoiceId?: number;
-  program?: { name: string, duration: number };
+  program?: { name: string, duration: number, type: string };
 }
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'enrolled'>('pending');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const fetchStudents = async () => {
     try {
@@ -28,16 +35,12 @@ export default function Students() {
     }
   };
 
-  const handleSubmitRecord = async (id: number) => {
-    try {
-      if (!window.confirm('Are you certain you wish to submit this manifold for institutional review? No further edits are permitted after this protocol.')) return;
-      await api.post(`/portals/study-center/students/${id}/submit`);
-      toast.success('Record successfully synchronized with Sub-Department review queue');
-      fetchStudents();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Submission protocol failure');
+  const filteredStudents = useMemo(() => {
+    if (activeTab === 'enrolled') {
+      return students.filter(s => s.status === 'ENROLLED');
     }
-  };
+    return students.filter(s => s.status !== 'ENROLLED' && s.status !== 'REJECTED');
+  }, [students, activeTab]);
 
   useEffect(() => {
     fetchStudents();
@@ -71,50 +74,110 @@ export default function Students() {
       }
     },
     {
-      id: 'actions',
-      header: 'Actions',
+      id: 'type',
+      header: 'Type',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          {row.original.status === 'DRAFT' && (
-            <button 
-              onClick={() => handleSubmitRecord(row.original.id)}
-              className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-            >
-              Submit to Sub-Dept
-            </button>
-          )}
-        </div>
+        <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+          {row.original.program?.type || 'N/A'}
+        </span>
       )
     },
-    { 
-      id: 'billing',
-      header: 'Initial Billing',
-      cell: ({ row }) => (
-        <span className="text-[10px] font-mono font-bold text-slate-500">
-          {row.original.invoiceId ? `Linked (#${row.original.invoiceId})` : 'Unlinked'}
-        </span>
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => activeTab === 'pending' && (
+        <button 
+          onClick={() => {
+            setEditingStudent(row.original);
+            setIsModalOpen(true);
+          }}
+          className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all active:scale-95 group"
+          title="Edit Student Data"
+        >
+          <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
+        </button>
       )
     }
   ];
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
+      <div className="flex justify-between items-end shrink-0">
         <div>
-           <h1 className="text-2xl font-bold text-slate-900">Assigned Students</h1>
-           <p className="text-slate-500">Monitor all students associated with this specific Study Center location</p>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Student Roster</h1>
+           <p className="text-slate-500 text-sm mt-1">Manage and monitor student enrollments for your center</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add Student
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit shrink-0">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={clsx(
+            "flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            activeTab === 'pending' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <Clock className="w-4 h-4" />
+          Pending Admissions
+        </button>
+        <button
+          onClick={() => setActiveTab('enrolled')}
+          className={clsx(
+            "flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            activeTab === 'enrolled' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <CheckCircle className="w-4 h-4" />
+          Enrolled Roster
+        </button>
+      </div>
+
+      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-2xl flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+            <div className="flex items-center gap-2">
+                <div className="p-2 bg-slate-100 rounded-lg"><Filter className="w-4 h-4 text-slate-500" /></div>
+                <span className="font-bold text-slate-700 capitalize">{activeTab} List</span>
+            </div>
+            <div className="flex items-center gap-3">
+                 <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"><Search className="w-4 h-4" /></button>
+            </div>
+        </div>
+        <div className="flex-1 min-h-0">
+          <DataTable 
+            columns={columns} 
+            data={filteredStudents} 
+            isLoading={isLoading} 
+            searchKey="name" 
+            searchPlaceholder="Search students by name..." 
+          />
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
-        <DataTable 
-          columns={columns} 
-          data={students} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Search students by name..." 
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingStudent(null);
+        }}
+        title={editingStudent ? `Refine Admission: ${editingStudent.name}` : "Institutional Admission Wizard"}
+        maxWidth="2xl"
+      >
+        <AdmissionWizard 
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingStudent(null);
+          }} 
+          onSuccess={fetchStudents} 
+          initialData={editingStudent}
         />
-      </div>
+      </Modal>
     </div>
   );
 }

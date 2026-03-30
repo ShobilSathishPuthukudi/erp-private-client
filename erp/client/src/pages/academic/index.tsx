@@ -9,7 +9,6 @@ import Sessions from './Sessions';
 import CredentialRequests from './CredentialRequests';
 import SecurityControl from './SecurityControl';
 import AcademicStaff from './AcademicStaff';
-import AcademicTasks from './AcademicTasks';
 import ReferredLeads from './ReferredLeads';
 import FinanceRequests from './FinanceRequests';
 import Exams from './Exams';
@@ -22,6 +21,9 @@ import PipelineTracking from './PipelineTracking';
 import ResubmissionLogs from './ResubmissionLogs';
 import CenterPerformance from './CenterPerformance';
 import SubDeptOverview from './SubDeptOverview';
+import DepartmentTeam from '@/components/team/DepartmentTeam';
+import DepartmentTasks from '@/components/team/DepartmentTasks';
+import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import { 
   Building2, 
   BookOpen, 
@@ -38,7 +40,7 @@ import {
 // Sub-module Placeholders (to be implemented in detail later or as requested)
 const UniversityDetails = () => <div className="p-8"><h2 className="text-2xl font-black">University Registry Depth</h2></div>;
 const ProgramDetails = () => <div className="p-8"><h2 className="text-2xl font-black">Program Architecture Depth</h2></div>;
-const Announcements = () => <div className="p-8"><h2 className="text-2xl font-black">Departmental Directives</h2></div>;
+import InternalAnnouncements from './Announcements';
 
 function DashboardLanding() {
   const [stats, setStats] = useState({
@@ -83,10 +85,10 @@ function DashboardLanding() {
             <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-xl border border-white/10">
                 <GraduationCap className="w-6 h-6 text-indigo-400" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300">IITS RPS ERP v3</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300">Academic Operations</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-none">
-            Academic <span className="text-indigo-400 font-outline-2">Operations</span> Backbone.
+            Academic <span className="text-indigo-400 font-outline-2">Operations</span>
           </h1>
           <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10 max-w-2xl">
             Unified institutional governance HUD for university accreditation, program architecture, and student eligibility appraisal workflows.
@@ -227,8 +229,10 @@ export default function AcademicDashboard() {
 
       {/* Operational Support */}
       <Route path="staff" element={<AcademicStaff />} />
-      <Route path="tasks" element={<AcademicTasks />} />
-      <Route path="announcements" element={<Announcements />} />
+      <Route path="team" element={<DepartmentTeam />} />
+      <Route path="tasks" element={<DepartmentTasks />} />
+      <Route path="leaves" element={<DepartmentLeaves />} />
+      <Route path="announcements" element={<InternalAnnouncements />} />
       <Route path="referrals" element={<ReferredLeads />} />
       <Route path="finance-requests" element={<FinanceRequests />} />
 

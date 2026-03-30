@@ -38,6 +38,7 @@ export const leaveSchema = z.object({
 export const universitySchema = z.object({
   body: z.object({
     name: z.string().min(2),
+    shortName: z.string().optional(),
     accreditation: z.string().optional(),
     websiteUrl: z.string().url().optional().or(z.literal('')),
     affiliationDoc: z.string().optional(),
@@ -48,9 +49,13 @@ export const universitySchema = z.object({
 export const programSchema = z.object({
   body: z.object({
     name: z.string().min(2),
-    universityId: z.coerce.number().int().positive(),
+    shortName: z.string().optional(),
+    universityId: z.coerce.number().int().positive().optional().nullable(),
     duration: z.coerce.number().int().positive(),
     intakeCapacity: z.coerce.number().int().positive().optional(),
     type: z.string().min(2),
+    totalFee: z.coerce.number().nonnegative().optional(),
+    paymentStructure: z.array(z.string()).optional(),
+    tenure: z.coerce.number().int().positive().optional(),
   })
 });

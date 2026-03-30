@@ -4,6 +4,8 @@ import { api } from '@/lib/api';
 import MyTasks from './MyTasks';
 import LeaveRequests from './LeaveRequests';
 import Announcements from './Announcements';
+import CRM from '../sales/CRM';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { 
   Trophy, 
@@ -13,7 +15,8 @@ import {
   Briefcase, 
   Calendar,
   ArrowRight,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function EmployeePortal() {
@@ -43,7 +46,7 @@ export default function EmployeePortal() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight italic">Performance Node</h1>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Performance Node</h1>
             <p className="text-slate-500 font-medium mt-1">Institutional workforce identity: <span className="text-slate-900 font-bold">{user?.uid}</span></p>
           </div>
           <div className="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex items-center gap-4">
@@ -119,7 +122,7 @@ export default function EmployeePortal() {
                  <Briefcase className="w-32 h-32" />
               </div>
               <div className="relative z-10">
-                 <h2 className="text-3xl font-black italic mb-2">My Desk</h2>
+                 <h2 className="text-3xl font-black mb-2">My Desk</h2>
                  <p className="text-slate-400 font-medium max-w-xs">Access your assigned operational deliverables and upload execution evidence.</p>
                  <div className="mt-8 flex items-center gap-3 text-blue-400 font-black uppercase text-xs tracking-[0.2em]">
                     <span>Enter Terminal</span>
@@ -133,7 +136,7 @@ export default function EmployeePortal() {
                  <Calendar className="w-32 h-32" />
               </div>
               <div className="relative z-10">
-                 <h2 className="text-3xl font-black italic mb-2 text-slate-900">Leave Console</h2>
+                 <h2 className="text-3xl font-black mb-2 text-slate-900">Leave Console</h2>
                  <p className="text-slate-500 font-medium max-w-xs">Manage your institutional presence and request administrative time-off.</p>
                  <div className="mt-8 flex items-center gap-3 text-blue-600 font-black uppercase text-xs tracking-[0.2em]">
                     <span>Open Requests</span>
@@ -141,6 +144,39 @@ export default function EmployeePortal() {
                  </div>
               </div>
            </Link>
+        </div>
+
+        {/* Sales Link & CRM for BDEs */}
+        <div className="bg-slate-50 border border-slate-100 rounded-[3rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div className="flex items-center gap-6">
+              <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-blue-100 italic font-black text-2xl">
+                 <ShieldCheck className="w-8 h-8 text-white/90" />
+              </div>
+              <div>
+                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Outreach</h2>
+                 <p className="text-slate-500 font-medium">Your unique center registration link is active. Share it to capture new leads into your pipeline.</p>
+              </div>
+           </div>
+           <div className="flex items-center gap-3 shrink-0">
+              <button 
+                onClick={() => {
+                  const link = `${window.location.origin}/register-center/${user?.uid}`;
+                  navigator.clipboard.writeText(link);
+                  toast.success('Partnership link copied to clipboard!');
+                }}
+                className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+              >
+                <Zap className="w-4 h-4 text-blue-600" />
+                Copy Share Link
+              </button>
+              <Link 
+                to="crm"
+                className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3"
+              >
+                Open Pipeline
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+           </div>
         </div>
       </div>
     );
@@ -152,6 +188,7 @@ export default function EmployeePortal() {
       <Route path="tasks" element={<MyTasks />} />
       <Route path="leaves" element={<LeaveRequests />} />
       <Route path="announcements" element={<Announcements />} />
+      <Route path="crm/*" element={<CRM />} />
     </Routes>
   );
 }

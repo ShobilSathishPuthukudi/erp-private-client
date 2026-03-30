@@ -46,7 +46,12 @@ import Subject from './Subject.js';
 import Module from './Module.js';
 import CenterSubDept from './CenterSubDept.js';
 import EMI from './EMI.js';
+import CenterProgram from './CenterProgram.js';
 import Attendance from './Attendance.js';
+import Referral from './Referral.js';
+import Permission from './Permission.js';
+import Role from './Role.js';
+import AcademicActionRequest from './AcademicActionRequest.js';
 
 // Department -> User (Admin)
 Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
@@ -93,21 +98,29 @@ Department.hasMany(ProgramOffering, { foreignKey: 'centerId', as: 'offerings' })
 ProgramOffering.belongsTo(Program, { foreignKey: 'programId' });
 Program.hasMany(ProgramOffering, { foreignKey: 'programId', as: 'offeringCenters' });
 
+// Center -> Program Mapping (New Phase 3 Standard)
+CenterProgram.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
+Department.hasMany(CenterProgram, { foreignKey: 'centerId', as: 'mappedPrograms' });
+CenterProgram.belongsTo(Program, { foreignKey: 'programId' });
+Program.hasMany(CenterProgram, { foreignKey: 'programId' });
+CenterProgram.belongsTo(ProgramFee, { as: 'feeSchema', foreignKey: 'feeSchemaId' });
+ProgramFee.hasMany(CenterProgram, { foreignKey: 'feeSchemaId' });
+
 // Payment -> Student
 Payment.belongsTo(Student, { as: 'student', foreignKey: 'studentId' });
 Student.hasMany(Payment, { as: 'payments', foreignKey: 'studentId' });
 
-// Invoice -> Payment
+// Step 5: Master Associations (Unaliased for direct query consistency)
+Invoice.belongsTo(Student, { as: 'student', foreignKey: 'studentId' });
 Invoice.belongsTo(Payment, { foreignKey: 'paymentId' });
-Payment.hasOne(Invoice, { foreignKey: 'paymentId' });
 
-// Invoice -> Student
-Invoice.belongsTo(Student, { foreignKey: 'studentId' });
 Student.hasMany(Invoice, { foreignKey: 'studentId' });
+Payment.hasMany(Invoice, { foreignKey: 'paymentId' });
 
-// Student -> Invoice (Gated activation link)
+// Gated activation link (Must be aliased to avoid ambiguity with studentId link)
+Student.belongsTo(Invoice, { as: 'activationInvoice', foreignKey: 'invoiceId' });
 Student.belongsTo(Invoice, { as: 'invoice', foreignKey: 'invoiceId' });
-Invoice.hasMany(Student, { foreignKey: 'invoiceId' });
+Invoice.hasMany(Student, { as: 'gatedStudents', foreignKey: 'invoiceId' });
 
 // EMI -> Student/Invoice
 Student.hasMany(EMI, { foreignKey: 'studentId', as: 'emis' });
@@ -129,6 +142,12 @@ AuditLog.belongsTo(User, { as: 'user', foreignKey: 'userId', targetKey: 'uid' })
 
 Lead.belongsTo(User, { foreignKey: 'assignedTo', targetKey: 'uid', as: 'assignee' });
 User.hasMany(Lead, { foreignKey: 'assignedTo', sourceKey: 'uid', as: 'leads' });
+
+// Requested by user for stabilization
+Lead.belongsTo(User, { foreignKey: 'employeeId', as: 'employee' });
+Lead.belongsTo(Department, { as: 'Center', foreignKey: 'centerId' });
+Referral.belongsTo(User, { foreignKey: 'userId', targetKey: 'uid' });
+User.hasOne(Referral, { foreignKey: 'userId', sourceKey: 'uid' });
 
 // Lead -> LeadTouchpoint
 Lead.hasMany(LeadTouchpoint, { foreignKey: 'leadId', as: 'touchpoints' });
@@ -183,6 +202,10 @@ CredentialRequest.belongsTo(Department, { foreignKey: 'centerId', as: 'center' }
 User.hasMany(CredentialRequest, { foreignKey: 'requesterId', sourceKey: 'uid', as: 'requests' });
 CredentialRequest.belongsTo(User, { foreignKey: 'requesterId', targetKey: 'uid', as: 'requester' });
 
+// AcademicActionRequest -> User
+AcademicActionRequest.belongsTo(User, { as: 'requester', foreignKey: 'requesterId', targetKey: 'uid' });
+AcademicActionRequest.belongsTo(User, { as: 'approver', foreignKey: 'approvedBy', targetKey: 'uid' });
+
 // User Hierarchy (Self-reference)
 User.belongsTo(User, { as: 'manager', foreignKey: 'reportingManagerUid', targetKey: 'uid' });
 User.hasMany(User, { as: 'subordinates', foreignKey: 'reportingManagerUid', sourceKey: 'uid' });
@@ -190,6 +213,10 @@ User.hasMany(User, { as: 'subordinates', foreignKey: 'reportingManagerUid', sour
 // User -> Vacancy
 User.belongsTo(Vacancy, { foreignKey: 'vacancyId', as: 'hiringVacancy' });
 Vacancy.hasMany(User, { foreignKey: 'vacancyId', as: 'employees' });
+
+// Vacancy -> Department
+Vacancy.belongsTo(Department, { as: 'department', foreignKey: 'departmentId' });
+Department.hasMany(Vacancy, { foreignKey: 'departmentId' });
 
 // User -> Attendance
 User.hasMany(Attendance, { foreignKey: 'userId', sourceKey: 'uid', as: 'attendanceRecords' });
@@ -209,7 +236,7 @@ PaymentDistribution.belongsTo(Payment, { foreignKey: 'paymentId' });
 
 // CEOPanel -> User
 CEOPanel.belongsTo(User, { as: 'ceoUser', foreignKey: 'userId', targetKey: 'uid' });
-User.hasMany(CEOPanel, { foreignKey: 'userId', sourceKey: 'uid' });
+User.hasMany(CEOPanel, { as: 'ceoPanels', foreignKey: 'userId', sourceKey: 'uid' });
 
 Announcement.belongsTo(User, { foreignKey: 'authorId', targetKey: 'uid', as: 'author' });
 
@@ -261,6 +288,8 @@ CenterSubDept.belongsTo(Department, { foreignKey: 'centerId' });
 
 // ChangeRequest -> Center
 ChangeRequest.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
+ChangeRequest.belongsTo(Program, { as: 'currentProgram', foreignKey: 'currentProgramId' });
+ChangeRequest.belongsTo(Program, { as: 'requestedProgram', foreignKey: 'requestedProgramId' });
 Department.hasMany(ChangeRequest, { foreignKey: 'centerId' });
 
 // AdmissionSession -> Program
@@ -331,37 +360,65 @@ const models = {
   Subject,
   Module,
   CenterSubDept,
+  CenterProgram,
   Vacancy,
   EMI,
-  Attendance
+  Attendance,
+  Referral,
+  Permission,
+  Role,
+  AcademicActionRequest
 };
 
 // GAP-5: Global Audit Interceptor
 // This interceptor captures every mutation in the system without requiring manual logging in routes.
 const auditHook = async (action, instance, options) => {
-  if (instance.constructor.name === 'AuditLog') return;
+  // GAP-5: Robust recursion guard (Case-insensitive)
+  const modelName = instance.constructor.name?.toLowerCase();
+  if (modelName === 'auditlog' || modelName === 'audit_log') return;
 
   const store = context.getStore();
   if (!store) return; // Ignore background tasks or unauthenticated requests for now
 
+  // Security Best Practice: Sanitize internal integers and PII from auditable footprint
+  const sanitizePayload = (data) => {
+    if (!data) return null;
+    const clone = { ...data };
+    // Prevent IDOR by stripping internal integer primary keys
+    if (clone.id && typeof clone.id === 'number') delete clone.id;
+    // Strip sensitive cryptographic artifacts
+    if (clone.password !== undefined) delete clone.password;
+    if (clone.devCredential !== undefined) delete clone.devCredential;
+    // Strip noisy ORM timestamps for cleaner diffs
+    if (clone.createdAt !== undefined) delete clone.createdAt;
+    if (clone.updatedAt !== undefined) delete clone.updatedAt;
+    return clone;
+  };
+
   try {
+    const model = instance.constructor;
     await AuditLog.create({
       userId: store.userId,
       action: action,
-      entity: instance.constructor.name,
+      entity: model.name || instance.constructor.name,
       module: 'System Intercept', // Can be refined if needed
-      before: action === 'Create' ? null : instance._previousDataValues,
-      after: action === 'Delete' ? null : instance.dataValues,
+      before: action === 'Create' ? null : sanitizePayload(instance._previousDataValues),
+      after: action === 'Delete' ? null : sanitizePayload(instance.dataValues),
       timestamp: new Date()
-    });
+    }, { transaction: options.transaction });
   } catch (error) {
-    console.error('Global Audit Failure:', error);
+    console.error('Global Audit Failure:', {
+      error: error.message,
+      action,
+      entity: instance.constructor.name
+    });
   }
 };
 
 // Register hooks on all models except AuditLog themselves to avoid recursion
 Object.values(sequelize.models).forEach((model) => {
-  if (model.name === 'AuditLog') return;
+  const modelName = model.name?.toLowerCase();
+  if (modelName === 'auditlog' || modelName === 'audit_log') return;
   
   model.addHook('afterCreate', (instance, options) => auditHook('Create', instance, options));
   model.addHook('afterUpdate', (instance, options) => auditHook('Update', instance, options));

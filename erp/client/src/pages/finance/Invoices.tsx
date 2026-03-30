@@ -29,8 +29,10 @@ export default function Invoices() {
     const fetchInvoices = async () => {
       try {
         const res = await api.get('/finance/invoices');
-        setInvoices(res.data);
+        setInvoices(res.data || []);
       } catch (error) {
+        console.error("INVOICE_FETCH_ERROR:", error);
+        setInvoices([]);
         toast.error('Failed to fetch historical invoices');
       } finally {
         setIsLoading(false);

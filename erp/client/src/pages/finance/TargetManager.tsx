@@ -112,7 +112,7 @@ export default function TargetManager() {
                  <input 
                    type="text"
                    className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 ring-blue-500 transition-all"
-                   placeholder="e.g. BDE-001"
+                   placeholder="BDE-001"
                    value={formData.targetableId}
                    onChange={(e) => setFormData({ ...formData, targetableId: e.target.value })}
                  />

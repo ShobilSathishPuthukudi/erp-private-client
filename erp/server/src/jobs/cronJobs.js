@@ -21,7 +21,7 @@ const updateJobStatus = async (name, status, result) => {
   }
 };
 
-export const initCronJobs = (io) => {
+export const initCronJobs = () => {
   // GAP-3: Task Escalation & Status Sync (Every 4 Hours)
   cron.schedule('0 */4 * * *', async () => {
     console.log('[CRON] Running Task Escalation Engine...');
@@ -45,42 +45,60 @@ export const initCronJobs = (io) => {
       }
 
       // 2. GAP-2: Multi-tier Escalation
-      // LEVEL 1: 48h Overdue -> Dept Admin
+      // LEVEL 1: 48h Overdue -> MANAGER
       const level1Cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
       const level1Tasks = await Task.findAll({
-        where: { status: 'overdue', deadline: { [Op.lt]: level1Cutoff } },
-        include: [{ model: User, as: 'assignee', include: [Department] }]
+        where: { 
+          status: 'overdue', 
+          deadline: { [Op.lt]: level1Cutoff },
+          escalationLevel: 'EMPLOYEE'
+        },
+        include: [{ model: User, as: 'assignee' }]
       });
 
       for (const task of level1Tasks) {
-        const deptAdminId = task.assignee?.department?.adminId;
-        if (deptAdminId) {
-          await Notification.create({
-            userUid: deptAdminId,
-            type: 'warning',
-            message: `ESCALATION LEVEL 1: Task "${task.title}" assigned to ${task.assignee.name} is >48h overdue.`,
+        const managerUid = task.assignee?.reportingManagerUid;
+        if (managerUid) {
+          await task.update({ 
+            assignedTo: managerUid, 
+            escalationLevel: 'MANAGER',
+            escalatedAt: now,
+            remarks: 'Auto-escalation: Overdue > 48h (Employee -> Manager)'
           });
-          if (io) io.emit('notification', { targetUid: deptAdminId, title: 'Escalation Alert', type: 'warning' });
+          await Notification.create({
+            userUid: managerUid,
+            type: 'warning',
+            message: `ESCALATION LEVEL 1: Task "${task.title}" is >48h overdue. Assigned to you for intervention.`,
+          });
           escalations++;
         }
       }
 
-      // LEVEL 2: 96h Overdue -> CEO
-      const level2Cutoff = new Date(now.getTime() - 96 * 60 * 60 * 1000);
+      // LEVEL 2: Manager no action within 48h of escalation -> CEO
+      const level2Cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
       const level2Tasks = await Task.findAll({
-        where: { status: 'overdue', deadline: { [Op.lt]: level2Cutoff } }
+        where: { 
+          status: 'overdue', 
+          escalationLevel: 'MANAGER',
+          escalatedAt: { [Op.lt]: level2Cutoff } 
+        }
       });
 
       if (level2Tasks.length > 0) {
-        const ceo = await User.findOne({ where: { role: 'ceo' } });
+        const ceo = await User.findOne({ where: { role: 'ceo' } }) || await User.findOne({ where: { role: 'system-admin' } });
         if (ceo) {
           for (const task of level2Tasks) {
+            await task.update({ 
+              assignedTo: ceo.uid, 
+              escalationLevel: 'CEO',
+              escalatedAt: now,
+              remarks: 'CRITICAL: CEO Escalation (Manager inaction > 48h)'
+            });
             await Notification.create({
               userUid: ceo.uid,
               type: 'error',
-              message: `CRITICAL ESCALATION: Task "${task.title}" is >96h overdue. Senior intervention required.`,
+              message: `CRITICAL ESCALATION: Task "${task.title}" skipped manager intervention. Senior intervention required.`,
             });
-            if (io) io.emit('notification', { targetUid: ceo.uid, title: 'CEO Alert', type: 'error' });
             escalations++;
           }
         }
@@ -145,14 +163,11 @@ export const initCronJobs = (io) => {
 
       for (const emi of overdueEmis) {
         await emi.update({ status: 'overdue' });
-        
         await Notification.create({
           userUid: `STU${emi.studentId}`,
           type: 'warning',
           message: `OVERDUE NOTICE: Your installment #${emi.installmentNo} for ₹${emi.amount} is overdue. Please settle immediately.`
         });
-        
-        if (io) io.emit('notification', { targetUid: `STU${emi.studentId}`, title: 'Payment Overdue', type: 'warning' });
       }
 
       const result = `Flagged ${overdueEmis.length} EMIs as overdue.`;
@@ -168,6 +183,6 @@ export const initCronJobs = (io) => {
 };
 
 // Tool for Manual Execution (to be used by API)
-export const runJobManually = async (jobName, io) => {
+export const runJobManually = async (jobName) => {
    console.log(`[CRON] Manually triggering ${jobName}...`);
 };

@@ -10,7 +10,9 @@ import {
   AlertCircle,
   Building2,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Shield,
+  Database
 } from 'lucide-react';
 import { Modal } from '../../components/shared/Modal';
 import DepartmentCreate from './DepartmentCreate';
@@ -18,12 +20,27 @@ import DepartmentCreate from './DepartmentCreate';
 export default function DepartmentsList() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [policy, setPolicy] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDept, setSelectedDept] = useState<any>(null);
 
   useEffect(() => {
     fetchDepartments();
+    fetchPolicy();
   }, []);
+
+  const fetchPolicy = async () => {
+    try {
+      const response = await fetch('/api/org-admin/config/policies');
+      if (response.ok) {
+        const data = await response.json();
+        setPolicy(data.governance_policy);
+      }
+    } catch (error) {
+      console.error('Failed to fetch governance policy:', error);
+    }
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -67,10 +84,27 @@ export default function DepartmentsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
 
-  const filteredDepts = departments.filter(dept => 
-    (dept.name.toLowerCase().includes(searchTerm.toLowerCase()) || (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (filterType === 'All' || dept.type === filterType)
-  );
+  const filteredDepts = departments.filter(dept => {
+    const matchesSearch = (dept.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (filterType === 'All') return matchesSearch;
+
+    const defaults = ['HR', 'Finance', 'Sales', 'Operations'];
+    const subs = ['BVoc', 'Online', 'Skill', 'Open School'];
+
+    if (filterType === 'Default') {
+      return matchesSearch && defaults.includes(dept.name);
+    }
+    if (filterType === 'Sub') {
+      return matchesSearch && subs.includes(dept.name);
+    }
+    if (filterType === 'Custom') {
+      return matchesSearch && !defaults.includes(dept.name) && !subs.includes(dept.name);
+    }
+
+    return matchesSearch;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -83,17 +117,22 @@ export default function DepartmentsList() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">All Departments</h1>
-          <p className="text-slate-500 mt-1">The master list of organizational units and their administrators.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+            <Database className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">All Departments</h1>
+            <p className="text-slate-500 mt-1">The master list of organizational units and their administrators.</p>
+          </div>
         </div>
         <div className="flex gap-3">
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center"
+            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Register Dept
+            <Plus className="w-5 h-5 mr-2" />
+            New Department
           </button>
         </div>
       </div>
@@ -101,7 +140,6 @@ export default function DepartmentsList() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        maxWidth="4xl"
         hideHeader={true}
       >
         <DepartmentCreate 
@@ -130,7 +168,7 @@ export default function DepartmentsList() {
             />
           </div>
           <div className="flex items-center gap-3 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 tracking-wider">
               <Filter className="w-3.5 h-3.5" />
               <span>Type</span>
             </div>
@@ -139,11 +177,9 @@ export default function DepartmentsList() {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
-              <option value="All">All Types</option>
-              <option value="Operations">Operations</option>
-              <option value="Finance">Finance</option>
-              <option value="HR">HR</option>
-              <option value="Sales">Sales</option>
+              <option value="All">All Departments</option>
+              <option value="Default">Default Departments</option>
+              <option value="Sub">Sub Departments</option>
               <option value="Custom">Custom</option>
             </select>
           </div>
@@ -152,7 +188,7 @@ export default function DepartmentsList() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-4">Hydrating Institutional Data...</p>
+             <p className="text-xs font-bold text-slate-400 tracking-wider mt-4">Hydrating institutional data...</p>
           </div>
         ) : filteredDepts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed text-slate-400">
@@ -171,7 +207,7 @@ export default function DepartmentsList() {
                       <h3 className="text-xl font-bold text-slate-900 mb-2 truncate" title={dept.name}>{dept.name}</h3>
                       <div className="flex flex-wrap gap-2">
                         {getStatusBadge(dept.status === 'active' || dept.status === 'Active' ? 'Active' : 'Inactive')}
-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-widest whitespace-nowrap">
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-bold tracking-wider whitespace-nowrap">
                           {dept.type}
                         </span>
                       </div>
@@ -179,32 +215,54 @@ export default function DepartmentsList() {
                     <div className="flex-shrink-0 bg-slate-50 p-3 rounded-2xl border border-slate-100 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-800 transition-all duration-300 shadow-sm shadow-slate-200/50">
                       <Building2 className="w-6 h-6" />
                     </div>
+                   </div>
+
+                   <div className="space-y-2">
+                    <p className="text-[10px] text-slate-400 font-bold tracking-wider px-1">Active features</p>
+                    <div className="flex flex-wrap gap-2">
+                        {(dept.metadata?.features || dept.features || []).map((f: any) => {
+                            const id = typeof f === 'string' ? f : f.id;
+                            const perms = typeof f === 'string' ? ['read'] : (f.permissions || []);
+                            const permSuffix = perms.length > 0 
+                                ? ` (${perms.map((p: string) => p.charAt(0).toLowerCase()).join('/')})` 
+                                : '';
+                            
+                            return (
+                                <span key={id} className="bg-slate-50 text-slate-600 text-[9px] px-2 py-0.5 rounded-lg font-bold border border-slate-100 tracking-tighter">
+                                    {id}{permSuffix}
+                                </span>
+                            );
+                        })}
+                        {(dept.metadata?.features || dept.features || []).length === 0 && (
+                            <span className="text-[9px] text-slate-400 font-medium italic">No features provisioned</span>
+                        )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 uppercase">
-                      {(dept.admin?.name || 'U')[0]}
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
+                      {(dept.admin?.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Admin Managed By</p>
+                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">Admin managed by</p>
                       <p className={`text-xs font-bold ${!dept.admin ? 'text-rose-500' : 'text-slate-700'}`}>{dept.admin?.name || 'Unassigned'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex justify-end items-center gap-2 pt-2">
                     <button 
                       onClick={() => {
                         setSelectedDept(dept);
                         setIsModalOpen(true);
                       }}
-                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-slate-900 hover:bg-slate-100/50 hover:border-slate-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
-                      title="Edit Department"
+                      className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all hover:scale-110 active:scale-95"
+                      title="Edit department"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => toggleStatus(dept.id, dept.status)}
-                      className={`p-3 rounded-xl transition-all border border-slate-100 active:scale-[0.95] ${
+                      className={`p-2.5 rounded-xl transition-all hover:scale-110 active:scale-95 ${
                         dept.status === 'active' || dept.status === 'Active' 
                         ? 'bg-rose-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200' 
                         : 'bg-green-50/50 text-slate-400 hover:text-green-600 hover:bg-green-100/50 hover:border-green-200'
@@ -217,7 +275,7 @@ export default function DepartmentsList() {
                       <button 
                         onClick={() => deleteDept(dept.id)}
                         className="p-3 bg-slate-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
-                        title="Delete Department"
+                        title="Delete department"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -254,10 +312,57 @@ export default function DepartmentsList() {
             historical audit trails.
           </p>
         </div>
-        <button className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10">
+        <button 
+          onClick={() => setIsPolicyModalOpen(true)}
+          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10"
+        >
           Governance Policy
         </button>
       </div>
+
+      <Modal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        title={policy?.title || "Institutional Governance & Hierarchy"}
+      >
+        <div className="space-y-6">
+          <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl">
+            <h3 className="text-indigo-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
+              <Shield className="w-4 h-4" />
+              Institutional Structure
+            </h3>
+            <p className="text-indigo-800 text-sm leading-relaxed">
+              {policy?.description || "The institutional hierarchy enforces a strictly layered governance model. Departments are autonomous units linked to a centralized Permission Matrix that defines access levels for every role within the organization."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(policy?.blocks || [
+              { title: "Departmental Autonomy", content: "Each department operates within its provisioned data boundaries. Personnel management and resource allocation are isolated ensuring peak organizational stability." },
+              { title: "Governance Matrix", content: "Structural changes are synchronized with the Master Permission Matrix. This ensures that any new department inherits the institution's standardized identity system." }
+            ]).map((block: any, i: number) => (
+              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm">
+                <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                  {block.title}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {block.content}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <button 
+              onClick={() => setIsPolicyModalOpen(false)}
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm"
+            >
+              Acknowledge Policy
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

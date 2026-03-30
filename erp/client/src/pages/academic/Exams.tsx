@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
+import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Calendar, Plus, CheckCircle2, Clock, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, AlertCircle, ClipboardCheck, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -149,13 +150,22 @@ export default function Exams() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Schedule institutional assessments and manage academic transcript entry protocols.</p>
         </div>
-        <button 
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
+              <ClipboardCheck className="w-3.5 h-3.5 text-rose-500" />
+              Assessment Grid Control
+           </div>
+        </div>
+      </div>
+
+      <div className="max-w-md">
+        <DashCard 
+          title="Schedule Institutional Assessment"
+          description="Initiate new exam schedules across configured cohorts."
           onClick={() => { reset(); setIsModalOpen(true); }}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-100/10 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Schedule New Exam</span>
-        </button>
+          icon={ClipboardCheck}
+          actionLabel="Schedule New Exam"
+        />
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
@@ -168,75 +178,98 @@ export default function Exams() {
         />
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Schedule Institutional Assessment"
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Assessment Name</label>
-              <input
-                {...register('name', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                placeholder="e.g. Summer Semester 2026 - Internal"
-              />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
+        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+          <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                <ClipboardCheck className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
+                  Examination Engine
+                </p>
+                <h2 className="text-xl font-bold tracking-tight">
+                  Schedule Assessment
+                </h2>
+              </div>
             </div>
+            <button 
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-all hover:scale-110 active:scale-90 text-white/60 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Target Program Architecture</label>
-              <select
-                {...register('programId', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-              >
-                <option value="">-- Select Academic Program --</option>
-                {programs.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} [{p.type}]</option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Assessment Name</label>
+                <input
+                    {...register('name', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    placeholder="Summer Semester 2026 - Internal"
+                />
+                </div>
 
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Active Admission Intake</label>
-              <select
-                {...register('sessionId', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-              >
-                <option value="">-- Select Approved Batch --</option>
-                {sessions.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} [{s.program?.name}]</option>
-                ))}
-              </select>
-            </div>
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Target Program Architecture</label>
+                <select
+                    {...register('programId', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                >
+                    <option value="">-- Select Academic Program --</option>
+                    {programs.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} [{p.type}]</option>
+                    ))}
+                </select>
+                </div>
 
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Commencement Date</label>
-              <input
-                type="date"
-                {...register('date', { required: true })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-              />
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Active Admission Intake</label>
+                <select
+                    {...register('sessionId', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                >
+                    <option value="">-- Select Approved Batch --</option>
+                    {sessions.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} [{s.program?.name}]</option>
+                    ))}
+                </select>
+                </div>
+
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Commencement Date</label>
+                <input
+                    type="date"
+                    {...register('date', { required: true })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                />
+                </div>
             </div>
           </div>
 
-          <div className="pt-6 flex justify-end gap-3 mt-4 border-t border-slate-100">
+          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
               Abort Routine
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Scheduling...' : 'Execute Schedule'}
             </button>
           </div>
         </form>
+       </div>
       </Modal>
     </div>
   );

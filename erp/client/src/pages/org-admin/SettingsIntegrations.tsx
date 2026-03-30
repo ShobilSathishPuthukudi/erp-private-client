@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Lock
+  Lock,
+  Link
 } from 'lucide-react';
 
 export default function SettingsIntegrations() {
@@ -18,7 +19,7 @@ export default function SettingsIntegrations() {
   const [smtpConfig, setSmtpConfig] = useState({
     host: 'smtp.gmail.com',
     port: '587',
-    sender: 'noreply@iitsrps.com',
+    sender: 'noreply@erp.com',
     password: ''
   });
 
@@ -70,10 +71,15 @@ export default function SettingsIntegrations() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Infrastructure Gateway Hub</h1>
-        <p className="text-slate-500 mt-1 font-medium">Securely connect IITS ERP to external messaging and payment services.</p>
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+          <Link className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Infrastructure Gateway Hub</h1>
+          <p className="text-slate-500 mt-1 font-medium">Securely connect the ERP system to external messaging and payment services.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
@@ -123,7 +129,7 @@ export default function SettingsIntegrations() {
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Sender Email ID</label>
                     <input 
                       type="text" 
-                      placeholder="noreply@iitsrps.com" 
+                      placeholder="noreply@erp.com" 
                       className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-900 outline-none" 
                       value={smtpConfig.sender}
                       onChange={(e) => setSmtpConfig({ ...smtpConfig, sender: e.target.value })}
@@ -182,7 +188,7 @@ export default function SettingsIntegrations() {
                 Webhook Listener URL (Auto-generated)
               </label>
               <div className="flex items-center gap-2 p-4 bg-slate-900 border border-slate-800 rounded-2xl text-blue-300 font-mono text-xs shadow-inner">
-                https://api.iits-erp.com/webhooks/payments/razorpay
+                https://api.erp.com/webhooks/payments/razorpay
                 <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
               </div>
             </div>

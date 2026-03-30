@@ -88,7 +88,7 @@ export default function ReferralForm() {
                         <input 
                             required
                             className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            placeholder="e.g. Dr. Satish Kumar"
+                            placeholder="Dr. Satish Kumar"
                             value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                         />
                     </div>

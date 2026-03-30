@@ -1,16 +1,17 @@
 import express from 'express';
+import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { models } from '../models/index.js';
+import { sequelize, models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { loginSchema } from '../lib/schemas.js';
 
+const { User, Department, Student } = models;
 const router = express.Router();
-const { User } = models;
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -88,7 +89,7 @@ router.post('/logout', (req, res) => {
 
 router.post('/update-profile', verifyToken, async (req, res) => {
   try {
-    const { name, oldPassword, newPassword } = req.body;
+    const { name, oldPassword, newPassword, phone, dateOfBirth, bio, address } = req.body;
     const userId = req.user.uid;
 
     const user = await User.findOne({ where: { uid: userId } });
@@ -121,7 +122,31 @@ router.post('/update-profile', verifyToken, async (req, res) => {
       await user.save();
     }
 
-    res.json({ message: 'Profile updated successfully', user: { name: user.name } });
+    if (phone !== undefined && phone !== user.phone) {
+      user.phone = phone;
+      updated = true;
+    }
+
+    if (dateOfBirth !== undefined && dateOfBirth !== user.dateOfBirth) {
+      user.dateOfBirth = dateOfBirth || null;
+      updated = true;
+    }
+
+    if (bio !== undefined && bio !== user.bio) {
+      user.bio = bio;
+      updated = true;
+    }
+
+    if (address !== undefined && address !== user.address) {
+      user.address = address;
+      updated = true;
+    }
+
+    if (updated) {
+      await user.save();
+    }
+
+    res.json({ message: 'Profile updated successfully', user: { name: user.name, phone: user.phone, dateOfBirth: user.dateOfBirth, bio: user.bio, address: user.address, avatar: user.avatar } });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -150,6 +175,213 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
   } catch (error) {
     console.error('Avatar upload error:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+router.get('/demo-students', async (req, res) => {
+  try {
+    const students = await Student.findAll({
+      where: { status: 'ENROLLED' },
+      limit: 24,
+      attributes: ['id', 'name', 'email'],
+      order: [['createdAt', 'DESC']]
+    });
+    
+    // Map to user-friendly credentials for the login popup
+    const formatted = students.map(s => ({
+      uid: `STU${s.id}`,
+      name: s.name,
+      email: s.email || `STU${s.id}@erp.com`
+
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Demo Students Fetch Error:', error);
+    res.status(500).json({ error: 'Failed to fetch enrolled student roster' });
+  }
+});
+
+router.get('/latest-center', async (req, res) => {
+  try {
+    const latestUser = await User.findOne({
+      where: { 
+        role: { [Op.in]: ['center', 'study-center'] },
+        status: 'active' 
+      },
+      order: [['createdAt', 'DESC']],
+      attributes: ['name', 'email']
+    });
+
+    if (!latestUser) return res.status(404).json({ error: 'No centers found' });
+    res.json(latestUser);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch latest center' });
+  }
+});
+
+router.get('/demo-centers', async (req, res) => {
+  try {
+    const centers = await User.findAll({
+      where: { 
+        role: { [Op.in]: ['center', 'study-center'] },
+        status: 'active'
+      },
+      attributes: ['uid', 'name', 'email'],
+      order: [['name', 'ASC']]
+    });
+    
+    res.json(centers);
+  } catch (error) {
+    console.error('Demo Centers Fetch Error:', error);
+    res.status(500).json({ error: 'Failed to fetch verified center roster' });
+  }
+});
+
+router.get('/demo-ceos', async (req, res) => {
+  try {
+    const { CEOPanel, User } = models;
+    // Force schema consistency for the dev vault field
+    await CEOPanel.sync({ alter: true });
+
+    // Fetch all executive panels with their identity records
+    const panels = await CEOPanel.findAll({
+      include: [{ 
+        model: User, 
+        as: 'ceoUser', 
+        attributes: ['uid', 'name', 'email'] 
+      }],
+      order: [['name', 'ASC']],
+      raw: false // Need instances for associated access or use nested attributes
+    });
+
+    // Map to the standard identity payload used by the login quick-panel
+    const formatted = panels.map(panel => {
+      const user = panel.ceoUser || { 
+        uid: panel.userId || `PANEL_${panel.id}`, 
+        name: panel.name, 
+        email: `ceo_${panel.id}@erp.com` 
+ 
+      };
+
+      return {
+        uid: user.uid,
+        name: panel.name, // Use panel name for better identification
+        email: user.email,
+        password: panel.devCredential || 'password123'
+      };
+    });
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Executive Roster Critical Failure:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: 'Failed to fetch executive roster', details: error.message });
+  }
+});
+
+router.get('/restore-demo', async (req, res) => {
+  try {
+    const { CenterProgram, Program, Announcement, Student } = models;
+    const demoEmail = 'demo@erp.com';
+
+    
+    const t = await sequelize.transaction();
+    try {
+      // 1. Cleanup all existing demo artifacts to ensure a clean state
+      // Use role and name filters to isolate Demo Org data
+      const oldUser = await User.findOne({ where: { email: demoEmail }, transaction: t });
+      if (oldUser) {
+          // Delete dependent records first
+          await models.Announcement.destroy({ where: { authorId: oldUser.uid }, transaction: t });
+          await models.Student.destroy({ where: { centerId: oldUser.deptId }, transaction: t });
+          await models.AdmissionSession.destroy({ where: { centerId: oldUser.deptId }, transaction: t });
+          await CenterProgram.destroy({ where: { centerId: oldUser.deptId }, transaction: t });
+          await oldUser.destroy({ transaction: t });
+      }
+      await Department.destroy({ where: { name: 'Demo Org' }, transaction: t });
+
+      // 2. Reconstruct Infrastructure
+      const center = await Department.create({
+        name: 'Demo Org',
+        shortName: 'DEMO',
+        type: 'center',
+        status: 'active',
+        centerStatus: 'ACTIVE'
+      }, { transaction: t });
+
+      const allProgs = await Program.findAll({ transaction: t });
+      const createdMappings = [];
+      for (const prog of allProgs) {
+        const m = await CenterProgram.create({
+          centerId: center.id,
+          programId: prog.id,
+          subDeptId: prog.subDeptId || 1,
+          isActive: true
+        }, { transaction: t });
+        createdMappings.push(m);
+      }
+
+      const demoUser = await User.create({ 
+        uid: `CTR-DEMO-${Date.now().toString().slice(-4)}`, 
+        name: 'Demo Org', 
+        email: demoEmail, 
+        password: await bcrypt.hash('password123', 10), 
+        role: 'study-center', 
+        deptId: center.id,
+        status: 'active' 
+      }, { transaction: t });
+
+      await center.update({ adminId: demoUser.uid }, { transaction: t });
+
+      // 3. Seed Announcements
+      await Announcement.create({
+        title: 'Welcome to the ERP Ecosystem',
+
+        message: 'Your institutional center node is now successfully synchronized. You can now manage admissions, track student performance, and access forensic audit vaults.',
+        priority: 'urgent',
+        targetChannel: 'centers_only',
+        authorId: demoUser.uid
+      }, { transaction: t });
+
+      // 4. Seed Dummy Student
+      if (allProgs.length > 0) {
+        await Student.create({
+          name: 'Demo Student (Auto-Generated)',
+          deptId: allProgs[0].universityId || 1,
+          centerId: center.id,
+          programId: allProgs[0].id,
+          status: 'ENROLLED',
+          enrollStatus: 'active'
+        }, { transaction: t });
+      }
+
+      // 5. Seed Admission Session for testing
+      if (allProgs.length > 0) {
+        await models.AdmissionSession.create({
+          name: 'Spring 2026 Batch',
+          programId: allProgs[0].id,
+          centerId: center.id,
+          subDeptId: allProgs[0].subDeptId || 1,
+          startDate: new Date(),
+          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          maxCapacity: 100,
+          isActive: true,
+          approvalStatus: 'APPROVED'
+        }, { transaction: t });
+      }
+
+      await t.commit();
+      res.json({ success: true, message: 'Demo Org environment successfully reset with sessions and mappings.' });
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  } catch (error) {
+    console.error('Restore Demo Error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

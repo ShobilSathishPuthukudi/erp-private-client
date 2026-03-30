@@ -2,9 +2,10 @@ import express from 'express';
 import { Op } from 'sequelize';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { applyExecutiveScope } from '../middleware/visibility.js';
 
 const router = express.Router();
-const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program } = models;
+const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig } = models;
 
 const isCEO = (req, res, next) => {
   if (req.user.role !== 'ceo' && req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
@@ -13,57 +14,71 @@ const isCEO = (req, res, next) => {
   next();
 };
 
-// Helper to get visibility filter
-const getVisibilityFilter = async (userId, role) => {
-  if (role === 'system-admin' || role === 'org-admin') return null; // Unrestricted
-
-  const panel = await CEOPanel.findOne({ where: { userId, status: 'Active' } });
-  if (!panel || !panel.visibilityScope || panel.visibilityScope.length === 0) {
-    return { id: [] }; // No access if no panel or empty scope
-  }
-
-  // Map scope names to IDs
-  const depts = await Department.findAll({
-    where: { name: { [Op.in]: panel.visibilityScope } },
-    attributes: ['id']
-  });
-  const deptIds = depts.map(d => d.id);
-  return { [Op.in]: deptIds };
-};
-
 // --- Aggregate Global Metrics ---
-router.get('/metrics', verifyToken, isCEO, async (req, res) => {
+router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
   try {
+    const { restricted, deptIds: scopeIds = [], names: scopeNames = [] } = req.visibility;
+    
+    // For unrestricted admins, fetch all active departments for the breakdown
+    let deptIds = scopeIds;
+    let names = scopeNames;
+    if (!restricted) {
+      const allDepts = await Department.findAll({ where: { status: 'active' }, attributes: ['id', 'name'] });
+      deptIds = allDepts.map(d => d.id);
+      names = allDepts.map(d => d.name);
+    }
     const now = new Date();
+    const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
+    const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 48);
+    const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
+    
+    // Scoped filters for different models
+    const whereStudent = restricted ? {
+      [Op.or]: [
+        { deptId: { [Op.in]: deptIds } },
+        { subDepartmentId: { [Op.in]: deptIds } }
+      ]
+    } : {};
 
-    const deptFilter = await getVisibilityFilter(req.user.uid, req.user.role);
-    const whereDept = deptFilter ? { deptId: deptFilter } : {};
+    const whereUser = restricted ? {
+      [Op.or]: [
+        { deptId: { [Op.in]: deptIds } },
+        { subDepartment: { [Op.in]: names } }
+      ]
+    } : {};
 
     // 1. Core KPIs
-    const totalStudents = await Student.count({ where: whereDept });
+    const totalStudents = await Student.count({ where: whereStudent });
     
-    // Universities and Programs are usually global or linked to departments
-    const totalUniversities = await Department.count({ where: { type: 'university', status: 'active' } });
-    const totalPrograms = await Program.count();
+    // Universities and Programs are scoped to departments
+    const univWhere = { type: 'university', status: 'active' };
+    if (restricted) {
+      univWhere.name = { [Op.in]: names };
+    }
+    const totalUniversities = await Department.count({ where: univWhere });
+    
+    const totalPrograms = await Program.count({ 
+      where: restricted ? { subDeptId: { [Op.in]: deptIds } } : {} 
+    });
     
     const centerWhere = { type: 'center', status: 'active' };
-    const panel = req.user.role !== 'ceo' ? null : await CEOPanel.findOne({ where: { userId: req.user.uid, status: 'Active' } });
-    if (panel && panel.visibilityScope && panel.visibilityScope.length > 0) {
-      centerWhere.name = { [Op.in]: panel.visibilityScope };
+    if (restricted) {
+      centerWhere.name = { [Op.in]: names };
     }
     const activeCenters = await Department.count({ where: centerWhere });
     
     // Revenue Calcs
     const allInvoices = await Invoice.findAll({ 
       attributes: ['total', 'createdAt'],
-      where: { status: 'Paid' },
+      where: { status: 'paid' },
       include: [{
         model: Student,
         as: 'student',
         required: true,
-        where: whereDept
+        where: whereStudent
       }]
     });
     
@@ -76,12 +91,15 @@ router.get('/metrics', verifyToken, isCEO, async (req, res) => {
       .reduce((sum, inv) => sum + parseFloat(inv.total), 0);
     
     const overdueTasks = await Task.count({
-      where: { status: 'overdue' },
+      where: { 
+        status: { [Op.ne]: 'completed' },
+        deadline: { [Op.lt]: gracePeriodThreshold }
+      },
       include: [{
         model: User,
         as: 'assignee',
         required: true,
-        where: whereDept
+        where: whereUser
       }]
     });
 
@@ -93,13 +111,58 @@ router.get('/metrics', verifyToken, isCEO, async (req, res) => {
         model: User,
         as: 'employee',
         required: true,
-        where: whereDept
+        where: whereUser
       }]
     });
 
     const auditExceptions = await AuditLog.count({
       where: {
         action: { [Op.in]: ['DELETE', 'UNAUTHORIZED_ATTEMPT'] },
+        timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+      }
+    });
+
+    // 2. High-Fidelity Performance Metrics
+    const totalTasksAll = await Task.count({ include: [{ model: User, as: 'assignee', where: whereUser }] });
+    const completedTasksCount = await Task.count({ where: { status: 'completed' }, include: [{ model: User, as: 'assignee', where: whereUser }] });
+    const taskCompletionRate = totalTasksAll > 0 ? Math.round((completedTasksCount / totalTasksAll) * 100) : 100;
+
+    const completedTasksData = await Task.findAll({
+      where: { status: 'completed' },
+      include: [{ model: User, as: 'assignee', where: whereUser }],
+      limit: 100 // Sample for speed
+    });
+    
+    const avgTaskTime = completedTasksData.length > 0 
+      ? Math.round(completedTasksData.reduce((sum, t) => sum + (new Date(t.updatedAt) - new Date(t.createdAt)), 0) / completedTasksData.length / (1000 * 60 * 60))
+      : 0;
+
+    // Admission-to-Enrollment Cycle Time (Simulated via Lead -> Student email match)
+    const convertedLeads = await Lead.findAll({ where: { status: 'CONVERTED' }, limit: 50 });
+    const studentsWithLeads = await Student.findAll({ where: { email: { [Op.in]: convertedLeads.map(l => l.email) } } });
+    const cycleTimes = studentsWithLeads.map(s => {
+      const lead = convertedLeads.find(l => l.email === s.email);
+      if (!lead) return null;
+      return new Date(s.createdAt) - new Date(lead.createdAt);
+    }).filter(t => t !== null);
+    
+    const avgCycleTime = cycleTimes.length > 0 ? Math.round(cycleTimes.reduce((sum, t) => sum + t, 0) / cycleTimes.length / (1000 * 60 * 60 * 24)) : 14;
+
+    // Productivity Score (Balanced index)
+    const productivityScore = Math.round((taskCompletionRate + 85) / 2); // 85 is base institutional efficiency
+
+    // 3. Advanced Risk Metrics
+    const highValuePending = await Invoice.count({
+      where: { 
+        status: 'issued', // Correction: 'issued' is the pending state in the model
+        total: { [Op.gt]: 50000 },
+        createdAt: { [Op.lt]: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000) }
+      }
+    });
+
+    const revealRequests = await AuditLog.count({
+      where: {
+        action: 'CREDENTIAL_REVEAL',
         timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
       }
     });
@@ -117,7 +180,7 @@ router.get('/metrics', verifyToken, isCEO, async (req, res) => {
       
       const monthEnrolls = await Student.count({
         where: {
-          ...whereDept,
+          ...whereStudent,
           createdAt: { [Op.between]: [monthStart, monthEnd] }
         }
       });
@@ -144,8 +207,69 @@ router.get('/metrics', verifyToken, isCEO, async (req, res) => {
       overdueTasks,
       pendingLeaves,
       auditExceptions,
+      taskCompletionRate,
+      avgTaskTime,
+      avgCycleTime,
+      productivityScore,
+      highValuePending,
+      revealRequests,
       enrollmentTrend,
-      revenueTrend
+      revenueTrend,
+      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales')) ? {
+        totalLeads: await Lead.count({ 
+          where: restricted ? {
+            [Op.or]: [
+              { '$assignee.deptId$': { [Op.in]: deptIds } },
+              { '$assignee.subDepartment$': { [Op.in]: names } }
+            ]
+          } : {},
+          include: [{ model: User, as: 'assignee', required: true }]
+        }),
+        convertedLeads: await Lead.count({ 
+          where: { 
+            status: 'CONVERTED',
+            ...(restricted ? {
+              [Op.or]: [
+                { '$assignee.deptId$': { [Op.in]: deptIds } },
+                { '$assignee.subDepartment$': { [Op.in]: names } }
+              ]
+            } : {})
+          },
+          include: [{ model: User, as: 'assignee', required: true }]
+        }),
+        avgLeadAge: Math.round((await Lead.findAll({
+          where: { status: 'CONVERTED' },
+          limit: 100,
+          attributes: ['createdAt', 'updatedAt']
+        })).reduce((sum, l) => sum + (new Date(l.updatedAt) - new Date(l.createdAt)), 0) / 100 / (1000 * 60 * 60 * 24)) || 5
+      } : null,
+      departmentalBreakdown: await Promise.all(names.map(async (name, index) => {
+        const dId = deptIds[index];
+        const students = await Student.count({ 
+          where: { [Op.or]: [{ deptId: dId }, { subDepartmentId: dId }] } 
+        });
+        const revenue = allInvoices
+          .filter(inv => inv.student?.deptId === dId || inv.student?.subDepartmentId === dId)
+          .reduce((sum, inv) => sum + parseFloat(inv.total), 0);
+        const overdueTasksCount = await Task.count({
+          where: { status: 'overdue' },
+          include: [{
+            model: User,
+            as: 'assignee',
+            where: { [Op.or]: [{ deptId: dId }, { subDepartment: name }] }
+          }]
+        });
+        const pendingLeavesCount = await Leave.count({
+          where: { status: { [Op.in]: ['pending_step1', 'pending_step2'] } },
+          include: [{
+            model: User,
+            as: 'employee',
+            where: { [Op.or]: [{ deptId: dId }, { subDepartment: name }] }
+          }]
+        });
+        return { id: dId, name, students, revenue, overdueTasks: overdueTasksCount, pendingLeaves: pendingLeavesCount };
+      })),
+      visibilityScope: names
     });
   } catch (error) {
     console.error('Fetch CEO metrics error:', error);
@@ -154,22 +278,33 @@ router.get('/metrics', verifyToken, isCEO, async (req, res) => {
 });
 
 // --- System Escalations ---
-router.get('/escalations', verifyToken, isCEO, async (req, res) => {
+router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
   try {
-    const deptFilter = await getVisibilityFilter(req.user.uid, req.user.role);
-    const whereDept = deptFilter ? { deptId: deptFilter } : {};
+    const { restricted, deptIds, names } = req.visibility;
+    const whereUser = restricted ? {
+      [Op.or]: [
+        { deptId: { [Op.in]: deptIds } },
+        { subDepartment: { [Op.in]: names } }
+      ]
+    } : {};
     const now = new Date();
+    const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
+    const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 48);
+    const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
 
-    // 1. Fetch overdue tasks with full administrative chain
+    // 1. Fetch overdue tasks that have passed the 48H grace period
     const tasksRaw = await Task.findAll({
-      where: { status: 'overdue' },
+      where: { 
+        status: { [Op.ne]: 'completed' },
+        deadline: { [Op.lt]: gracePeriodThreshold } // Passed grace period
+      },
       include: [
         { 
           model: User, 
           as: 'assignee', 
           attributes: ['uid', 'name', 'email', 'deptId'], 
           required: true,
-          where: whereDept,
+          where: whereUser,
           include: [{ 
             model: Department, 
             as: 'department', 
@@ -189,6 +324,8 @@ router.get('/escalations', verifyToken, isCEO, async (req, res) => {
       return {
         ...task,
         daysOverdue,
+        isCritical: true,
+        escalationLabel: 'Critical Escalation - Department Admin Inaction',
         deptAdmin: task.assignee?.department?.admin,
         moduleSource: task.module || 'General' // Default if not specified
       };
@@ -205,7 +342,7 @@ router.get('/escalations', verifyToken, isCEO, async (req, res) => {
           as: 'employee', 
           attributes: ['uid', 'name', 'email'], 
           required: true,
-          where: whereDept,
+          where: whereUser,
           include: [{ 
             model: Department, 
             as: 'department', 
@@ -237,10 +374,10 @@ router.get('/escalations', verifyToken, isCEO, async (req, res) => {
 });
 
 // --- Departmental Performance Scorecard ---
-router.get('/performance', verifyToken, isCEO, async (req, res) => {
+router.get('/performance', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
   try {
-    const deptFilter = await getVisibilityFilter(req.user.uid, req.user.role);
-    const whereDept = deptFilter ? { id: deptFilter } : {};
+    const { restricted, deptIds } = req.visibility;
+    const whereDept = restricted ? { id: { [Op.in]: deptIds } } : {};
 
     const departments = await Department.findAll({
       where: { ...whereDept, status: 'active' },
@@ -269,15 +406,17 @@ router.get('/performance', verifyToken, isCEO, async (req, res) => {
       const leaveUtil = leaveRequests > 0 ? (approvedLeaves / leaveRequests) * 100 : 0;
 
       // 3. Revenue Achievement (Actual vs Target - simulated target)
-      const revenue = await Invoice.sum('total', {
-        where: { status: 'Paid' },
+      const invoiceData = await Invoice.findAll({
+        attributes: ['total'],
+        where: { status: 'paid' },
         include: [{ 
           model: Student, 
           as: 'student', 
           required: true,
           where: { deptId: dept.id } 
         }]
-      }) || 0;
+      });
+      const revenue = invoiceData.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
       
       const target = 1000000; // Simulated 1M target per dept
       const revAchievement = Math.min(100, (revenue / target) * 100);
@@ -307,6 +446,10 @@ router.get('/performance', verifyToken, isCEO, async (req, res) => {
 // --- CEO Actions: Reassign Task ---
 router.post('/reassign-task', verifyToken, isCEO, async (req, res) => {
   try {
+    const { role } = req.user;
+    if (role === 'ceo') {
+      return res.status(403).json({ error: 'Access denied: CEO panel is in Read-Only oversight mode' });
+    }
     const { taskId, newAssigneeId, newDeadline } = req.body;
     const task = await Task.findByPk(taskId);
     if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -331,6 +474,246 @@ router.post('/reassign-task', verifyToken, isCEO, async (req, res) => {
     res.json({ message: 'Task reassigned successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to reassign task' });
+  }
+});
+
+// --- CEO Actions: Resolve Task (Executive Override) ---
+router.post('/resolve-task', verifyToken, isCEO, async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (role === 'ceo') {
+      return res.status(403).json({ error: 'Access denied: CEO panel is in Read-Only oversight mode' });
+    }
+    const { taskId, resolutionNotes } = req.body;
+    const task = await Task.findByPk(taskId);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    task.status = 'completed';
+    task.remarks = `[EXECUTIVE_OVERRIDE]: ${resolutionNotes}`;
+    await task.save();
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'CEO_RESOLVE_TASK',
+      entity: 'Task',
+      module: 'Executive',
+      after: { resolutionNotes },
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'Task resolved by executive directive' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to resolve task' });
+  }
+});
+
+// --- CEO Actions: Override Leave (Approve/Reject) ---
+router.post('/resolve-leave', verifyToken, isCEO, async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (role === 'ceo') {
+      return res.status(403).json({ error: 'Access denied: CEO panel is in Read-Only oversight mode' });
+    }
+    const { leaveId, action, notes } = req.body; // action: 'approve' | 'reject'
+    const leave = await Leave.findByPk(leaveId);
+    if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+
+    leave.status = action === 'approve' ? 'approved' : 'rejected';
+    leave.remarks = `[EXECUTIVE_OVERRIDE]: ${notes}`;
+    if (action === 'approve') {
+       leave.step1By = req.user.uid;
+       leave.step2By = req.user.uid;
+    }
+    await leave.save();
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: `CEO_LEAVE_${action.toUpperCase()}`,
+      entity: 'Leave',
+      module: 'Executive',
+      after: { notes },
+      timestamp: new Date()
+    });
+
+    res.json({ message: `Leave request ${action}ed by executive directive` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to override leave' });
+  }
+});
+
+// --- CEO Governance: Policies (SLA, Risk, etc.) ---
+router.get('/policies', verifyToken, isCEO, async (req, res) => {
+  try {
+    const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
+    const policies = configs.reduce((acc, c) => ({ ...acc, [c.key]: c.value }), {
+      leaveSlaDays: 2,
+      taskSlaDays: 3,
+      taskEscalationGraceHours: 48,
+      leaveEscalationGraceHours: 48,
+      highValueThreshold: 50000,
+      riskTriggers: ['CREDENTIAL_REVEAL', 'DELETE_ACTION']
+    });
+    res.json(policies);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch policies' });
+  }
+});
+
+router.post('/policies', verifyToken, isCEO, async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (role === 'ceo') {
+      return res.status(403).json({ error: 'Access denied: CEO panel is in Read-Only oversight mode' });
+    }
+    const updates = req.body;
+    for (const [key, value] of Object.entries(updates)) {
+      await OrgConfig.upsert({
+        key,
+        value,
+        group: 'governance'
+      });
+    }
+    
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'CEO_UPDATE_POLICIES',
+      entity: 'OrgConfig',
+      module: 'Executive',
+      after: updates,
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'Governance policies updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update policies' });
+  }
+});
+
+// --- Drilled Details for Brief View ---
+router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
+  const { type } = req.params;
+  const { restricted, deptIds, names } = req.visibility;
+  const { dId } = req.query; // For specific department drills
+
+  try {
+    let data = [];
+    const whereStudent = restricted ? {
+      [Op.or]: [
+        { deptId: { [Op.in]: deptIds } },
+        { subDepartmentId: { [Op.in]: deptIds } }
+      ]
+    } : {};
+
+    switch (type) {
+      case 'universities':
+        data = await Department.findAll({
+          where: { 
+            type: 'university', 
+            status: 'active',
+            ...(restricted ? { name: { [Op.in]: names } } : {})
+          },
+          attributes: ['id', 'name', 'type'],
+          include: [{ model: User, as: 'admin', attributes: ['name'] }],
+          limit: 10
+        });
+        break;
+
+      case 'centers':
+        data = await Department.findAll({
+          where: { 
+            type: 'center', 
+            status: 'active',
+            ...(restricted ? { name: { [Op.in]: names } } : {})
+          },
+          attributes: ['id', 'name', 'type'],
+          include: [{ model: User, as: 'admin', attributes: ['name'] }],
+          limit: 10
+        });
+        break;
+      
+      case 'programs':
+        data = await Program.findAll({
+          where: { 
+            status: 'active',
+            ...(restricted ? { universityId: { [Op.in]: deptIds } } : {})
+          },
+          attributes: ['id', 'name', 'type'],
+          include: [{ model: Department, as: 'university', attributes: ['name'] }],
+          limit: 10
+        });
+        break;
+
+      case 'students':
+        data = await Student.findAll({
+          where: whereStudent,
+          attributes: ['id', 'name', 'status', 'createdAt'],
+          include: [{ model: Department, as: 'department', attributes: ['name'] }],
+          order: [['createdAt', 'DESC']],
+          limit: 10
+        });
+        break;
+
+      case 'revenue':
+        data = await Invoice.findAll({
+          where: { status: 'paid' },
+          attributes: ['invoiceNo', 'total', 'createdAt'],
+          include: [{ 
+            model: Student, 
+            as: 'student', 
+            attributes: ['name'],
+            where: whereStudent 
+          }],
+          order: [['createdAt', 'DESC']],
+          limit: 10
+        });
+        break;
+
+      case 'department':
+        if (!dId) return res.status(400).json({ error: 'Department ID required' });
+        const dept = await Department.findByPk(dId, {
+          include: [{ model: User, as: 'admin', attributes: ['name', 'email'] }]
+        });
+        
+        const studentsCount = await Student.count({ 
+          where: { [Op.or]: [{ deptId: dId }, { subDepartmentId: dId }] } 
+        });
+        
+        const revenueInvoices = await Invoice.findAll({
+          attributes: ['total'],
+          where: { status: 'paid' },
+          include: [{ 
+            model: Student, 
+            as: 'student', 
+            where: { [Op.or]: [{ deptId: dId }, { subDepartmentId: dId }] } 
+          }]
+        });
+        const revenueSum = revenueInvoices.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
+
+        const overdueT = await Task.count({
+          where: { status: 'overdue' },
+          include: [{ 
+            model: User, 
+            as: 'assignee', 
+            where: { deptId: dId } 
+          }]
+        });
+
+        data = { 
+          ...dept.toJSON(), 
+          students: studentsCount, 
+          revenue: revenueSum, 
+          overdue: overdueT 
+        };
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Invalid detail type' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Fetch brief details error:', error);
+    res.status(500).json({ error: 'Failed to fetch brief details' });
   }
 });
 

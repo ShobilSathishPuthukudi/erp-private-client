@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -11,13 +12,25 @@ import {
 } from 'lucide-react';
 
 export default function PermissionAudit() {
-  const [auditLogs] = useState([
-    { id: 1, user: 'Admin_Shobil', role: 'Dept Admin', feature: 'Finance > Fee Structures', prev: 'Read Only', next: 'Read + Write', time: '2026-03-25 02:30 PM' },
-    { id: 2, user: 'Admin_Shobil', role: 'CEO', feature: 'Dashboard > Alerts', prev: 'Full Access', next: 'No Access', time: '2026-03-25 01:15 PM' },
-    { id: 3, user: 'System', role: 'Employee', feature: 'Academic > Partner Universities', prev: 'No Access', next: 'Read Only', time: '2026-03-24 11:00 AM' },
-    { id: 4, user: 'Admin_Shobil', role: 'Dept Admin', feature: 'Departments > All', prev: 'Read + Write', next: 'Full Access', time: '2026-03-24 09:45 AM' },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/org-admin/audit/permissions');
+      setAuditLogs(data);
+    } catch (error) {
+      console.error('Audit Fetch Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleExport = () => {
     setIsExporting(true);
@@ -93,7 +106,7 @@ export default function PermissionAudit() {
           <button 
             onClick={handleExport}
             disabled={isExporting}
-            className={`px-4 py-2 text-sm font-bold flex items-center transition-colors rounded-xl border border-slate-200 shadow-sm ${
+            className={`px-4 py-2 text-sm font-bold flex items-center transition-all rounded-xl border border-slate-200 shadow-sm hover:scale-[1.05] active:scale-95 ${
               isExporting ? 'text-slate-300 bg-slate-50 cursor-not-allowed' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
@@ -106,47 +119,61 @@ export default function PermissionAudit() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Modified By</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Role Affected</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Feature / Page</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Change Detail</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Timestamp</th>
+                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 tracking-wider">Modified by</th>
+                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 tracking-wider">Role affected</th>
+                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 tracking-wider">Feature / Page</th>
+                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 tracking-wider">Change detail</th>
+                <th className="px-8 py-5 text-[10px] font-bold text-slate-400 tracking-wider">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {auditLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                        <User className="w-4 h-4 text-slate-500" />
-                      </div>
-                      <span className="text-sm font-bold text-slate-900">{log.user}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
-                      {log.role}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="text-sm font-bold text-slate-700 font-display tracking-tight">{log.feature}</span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-400 line-through decoration-slate-300">{log.prev}</span>
-                      <ArrowRight className="w-3 h-3 text-emerald-500" />
-                      <span className="font-bold text-slate-900">{log.next}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center text-xs text-slate-500 font-medium">
-                      <Clock className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                      {log.time}
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center text-[11px] font-bold text-blue-600 animate-pulse">
+                    Retrieving governance history...
                   </td>
                 </tr>
-              ))}
+              ) : auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">
+                    No permission changes recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                          <User className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <span className="text-sm font-bold text-slate-900">{log.user}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                        {log.role}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="text-sm font-bold text-slate-700 font-display tracking-tight">{log.feature}</span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-slate-400 line-through decoration-slate-300">{log.prev}</span>
+                        <ArrowRight className="w-3 h-3 text-emerald-500" />
+                        <span className="font-bold text-slate-900">{log.next}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center text-xs text-slate-500 font-medium">
+                        <Clock className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                        {log.time}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

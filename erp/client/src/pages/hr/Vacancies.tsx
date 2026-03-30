@@ -66,7 +66,6 @@ export default function Vacancies() {
       header: 'Department',
       cell: ({ row }) => row.original.department?.name || 'N/A'
     },
-    { accessorKey: 'subDepartment', header: 'Unit/Sub-Dept' },
     { 
       id: 'capacity',
       header: 'Capacity',
@@ -118,7 +117,7 @@ export default function Vacancies() {
             <input 
               {...register('title', { required: 'Title is required' })}
               className="mt-1 w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              placeholder="e.g. Senior Admissions Officer"
+              placeholder="Senior Admissions Officer"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -133,28 +132,14 @@ export default function Vacancies() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Sub-Department</label>
-              <select 
-                {...register('subDepartment', { required: true })}
+              <label className="block text-sm font-medium text-slate-700">Total Positions (Quota)</label>
+              <input 
+                type="number"
+                {...register('count', { required: true, min: 1 })}
                 className="mt-1 w-full p-2 border border-slate-300 rounded-lg"
-              >
-                <option value="">Select Unit</option>
-                <option value="Skill">Skill</option>
-                <option value="Online">Online</option>
-                <option value="OpenSchool">OpenSchool</option>
-                <option value="BVoc">BVoc</option>
-                <option value="Corporate">Corporate</option>
-              </select>
+                defaultValue={1}
+              />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Total Positions (Quota)</label>
-            <input 
-              type="number"
-              {...register('count', { required: true, min: 1 })}
-              className="mt-1 w-full p-2 border border-slate-300 rounded-lg"
-              defaultValue={1}
-            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">Requirements / Remarks</label>

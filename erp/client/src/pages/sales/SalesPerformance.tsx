@@ -26,7 +26,8 @@ export default function SalesPerformance() {
       setPerformance(perfRes.data);
       setReferralCode(codeRes.data.referralCode);
     } catch (error) {
-      toast.error('Failed to sync sales telemetry');
+      console.error('Sales performance load error:', error);
+      toast.error('Failed to load sales performance data');
     } finally {
       setLoading(false);
     }

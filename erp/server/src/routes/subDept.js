@@ -1,22 +1,36 @@
 import express from 'express';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
+import erpEvents from '../lib/events.js';
 
 const router = express.Router();
 const { Program, Student, Department, AccreditationRequest, ProgramOffering, Payment } = models;
 
+const getSubDeptId = (user) => {
+  if (!user) return null;
+  const roleStr = (user.role || '').toLowerCase();
+  if (['academic', 'operations'].includes(roleStr)) return null;
+  
+  const unitStr = (user.subDepartment || user.role || '').toLowerCase();
+  if (unitStr.includes('openschool')) return 8;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
+  return user.deptId || user.departmentId;
+};
+
 const isSubDeptAdmin = (req, res, next) => {
   const role = req.user.role?.toLowerCase();
-  const deptId = req.user.deptId || req.user.departmentId;
-  const allowedRoles = ['dept-admin', 'dept_admin', 'sub_dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic'];
+  const deptId = getSubDeptId(req.user);
+  const allowedRoles = ['dept-admin', 'dept_admin', 'sub_dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic', 'operations'];
   
   if (!allowedRoles.includes(role)) {
     return res.status(403).json({ error: 'Access denied: Insufficient privileges' });
   }
 
   // Academic admins can bypass deptId requirement
-  if (role === 'academic' && !deptId) {
+  if (['academic', 'operations'].includes(role) && !deptId) {
     return next();
   }
 
@@ -35,29 +49,43 @@ router.get('/stats', verifyToken, isSubDeptAdmin, async (req, res) => {
     const deptId = req.user.deptId;
 
     // 1. Jurisdictional Program Count
-    const totalPrograms = await Program.count({ where: { subDeptId: deptId } });
-
+    const totalPrograms = await Program.count({ 
+      where: deptId ? { subDeptId: deptId } : {} 
+    });
+    
     // 2. Jurisdictional Student Count
     const totalStudents = await Student.count({
-      include: [{ model: Program, where: { subDeptId: deptId }, attributes: [] }]
+      include: [
+        { 
+          model: Program, 
+          where: deptId ? { subDeptId: deptId } : {}, 
+          attributes: [] 
+        }
+      ]
     });
-
-    // 3. Pending Verifications (at this specific sub-dept phase)
+    
+    // 3. Pending Verifications
     const pendingVerifications = await Student.count({
       where: { enrollStatus: 'pending_subdept' },
-      include: [{ model: Program, where: { subDeptId: deptId }, attributes: [] }]
+      include: [
+        { 
+          model: Program, 
+          where: deptId ? { subDeptId: deptId } : {}, 
+          attributes: [] 
+        }
+      ]
     });
-
-    // 4. Jurisdictional Revenue (sum of payments for students in this dept's programs)
+    
+    // 4. Jurisdictional Revenue
     const payments = await Payment.findAll({
       include: [
         { 
           model: Student, 
           attributes: [],
-          include: [{ model: Program, where: { subDeptId: deptId }, attributes: [] }]
+          include: [{ model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: [] }]
         }
       ],
-      attributes: [[models.sequelize.fn('SUM', models.sequelize.col('amount')), 'total']],
+      attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
       raw: true
     });
     const revenue = payments[0]?.total || 0;
@@ -79,9 +107,10 @@ router.get('/programs', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
     const deptId = querySubDeptId || req.user.deptId;
+    const isGlobal = (['academic', 'operations'].includes(req.user.role) && !querySubDeptId);
     
     const programs = await Program.findAll({
-      where: { subDeptId: deptId },
+      where: isGlobal ? {} : { subDeptId: deptId },
       include: [
         { model: Department, as: 'university', attributes: ['id', 'name'] },
         { model: ProgramOffering, as: 'offeringCenters', attributes: ['id'] }
@@ -98,8 +127,14 @@ router.put('/programs/:id/status', verifyToken, isSubDeptAdmin, async (req, res)
   try {
     const { id } = req.params;
     const { status } = req.body; // 'active' or 'open'
+    const deptId = getSubDeptId(req.user);
 
-    const program = await Program.findOne({ where: { id, subDeptId: req.user.deptId } });
+    const program = await Program.findOne({ 
+      where: { 
+        id, 
+        ...(deptId ? { subDeptId: deptId } : {}) 
+      } 
+    });
     if (!program) return res.status(404).json({ error: 'Program not found or access denied' });
 
     if (status === 'open' && program.status !== 'active') {
@@ -118,11 +153,12 @@ router.put('/programs/:id/status', verifyToken, isSubDeptAdmin, async (req, res)
 router.get('/students', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     // We fetch students that belong to programs under this subDeptId
+    const isGlobal = (['academic', 'operations'].includes(req.user.role));
     const students = await Student.findAll({
       include: [
         { 
           model: Program, 
-          where: { subDeptId: req.user.deptId },
+          where: isGlobal ? {} : { subDeptId: req.user.deptId },
           attributes: ['id', 'name', 'duration']
         },
         {
@@ -142,10 +178,11 @@ router.put('/students/:id/verify-documents', verifyToken, isSubDeptAdmin, async 
   try {
     const { id } = req.params;
     const { status, remarks } = req.body;
+    const deptId = getSubDeptId(req.user);
 
     const student = await Student.findOne({
       where: { id },
-      include: [{ model: Program, where: { subDeptId: req.user.deptId } }]
+      include: [{ model: Program, where: deptId ? { subDeptId: deptId } : {} }]
     });
 
     if (!student) return res.status(404).json({ error: 'Student not found in your jurisdictional queue' });
@@ -174,10 +211,13 @@ router.put('/students/:id/verify-documents', verifyToken, isSubDeptAdmin, async 
 // --- Student Validation Workflow (Phase 2) ---
 router.get('/students/pending', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
+    const deptId = getSubDeptId(req.user);
     const students = await Student.findAll({
-      where: { status: 'PENDING_REVIEW' },
+      where: { 
+        status: { [Op.in]: ['PENDING_REVIEW', 'SUBMITTED', 'OPS_PENDING'] } 
+      },
       include: [
-        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: ['id', 'name'] },
         { model: Department, as: 'center', attributes: ['id', 'name'] }
       ]
     });
@@ -187,12 +227,37 @@ router.get('/students/pending', verifyToken, isSubDeptAdmin, async (req, res) =>
   }
 });
 
+router.get('/students/validated', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const deptId = getSubDeptId(req.user);
+    const students = await Student.findAll({
+      where: { 
+        status: { 
+          [Op.in]: ['OPS_APPROVED', 'FINANCE_PENDING', 'PAYMENT_VERIFIED'] 
+        } 
+      },
+      include: [
+        { model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: ['id', 'name'] },
+        { model: Department, as: 'center', attributes: ['id', 'name'] }
+      ]
+    });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch validated student queue' });
+  }
+});
+
 router.get('/students/approved', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
+    const deptId = getSubDeptId(req.user);
     const students = await Student.findAll({
-      where: { status: 'OPS_APPROVED' },
+      where: { 
+        status: { 
+          [Op.in]: ['FINANCE_APPROVED', 'ACTIVE', 'ENROLLED'] 
+        } 
+      },
       include: [
-        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: ['id', 'name'] },
         { model: Department, as: 'center', attributes: ['id', 'name'] }
       ]
     });
@@ -204,10 +269,11 @@ router.get('/students/approved', verifyToken, isSubDeptAdmin, async (req, res) =
 
 router.get('/students/rejected', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
+    const deptId = getSubDeptId(req.user);
     const students = await Student.findAll({
       where: { status: 'REJECTED' },
       include: [
-        { model: Program, where: { subDeptId: req.user.deptId }, attributes: ['id', 'name'] },
+        { model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: ['id', 'name'] },
         { model: Department, as: 'center', attributes: ['id', 'name'] }
       ]
     });
@@ -220,18 +286,25 @@ router.get('/students/rejected', verifyToken, isSubDeptAdmin, async (req, res) =
 router.post('/students/:id/approve', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const deptId = getSubDeptId(req.user);
     const student = await Student.findOne({
       where: { id },
-      include: [{ model: Program, where: { subDeptId: req.user.deptId } }]
+      include: [{ model: Program, where: deptId ? { subDeptId: deptId } : {} }]
     });
 
     if (!student) return res.status(404).json({ error: 'Student not found in jurisdictional queue' });
 
     await student.update({
-      status: 'OPS_APPROVED',
+      status: 'FINANCE_PENDING', // State Machine Phase 5: OPS_APPROVED -> FINANCE_PENDING
+      enrollStatus: 'pending_finance',
+      reviewStage: 'FINANCE',
       reviewedBy: req.user.uid,
       reviewedAt: new Date(),
-      enrollStatus: 'pending_finance' // For legacy compatibility
+    });
+
+    erpEvents.emit('OPS_APPROVED', { 
+        studentId: student.id, 
+        subDeptId: getSubDeptId(req.user) 
     });
 
     res.json({ message: 'Student application approved and routed to Finance', student });
@@ -244,12 +317,13 @@ router.post('/students/:id/reject', verifyToken, isSubDeptAdmin, async (req, res
   try {
     const { id } = req.params;
     const { reason } = req.body;
+    const deptId = getSubDeptId(req.user);
 
     if (!reason) return res.status(400).json({ error: 'Mandatory: Rejection reason required' });
 
     const student = await Student.findOne({
       where: { id },
-      include: [{ model: Program, where: { subDeptId: req.user.deptId } }]
+      include: [{ model: Program, where: deptId ? { subDeptId: deptId } : {} }]
     });
 
     if (!student) return res.status(404).json({ error: 'Student not found in jurisdictional queue' });
@@ -278,9 +352,10 @@ router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, r
     });
 
     const { unit } = req.query;
-    const targetType = unit || (req.user.role === 'academic' ? null : req.user.role);
+    const roleNormalized = req.user.role?.toLowerCase().trim();
+    const targetType = unit || (['academic', 'operations'].includes(roleNormalized) ? null : roleNormalized);
     
-    console.log("Accreditation Request Filter:", { unit, targetType });
+    console.log("Accreditation Request Filter:", { unit, targetType, role: req.user.role });
 
     const requests = await AccreditationRequest.findAll({
       where: { 

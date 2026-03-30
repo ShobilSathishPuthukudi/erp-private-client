@@ -12,7 +12,7 @@ const LeadTouchpoint = sequelize.define('lead_touchpoint', {
     allowNull: false,
   },
   type: {
-    type: DataTypes.ENUM('call', 'email', 'meeting', 'note'),
+    type: DataTypes.ENUM('call', 'email', 'meeting', 'note', 'STAGE_CHANGE'),
     allowNull: false,
   },
   content: {

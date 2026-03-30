@@ -62,9 +62,18 @@ const Task = sequelize.define('task', {
   escalatedAt: {
     type: DataTypes.DATE,
     allowNull: true,
+  },
+  departmentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Nullable for legacy or global tasks
+  },
+  subDepartmentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   }
 }, {
-  indexes: [{ fields: ['assignedTo', 'status'] }]
+  indexes: [{ fields: ['assignedTo', 'status'] }],
+  paranoid: true // Supports deletedAt for non-destructive deletes
 });
 
 export default Task;

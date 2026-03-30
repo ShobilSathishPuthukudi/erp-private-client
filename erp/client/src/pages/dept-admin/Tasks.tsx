@@ -22,6 +22,8 @@ interface Task {
   status: 'pending' | 'in_progress' | 'completed' | 'overdue';
   assignee?: TeamMember;
   createdAt: string;
+  isOverdue?: boolean;
+  overdueLabel?: string;
 }
 
 export default function Tasks() {
@@ -143,12 +145,25 @@ export default function Tasks() {
       header: 'Status',
       cell: ({ row }) => {
         const s = row.original.status;
+        const isOverdue = row.original.isOverdue;
         let color = 'bg-slate-100 text-slate-700';
         if (s === 'completed') color = 'bg-green-100 text-green-700';
         if (s === 'in_progress') color = 'bg-blue-100 text-blue-700';
-        if (s === 'overdue') color = 'bg-red-100 text-red-700 font-bold';
-        if (s === 'pending') color = 'bg-slate-100 text-slate-700';
-        return <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>{s.replace('_', ' ').toUpperCase()}</span>;
+        if (s === 'overdue' || isOverdue) color = 'bg-red-100 text-red-700 font-bold';
+        if (s === 'pending' && !isOverdue) color = 'bg-slate-100 text-slate-700';
+        
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>
+              {isOverdue ? 'OVERDUE' : s.replace('_', ' ').toUpperCase()}
+            </span>
+            {isOverdue && (
+              <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">
+                {row.original.overdueLabel || 'Employee Level'}
+              </span>
+            )}
+          </div>
+        );
       }
     },
     {
@@ -207,7 +222,7 @@ export default function Tasks() {
             <input
               {...register('title', { required: 'Title is required' })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="e.g. Complete Q3 Financial Audit Review"
+              placeholder="Complete Q3 Financial Audit Review"
             />
             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message as string}</p>}
           </div>

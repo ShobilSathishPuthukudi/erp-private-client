@@ -269,16 +269,16 @@ export default function PendingReviews() {
                 <button 
                     onClick={handleReject}
                     disabled={!rejectionReason}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-red-600 font-bold hover:bg-red-50 rounded-2xl transition-all active:scale-95 disabled:opacity-50 text-sm"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-red-600 font-black hover:bg-red-50 rounded-xl transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest border border-red-100"
                 >
-                    <XCircle className="w-5 h-5" />
+                    <XCircle className="w-4 h-4" />
                     Issue Rejection
                 </button>
                 <button 
                     onClick={handleApprove}
-                    className="flex-[2] flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 text-sm"
+                    className="flex-[2] flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 text-xs uppercase tracking-widest"
                 >
-                    <CheckCircle2 className="w-5 h-5" />
+                    <CheckCircle2 className="w-4 h-4" />
                     Approve Eligibility
                 </button>
             </div>

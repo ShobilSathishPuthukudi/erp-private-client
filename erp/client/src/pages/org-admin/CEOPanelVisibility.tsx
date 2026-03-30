@@ -9,28 +9,75 @@ import {
   Settings,
   Filter
 } from 'lucide-react';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export default function CEOPanelVisibility() {
   const navigate = useNavigate();
-  const [selectedPanel, setSelectedPanel] = useState('1');
-  const [scope, setScope] = useState(['Operations', 'Finance']);
-  
-  const panels = [
-    { id: '1', name: 'CEO - Academic Division' },
-    { id: '2', name: 'CEO - Finance & Ops' },
-    { id: '3', name: 'Executive Director' }
-  ];
+  const [selectedPanel, setSelectedPanel] = useState<string | null>(null);
+  const [scope, setScope] = useState<string[]>([]);
+  const [panels, setPanels] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const departments = [
-    'Operations', 'Finance', 'Human Resources', 'Sales & CRM', 'Marketing & PR', 'IT Support'
-  ];
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const [panelsRes, deptsRes] = await Promise.all([
+        api.get('/org-admin/ceo-panels'),
+        api.get('/departments')
+      ]);
+      
+      setPanels(panelsRes.data);
+      setDepartments(deptsRes.data.map((d: any) => d.name));
+      
+      if (panelsRes.data.length > 0) {
+        setSelectedPanel(panelsRes.data[0].id.toString());
+        setScope(panelsRes.data[0].visibilityScope || []);
+      }
+    } catch (error) {
+      toast.error('Failed to synchronize executive registry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePanelChange = (id: string) => {
+    setSelectedPanel(id);
+    const panel = panels.find(p => p.id.toString() === id);
+    if (panel) setScope(panel.visibilityScope || []);
+  };
 
   const toggleScope = (dept: string) => {
     setScope(prev => prev.includes(dept) 
       ? prev.filter(d => d !== dept) 
       : [...prev, dept]
     );
+  };
+
+  const handleSave = async () => {
+    if (!selectedPanel) return;
+    try {
+      setSaving(true);
+      await api.put(`/org-admin/ceo-panels/${selectedPanel}/visibility`, {
+        visibilityScope: scope
+      });
+      // Update local state to reflect change
+      setPanels(prev => prev.map(p => 
+        p.id.toString() === selectedPanel ? { ...p, visibilityScope: scope } : p
+      ));
+      toast.success('Visibility boundaries persisted successfully');
+    } catch (error) {
+      toast.error('Failed to enforce visibility changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -60,18 +107,20 @@ export default function CEOPanelVisibility() {
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-4 px-1">Select CEO Panel</h3>
             <div className="space-y-2">
-              {panels.map((panel) => (
+              {loading ? (
+                <div className="py-8 text-center text-[10px] font-black text-slate-400 animate-pulse uppercase tracking-[0.2em]">Resolving Executive Roster...</div>
+              ) : panels.map((panel) => (
                 <button
                   key={panel.id}
-                  onClick={() => setSelectedPanel(panel.id)}
+                  onClick={() => handlePanelChange(panel.id.toString())}
                   className={`w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between group ${
-                    selectedPanel === panel.id 
-                    ? 'border-blue-600 bg-blue-50 text-blue-900' 
+                    selectedPanel === panel.id.toString() 
+                    ? 'border-blue-600 bg-blue-50 text-blue-900 border-opacity-100 shadow-md scale-[1.02]' 
                     : 'border-slate-100 hover:border-slate-200 text-slate-600'
                   }`}
                 >
                   <span className="text-sm font-bold">{panel.name}</span>
-                  {selectedPanel === panel.id && <ChevronRight className="w-4 h-4 text-blue-600" />}
+                  {selectedPanel === panel.id.toString() && <ChevronRight className="w-4 h-4 text-blue-600" />}
                 </button>
               ))}
             </div>
@@ -97,7 +146,7 @@ export default function CEOPanelVisibility() {
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 font-display">Departmental Access Matrix</h2>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full mt-1 w-fit">
-                    Editing: {panels.find(p => p.id === selectedPanel)?.name}
+                    Editing: {panels.find(p => p.id.toString() === selectedPanel)?.name || 'Resolving...'}
                   </p>
                 </div>
               </div>
@@ -150,12 +199,13 @@ export default function CEOPanelVisibility() {
 
               <div className="flex gap-4 pt-6 border-t border-slate-50">
                 <button 
-                  className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-[0.98]"
-                  onClick={() => {
-                    window.alert('Visibility Configuration Saved');
-                  }}
+                  className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50"
+                  onClick={handleSave}
+                  disabled={saving}
                 >
-                  Save Configuration
+                  {saving ? (
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto block"></span>
+                  ) : 'Save Configuration'}
                 </button>
                 <button 
                    onClick={() => navigate(-1)}

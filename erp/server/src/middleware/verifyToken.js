@@ -38,8 +38,12 @@ export const roleGuard = (allowedRoles) => {
     const userRole = req.user.role.toLowerCase();
     const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
     
-    if (!normalizedAllowed.includes(userRole)) {
-      return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
+    // Alias normalization
+    let effectorRole = userRole;
+    if (userRole === 'center') effectorRole = 'study-center';
+
+    if (!normalizedAllowed.includes(effectorRole) && !normalizedAllowed.includes(userRole)) {
+      return res.status(403).json({ error: `Forbidden: Insufficient privileges for role: ${userRole}` });
     }
     next();
   };
@@ -48,13 +52,13 @@ export const roleGuard = (allowedRoles) => {
 const UNIT_ROLES = ['openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
 
 // Architecture Admin: Can create/edit Universities, Programs (Academic Ops)
-export const isArchitectureAdmin = roleGuard(['academic', 'org-admin', 'system-admin']);
+export const isArchitectureAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'operations', 'OPS_ADMIN']);
 
 // Academic Read/Operations: Units + Architecture Admins + Finance/Ops for config
 export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'finance', 'operations', 'OPS_ADMIN', ...UNIT_ROLES]);
 
 // Ops/Review Admin: Can perform student verification
-export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', ...UNIT_ROLES]);
+export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'operations', 'OPS_ADMIN', ...UNIT_ROLES]);
 
 export const isSubDeptAdmin = roleGuard(['SUB_DEPT_ADMIN', ...UNIT_ROLES]);
 export const isSystemAdmin = roleGuard(['system-admin', 'org-admin']);

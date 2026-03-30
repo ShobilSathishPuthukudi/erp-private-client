@@ -27,7 +27,7 @@ export default function ReregPortal() {
 
   const fetchStudents = async () => {
     try {
-      const res = await api.get('/students'); // Need a center-specific student list
+      const res = await api.get('/portals/study-center/students'); // Use center-specific student list
       setStudents(res.data);
     } catch (error) {
       toast.error('Failed to load students for REREG');

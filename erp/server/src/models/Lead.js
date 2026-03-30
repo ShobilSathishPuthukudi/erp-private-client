@@ -20,7 +20,7 @@ const Lead = sequelize.define('lead', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'LOST'),
+    type: DataTypes.ENUM('NEW', 'CONTACTED', 'QUALIFIED', 'SHORTLISTED', 'PROPOSED', 'CONVERTED', 'LOST'),
     defaultValue: 'NEW',
   },
   lossReason: {
@@ -54,6 +54,14 @@ const Lead = sequelize.define('lead', {
   },
   assignedTo: {
     type: DataTypes.STRING, // Links to User.uid
+    allowNull: true,
+  },
+  employeeId: {
+    type: DataTypes.STRING, // Links to User.uid (requested by user)
+    allowNull: true,
+  },
+  centerId: {
+    type: DataTypes.INTEGER, // Links to Department.id (requested by user)
     allowNull: true,
   }
 });

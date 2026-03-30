@@ -28,7 +28,7 @@ const User = sequelize.define('user', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive', 'suspended'),
+    type: DataTypes.ENUM('active', 'inactive', 'suspended', 'pending_dept'),
     defaultValue: 'active',
   },
   avatar: {
@@ -37,6 +37,22 @@ const User = sequelize.define('user', {
   },
   subDepartment: {
     type: DataTypes.STRING, // e.g., 'Skill', 'Online', 'OpenSchool', 'BVoc'
+    allowNull: true,
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  address: {
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   referralCode: {

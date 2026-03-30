@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 
@@ -35,6 +35,17 @@ export default function LeaveRequests() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this leave request?')) return;
+    try {
+      await api.delete(`/portals/employee/leaves/${id}`);
+      toast.success('Leave request deleted successfully');
+      fetchLeaves();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to delete leave request');
+    }
+  };
+
   useEffect(() => {
     fetchLeaves();
   }, []);
@@ -43,7 +54,8 @@ export default function LeaveRequests() {
     reset({ 
       type: 'Annual Leave', 
       fromDate: '', 
-      toDate: '' 
+      toDate: '',
+      reason: '' 
     });
     setIsModalOpen(true);
   };
@@ -95,6 +107,23 @@ export default function LeaveRequests() {
           </span>
         );
       }
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          {row.original.status === 'pending_step1' && (
+            <button 
+              onClick={() => handleDelete(row.original.id)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Delete Request"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )
     }
   ];
 
@@ -163,6 +192,16 @@ export default function LeaveRequests() {
               />
               {errors.toDate && <p className="text-red-500 text-xs mt-1">{errors.toDate.message as string}</p>}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Reason / Details</label>
+            <textarea
+              {...register('reason', { required: 'Please provide a reason for your leave' })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm h-24"
+              placeholder="Provide a brief explanation for your absence..."
+            />
+            {errors.reason && <p className="text-red-500 text-xs mt-1">{errors.reason.message as string}</p>}
           </div>
 
           <div className="pt-4 flex justify-end space-x-3 border-t border-slate-100 mt-6">

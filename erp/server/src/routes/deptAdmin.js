@@ -1,7 +1,9 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
+import { createNotification } from './notifications.js';
 
 const router = express.Router();
 const { User, Task, Leave, Department } = models;
@@ -9,13 +11,19 @@ const { User, Task, Leave, Department } = models;
 const isDeptAdmin = (req, res, next) => {
   const role = req.user.role?.toLowerCase();
   const deptId = req.user.deptId || req.user.departmentId;
-  const allowedRoles = ['dept-admin', 'dept_admin', 'openschool', 'online', 'skill', 'bvoc'];
-  
-  if (!allowedRoles.includes(role) || !deptId) {
-    return res.status(403).json({ error: 'Access denied: Must be a Department Admin or Sub-department admin with an assigned department' });
+  const allowedRoles = ['dept-admin', 'dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic', 'finance', 'sales', 'hr', 'ops', 'operations', 'org-admin', 'system-admin'];
+
+  if (!allowedRoles.includes(role)) {
+    console.warn(`[AUTH] Unauthorized Role: ${role} for UID ${req.user.uid}`);
+    return res.status(403).json({ error: `Access denied: Role ${role} not authorized for management.` });
   }
-  
-  // Normalize deptId for subsequent handlers
+
+  // If no deptId, we only block if it's NOT one of the center-level roles that MUST have a deptId
+  const centerRoles = ['openschool', 'online', 'skill', 'bvoc'];
+  if (centerRoles.includes(role) && !deptId) {
+    return res.status(403).json({ error: 'Access denied: Unit ID missing for specialized role.' });
+  }
+
   req.user.deptId = deptId;
   next();
 };
@@ -23,12 +31,21 @@ const isDeptAdmin = (req, res, next) => {
 // --- Team Management ---
 router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
   try {
+    const role = req.user.role?.toLowerCase().trim();
+    const queryWhere = {};
+    
+    // Isolation logic: Only filter by deptId if the user is a departmental role
+    // Global roles (Academic, Operations, Org-Admin) see the full roster for institutional oversight.
+    const globalRoles = ['academic', 'operations', 'org-admin', 'system-admin', 'ops', 'finance'];
+    
+    if (req.user.deptId && !globalRoles.includes(role)) {
+      queryWhere.deptId = req.user.deptId;
+    }
+
     const team = await User.findAll({
-      where: { 
-        deptId: req.user.deptId,
-        role: 'employee' 
-      },
-      attributes: { exclude: ['password'] }
+      where: queryWhere,
+      attributes: { exclude: ['password'] },
+      order: [['name', 'ASC']]
     });
     res.json(team);
   } catch (error) {
@@ -37,31 +54,161 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
   }
 });
 
-// --- Tasks Management ---
-router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
+// --- Employee Onboarding/Enrollment ---
+router.post('/team/onboard', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const tasks = await Task.findAll({
-      where: { assignedBy: req.user.uid },
-      include: [
-        { model: User, as: 'assignee', attributes: ['uid', 'name', 'email'] }
-      ],
-      order: [['deadline', 'ASC']]
+    const userRole = req.user.role?.toLowerCase();
+    if (userRole !== 'hr' && userRole !== 'org-admin' && userRole !== 'system-admin') {
+      return res.status(403).json({ error: 'Governance Error: Employee enrollment is restricted to the Human Resources department.' });
+    }
+    const { email, password, name, subDepartment, role, reportingManagerUid } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: "Email, password, and name are required" });
+    }
+
+    const existing = await User.findOne({ where: { email } });
+    if (existing) {
+      return res.status(400).json({ error: "User with this email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const generatedUid = `EMP-${Date.now().toString().slice(-6)}`;
+
+    const newUser = await User.create({
+      uid: generatedUid,
+      email,
+      password: hashedPassword,
+      role: role || 'employee',
+      name,
+      deptId: req.user.deptId,
+      subDepartment: subDepartment || req.user.subDepartment || 'General',
+      reportingManagerUid: reportingManagerUid || req.user.uid,
+      status: 'active' // Direct registration by Dept Admin is immediate
     });
-    res.json(tasks);
+
+    res.status(201).json(newUser);
   } catch (error) {
-    console.error('Fetch tasks error:', error);
-    res.status(500).json({ error: 'Failed to fetch tasks' });
+    console.error('Dept Admin Onboard Error:', error);
+    res.status(500).json({ error: 'Failed to register employee' });
   }
 });
 
+router.put('/team/:uid/accept', verifyToken, isDeptAdmin, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const user = await User.findOne({ where: { uid, deptId: req.user.deptId } });
+
+    if (!user) {
+        return res.status(404).json({ error: 'Employee not found in your department scope' });
+    }
+
+    if (user.status !== 'pending_dept') {
+        return res.status(400).json({ error: `User is already ${user.status}` });
+    }
+
+    await user.update({ status: 'active' });
+    res.json({ message: 'Employee successfully enrolled and activated.', user });
+  } catch (error) {
+    console.error('Accept employee error:', error);
+    res.status(500).json({ error: 'Failed to accept employee' });
+  }
+});
+
+router.put('/team/:uid/status', verifyToken, isDeptAdmin, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const { status } = req.body;
+
+    const queryWhere = { uid };
+    if (req.user.deptId) {
+      queryWhere.deptId = req.user.deptId;
+    }
+
+    const user = await User.findOne({ where: queryWhere });
+    if (!user) {
+      return res.status(404).json({ error: 'Personnel not found in your department scope' });
+    }
+
+    // Toggle between active and inactive
+    const newStatus = status === 'active' ? 'active' : 'inactive';
+    await user.update({ status: newStatus });
+    
+    res.json({ message: `Personnel status updated to ${newStatus}`, status: newStatus });
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ error: 'Failed to update personnel status' });
+  }
+});
+
+// --- Tasks Management ---
+router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
+  const { departmentId, subDepartmentId } = req.query;
+
+  // Step 3: Backend Validation
+  if (!departmentId) {
+    return res.status(400).json({ 
+        message: "departmentId is required",
+        module: "DEPT_ADMIN"
+    });
+  }
+
+  // Step 9: Logging
+  console.log("Dept Tasks API:", { departmentId, subDepartmentId });
+
+  try {
+    // Step 4 & 5: Safe Query & Null-Safe Joins
+    const whereClause = { 
+        departmentId,
+        // Step 1: Optional Sub-Department Filter
+        ...(subDepartmentId && { subDepartmentId })
+    };
+
+    const now = new Date();
+    const tasksRaw = await Task.findAll({
+      where: whereClause,
+      include: [
+        { 
+            model: User, 
+            as: 'assignee', 
+            attributes: ['uid', 'name', 'email'],
+            required: false 
+        }
+      ],
+      order: [['deadline', 'ASC']]
+    });
+
+    const tasks = tasksRaw.map(t => {
+      const task = t.toJSON();
+      const isOverdue = new Date(task.deadline) < now && task.status !== 'completed';
+      return {
+        ...task,
+        isOverdue,
+        overdueLabel: isOverdue ? 'Overdue - Employee Level' : null
+      };
+    });
+
+    return res.json(tasks);
+
+  } catch (error) {
+    // Step 6: Error Handling
+    console.error("DEPT TASK ERROR:", error);
+    return res.status(500).json({ 
+        message: "Failed to load tasks", 
+        module: "DEPT_ADMIN" 
+    });
+  }
+});
+
+
 router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const { assignedTo, title, deadline, priority } = req.body;
+    const { assignedTo, title, deadline, priority, departmentId, subDepartmentId } = req.body;
     
-    // Verify assignee is in the admin's department
-    const assignee = await User.findOne({ where: { uid: assignedTo, deptId: req.user.deptId } });
+    // Verify assignee belongs to the department scope
+    const assignee = await User.findOne({ where: { uid: assignedTo, deptId: departmentId } });
     if (!assignee) {
-      return res.status(400).json({ error: 'Assignee must be a member of your department' });
+      return res.status(400).json({ error: 'Assignee must be a member of the target department scope' });
     }
 
     const task = await Task.create({
@@ -70,18 +217,19 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
       title,
       deadline,
       priority: priority || 'medium',
-      status: 'pending'
+      status: 'pending',
+      departmentId,
+      subDepartmentId
     });
 
-    // GAP-2: Real-Time Event Processing
-    if (req.io) {
-      req.io.emit('notification', {
-        targetUid: assignedTo,
-        title: 'New Task Assigned',
-        message: `You have been assigned: ${title}`,
-        type: 'info'
-      });
-    }
+    // GAP-2: Real-Time & Persistent Notification
+    await createNotification(req.io, {
+      targetUid: assignedTo,
+      title: 'Institutional Directive Assigned',
+      message: `New task: ${title}. High-priority delivery expected.`,
+      type: 'info',
+      link: '/dashboard/employee/tasks'
+    });
 
     res.status(201).json(task);
   } catch (error) {

@@ -31,11 +31,16 @@ interface Student {
   documents?: any;
   lastRejectionReason?: string;
   reviewedAt?: string;
+  marks?: {
+    lastExam: string;
+    lastExamScore: string;
+    marksProof?: string;
+  };
 }
 
 export default function StudentValidation() {
   const { unit } = useParams();
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [activeTab, setActiveTab] = useState<'PENDING' | 'VALIDATED' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -45,7 +50,10 @@ export default function StudentValidation() {
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const endpoint = activeTab === 'PENDING' ? 'pending' : activeTab === 'APPROVED' ? 'approved' : 'rejected';
+      const endpoint = 
+        activeTab === 'PENDING' ? 'pending' : 
+        activeTab === 'VALIDATED' ? 'validated' :
+        activeTab === 'APPROVED' ? 'approved' : 'rejected';
       const res = await api.get(`/sub-dept/students/${endpoint}`);
       setStudents(res.data);
     } catch (error) {
@@ -151,7 +159,7 @@ export default function StudentValidation() {
           className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-900 rounded-xl text-xs font-black hover:bg-slate-50 transition-all active:scale-95"
         >
           <Eye className="w-3.5 h-3.5 text-blue-600" />
-          Review & Validate
+          {activeTab === 'PENDING' ? 'Review & Validate' : 'View Details'}
         </button>
       )
     }
@@ -175,12 +183,20 @@ export default function StudentValidation() {
               activeTab === 'PENDING' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Pending Review
+            Pending
+          </button>
+          <button 
+            onClick={() => setActiveTab('VALIDATED')}
+            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'VALIDATED' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Validated
           </button>
           <button 
             onClick={() => setActiveTab('APPROVED')}
             className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === 'APPROVED' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 text-slate-500'
+              activeTab === 'APPROVED' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Approved
@@ -188,7 +204,7 @@ export default function StudentValidation() {
           <button 
             onClick={() => setActiveTab('REJECTED')}
             className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === 'REJECTED' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 text-slate-500'
+              activeTab === 'REJECTED' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Rejected
@@ -213,7 +229,9 @@ export default function StudentValidation() {
             <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Application Validation</h2>
-                <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">Stage: Sub-Departmental Review</p>
+                <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">
+                  Stage: {activeTab === 'PENDING' ? 'Sub-Departmental Review' : activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
+                </p>
               </div>
               <button onClick={() => setIsReviewOpen(false)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors shadow-sm">
                 <XCircle className="w-6 h-6" />
@@ -283,6 +301,25 @@ export default function StudentValidation() {
                     Document Verification
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
+                    {/* Academic Proof */}
+                    {selectedStudent.marks?.marksProof && (
+                      <a 
+                        href={selectedStudent.marks.marksProof}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black uppercase text-blue-700">Academic Certificate</span>
+                            <span className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">Verified Proof of {selectedStudent.marks.lastExam}</span>
+                          </div>
+                        </div>
+                        <Eye className="w-4 h-4 text-blue-300 group-hover:text-blue-600" />
+                      </a>
+                    )}
+
                     {selectedStudent.documents ? Object.entries(selectedStudent.documents).map(([key, value]: any) => (
                       <a 
                         key={key}
@@ -297,7 +334,7 @@ export default function StudentValidation() {
                         </div>
                         <Eye className="w-4 h-4 text-slate-400" />
                       </a>
-                    )) : (
+                    )) : !selectedStudent.marks?.marksProof && (
                       <div className="p-10 border border-dashed border-slate-200 rounded-3xl text-center space-y-3">
                          <AlertCircle className="w-8 h-8 text-slate-200 mx-auto" />
                          <p className="text-xs font-bold text-slate-400 uppercase">No verification documents uploaded</p>

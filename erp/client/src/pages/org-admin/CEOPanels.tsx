@@ -5,28 +5,30 @@ import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
+import CEOPanelCreate from './CEOPanelCreate';
 
-interface CEOUser {
-  uid: string;
+interface CEOPanelData {
+  id: string;
   name: string;
-  email: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
+  visibilityScope: string[];
+  status: string;
+  ceoUser: {
+    name: string;
+    email: string;
+  };
+  devCredential?: string;
 }
 
 export default function CEOPanels() {
-  const [ceos, setCeos] = useState<CEOUser[]>([]);
+  const [ceos, setCeos] = useState<CEOPanelData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<CEOUser | null>(null);
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const [editingPanel, setEditingPanel] = useState<CEOPanelData | null>(null);
 
   const fetchCEOs = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/users?role=ceo');
+      const res = await api.get('/org-admin/ceo-panels');
       setCeos(res.data);
     } catch (error: any) {
       if (error.response?.status !== 404) {
@@ -42,75 +44,91 @@ export default function CEOPanels() {
   }, []);
 
   const openCreateModal = () => {
-    setEditingUser(null);
-    reset({ name: '', email: '', password: '', status: 'active' });
+    setEditingPanel(null);
     setIsModalOpen(true);
   };
 
-  const openEditModal = (user: CEOUser) => {
-    setEditingUser(user);
-    reset({ name: user.name, email: user.email, password: '', status: user.status });
+  const openEditModal = (panel: CEOPanelData) => {
+    setEditingPanel(panel);
     setIsModalOpen(true);
   };
 
-  const onSubmit = async (data: any) => {
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Terminate this executive instance partition? This action cannot be undone.')) return;
     try {
-      const payload = { ...data, role: 'ceo' };
-      if (!editingUser && !payload.password) {
-        return toast.error('Password is required for new accounts');
-      }
-
-      if (editingUser) {
-        await api.put(`/users/${editingUser.uid}`, payload);
-        toast.success('CEO account updated');
-      } else {
-        await api.post('/users', payload);
-        toast.success('CEO account created');
-      }
-      setIsModalOpen(false);
-      fetchCEOs();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Operation failed');
-    }
-  };
-
-  const handleDelete = async (uid: string) => {
-    if (!window.confirm('Are you sure you want to delete this CEO account?')) return;
-    try {
-      await api.delete(`/users/${uid}`);
-      toast.success('Account deleted');
+      await api.delete(`/org-admin/ceo-panels/${id}`);
+      toast.success('Executive Instance Terminated');
       fetchCEOs();
     } catch (error) {
-      toast.error('Failed to delete account');
+      toast.error('Failed to terminate instance');
     }
   };
 
-  const columns: ColumnDef<CEOUser>[] = [
-    { accessorKey: 'name', header: 'Full Name' },
-    { accessorKey: 'email', header: 'Email Address' },
+  const columns: ColumnDef<CEOPanelData>[] = [
+    { 
+      accessorKey: 'name', 
+      header: 'Panel Identity',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-900">{row.original.name}</span>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{row.original.ceoUser?.name}</span>
+        </div>
+      )
+    },
+    { 
+      accessorKey: 'ceoUser.email', 
+      header: 'Credential Entry',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-slate-600">{row.original.ceoUser?.email}</span>
+          <span className="text-[10px] text-blue-500 font-black uppercase tracking-widest mt-0.5">Key: {row.original.devCredential || 'Not Set'}</span>
+        </div>
+      )
+    },
+    {
+      accessorKey: 'visibilityScope',
+      header: 'Initial Visibility Scope',
+      cell: ({ row }) => {
+        const scopes = row.original.visibilityScope || [];
+        if (scopes.length === 0) return <span className="text-[10px] font-bold text-slate-400 italic">No Restriction Scope</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {scopes.map(scope => (
+              <span key={scope} className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider rounded-md border border-blue-100">
+                {scope}
+              </span>
+            ))}
+          </div>
+        );
+      }
+    },
     { 
       accessorKey: 'status', 
-      header: 'Status',
+      header: 'Operational Status',
       cell: ({ row }) => {
-        const status = row.original.status;
+        const status = row.original.status?.toLowerCase();
         return (
-          <span className={`px-2 py-1 text-xs rounded-full font-medium ${status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-            {status.toUpperCase()}
+          <span className={`px-3 py-1 text-[10px] rounded-full font-black uppercase tracking-widest border ${
+            status === 'active' 
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+              : 'bg-slate-50 text-slate-500 border-slate-200'
+          }`}>
+            {status}
           </span>
         );
       }
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: 'Infrastructure Actions',
       cell: ({ row }) => {
-        const user = row.original;
+        const panel = row.original;
         return (
           <div className="flex items-center space-x-2">
-            <button onClick={() => openEditModal(user)} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
+            <button onClick={() => openEditModal(panel)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors border border-transparent hover:border-slate-200">
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(user.uid)} className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors">
+            <button onClick={() => handleDelete(panel.id)} className="p-2 hover:bg-red-50 rounded-xl text-red-600 transition-colors border border-transparent hover:border-red-100">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -140,79 +158,23 @@ export default function CEOPanels() {
         data={ceos} 
         isLoading={isLoading} 
         searchKey="name" 
-        searchPlaceholder="Search executives..." 
-        emptyMessage="No CEO panels defined yet."
-        emptyDescription="Create executive accounts to grant access to the leadership dashboard."
+        searchPlaceholder="Identify executive instances..." 
+        emptyMessage="No CEO panels provisioned yet."
+        emptyDescription="Initialize executive partitions to grant filtered institutional oversight."
       />
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingUser ? "Edit CEO Account" : "Create CEO Account"}
+        title={editingPanel ? "Reconfigure Executive Instance" : "Provision New Identity"}
+        maxWidth="4xl"
+        hideHeader={true}
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-            <input
-              {...register('name', { required: 'Name is required' })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-slate-500 focus:border-slate-500 shadow-sm"
-              placeholder="e.g. John Doe"
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message as string}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-            <input
-              type="email"
-              {...register('email', { required: 'Email is required' })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-slate-500 focus:border-slate-500 shadow-sm"
-              placeholder="e.g. ceo@iits.edu"
-            />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message as string}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Password {editingUser && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}
-            </label>
-            <input
-              type="password"
-              {...register('password')}
-              autoComplete="new-password"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-slate-500 focus:border-slate-500 shadow-sm"
-              placeholder={editingUser ? "Enter new password" : "Required password"}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Account Status</label>
-            <select
-              {...register('status')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-slate-500 focus:border-slate-500 shadow-sm"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div className="pt-4 flex justify-end space-x-3 border-t border-slate-100 mt-6">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
-            >
-              {isSubmitting ? 'Processing...' : (editingUser ? 'Save Updates' : 'Create CEO')}
-            </button>
-          </div>
-        </form>
+        <CEOPanelCreate 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => fetchCEOs()}
+          initialData={editingPanel}
+        />
       </Modal>
     </div>
   );

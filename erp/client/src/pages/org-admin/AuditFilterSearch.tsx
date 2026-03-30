@@ -5,7 +5,8 @@ import {
   RefreshCw,
   SearchCheck,
   ChevronRight,
-  Layout
+  Layout,
+  Search
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import * as XLSX from 'xlsx';
@@ -37,6 +38,14 @@ export default function AuditFilterSearch() {
       const { data } = await api.get('/audit', { 
         params: { ...filters, limit: 100 } // Get more for search view
       });
+
+      // Final safety validation
+      if (filters.startDate && filters.endDate && new Date(filters.endDate) < new Date(filters.startDate)) {
+        toast.error("Chronological Error: 'To' date must be after 'From' date.");
+        setLoading(false);
+        return;
+      }
+
       setResults(data?.logs || []);
       setLoading(false);
     } catch (error: any) {
@@ -79,9 +88,14 @@ export default function AuditFilterSearch() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Advanced Audit Intelligence</h1>
-          <p className="text-slate-500 mt-1 font-medium">Filter deep into the system history to isolate specific incidents or behavioral patterns.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+            <Search className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Advanced Audit Intelligence</h1>
+            <p className="text-slate-500 mt-1 font-medium">Filter deep into the system history to isolate specific incidents or behavioral patterns.</p>
+          </div>
         </div>
         <div className="flex gap-4">
           <button 
@@ -90,7 +104,7 @@ export default function AuditFilterSearch() {
               setResults([]);
               setHasSearched(false);
             }}
-            className="px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:border-slate-300 transition-all flex items-center shadow-sm"
+            className="px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:border-slate-300 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center shadow-sm"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Reset
@@ -117,22 +131,31 @@ export default function AuditFilterSearch() {
             </div>
             
             <div className="p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Date Boundary (From/To)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-row items-center gap-2 w-full">
                     <input 
                       type="date" 
                       value={filters.startDate}
-                      onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" 
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        setFilters({
+                          ...filters, 
+                          startDate: newStart,
+                          endDate: (filters.endDate && new Date(filters.endDate) < new Date(newStart)) ? newStart : filters.endDate
+                        });
+                      }}
+                      className="flex-1 min-w-0 px-3 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
                     />
-                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                    <ChevronRight className={`w-4 h-4 flex-shrink-0 ${filters.startDate ? 'text-blue-500' : 'text-slate-300'}`} />
                     <input 
                       type="date" 
                       value={filters.endDate}
+                      disabled={!filters.startDate}
+                      min={filters.startDate}
                       onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" 
+                      className="flex-1 min-w-0 px-3 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
                     />
                   </div>
                 </div>
@@ -156,7 +179,7 @@ export default function AuditFilterSearch() {
                       <button
                         key={action}
                         onClick={() => setFilters({...filters, action: filters.action === action ? '' : action})}
-                        className={`flex-1 py-3 rounded-xl border-2 font-bold text-xs transition-all ${
+                        className={`flex-1 py-3 rounded-xl border-2 font-bold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all ${
                           filters.action === action
                           ? 'border-slate-900 bg-slate-900 text-white'
                           : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200'
@@ -204,20 +227,57 @@ export default function AuditFilterSearch() {
                       <tr><td colSpan={4} className="p-10 text-center text-slate-400 italic">No matching records found.</td></tr>
                     ) : (results || []).map(row => (
                       <Fragment key={row.id}>
-                        <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)}>
-                          <td className="px-6 py-4 font-bold">{row?.action}</td>
+                        <tr className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)}>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-slate-900">{row?.action}</div>
+                            <div className="text-[10px] text-slate-400 font-medium uppercase mt-1">
+                              {row.timestamp ? new Date(row.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 font-bold text-blue-600">{row?.entity}</td>
-                          <td className="px-6 py-4">@{row?.user?.name || 'System'}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-slate-700">@{row?.user?.name || 'System'}</div>
+                            <div className="text-[10px] text-slate-400 uppercase font-bold">{row?.user?.role || 'Service'}</div>
+                          </td>
                           <td className="px-6 py-4 text-right">
-                            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded-lg">JSON</span>
+                            <button className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
+                              expandedRow === row.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {expandedRow === row.id ? 'Hide Details' : 'View Details'}
+                            </button>
                           </td>
                         </tr>
                         {expandedRow === row.id && (
-                          <tr className="bg-slate-50">
-                            <td colSpan={4} className="p-4">
-                              <pre className="text-[10px] bg-white border p-4 rounded-xl overflow-x-auto max-h-[300px]">
-                                {JSON.stringify({ before: row?.before, after: row?.after }, null, 2)}
-                              </pre>
+                          <tr className="bg-slate-50/50">
+                            <td colSpan={4} className="p-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Previous State</p>
+                                  <div className="bg-white border rounded-2xl p-4 shadow-sm max-h-[250px] overflow-y-auto">
+                                    {row.before ? (
+                                      Object.entries(row.before).map(([k, v]) => (
+                                        <div key={k} className="flex justify-between text-[11px] border-b border-slate-50 py-1.5 last:border-0">
+                                          <span className="font-bold text-slate-400 uppercase">{k}</span>
+                                          <span className="font-semibold text-slate-600">{typeof v === 'object' ? 'JSON' : String(v)}</span>
+                                        </div>
+                                      ))
+                                    ) : <div className="text-slate-300 italic py-4 text-center">Initial State</div>}
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Updated State</p>
+                                  <div className="bg-white border rounded-2xl p-4 shadow-sm max-h-[250px] overflow-y-auto">
+                                    {row.after ? (
+                                      Object.entries(row.after).map(([k, v]) => (
+                                        <div key={k} className="flex justify-between text-[11px] border-b border-slate-50 py-1.5 last:border-0">
+                                          <span className="font-bold text-slate-400 uppercase">{k}</span>
+                                          <span className="font-semibold text-slate-900">{typeof v === 'object' ? 'JSON' : String(v)}</span>
+                                        </div>
+                                      ))
+                                    ) : <div className="text-rose-400 italic py-4 text-center">Deleted</div>}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -238,7 +298,7 @@ export default function AuditFilterSearch() {
             <div className="space-y-4 relative z-10">
               <button 
                 onClick={() => handleExport('xlsx')}
-                className="w-full bg-white/10 hover:bg-white/20 transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
+                className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
               >
                 <div className="flex items-center">
                   <FileSpreadsheet className="w-5 h-5 mr-3 text-emerald-400" />
@@ -248,7 +308,7 @@ export default function AuditFilterSearch() {
               </button>
               <button 
                 onClick={() => handleExport('csv')}
-                className="w-full bg-white/10 hover:bg-white/20 transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
+                className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
               >
                 <div className="flex items-center text-rose-300">
                   <FileSpreadsheet className="w-5 h-5 mr-3" />

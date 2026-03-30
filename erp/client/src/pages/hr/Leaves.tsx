@@ -21,6 +21,7 @@ interface Leave {
   status: string;
   step1Approver?: UserInfo;
   step2Approver?: UserInfo;
+  reason?: string;
   createdAt: string;
 }
 
@@ -93,6 +94,11 @@ export default function Leaves() {
       }
     },
     { accessorKey: 'type', header: 'Leave Type' },
+    { 
+      accessorKey: 'reason', 
+      header: 'Reason / Details',
+      cell: ({ row }) => <span className="text-xs text-slate-600 italic line-clamp-1" title={row.original.reason}>{row.original.reason || 'No details provided'}</span>
+    },
     { 
       id: 'dates', 
       header: 'Duration',

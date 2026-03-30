@@ -26,8 +26,9 @@ export default function Performance() {
       const employees = employeesRes.data;
 
       const metricsPromises = employees.map((emp: any) => 
-        api.get(`/hr/performance/${emp.uid}`).then(res => ({
+        api.get(`/hr/performance/employee/${emp.uid}`).then(res => ({
           ...res.data,
+          uid: emp.uid, // Map uid for DataTable consistency
           name: emp.name
         }))
       );

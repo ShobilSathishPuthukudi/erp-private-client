@@ -1,49 +1,227 @@
-import express from 'express';
+import { applyExecutiveScope } from '../middleware/visibility.js';
 import { models, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 import { verifyToken, isAcademicOrAdmin, isOpsOrAdmin, isArchitectureAdmin } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { universitySchema, programSchema } from '../lib/schemas.js';
 import { logAction } from '../lib/audit.js';
+import express from 'express';
+import erpEvents from '../lib/events.js';
 
 const router = express.Router();
-const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept } = models;
+const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept, CenterProgram, AcademicActionRequest, Lead } = models;
 
-const getSubDeptId = (user) => {
-  if (!user) return null;
-  const unitStr = (user.subDepartment || user.role || '').toLowerCase();
+/**
+ * GAP-7: Automated Financial Logic Provisioning
+ * Synchronizes ProgramFee records based on Academic paymentStructure selections.
+ */
+async function autoSeedFees(program, userUid) {
+  const { id: programId, name: programName, totalFee, paymentStructure, tenure, duration } = program;
+  const structures = Array.isArray(paymentStructure) ? paymentStructure : [];
+  
+  for (const type of structures) {
+    const rawType = type.toLowerCase().trim();
+    let schemaType = 'semester';
+    let installments = [];
+    let schemaName = `${type} Plan`;
+
+    if (rawType.includes('semester')) {
+      schemaType = 'semester';
+      schemaName = 'Semester Plan';
+      const semCount = Math.max(1, Math.floor(duration / 6));
+      const amtPerSem = totalFee / semCount;
+      for (let i = 1; i <= semCount; i++) {
+        installments.push({ label: `Semester ${i} Fee`, amount: parseFloat(amtPerSem.toFixed(2)) });
+      }
+    } else if (rawType.includes('yearly') || rawType.includes('year')) {
+      schemaType = 'yearly';
+      schemaName = 'Yearly Plan';
+      const yearCount = Math.max(1, Math.floor(duration / 12));
+      const amtPerYear = totalFee / yearCount;
+      for (let i = 1; i <= yearCount; i++) {
+        installments.push({ label: `Year ${i} Fee`, amount: parseFloat(amtPerYear.toFixed(2)) });
+      }
+    } else if (rawType.includes('emi') || rawType.includes('custom') || rawType.includes('installment') || rawType.includes('monthly')) {
+      schemaType = 'emi';
+      const t = tenure || 1;
+      schemaName = rawType.includes('monthly') ? 'Monthly Plan' : `${t} Months EMI Plan`;
+      const amtPerInst = totalFee / t;
+      for (let i = 1; i <= t; i++) {
+        installments.push({ label: `Installment ${i}`, amount: parseFloat(amtPerInst.toFixed(2)) });
+      }
+    }
+
+    if (installments.length > 0) {
+      // Check if a similarly named schema already exists to prevent duplicate seeding on updates
+      const existing = await ProgramFee.findOne({ 
+        where: { programId, name: schemaName, isActive: true } 
+      });
+      
+      if (!existing) {
+        await ProgramFee.create({
+          programId: program.id,
+          name: schemaName,
+          isActive: true,
+          version: 1,
+          schema: {
+            type: schemaType,
+            installments
+          }
+        });
+      }
+    }
+  }
+
+  // Always ensure a "FULL" payment plan (Default) if totalFee exists
+  if (totalFee > 0) {
+    const existingDefault = await ProgramFee.findOne({ 
+      where: { programId: program.id, name: 'Default Fee Structure' } 
+    });
+
+    if (!existingDefault) {
+      await ProgramFee.create({
+        programId: program.id,
+        name: 'Default Fee Structure',
+        isActive: true,
+        isDefault: true,
+        version: 1,
+        schema: {
+          type: 'full',
+          installments: [{ label: 'Full Program Fee', amount: totalFee }]
+        }
+      });
+    }
+  }
+}
+
+const getSubDeptId = (input) => {
+  if (!input) return null;
+  const unitStr = (typeof input === 'string' ? input : (input.subDepartment || input.role || '')).toLowerCase();
   if (unitStr.includes('openschool')) return 8;
   if (unitStr.includes('online')) return 9;
   if (unitStr.includes('skill')) return 10;
   if (unitStr.includes('bvoc')) return 11;
-  return null;
+  return input.deptId || input.departmentId || null;
 };
+
+// ==========================================
+// ACADEMIC ACTION REQUESTS (GATED OPS)
+// ==========================================
+
+router.post('/request-action', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { entityType, entityId, actionType, proposedData, reason } = req.body;
+    
+    const request = await AcademicActionRequest.create({
+      entityType,
+      entityId,
+      actionType,
+      proposedData,
+      reason,
+      requesterId: req.user.uid,
+      status: 'pending'
+    });
+
+    await logAction({
+       userId: req.user.uid,
+       action: `REQUEST_${actionType}`,
+       entity: entityType,
+       details: `Requested ${actionType} for ${entityType} ID: ${entityId}. Reason: ${reason}`,
+       module: 'Academic'
+    });
+
+    res.status(201).json({ message: 'Request submitted for Institutional/Finance review.', request });
+  } catch (error) {
+    console.error('Action Request Error:', error);
+    res.status(500).json({ error: 'Failed to synchronize action request' });
+  }
+});
+
+// ==========================================
+// REFERRAL OVERSIGHT (SALES SYNC)
+// ==========================================
+
+router.get('/referrals', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const [centers, leads] = await Promise.all([
+      Department.findAll({
+        where: { 
+          type: { [Op.in]: ['center', 'study-center'] },
+          bdeId: { [Op.ne]: null }
+        },
+        include: [{ model: User, as: 'referringBDE', attributes: ['name', 'email'] }]
+      }),
+      Lead.findAll({
+        where: { 
+          bdeId: { [Op.ne]: null },
+          status: { [Op.ne]: 'CONVERTED' } // Only see active leads, converted ones are departments
+        },
+        include: [{ model: User, as: 'referrer', attributes: ['name', 'email'] }]
+      })
+    ]);
+
+    res.json({ centers, leads });
+  } catch (error) {
+    console.error('Referral Fetch Error:', error);
+    res.status(500).json({ error: 'Failed to synchronize referral telemetry' });
+  }
+});
+
+router.get('/action-requests', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const requests = await AcademicActionRequest.findAll({
+      where: { requesterId: req.user.uid },
+      order: [['createdAt', 'DESC']],
+      include: [
+        { model: User, as: 'requester', attributes: ['name', 'avatar'] }
+      ]
+    });
+    res.json(requests);
+  } catch (error) {
+    console.error('[ACADEMIC] Fetch Action Requests Error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch institutional action requests' });
+  }
+});
 
 // ==========================================
 // TELEMETRY & DASHBOARD STATS
 // ==========================================
 
-router.get('/stats', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
+    const { restricted, filter: visibilityFilter } = req.visibility;
     const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
+    const sid = getSubDeptId(req.user);
 
-    const totalUniversities = await Department.count({ where: { type: 'university' } });
-    const activePrograms = await Program.count({ where: isSubDeptAdmin ? { subDeptId: subDeptId } : {} });
+    const totalUniversities = await Department.count({ 
+      where: { type: 'university', ...visibilityFilter } 
+    });
+    const activePrograms = await Program.count({ 
+      where: { 
+        ...(isSubDeptAdmin ? { subDeptId: sid } : {}),
+        ...visibilityFilter
+      } 
+    });
     const pendingReviews = await Student.count({ 
-      where: isSubDeptAdmin 
-        ? { programId: { [Op.in]: sequelize.literal(`(SELECT id FROM programs WHERE subDeptId = ${subDeptId})`) }, enrollStatus: 'pending' } 
-        : { enrollStatus: 'pending' } 
+      where: { 
+        ...(isSubDeptAdmin ? { subDepartmentId: sid, enrollStatus: 'pending' } : { enrollStatus: 'pending' }),
+        ...visibilityFilter
+      } 
     });
     
     // Revenue isolation
-    const payments = await Payment.findAll({
+    const paymentsRow = await Payment.findAll({
       attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
-      where: isSubDeptAdmin ? {
-        studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId}))`) }
-      } : {},
+      where: {
+        ...(isSubDeptAdmin ? {
+          studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE subDepartmentId = ${sid})`) }
+        } : {}),
+        ...visibilityFilter
+      },
       raw: true
     });
-    const revenue = payments[0]?.total || 0;
+    const revenue = paymentsRow[0]?.total || 0;
 
     res.json({
       totalUniversities,
@@ -60,10 +238,11 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, async (req, res) => {
 // UNIVERSITIES (Departments with type='university')
 // ==========================================
 
-router.get('/universities', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.get('/universities', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
+    const { filter: visibilityFilter } = req.visibility;
     const unis = await Department.findAll({
-      where: { type: 'university' },
+      where: { type: 'university', ...visibilityFilter },
       attributes: {
         include: [
           [sequelize.literal(`(SELECT COUNT(*) FROM programs WHERE programs.universityId = department.id)`), 'totalPrograms'],
@@ -95,9 +274,10 @@ router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
 
 router.post('/universities', verifyToken, isArchitectureAdmin, validate(universitySchema), async (req, res) => {
   try {
-    const { name, status, accreditation, websiteUrl, affiliationDoc } = req.body;
+    const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
     const uni = await Department.create({
       name,
+      shortName,
       type: 'university',
       adminId: req.user.uid,
       status: status || 'active',
@@ -122,11 +302,11 @@ router.post('/universities', verifyToken, isArchitectureAdmin, validate(universi
 router.put('/universities/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, status, accreditation, websiteUrl, affiliationDoc } = req.body;
+    const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
     const uni = await Department.findOne({ where: { id, type: 'university' } });
     if (!uni) return res.status(404).json({ error: 'University not found' });
 
-    await uni.update({ name, status, accreditation, websiteUrl, affiliationDoc });
+    await uni.update({ name, shortName, status, accreditation, websiteUrl, affiliationDoc });
     res.json(uni);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update university' });
@@ -150,24 +330,42 @@ router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req,
 // CENTERS (Departments with type='center')
 // ==========================================
 
-router.get('/centers', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
+    const { restricted, filter: visibilityFilter } = req.visibility;
+    const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isIsolated = rolesWithIsolation.includes(req.user.role);
+    const sid = getSubDeptId(req.user);
+
+    const whereClause = { 
+      type: { [Op.in]: ['center', 'study-center'] },
+      ...visibilityFilter
+    };
+    
+    // Multi-Sub-Dept Visibility: A center is visible if it has at least one program in the admin's unit
+    if (isIsolated && sid) {
+      whereClause.id = {
+        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId = ${sid} AND isActive = true)`)
+      };
+    }
+
     const centers = await Department.findAll({
-      where: { type: 'center' },
-      attributes: ['id', 'name', 'status', 'description', 'logo']
+      where: whereClause,
+      attributes: ['id', 'name', 'status', 'description', 'logo', 'shortName', 'auditStatus']
     });
     res.json(centers);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch global center roster' });
+    console.error('Fetch centers error:', error);
+    res.status(500).json({ error: 'Failed to fetch jurisdictional center roster' });
   }
 });
-
 // ==========================================
 // ACADEMIC PROGRAMS
-router.get('/programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.get('/programs', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
+    const { restricted, filter: visibilityFilter } = req.visibility;
     const { subDeptId } = req.query;
-    const whereClause = {};
+    const whereClause = { ...visibilityFilter };
     
     if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
       whereClause.subDeptId = getSubDeptId(req.user);
@@ -218,18 +416,21 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
 
 router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchema), async (req, res) => {
   try {
-    const { name, universityId, duration, type, intakeCapacity } = req.body;
+    const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, paymentStructure } = req.body;
     
     // SubDept mapping (simplified for now, usually correlates to Dept ID)
-    const subDeptId = 0; // Default or map based on type if needed
+    const subDeptId = getSubDeptId({ role: type }); // Try to map via role-like type
     
     const p = await Program.create({
       name,
+      shortName,
       universityId: universityId || null,
       duration,
       type,
-      subDeptId,
-      intakeCapacity: intakeCapacity || 0
+      subDeptId: subDeptId || 0,
+      intakeCapacity: intakeCapacity || 0,
+      totalFee: totalFee || 0,
+      paymentStructure: paymentStructure || []
     });
     await logAction({
        userId: req.user.uid,
@@ -239,17 +440,97 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
        module: 'Academic'
     });
 
+    // Auto-provision initial fee structures
+    await autoSeedFees(p, req.user.uid);
+
     res.status(201).json(p);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to construct program framework' });
+    console.error('[ACADEMIC] Program Creation Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to construct program framework',
+      details: error.message 
+    });
+  }
+});
+
+// --- Center-Program Mapping (Phase 3) ---
+router.get('/centers/:id/programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { id: centerId } = req.params;
+    const mappings = await CenterProgram.findAll({
+      where: { centerId, isActive: true },
+      include: [
+        { model: Program, attributes: ['id', 'name', 'type', 'duration'] },
+        { model: ProgramFee, as: 'feeSchema', attributes: ['id', 'name', 'totalAmount'] }
+      ]
+    });
+    res.json(mappings);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch center-program mappings' });
+  }
+});
+
+router.post('/centers/:id/map-programs', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { id: centerId } = req.params;
+    const { programId, feeSchemaId } = req.body;
+
+    const program = await Program.findByPk(programId);
+    if (!program) return res.status(404).json({ error: 'Program core not found' });
+
+    // Automatic subDeptId derivation
+    const subDeptId = program.subDeptId;
+
+    const [mapping, created] = await CenterProgram.findOrCreate({
+      where: { centerId, programId },
+      defaults: { feeSchemaId, subDeptId, isActive: true }
+    });
+
+    if (!created) {
+      await mapping.update({ feeSchemaId, subDeptId, isActive: true });
+    }
+
+    res.status(201).json(mapping);
+  } catch (error) {
+    console.error('Center-Program mapping error:', error);
+    res.status(500).json({ error: 'Failed to synchronize center-program mapping' });
+  }
+});
+
+router.post('/centers/:id/register', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const center = await Department.findByPk(id);
+    if (!center) return res.status(404).json({ error: 'Center node not found' });
+    
+    if (center.centerStatus !== 'APPROVED_BY_CENTER') {
+       return res.status(400).json({ error: 'Governance Error: Center has not yet accepted the institutional proposal.' });
+    }
+
+    await center.update({ centerStatus: 'REGISTERED' });
+    
+    await models.AuditLog.create({
+        entity: 'Department',
+        action: 'REGISTER_CENTER',
+        userId: req.user.uid,
+        before: { centerStatus: 'APPROVED_BY_CENTER' },
+        after: { centerStatus: 'REGISTERED' },
+        module: 'Operations'
+    });
+
+    res.json({ message: 'Center successfully registered. Proceed to program mapping.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Center registration failed' });
   }
 });
 
 router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, universityId, duration, subDeptId, intakeCapacity } = req.body;
-    
+    const { subDeptId } = req.body;
+    const p = await Program.findByPk(id);
+    if (!p) return res.status(404).json({ error: 'Program core not found' });
+
     if (subDeptId && subDeptId !== p.subDeptId) {
       const studentCount = await Student.count({ where: { programId: id } });
       if (studentCount > 0) {
@@ -259,9 +540,18 @@ router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) =
 
     await p.update({ 
       ...req.body,
-      universityId: universityId || p.universityId, 
-      subDeptId: subDeptId || p.subDeptId 
+      name: req.body.name || p.name,
+      shortName: req.body.shortName !== undefined ? req.body.shortName : p.shortName,
+      universityId: req.body.universityId || p.universityId, 
+      subDeptId: req.body.subDeptId || p.subDeptId,
+      totalFee: req.body.totalFee !== undefined ? req.body.totalFee : p.totalFee,
+      paymentStructure: req.body.paymentStructure || p.paymentStructure,
+      tenure: req.body.tenure !== undefined ? req.body.tenure : p.tenure
     });
+
+    // Synchronize fee structures on update in case payment structures were toggled
+    await autoSeedFees(p, req.user.uid);
+
     res.json(p);
   } catch (error) {
     res.status(500).json({ error: 'Failed to apply program edits' });
@@ -285,10 +575,9 @@ router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res
 // ACADEMIC STUDENT REVIEW & MARKS ENTRY
 // ==========================================
 
-router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
+router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { status, programId, stage, subDeptId } = req.query;
-    const { Op } = sequelize;
     const whereClause = {
       status: { [Op.ne]: 'DRAFT' } // Isolation: Only see submitted candidates
     };
@@ -308,8 +597,12 @@ router.get('/students', verifyToken, isAcademicOrAdmin, async (req, res) => {
       whereClause.subDepartmentId = getSubDeptId(req.user);
     }
 
+    // CEO Visibility Guard
+    const { restricted, filter: visibilityFilter } = req.visibility;
+    const finalWhere = { ...whereClause, ...visibilityFilter };
+
     const students = await Student.findAll({
-      where: whereClause,
+      where: finalWhere,
       include: [
         { model: Program, attributes: ['id', 'name', 'subDeptId'] },
         { model: Department, as: 'center', attributes: ['id', 'name'] }
@@ -501,12 +794,17 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
         return res.status(400).json({ error: `Institutional Guardrail: Center [${center.name}] must be Approved/Audited before batch generation.` });
     }
 
-    // 3. Sub-Dept Support Validation
-    const subDeptMapReverse = { 8: 'OpenSchool', 9: 'Online', 10: 'Skill', 11: 'BVoc' };
-    const subDeptName = subDeptMapReverse[subDeptId];
-    const mapping = await CenterSubDept.findOne({ where: { centerId, subDeptName } });
+    // 3. Sub-Dept Support Validation (Jurisdictional Accreditation)
+    const mapping = await CenterProgram.findOne({ 
+      where: { 
+        centerId, 
+        subDeptId, 
+        isActive: true 
+      } 
+    });
     if (!mapping) {
-        return res.status(400).json({ error: `Jurisdictional Conflict: Center [${center.name}] is not accredited to support ${subDeptName} operations.` });
+        const subDeptMap = { 8: 'OpenSchool', 9: 'Online', 10: 'Skill', 11: 'BVoc' };
+        return res.status(400).json({ error: `Jurisdictional Conflict: Center [${center.name}] is not accredited to support ${subDeptMap[subDeptId]} operations.` });
     }
 
     // 4. Status Logic
@@ -656,11 +954,12 @@ router.get('/credentials/requests', verifyToken, isAcademicOrAdmin, async (req, 
   try {
     const requests = await CredentialRequest.findAll({
       where: { requesterId: req.user.uid },
-      include: [{ model: Department, as: 'center', attributes: ['name', 'status'] }],
+      include: [{ model: Department, as: 'center', attributes: ['name', ['id', 'centerId']] }],
       order: [['createdAt', 'DESC']]
     });
-    res.json(requests);
+    res.json(requests || []);
   } catch (error) {
+    console.error("[ACADEMIC_ERROR] GET /credentials/requests failure:", error);
     res.status(500).json({ error: 'Failed to fetch reveal audit trail' });
   }
 });

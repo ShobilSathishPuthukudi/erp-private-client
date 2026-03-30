@@ -32,14 +32,14 @@ router.post('/public/referral', async (req, res) => {
 });
 
 // GET leads assigned to current BDE or all leads for Sales Head
-router.get('/', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.get('/', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const query = req.user.role === 'sales' ? { where: { bdeId: req.user.uid } } : {};
     const leads = await Lead.findAll({
       ...query,
       include: [
-        { model: User, as: 'referrer', attributes: ['name', 'email'] },
-        { model: LeadTouchpoint, as: 'touchpoints' }
+        { model: User, as: 'employee', required: false },
+        { model: Department, as: 'Center', required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -50,7 +50,7 @@ router.get('/', authenticate, authorize('sales', 'org-admin'), async (req, res) 
 });
 
 // POST touchpoint for a lead
-router.post('/:id/touchpoints', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.post('/:id/touchpoints', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const { type, content, outcome, nextAction } = req.body;
     const touchpoint = await LeadTouchpoint.create({
@@ -68,7 +68,7 @@ router.post('/:id/touchpoints', authenticate, authorize('sales', 'org-admin'), a
 });
 
 // PUT update lead stage
-router.put('/:id/stage', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.put('/:id/stage', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const { status, remarks } = req.body;
     const lead = await Lead.findByPk(req.params.id);
@@ -92,7 +92,7 @@ router.put('/:id/stage', authenticate, authorize('sales', 'org-admin'), async (r
 });
 
 // POST Convert Lead to Study Center
-router.post('/:id/convert', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.post('/:id/convert', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const lead = await Lead.findByPk(req.params.id);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -122,7 +122,7 @@ router.post('/:id/convert', authenticate, authorize('sales', 'org-admin'), async
 });
 
 // Register Deal
-router.post('/:id/deals', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.post('/:id/deals', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const deal = await Deal.create({
       leadId: req.params.id,
@@ -136,7 +136,7 @@ router.post('/:id/deals', authenticate, authorize('sales', 'org-admin'), async (
 });
 
 // Generate Quotation
-router.post('/:id/quotations', authenticate, authorize('sales', 'org-admin'), async (req, res) => {
+router.post('/:id/quotations', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
   try {
     const { programs, totalFee, remarks } = req.body;
     const quotation = await Quotation.create({

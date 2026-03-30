@@ -1,65 +1,66 @@
-import { useState } from 'react';
-import { ShieldAlert, Users, Layout, ShieldCheck, ArrowRight, Activity, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ShieldAlert, Users, Layout, ShieldCheck, ArrowRight, Activity, Clock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/shared/Modal';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 export default function Alerts() {
   const navigate = useNavigate();
-  const [alerts, setAlerts] = useState([
-    {
-      id: 1,
-      type: 'Escalated Task',
-      title: 'Fee Structure Approval Overdue',
-      department: 'Finance',
-      overdue: '5 Days',
-      chain: 'Finance Admin → CFO → CEO',
-      icon: ShieldAlert,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50',
-      actionLabel: 'View Task',
-      actionLink: '/dashboard/org-admin/settings/general',
-      details: "The proposed fee structure for Academic Year 2026-27 has been pending approval for over 5 days. Institutional policy requires CEO sign-off for any structure exceeding a 5% increase."
-    },
-    {
-      id: 2,
-      type: 'Unassigned Admin',
-      title: 'Marketing Department',
-      createdDate: 'Mar 24, 2026',
-      icon: Users,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-      actionLabel: 'Assign Admin',
-      actionLink: '/dashboard/org-admin/departments',
-      details: "The Marketing department currently has no assigned Administrator. This prevents recruitment approvals and budget releases. Please assign a senior staff member as soon as possible."
-    },
-    {
-      id: 3,
-      type: 'CEO Panel Issue',
-      title: 'CEO - Operations Panel (No scope)',
-      createdDate: 'Mar 25, 2026',
-      icon: Layout,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      actionLabel: 'Configure',
-      actionLink: '/dashboard/org-admin/ceo-panels/visibility',
-      details: "The Operations Panel for the CEO role is currently lacking data scopes. This means the CEO will see an empty panel when logging in. Please map at least one operational unit to the panel."
-    },
-    {
-      id: 4,
-      type: 'Audit Exception',
-      title: '3 Bulk Deletion Attempts Flagged',
-      createdDate: 'March 2026',
-      icon: ShieldCheck,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
-      actionLabel: 'View Audit Log',
-      actionLink: '/dashboard/org-admin/audit/all',
-      details: "Internal security triggers flagged multiple bulk deletion attempts in the Student Records module. No data was lost, but the account 'REGISTRAR_01' requires immediate behavioral audit."
-    }
-  ]);
-
-  const [selectedAlert, setSelectedAlert] = useState<any>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/org-admin/alerts');
+      
+      // Map icons and colors based on type
+      const mappedAlerts = response.data.map((alert: any) => {
+        let icon = ShieldAlert;
+        let color = 'text-slate-600';
+        let bg = 'bg-slate-50';
+
+        switch (alert.type) {
+          case 'Escalated Task':
+            icon = ShieldAlert;
+            color = 'text-rose-600';
+            bg = 'bg-rose-50';
+            break;
+          case 'Unassigned Admin':
+            icon = Users;
+            color = 'text-amber-600';
+            bg = 'bg-amber-50';
+            break;
+          case 'CEO Panel Issue':
+            icon = Layout;
+            color = 'text-blue-600';
+            bg = 'bg-blue-50';
+            break;
+          case 'Audit Exception':
+            icon = ShieldCheck;
+            color = 'text-emerald-600';
+            bg = 'bg-emerald-50';
+            break;
+        }
+
+        return { ...alert, icon, color, bg };
+      });
+
+      setAlerts(mappedAlerts);
+    } catch (error) {
+      console.error('Fetch Alerts Error:', error);
+      toast.error('Failed to sync system alerts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
 
   const handleDismiss = (id: number) => {
     setAlerts(prev => prev.filter(a => a.id !== id));
@@ -89,9 +90,9 @@ export default function Alerts() {
           {alerts.length > 0 && (
             <button 
               onClick={handleDismissAll}
-              className="text-xs font-bold text-slate-400 hover:text-rose-600 uppercase tracking-widest transition-colors"
+              className="text-xs font-bold text-slate-400 hover:text-rose-600 hover:scale-110 active:scale-90 tracking-wider transition-all"
             >
-              Dismiss All
+              Dismiss all
             </button>
           )}
           <div className="bg-rose-100 text-rose-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-sm">
@@ -101,7 +102,13 @@ export default function Alerts() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+           <Loader2 className="w-12 h-12 text-slate-300 animate-spin mb-4" />
+           <p className="text-slate-400 font-bold tracking-widest text-xs uppercase">Synchronizing Institutional Health...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
         {alerts.map((alert) => (
           <div key={alert.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300 animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-start gap-4">
@@ -110,7 +117,7 @@ export default function Alerts() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${alert.bg} ${alert.color}`}>
+                  <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${alert.bg} ${alert.color}`}>
                     {alert.type}
                   </span>
                   {alert.overdue && (
@@ -130,7 +137,7 @@ export default function Alerts() {
             
             <div className="flex items-center gap-3">
               <button 
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:scale-105 active:scale-95 rounded-lg transition-all"
                 onClick={(e) => {
                     e.stopPropagation();
                     handleDismiss(alert.id);
@@ -140,7 +147,7 @@ export default function Alerts() {
               </button>
               <button 
                 onClick={() => handleAction(alert)}
-                className="px-5 py-2 text-sm font-bold text-white bg-slate-900 rounded-lg shadow-sm hover:bg-slate-800 transition-all flex items-center"
+                className="px-5 py-2 text-sm font-bold text-white bg-slate-900 rounded-lg shadow-sm hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center"
               >
                 {alert.actionLabel}
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -157,15 +164,15 @@ export default function Alerts() {
             <h3 className="text-xl font-bold text-slate-900">Everything is ship-shape!</h3>
             <p className="text-slate-500 mt-2">No critical system alerts found for your attention.</p>
           </div>
-        )}
+      )}
       </div>
+    )}
 
       {/* Task Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedAlert?.title}
-        maxWidth="md"
       >
         <div className="space-y-6">
           <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
@@ -173,13 +180,13 @@ export default function Alerts() {
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Process Tracking</p>
+              <p className="text-xs font-bold text-blue-400 tracking-wider">Process tracking</p>
               <p className="text-sm font-bold text-blue-900">{selectedAlert?.type} Isolation</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Institutional Context & Details</label>
+            <label className="text-[10px] font-bold text-slate-400 tracking-wider px-1">Institutional context & details</label>
             <p className="text-slate-600 text-sm leading-relaxed bg-white p-4 border border-slate-100 rounded-2xl font-medium">
               {selectedAlert?.details}
             </p>
@@ -187,12 +194,12 @@ export default function Alerts() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Target Module</p>
-                <p className="text-sm font-bold text-slate-700">{selectedAlert?.department || 'System'}</p>
+                 <p className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">Target module</p>
+                 <p className="text-sm font-bold text-slate-700">{selectedAlert?.department || 'System'}</p>
             </div>
             <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Alert ID</p>
-                <p className="text-sm font-bold text-slate-700">SRV-{selectedAlert?.id}X</p>
+                 <p className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">Alert id</p>
+                 <p className="text-sm font-bold text-slate-700">SRV-{selectedAlert?.id}X</p>
             </div>
           </div>
 
@@ -212,7 +219,7 @@ export default function Alerts() {
       <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-xl text-center md:text-left">
-            <h2 className="text-3xl font-bold mb-4">System Governance Alert Hub</h2>
+            <h2 className="text-xl font-black mb-4">System Governance Alert Hub</h2>
             <p className="text-slate-400 leading-relaxed font-medium">
               These alerts are automatically generated by systemic event processors. 
               Dismissing an alert will hide it from the dashboard, but the underlying 
@@ -225,8 +232,8 @@ export default function Alerts() {
                 <ShieldCheck className="text-white w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Active Status</p>
-                <p className="text-lg font-bold">Standard Logic</p>
+                <p className="text-xs text-slate-400 font-bold tracking-wider">Active status</p>
+                <p className="text-sm font-bold">Standard Logic</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -234,8 +241,8 @@ export default function Alerts() {
                 <Activity className="text-white w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Last Sync</p>
-                <p className="text-lg font-bold">Just Now</p>
+                <p className="text-xs text-slate-400 font-bold tracking-wider">Last sync</p>
+                <p className="text-sm font-bold">Just Now</p>
               </div>
             </div>
           </div>

@@ -44,7 +44,7 @@ export default function PipelineTracking() {
   }, []);
 
   const stages = [
-    { id: 'SUB_DEPT', label: 'Unit Pending', icon: Clock, color: 'bg-amber-500' },
+    { id: 'OPERATIONS', label: 'Unit Pending', icon: Clock, color: 'bg-amber-500' },
     { id: 'OPS', label: 'Ops Pending', icon: Search, color: 'bg-blue-500' },
     { id: 'FINANCE', label: 'Finance Pending', icon: CreditCard, color: 'bg-indigo-500' },
     { id: 'active', label: 'Institutional Activated', icon: GitPullRequest, color: 'bg-slate-900' },

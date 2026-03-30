@@ -61,9 +61,14 @@ export default function SettingsStorageConfig() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Cloud Repository (GAP-4)</h1>
-          <p className="text-slate-500 mt-1 font-medium">Centralized S3 storage controller with role-based access and signed URL policies.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+            <Cloud className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Cloud Repository</h1>
+            <p className="text-slate-500 mt-1 font-medium">Centralized S3 storage controller with role-based access and signed URL policies.</p>
+          </div>
         </div>
         <div className="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-indigo-500/20 flex items-center animate-pulse">
           <Cloud className="w-5 h-5 mr-3" />

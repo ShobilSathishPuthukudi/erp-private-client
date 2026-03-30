@@ -8,7 +8,10 @@ import {
   XCircle,
   BarChart3,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Layers,
+  BookOpen,
+  School
 } from 'lucide-react';
 
 export default function OpsDashboard() {
@@ -78,6 +81,47 @@ export default function OpsDashboard() {
             <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{kpi.value}</h3>
           </div>
         ))}
+      </div>
+
+      {/* Sub-Department Pulse */}
+      <div className="space-y-4">
+         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+            <Layers className="w-5 h-5 text-indigo-500" />
+            Sub-Department Pulse
+         </h2>
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.unitBreakdown?.map((unit: any) => (
+               <div key={unit.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:border-indigo-200 transition-all group relative overflow-hidden">
+                  <div className="relative z-10">
+                     <h4 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">{unit.name}</h4>
+                     <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                              <Users className="w-3.5 h-3.5 text-blue-500" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Students</span>
+                           </div>
+                           <span className="text-sm font-black text-slate-900">{unit.studentCount}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Programs</span>
+                           </div>
+                           <span className="text-sm font-black text-slate-900">{unit.programCount}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                              <School className="w-3.5 h-3.5 text-amber-500" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Centers</span>
+                           </div>
+                           <span className="text-sm font-black text-slate-900">{unit.centerCount}</span>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-slate-50 rounded-full group-hover:bg-indigo-50 group-hover:scale-110 transition-all duration-500" />
+               </div>
+            ))}
+         </div>
       </div>
 
       {/* Main Analytics Section */}

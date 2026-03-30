@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { CheckCircle, XCircle, User, Calendar, Award } from 'lucide-react';
+import { CheckCircle, XCircle, User, Calendar, Award, ShieldCheck } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 interface Payout {
   id: number;
@@ -15,6 +16,8 @@ interface Payout {
 export default function PayoutApproval() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const isReadOnly = user?.role === 'ceo';
 
   useEffect(() => {
     fetchPayouts();
@@ -53,9 +56,13 @@ export default function PayoutApproval() {
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
         <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
           <Award className="w-7 h-7 text-amber-500" />
-          Performance Incentive Approvals
+          Performance Incentive Oversight
         </h2>
-        <p className="text-slate-500 mt-1">Review and authorize institutional payouts for high-performing employees.</p>
+        <p className="text-slate-500 mt-1">
+          {isReadOnly 
+            ? 'Monitoring institutional payouts and performance achievements.' 
+            : 'Review and authorize institutional payouts for high-performing employees.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -80,18 +87,27 @@ export default function PayoutApproval() {
                   <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Calculated Incentive</p>
                </div>
                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleApproval(payout.id, 'rejected')}
-                    className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors border border-rose-100"
-                  >
-                    <XCircle className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleApproval(payout.id, 'approved')}
-                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                  </button>
+                  {isReadOnly ? (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-400 rounded-xl border border-slate-100 italic text-[10px] font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Oversight Only
+                    </div>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => handleApproval(payout.id, 'rejected')}
+                        className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors border border-rose-100"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleApproval(payout.id, 'approved')}
+                        className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
                </div>
             </div>
           </div>

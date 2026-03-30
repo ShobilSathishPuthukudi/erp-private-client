@@ -22,6 +22,10 @@ const CEOPanel = sequelize.define('ceoPanel', {
   status: {
     type: DataTypes.ENUM('Active', 'Inactive', 'Draft'),
     defaultValue: 'Active',
+  },
+  devCredential: {
+    type: DataTypes.STRING, // Dev-only: Stores the plain password for "Quick Login" support
+    allowNull: true,
   }
 });
 

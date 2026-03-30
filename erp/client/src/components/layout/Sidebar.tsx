@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { useOrgStore } from '@/store/orgStore';
 import {
   Home,
   Users,
@@ -16,9 +17,10 @@ import {
   ShieldCheck,
   PieChart,
   ChevronDown,
-  ChevronRight
+  Hexagon
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import './Sidebar.css';
 
 type MenuItem = {
   name: string;
@@ -53,7 +55,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'All Departments', path: '/dashboard/org-admin/departments' },
-        { name: 'Manage Custom', path: '/dashboard/org-admin/departments/custom' },
       ]
     },
     {
@@ -62,7 +63,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'All Panels', path: '/dashboard/org-admin/ceo-panels' },
-        { name: 'Visibility Config', path: '/dashboard/org-admin/ceo-panels/visibility' },
       ]
     },
     {
@@ -70,6 +70,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: ShieldCheck,
       isGroup: true,
       items: [
+        { name: 'Institutional Roles', path: '/dashboard/org-admin/permissions/roles' },
         { name: 'Permission Matrix', path: '/dashboard/org-admin/permissions/matrix' },
         { name: 'Audit Log', path: '/dashboard/org-admin/permissions/audit' },
       ]
@@ -90,6 +91,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'General Settings', path: '/dashboard/org-admin/settings/general' },
+        { name: 'Governance Policies', path: '/dashboard/org-admin/settings/governance' },
         { name: 'Integrations', path: '/dashboard/org-admin/settings/integrations' },
         { name: 'Custom Fields', path: '/dashboard/org-admin/settings/custom-fields' },
       ]
@@ -114,6 +116,8 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Critical Inbox', path: '/dashboard/ceo/escalations' },
         { name: 'Dept Scorecard', path: '/dashboard/ceo/performance' },
         { name: 'Board Reports', path: '/dashboard/ceo/reports' },
+        { name: 'Governance Hub', path: '/dashboard/ceo/policy' },
+        { name: 'Executive Surveys', path: '/dashboard/shared/surveys' },
       ]
     },
     {
@@ -165,6 +169,16 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Aging Telemetry', path: '/dashboard/finance/aging' },
         { name: 'Uni Intelligence', path: '/dashboard/finance/university-reports' },
       ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/finance/team' },
+        { name: 'Tasks', path: '/dashboard/finance/tasks' },
+        { name: 'Team Leave', path: '/dashboard/finance/leaves' },
+      ]
     }
   ],
   'hr': [
@@ -175,7 +189,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Workforce Planning', path: '/dashboard/hr/vacancies' },
-        { name: 'Personnel Hub', path: '/dashboard/hr/employees' },
+        { name: 'Registration', path: '/dashboard/hr/employees' },
         { name: 'Performance Audit', path: '/dashboard/hr/performance' },
         { name: 'Leave Approv.', path: '/dashboard/hr/leaves' },
         { name: 'Attendance', path: '/dashboard/hr/attendance' },
@@ -188,6 +202,97 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Internal Notices', path: '/dashboard/hr/announcements' },
         { name: 'Holiday Calendar', path: '/dashboard/hr/holidays' },
+        { name: 'Manage Surveys', path: '/dashboard/hr/surveys' },
+      ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/hr/dept-team' },
+        { name: 'Tasks', path: '/dashboard/hr/dept-tasks' },
+        { name: 'Team Leave', path: '/dashboard/hr/dept-leaves' },
+      ]
+    }
+  ],
+  'operations': [
+    { name: 'Academic Dashboard', path: '/dashboard/operations/overview', icon: Home },
+    {
+      name: 'Operations Panel',
+      icon: Activity,
+      isGroup: true,
+      items: [
+        { name: 'Center Audit', path: '/dashboard/operations/center-audit' },
+        { name: 'Accreditation Queue', path: '/dashboard/operations/accreditation' },
+        { name: 'Center Performance', path: '/dashboard/operations/center-performance' },
+        { name: 'Sub-Dept Overview', path: '/dashboard/operations/sub-dept-overview' },
+        { name: 'Referred Leads', path: '/dashboard/operations/referrals' },
+      ]
+    },
+    {
+      name: 'Communications',
+      icon: Bell,
+      isGroup: true,
+      items: [
+        { name: 'Center Announcements', path: '/dashboard/operations/announcements' },
+      ]
+    },
+    {
+      name: 'Architecture',
+      icon: Database,
+      isGroup: true,
+      items: [
+        { name: 'Universities', path: '/dashboard/operations/universities' },
+        { name: 'Programs', path: '/dashboard/operations/programs' },
+        { name: 'Syllabus Management', path: '/dashboard/operations/syllabus' },
+      ]
+    },
+    {
+      name: 'Student Review',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'Pending Reviews', path: '/dashboard/operations/pending-reviews' },
+        { name: 'Pipeline View', path: '/dashboard/operations/pipeline' },
+        { name: 'Resubmission Logs', path: '/dashboard/operations/resubmissions' },
+        { name: 'All Students', path: '/dashboard/operations/students' },
+      ]
+    },
+    {
+      name: 'Assessment & Marks',
+      icon: BookOpen,
+      isGroup: true,
+      items: [
+        { name: 'Session Management', path: '/dashboard/operations/sessions' },
+        { name: 'Exams & Results', path: '/dashboard/operations/exams' },
+      ]
+    },
+    {
+      name: 'Credentials',
+      icon: ShieldCheck,
+      isGroup: true,
+      items: [
+        { name: 'Credential Requests', path: '/dashboard/operations/credential-requests' },
+        { name: 'Security Control', path: '/dashboard/operations/security' },
+      ]
+    },
+    {
+      name: 'Support Services',
+      icon: Bell,
+      isGroup: true,
+      items: [
+        { name: 'Finance Requests', path: '/dashboard/operations/finance-requests' },
+      ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/operations/team' },
+        { name: 'Tasks', path: '/dashboard/operations/tasks' },
+        { name: 'Team Leave', path: '/dashboard/operations/leaves' },
       ]
     }
   ],
@@ -202,6 +307,15 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Accreditation Queue', path: '/dashboard/academic/accreditation' },
         { name: 'Center Performance', path: '/dashboard/academic/center-performance' },
         { name: 'Sub-Dept Overview', path: '/dashboard/academic/sub-dept-overview' },
+        { name: 'Referred Leads', path: '/dashboard/academic/referrals' },
+      ]
+    },
+    {
+      name: 'Communications',
+      icon: Bell,
+      isGroup: true,
+      items: [
+        { name: 'Center Announcements', path: '/dashboard/academic/announcements' },
       ]
     },
     {
@@ -248,25 +362,17 @@ const menus: Record<string, MenuLink[]> = {
       icon: Bell,
       isGroup: true,
       items: [
-        { name: 'Staff Details', path: '/dashboard/academic/staff' },
-        { name: 'Team Governance', path: '/dashboard/academic/team' },
-        { name: 'Task Management', path: '/dashboard/academic/tasks' },
-        { name: 'Announcements', path: '/dashboard/academic/announcements' },
-        { name: 'Referred Leads', path: '/dashboard/academic/referrals' },
         { name: 'Finance Requests', path: '/dashboard/academic/finance-requests' },
       ]
-    }
-  ],
-  'dept-admin': [
-    { name: 'Dashboard', path: '/dashboard/dept-admin', icon: Home },
+    },
     {
       name: 'Team Management',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/dept-admin/team' },
-        { name: 'Tasks', path: '/dashboard/dept-admin/tasks' },
-        { name: 'Team Leave', path: '/dashboard/dept-admin/leaves' },
+        { name: 'My Team', path: '/dashboard/academic/team' },
+        { name: 'Tasks', path: '/dashboard/academic/tasks' },
+        { name: 'Team Leave', path: '/dashboard/academic/leaves' },
       ]
     }
   ],
@@ -291,6 +397,17 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/openschool/students' },
       ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/subdept/openschool/team' },
+        { name: 'Tasks', path: '/dashboard/subdept/openschool/tasks' },
+        { name: 'Team Leave', path: '/dashboard/subdept/openschool/leaves' },
+        { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
+      ]
     }
   ],
   'online': [
@@ -314,6 +431,17 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/online/students' },
       ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/subdept/online/team' },
+        { name: 'Tasks', path: '/dashboard/subdept/online/tasks' },
+        { name: 'Team Leave', path: '/dashboard/subdept/online/leaves' },
+        { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
+      ]
     }
   ],
   'skill': [
@@ -336,6 +464,17 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/skill/students' },
+      ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/subdept/skill/team' },
+        { name: 'Tasks', path: '/dashboard/subdept/skill/tasks' },
+        { name: 'Team Leave', path: '/dashboard/subdept/skill/leaves' },
+        { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
       ]
     }
   ],
@@ -361,6 +500,17 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/bvoc/students' },
       ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/subdept/bvoc/team' },
+        { name: 'Tasks', path: '/dashboard/subdept/bvoc/tasks' },
+        { name: 'Team Leave', path: '/dashboard/subdept/bvoc/leaves' },
+        { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
+      ]
     }
   ],
   'study-center': [
@@ -370,6 +520,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: RefreshCw,
       isGroup: true,
       items: [
+        { name: 'Programs', path: '/dashboard/study-center/programs' },
         { name: 'Students', path: '/dashboard/study-center/students' },
         { name: 'Re-Registration', path: '/dashboard/study-center/rereg' },
         { name: 'Announcements', path: '/dashboard/study-center/announcements' },
@@ -385,6 +536,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'My Invoices', path: '/dashboard/student/invoices' },
         { name: 'My Docs', path: '/dashboard/student/documents' },
+        { name: 'Academic Transcript', path: '/dashboard/student/transcript' },
         { name: 'My Surveys', path: '/dashboard/shared/surveys' },
       ]
     }
@@ -417,7 +569,18 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'CRM Pipeline', path: '/dashboard/sales/crm' },
+        { name: 'Active Pipeline', path: '/dashboard/sales/crm/pipeline' },
+        { name: 'Strategic Outcome', path: '/dashboard/sales/crm/outcome' },
+      ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/sales/team' },
+        { name: 'Tasks', path: '/dashboard/sales/tasks' },
+        { name: 'Team Leave', path: '/dashboard/sales/leaves' },
       ]
     }
   ],
@@ -459,8 +622,10 @@ const menus: Record<string, MenuLink[]> = {
 
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const user = useAuthStore(state => state.user);
+  const { orgName, orgLogo } = useOrgStore();
   const location = useLocation();
-  const role = user?.role?.toLowerCase() || 'default';
+  const navigate = useNavigate();
+  const role = user?.role?.toLowerCase() === 'center' ? 'study-center' : (user?.role?.toLowerCase() || 'default');
   const unit = user?.subDepartment?.toLowerCase() || 'portal';
   
   const links = useMemo(() => {
@@ -484,126 +649,178 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  // Auto-expand group if a sub-item is active
+  // Auto-expand active group and collapse others when navigating
   useEffect(() => {
     const currentPath = location.pathname;
-    const initialExpanded: Record<string, boolean> = {};
-    let hasChanges = false;
+    let activeGroupName: string | null = null;
     
     links.forEach(link => {
       if (link.isGroup) {
         const isActive = link.items.some((item: any) => currentPath === item.path);
-        if (isActive && !expandedGroups[link.name]) {
-          initialExpanded[link.name] = true;
-          hasChanges = true;
+        if (isActive) {
+          activeGroupName = link.name;
         }
       }
     });
 
-    if (hasChanges) {
-      setExpandedGroups(prev => ({ ...prev, ...initialExpanded }));
+    if (activeGroupName) {
+      setExpandedGroups({ [activeGroupName]: true });
+    } else {
+      setExpandedGroups({});
     }
-  }, [location.pathname, links, expandedGroups]);
+  }, [location.pathname, links]);
 
   const toggleGroup = (groupName: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupName]: !prev[groupName]
-    }));
+    const currentPath = location.pathname;
+    let activeGroupName: string | null = null;
+    
+    links.forEach(link => {
+      if (link.isGroup) {
+        const isActive = link.items.some((item: any) => currentPath === item.path);
+        if (isActive) {
+          activeGroupName = link.name;
+        }
+      }
+    });
+
+    setExpandedGroups(prev => {
+      const newState: Record<string, boolean> = {
+        [groupName]: !prev[groupName]
+      };
+      
+      // Prevent the currently active group from collapsing when opening another group
+      if (activeGroupName && activeGroupName !== groupName) {
+        newState[activeGroupName] = true;
+      }
+      
+      return newState;
+    });
   };
 
   return (
     <aside className={clsx(
-      "fixed inset-y-0 left-0 bg-white text-slate-600 border-r border-slate-200 w-64 transform transition-transform duration-300 ease-in-out z-20 flex flex-col shadow-sm",
-      isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      "sidebar-modern",
+      isOpen ? "mobile-open" : ""
     )}>
-      <div className="flex items-center justify-center h-16 px-6 bg-white border-b border-slate-200">
-        <span className="text-xl font-bold text-blue-600 tracking-widest">ERP</span>
-      </div>
-      <div className="py-4 overflow-y-auto flex-1">
-        <ul className="space-y-1">
-          {links.map((link) => {
-            if (link.isGroup) {
-              const Icon = link.icon;
-              const isExpanded = expandedGroups[link.name];
-              return (
-                <li key={link.name} className="mt-2 first:mt-0">
-                  <button
-                    onClick={() => toggleGroup(link.name)}
-                    className="w-full px-6 py-3 text-sm font-medium flex items-center justify-between hover:bg-slate-50 transition-colors border-l-4 border-transparent text-slate-600 hover:text-slate-900"
-                  >
-                    <div className="flex items-center">
-                      <Icon className="w-5 h-5 mr-3" />
-                      {link.name}
-                    </div>
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 ml-auto" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    )}
-                  </button>
-                  {isExpanded && (
-                    <ul className="mt-1 space-y-1 transition-all duration-300">
-                      {link.items.map((subItem: any) => (
-                        <li key={subItem.path}>
-                          <NavLink
-                            to={subItem.path}
-                            end
-                            className={({ isActive }) => clsx(
-                              "flex items-center px-10 py-2 text-sm font-medium transition-colors border-l-4",
-                              isActive 
-                                ? "bg-blue-50 text-blue-700 border-blue-600 font-bold" 
-                                : "border-transparent hover:bg-slate-50 hover:text-slate-900 text-slate-500"
-                            )}
-                          >
-                            {subItem.name}
-                          </NavLink>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            }
-            const Icon = (link as any).icon;
-            return (
-              <li key={(link as any).path}>
-                <NavLink
-                  to={(link as any).path}
-                  end
-                  className={({ isActive }) => clsx(
-                    "flex items-center px-6 py-3 text-sm font-medium transition-colors border-l-4",
-                    isActive 
-                      ? "bg-blue-50 text-blue-700 border-blue-600" 
-                      : "border-transparent hover:bg-slate-50 hover:text-slate-900 text-slate-600"
-                  )}
-                >
-                  <Icon className="w-5 h-5 mr-3" />
-                  {(link as any).name}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {user && (
-        <div className="border-t border-slate-200 p-4 bg-slate-50 mt-auto">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 flex-shrink-0 rounded-full bg-white flex items-center justify-center text-slate-600 font-bold overflow-hidden border border-slate-200 shadow-sm">
-              {user.avatar ? (
-                <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+      <div className="sidebar-content">
+        <div className="sidebar-header-modern desktop-only">
+          <div 
+            className="sidebar-logo-modern cursor-pointer"
+            onClick={() => {
+              const role = user?.role?.toLowerCase();
+              const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role || 'default');
+              const finalPath = role === 'org-admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
+              navigate(finalPath);
+            }}
+          >
+            <div className="logo-icon bg-white overflow-hidden">
+              {orgLogo ? (
+                <img src={orgLogo} alt="Logo" className="w-full h-full object-cover" />
               ) : (
-                user.name ? user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'U'
+                <Hexagon size={24} />
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{user.name || 'User'}</p>
-              <p className="text-xs text-slate-500 truncate capitalize">{user.role?.replace('-', ' ')}</p>
+            <div className="logo-text">
+              <span className="logo-name">{orgName || 'IITS RPS'}</span>
+              <span className="logo-subtitle">Enterprise System</span>
             </div>
           </div>
         </div>
-      )}
+
+        <nav className="sidebar-nav-modern">
+          <ul className="sidebar-menu-modern">
+            {isOpen && (
+              <li className="sidebar-mobile-header">
+                <div 
+                  className="sidebar-logo-modern cursor-pointer"
+                  onClick={() => {
+                    const role = user?.role?.toLowerCase();
+                    const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role || 'default');
+                    const finalPath = role === 'org-admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
+                    navigate(finalPath);
+                  }}
+                >
+                  <div className="logo-icon bg-white overflow-hidden">
+                    {orgLogo ? (
+                      <img src={orgLogo} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <Hexagon size={24} />
+                    )}
+                  </div>
+                  <div className="logo-text">
+                    <span className="logo-name">{orgName || 'IITS RPS'}</span>
+                    <span className="logo-subtitle">Enterprise System</span>
+                  </div>
+                </div>
+              </li>
+            )}
+
+            {links.map((link) => {
+              if (link.isGroup) {
+                const Icon = link.icon;
+                const isExpanded = expandedGroups[link.name];
+                return (
+                  <li key={link.name} className="sidebar-item-modern">
+                    <button
+                      onClick={() => toggleGroup(link.name)}
+                      className={clsx("sidebar-link-modern has-submenu", isExpanded && "open")}
+                    >
+                      <span className="sidebar-icon-modern">
+                        <Icon size={18} />
+                      </span>
+                      <span className="sidebar-text-modern">{link.name}</span>
+                      <span className={clsx("sidebar-arrow-modern", isExpanded && "rotated")}>
+                        <ChevronDown size={14} />
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <ul className="sidebar-submenu-modern">
+                        {link.items.map((subItem: any) => (
+                          <li key={subItem.path}>
+                            <NavLink
+                              to={subItem.path}
+                              end
+                              className={({ isActive }) => clsx(
+                                "sidebar-sublink-modern",
+                                isActive && "active"
+                              )}
+                            >
+                              <div className="submenu-icon-wrapper">
+                                <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                              </div>
+                              <span>{subItem.name}</span>
+                            </NavLink>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+              const Icon = (link as any).icon;
+              return (
+                <li key={(link as any).path} className="sidebar-item-modern">
+                  <NavLink
+                    to={(link as any).path}
+                    end
+                    className={({ isActive }) => clsx(
+                      "sidebar-link-modern",
+                      isActive && "active"
+                    )}
+                  >
+                    <span className="sidebar-icon-modern">
+                      <Icon size={18} />
+                    </span>
+                    <span className="sidebar-text-modern">
+                      {(link as any).name}
+                    </span>
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </div>
     </aside>
   );
 }

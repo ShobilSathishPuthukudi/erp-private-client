@@ -241,35 +241,48 @@ export default function SyllabusManager() {
         </div>
       </div>
 
-      <Modal
+    <Modal
         isOpen={isSubjectModalOpen}
         onClose={() => setIsSubjectModalOpen(false)}
         title="Formalize New Subject"
       >
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject Nomenclature</label>
-                <input 
-                    type="text"
-                    value={newSubject.name}
-                    onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Advanced Calculus v3"
-                />
+        <div className="space-y-5 p-2">
+            <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Subject Nomenclature</label>
+                <div className="relative group">
+                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input 
+                        type="text"
+                        value={newSubject.name}
+                        onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                        placeholder="Advanced Calculus v3"
+                    />
+                </div>
             </div>
-            <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Credit Weightage</label>
-                <input 
-                    type="number"
-                    value={newSubject.credits}
-                    onChange={(e) => setNewSubject({ ...newSubject, credits: parseInt(e.target.value) })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+            <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Credit Weightage</label>
+                <div className="relative group">
+                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input 
+                        type="number"
+                        value={newSubject.credits}
+                        onChange={(e) => setNewSubject({ ...newSubject, credits: parseInt(e.target.value) })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                        min="1"
+                    />
+                </div>
             </div>
-            <div className="pt-6 border-t border-slate-100 flex justify-end">
+            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3\">
+                <button 
+                  onClick={() => setIsSubjectModalOpen(false)}
+                  className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  Abort
+                </button>
                 <button 
                     onClick={handleAddSubject}
-                    className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all"
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
                 >
                     Ratify Subject
                 </button>

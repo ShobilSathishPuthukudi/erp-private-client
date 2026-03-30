@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { 
   Search, 
-  UserPlus, 
   Edit2, 
   Shield, 
   Power, 
-  Trash2
+  Trash2,
+  Plus,
+  Users
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
 import { Modal } from '../../components/shared/Modal';
 import CEOPanelCreate from './CEOPanelCreate';
 
@@ -16,10 +16,25 @@ export default function CEOPanelsList() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPanel, setSelectedPanel] = useState<any>(null);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [policy, setPolicy] = useState<any>(null);
 
   useEffect(() => {
     fetchPanels();
+    fetchPolicy();
   }, []);
+
+  const fetchPolicy = async () => {
+    try {
+      const response = await fetch('/api/org-admin/config/policies');
+      if (response.ok) {
+        const data = await response.json();
+        setPolicy(data.security_policy);
+      }
+    } catch (error) {
+      console.error('Failed to fetch security policy:', error);
+    }
+  };
 
   const fetchPanels = async () => {
     try {
@@ -49,14 +64,12 @@ export default function CEOPanelsList() {
   };
 
   const handleDelete = async (panel: any) => {
-    if (!window.confirm(`Are you sure you want to delete the "${panel.name}" panel profile?`)) return;
+    if (!window.confirm("Are you sure you want to delete this CEO panel?")) return;
     try {
-      const response = await fetch(`/api/org-admin/ceo-panels/${panel.id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(`/api/org-admin/ceo-panels/${panel.id}`, { method: 'DELETE' });
       if (response.ok) fetchPanels();
     } catch (error) {
-      console.error("Failed to delete CEO panel", error);
+      console.error("Failed to delete", error);
     }
   };
 
@@ -69,17 +82,25 @@ export default function CEOPanelsList() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">CEO Access Panels</h1>
-          <p className="text-slate-500 mt-1">Configure specialized dashboards for executive oversight and scoped visibility.</p>
+      <div className="flex justify-between items-end">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Executive Management</h1>
+            <p className="text-slate-500 mt-1">Provision and manage CEO-level administrative dashboards.</p>
+          </div>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center"
+          onClick={() => {
+            setSelectedPanel(null);
+            setIsModalOpen(true);
+          }}
+          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
         >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Provision CEO Panel
+          <Plus className="w-5 h-5" />
+          New CEO
         </button>
       </div>
 
@@ -89,7 +110,7 @@ export default function CEOPanelsList() {
           setIsModalOpen(false);
           setSelectedPanel(null);
         }}
-        maxWidth="4xl"
+        maxWidth="6xl"
         hideHeader={true}
       >
         <CEOPanelCreate 
@@ -121,7 +142,7 @@ export default function CEOPanelsList() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Provisioning Executive Interfaces...</p>
+             <p className="text-[10px] font-bold text-slate-400 tracking-wider mt-4">Provisioning executive interfaces...</p>
           </div>
         ) : filteredPanels.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed text-slate-400">
@@ -144,7 +165,7 @@ export default function CEOPanelsList() {
                         }`}>
                           {panel.status}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-1 whitespace-nowrap">CEO Oversight</span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-wider pt-1 whitespace-nowrap">CEO oversight</span>
                       </div>
                     </div>
                     <div className="flex-shrink-0 bg-slate-50 p-3 rounded-2xl border border-slate-100 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-800 transition-all duration-300 shadow-sm shadow-slate-200/50">
@@ -153,7 +174,7 @@ export default function CEOPanelsList() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-1">Visibility Scope</p>
+                    <p className="text-[10px] text-slate-400 font-bold tracking-wider px-1">Visibility scope</p>
                     <div className="flex flex-wrap gap-2">
                       {(Array.isArray(panel.visibilityScope) ? panel.visibilityScope : (panel.visibilityScope || '').split(',')).map((s: string) => (
                         <span key={s} className="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-1 rounded-lg font-bold border border-slate-200/50">
@@ -164,33 +185,27 @@ export default function CEOPanelsList() {
                   </div>
 
                   <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 uppercase">
-                      {(panel.ceoUser?.name || 'U')[0]}
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
+                      {(panel.ceoUser?.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Profile Assigned To</p>
+                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">Profile assigned to</p>
                       <p className="text-xs font-bold text-slate-700">@{panel.ceoUser?.name || 'Unknown'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex justify-end items-center gap-2 pt-2">
                     <button 
                       onClick={() => {
                         setSelectedPanel(panel);
                         setIsModalOpen(true);
                       }}
-                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-slate-900 hover:bg-slate-100/50 hover:border-slate-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
+                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-slate-900 hover:bg-slate-100/50 hover:border-slate-200 rounded-xl transition-all border border-slate-100 hover:scale-110 active:scale-95"
                       title="Edit Panel"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <NavLink 
-                      to="/dashboard/org-admin/ceo-panels/visibility"
-                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-blue-600 hover:bg-blue-100/50 hover:border-blue-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
-                      title="Visibility Config"
-                    >
-                      <Shield className="w-4 h-4" />
-                    </NavLink>
+
                     <button 
                        onClick={() => handleDelete(panel)}
                        className="p-3 bg-slate-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
@@ -227,10 +242,57 @@ export default function CEOPanelsList() {
             decision making while maintaining strict departmental boundaries.
           </p>
         </div>
-        <button className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10">
+        <button 
+          onClick={() => setIsPolicyModalOpen(true)}
+          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10"
+        >
           Security Policy
         </button>
       </div>
+
+      <Modal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        title={policy?.title || "Executive Security & Data Boundaries"}
+      >
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl">
+            <h3 className="text-blue-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
+              <Shield className="w-4 h-4" />
+              Institutional Visibility Guard
+            </h3>
+            <p className="text-blue-800 text-sm leading-relaxed">
+              {policy?.description || "The 'Visibility Guard' is a centralized security middleware that strictly isolates executive data. No CEO can view student records, financial metrics, or performance scorecards outside their provisioned scope."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(policy?.blocks || [
+              { title: "Departmental Isolation", content: "Database queries are dynamically patched with categorical filters mapped to the executive's Initial Visibility Scope." },
+              { title: "Audit Integrity", content: "Every attempt to access or modify visibility configurations is recorded in the immutable Audit Log." }
+            ]).map((block: any, i: number) => (
+              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm">
+                <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  {block.title}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {block.content}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <button 
+              onClick={() => setIsPolicyModalOpen(false)}
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm"
+            >
+              Acknowledge Policy
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

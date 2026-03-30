@@ -11,6 +11,10 @@ const Department = sequelize.define('department', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  shortName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   type: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -30,6 +34,11 @@ const Department = sequelize.define('department', {
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active',
+  },
+  centerStatus: {
+    type: DataTypes.ENUM('LEAD', 'SHORTLISTED', 'PROPOSED', 'APPROVED_BY_CENTER', 'REGISTERED', 'ACTIVE'),
+    defaultValue: 'LEAD',
+    allowNull: true,
   },
   description: {
     type: DataTypes.TEXT,

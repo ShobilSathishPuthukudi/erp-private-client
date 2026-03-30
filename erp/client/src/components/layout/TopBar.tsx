@@ -1,16 +1,29 @@
-import { useState } from 'react';
-import { Menu, User as UserIcon, LogOut } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Menu, User as UserIcon, LogOut, Search, ChevronDown, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/shared/Modal';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import './Topbar.css';
 
 export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void }) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -24,34 +37,85 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0">
-      <div className="flex items-center">
-        <button onClick={toggleSidebar} className="p-2 mr-4 md:hidden text-slate-500 hover:bg-slate-100 rounded-md">
+    <header className="header-modern-glass">
+      <div className="header-left">
+        <button onClick={toggleSidebar} className="menu-toggle-glow mobile-only">
           <Menu className="w-5 h-5" />
         </button>
-        <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] hidden md:block font-display">
-          {user?.role === 'org-admin' ? 'Organization Admin' : (user?.role ? user.role.replace('-', ' ') : 'Dashboard')}
-        </h2>
+
+        <div className="search-box-pill">
+          <Search size={16} className="search-icon-dim" />
+          <input
+            type="text"
+            placeholder="Search Dashboard..."
+            className="search-input-glass"
+          />
+        </div>
       </div>
       
-      <div className="flex items-center space-x-4">
-        <NotificationCenter />
-        
-        <div className="flex items-center space-x-3 border-l pl-4 border-slate-200">
-          <button 
-            onClick={() => navigate('/dashboard/profile')}
-            className="w-9 h-9 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold hover:ring-2 hover:ring-slate-500 hover:ring-offset-2 transition-all cursor-pointer overflow-hidden border border-slate-200"
-            title="Profile Details"
-          >
-            {user?.avatar ? (
-              <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              user?.name ? user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : <UserIcon className="w-4 h-4" />
+      <div className="header-right">
+        <div className="header-actions-group">
+          <div className="header-dropdown-wrapper">
+            <NotificationCenter />
+          </div>
+          
+          <div className="header-dropdown-wrapper" ref={userMenuRef}>
+            <div
+                className={`user-profile-capsule ${showUserMenu ? 'active' : ''}`}
+                onClick={() => setShowUserMenu(!showUserMenu)}
+            >
+                <div className="avatar-luminous">
+                    {user?.avatar ? (
+                      <img 
+                        src={user.avatar} 
+                        alt="" 
+                        className="w-full h-full object-cover rounded-full" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <span className="avatar-initials">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                </div>
+                <div className="profile-labels active-labels hidden sm:flex">
+                    <span className="user-title">{user?.name || 'User'}</span>
+                    <span className="user-rank">{user?.role === 'org-admin' ? 'Organization Admin' : (user?.role ? user.role.replace('-', ' ') : 'Dashboard')}</span>
+                </div>
+                <ChevronDown size={14} className={`dropdown-arrow ${showUserMenu ? 'flip' : ''}`} />
+            </div>
+
+            {showUserMenu && (
+                <div className="antigravity-dropdown profile-box">
+                    <div className="profile-popover-head">
+                        <div className="big-avatar">
+                            {user?.avatar ? (
+                              <img 
+                                src={user.avatar} 
+                                alt="" 
+                                className="w-full h-full object-cover rounded-2xl" 
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            ) : null}
+                            <span className="avatar-initials">
+                              {user?.name?.charAt(0).toUpperCase() || 'U'}
+                            </span>
+                        </div>
+                        <h5>{user?.name || 'User'}</h5>
+                        <p>{user?.email || 'user@example.com'}</p>
+                    </div>
+                    <div className="popover-actions">
+                        <button onClick={() => { navigate('/dashboard/profile'); setShowUserMenu(false); }}><UserIcon size={16} /> My Profile</button>
+                        <button onClick={() => { navigate('/dashboard/change-password'); setShowUserMenu(false); }}><Lock size={16} /> Change Password</button>
+                        <div className="popover-divider"></div>
+                        <button className="logout-btn-red" onClick={() => { setShowUserMenu(false); setIsLogoutModalOpen(true); }}><LogOut size={16} /> Logout</button>
+                    </div>
+                </div>
             )}
-          </button>
-          <button onClick={() => setIsLogoutModalOpen(true)} className="p-2 flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors" title="Logout">
-            <LogOut className="w-5 h-5" />
-          </button>
+          </div>
         </div>
       </div>
 

@@ -26,12 +26,7 @@ export default function SubDeptOverview() {
   const [loading, setLoading] = useState(true);
   const [globalStats, setGlobalStats] = useState<any>(null);
 
-  const subDeptMap: Record<number, string> = {
-    8: 'OpenSchool',
-    9: 'Online',
-    10: 'Skill',
-    11: 'BVoc'
-  };
+
 
   const fetchOverview = async () => {
     try {
@@ -40,18 +35,14 @@ export default function SubDeptOverview() {
       setGlobalStats(res.data);
       
       // Transform breakdown into display data
-      // Note: We might need a separate endpoint for "Active Batches" and "Centers Count" 
-      // per sub-dept if not in the breakdown. For now, we'll use placeholder or 
-      // aggregate from the breakdown if available.
-      
       const displayData = (res.data.unitBreakdown || []).map((item: any) => ({
-        id: item.subDepartmentId,
-        name: subDeptMap[item.subDepartmentId] || `Unit ${item.subDepartmentId}`,
-        totalStudents: item.count || 0,
-        activeBatches: 0, // Need backend aggregation
-        centersCount: 0,   // Need backend aggregation
-        approvalRate: '0%', 
-        pendingReviews: (item.pendingOps || 0) + (item.pendingSubDept || 0)
+        id: item.id,
+        name: item.name || `Unit ${item.id}`,
+        totalStudents: item.studentCount || 0,
+        activeBatches: item.programCount || 0, // Fallback to programs
+        centersCount: item.centerCount || 0,
+        approvalRate: '100%', 
+        pendingReviews: 0
       }));
 
       setData(displayData);

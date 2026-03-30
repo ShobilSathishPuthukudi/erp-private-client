@@ -3,14 +3,17 @@ import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
+import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Edit2, Trash2, Building2, Globe, ShieldCheck, FileText, Upload, CheckCircle2 } from 'lucide-react';
+import { Edit2, Trash2, Building2, Globe, ShieldCheck, FileText, Upload, CheckCircle2, ShieldAlert, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { useAuthStore } from '@/store/authStore';
 
 interface University {
   id: number;
   name: string;
+  shortName?: string;
   status: 'active' | 'inactive';
   accreditation?: string;
   websiteUrl?: string;
@@ -26,8 +29,23 @@ export default function Universities() {
   const [editingItem, setEditingItem] = useState<University | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const { user } = useAuthStore();
+  const isOps = user?.role?.toLowerCase() === 'operations';
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestReason, setRequestReason] = useState('');
+  const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
+
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm();
-  const affiliationDocPath = watch('affiliationDoc');
+  const watchAllFields = watch();
+  const affiliationDocPath = watchAllFields.affiliationDoc;
+
+  const isFormValid = 
+    !!watchAllFields.name?.trim() &&
+    !!watchAllFields.shortName?.trim() &&
+    !!watchAllFields.accreditation?.trim() &&
+    !!watchAllFields.websiteUrl?.trim() &&
+    !!watchAllFields.status &&
+    !!watchAllFields.affiliationDoc;
 
   const fetchData = async () => {
     try {
@@ -68,7 +86,7 @@ export default function Universities() {
 
   const openCreateModal = () => {
     setEditingItem(null);
-    reset({ name: '', status: 'active', accreditation: '', websiteUrl: '', affiliationDoc: '' });
+    reset({ name: '', shortName: '', status: 'active', accreditation: '', websiteUrl: '', affiliationDoc: '' });
     setIsModalOpen(true);
   };
 
@@ -76,6 +94,7 @@ export default function Universities() {
     setEditingItem(item);
     reset({ 
       name: item.name, 
+      shortName: item.shortName || '',
       status: item.status, 
       accreditation: item.accreditation || '', 
       websiteUrl: item.websiteUrl || '', 
@@ -86,6 +105,12 @@ export default function Universities() {
 
   const onSubmit = async (data: any) => {
     try {
+      if (isOps && editingItem) {
+        setPendingAction({ type: 'EDIT', data, id: editingItem.id });
+        setIsRequestModalOpen(true);
+        return;
+      }
+
       if (editingItem) {
         await api.put(`/academic/universities/${editingItem.id}`, data);
         toast.success('University topology updated');
@@ -100,7 +125,36 @@ export default function Universities() {
     }
   };
 
+  const submitGatedRequest = async () => {
+    if (!requestReason || requestReason.length < 10) {
+        return toast.error('Please provide a valid justification (min 10 chars)');
+    }
+    try {
+        const payload = {
+            entityType: 'Department', // Backend uses Department model for Universities
+            entityId: pendingAction?.id,
+            actionType: pendingAction?.type,
+            proposedData: pendingAction?.data,
+            reason: requestReason
+        };
+        await api.post('/academic/request-action', payload);
+        toast.success('Institutional revision request dispatched to Finance');
+        setIsRequestModalOpen(false);
+        setIsModalOpen(false);
+        setRequestReason('');
+        setPendingAction(null);
+    } catch (error) {
+        toast.error('Failed to synchronize action request');
+    }
+  };
+
   const handleDelete = async (id: number) => {
+    if (isOps) {
+        setPendingAction({ type: 'DELETE', id });
+        setIsRequestModalOpen(true);
+        return;
+    }
+
     if (!window.confirm('Eradicate this university infrastructure permanentally? This cascades down its program topology recursively.')) return;
     try {
       await api.delete(`/academic/universities/${id}`);
@@ -194,13 +248,22 @@ export default function Universities() {
           </div>
           <p className="text-slate-500 font-medium ml-15">IITS RPS Accredited Institution Registry & Compliance Ledger</p>
         </div>
-        <button 
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+              Institutional Core Registry
+           </div>
+        </div>
+      </div>
+
+      <div className="max-w-md">
+        <DashCard 
+          title="Initialize Internal University Topology"
+          description="Register and configure a new accredited institution within the global ERP ledger."
           onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold"
-        >
-          <Building2 className="w-5 h-5" />
-          <span>Onboard Institution</span>
-        </button>
+          icon={Building2}
+          actionLabel="Onboard Institution"
+        />
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
@@ -213,109 +276,191 @@ export default function Universities() {
         />
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingItem ? "Reconcile University Schema" : "Initialize Internal University Topology"}
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Institutional Designation</label>
-              <div className="relative group">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input
-                  {...register('name', { required: true })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                  placeholder="e.g. Cambridge International"
-                />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
+        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+          <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
+                  {editingItem ? 'Edit Configuration' : 'University Config'}
+                </p>
+                <h2 className="text-xl font-bold tracking-tight">
+                  {editingItem ? `Modify ${editingItem.name}` : 'Registration Form'}
+                </h2>
               </div>
             </div>
+            <button 
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-all hover:scale-110 active:scale-90 text-white/60 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Accreditation (UGC/AICTE)</label>
-              <div className="relative group">
-                <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input
-                  {...register('accreditation')}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                  placeholder="e.g. UGC Category-1"
-                />
-              </div>
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Institutional Designation</label>
+                <div className="relative group">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    {...register('name', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    placeholder="Cambridge International"
+                    />
+                </div>
+                </div>
 
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Official Institutional URL</label>
-              <div className="relative group">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input
-                  {...register('websiteUrl')}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                  placeholder="https://university.edu"
-                />
-              </div>
-            </div>
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Short Name / Abbreviation</label>
+                <div className="relative group">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    {...register('shortName', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900 uppercase"
+                    placeholder="CU / LPU"
+                    />
+                </div>
+                </div>
 
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Affiliation Compliance Document</label>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="doc-upload"
-                />
-                <label 
-                  htmlFor="doc-upload"
-                  className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
-                    affiliationDocPath 
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
-                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-400'
-                  }`}
+                <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Accreditation (UGC/AICTE)</label>
+                <div className="relative group">
+                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    {...register('accreditation', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    placeholder="UGC Category-1"
+                    />
+                </div>
+                </div>
+
+                <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Official Institutional URL</label>
+                <div className="relative group">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                    {...register('websiteUrl', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    placeholder="https://university.edu"
+                    />
+                </div>
+                </div>
+
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Affiliation Compliance Document</label>
+                <div className="relative">
+                    <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="doc-upload"
+                    />
+                    <label 
+                    htmlFor="doc-upload"
+                    className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
+                        affiliationDocPath 
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
+                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-400'
+                    }`}
+                    >
+                    <div className="flex items-center gap-3">
+                        {affiliationDocPath ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+                        <span className="font-bold text-sm">
+                        {uploading ? 'Transmitting to S3...' : (affiliationDocPath ? 'Affiliation Vaulted' : 'Upload Affiliation PDF')}
+                        </span>
+                    </div>
+                    {affiliationDocPath && (
+                        <span className="text-[10px] font-mono opacity-60">S-3 SECURED</span>
+                    )}
+                    </label>
+                </div>
+                </div>
+
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Operational State</label>
+                <select
+                    {...register('status')}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
                 >
-                  <div className="flex items-center gap-3">
-                    {affiliationDocPath ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-                    <span className="font-bold text-sm">
-                      {uploading ? 'Transmitting to S3...' : (affiliationDocPath ? 'Affiliation Vaulted' : 'Upload Affiliation PDF')}
-                    </span>
-                  </div>
-                  {affiliationDocPath && (
-                    <span className="text-[10px] font-mono opacity-60">S-3 SECURED</span>
-                  )}
-                </label>
-              </div>
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Operational State</label>
-              <select
-                {...register('status')}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-              >
-                <option value="active">Active Infrastructure</option>
-                <option value="inactive">Sunsetted / Archive</option>
-              </select>
+                    <option value="active">Active Infrastructure</option>
+                    <option value="inactive">Sunsetted / Archive</option>
+                </select>
+                </div>
             </div>
           </div>
 
-          <div className="pt-6 flex justify-end gap-3 mt-4 border-t border-slate-100">
+          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
-              Abort
+              Discard
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || uploading}
-              className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+              disabled={isSubmitting || uploading || !isFormValid}
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Update Node' : 'Initialize Node')}
             </button>
           </div>
         </form>
+       </div>
+      </Modal>
+
+      {/* Gated Action Request Modal */}
+      <Modal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        title="Institutional Revision Request"
+        maxWidth="md"
+      >
+        <div className="space-y-6">
+            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4">
+                <ShieldAlert className="w-6 h-6 text-amber-600 mt-1 shrink-0" />
+                <div>
+                   <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Gated Governance Protocol</h4>
+                   <p className="text-xs text-amber-700 mt-1 leading-relaxed font-medium">
+                     You are initiating a {pendingAction?.type.toLowerCase()} operation on a persistent university endpoint. 
+                     This requires justification and subsequent sanctioning by the **Finance Department**.
+                   </p>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Submission Justification</label>
+                <textarea 
+                    value={requestReason}
+                    onChange={(e) => setRequestReason(e.target.value)}
+                    className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 text-sm placeholder:text-slate-300 font-medium transition-all"
+                    placeholder="Provide a valid reason for this modification/deletion request..."
+                />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-6 uppercase">
+                <button
+                type="button"
+                onClick={() => setIsRequestModalOpen(false)}
+                className="px-6 py-2 text-slate-500 font-black text-[10px]"
+                >
+                Cancel
+                </button>
+                <button
+                onClick={submitGatedRequest}
+                className="px-8 py-2 bg-amber-500 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-200"
+                >
+                Dispatch to Finance
+                </button>
+            </div>
+        </div>
       </Modal>
     </div>
   );

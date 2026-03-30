@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Clock, UserCheck, UserPlus, History, X, CheckCircle2, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
+import { Clock, UserCheck, UserPlus, History, X, CheckCircle2, AlertTriangle, ArrowRight, TrendingUp, ShieldCheck } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
 
 type EscalationTask = {
@@ -12,15 +13,33 @@ type EscalationTask = {
   assignee: { name: string; uid: string; department?: { name: string; id: number } };
   deptAdmin: { name: string; email: string };
   deadline: string;
+  isCritical?: boolean;
+  escalationLabel?: string;
+};
+
+type EscalationLeave = {
+  id: number;
+  type: string;
+  daysOverdue: number;
+  employee: { name: string; uid: string };
+  deptAdmin: { name: string; email: string };
+  startDate: string;
+  endDate: string;
+  reason: string;
 };
 
 export default function Escalations() {
   const [tasks, setTasks] = useState<EscalationTask[]>([]);
+  const [leaves, setLeaves] = useState<EscalationLeave[]>([]);
+  const [activeTab, setActiveTab] = useState<'tasks' | 'leaves'>('tasks');
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<EscalationTask | null>(null);
-  const [modalMode, setModalMode] = useState<'resolve' | 'reassign' | 'chain' | null>(null);
+  const [selectedLeave, setSelectedLeave] = useState<EscalationLeave | null>(null);
+  const [modalMode, setModalMode] = useState<'resolve' | 'reassign' | 'chain' | 'override_leave' | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuthStore();
+  const isReadOnly = user?.role === 'ceo';
 
   useEffect(() => {
     fetchEscalations();
@@ -29,7 +48,8 @@ export default function Escalations() {
   const fetchEscalations = async () => {
     try {
       const res = await api.get('/ceo/escalations');
-      setTasks(res.data.tasks);
+      setTasks(res.data.tasks || []);
+      setLeaves(res.data.leaves || []);
     } catch (error) {
       toast.error('Failed to load escalations');
     } finally {
@@ -37,7 +57,7 @@ export default function Escalations() {
     }
   };
 
-  const handleResolve = async () => {
+  const handleResolveTask = async () => {
     if (!selectedTask) return;
     try {
       setIsSubmitting(true);
@@ -47,6 +67,21 @@ export default function Escalations() {
       fetchEscalations();
     } catch (error) {
       toast.error('Failed to resolve escalation');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOverrideLeave = async (action: 'approve' | 'reject') => {
+    if (!selectedLeave) return;
+    try {
+      setIsSubmitting(true);
+      await api.post('/ceo/resolve-leave', { leaveId: selectedLeave.id, action, notes: resolutionNotes });
+      toast.success(`Leave request ${action}ed`);
+      setModalMode(null);
+      fetchEscalations();
+    } catch (error) {
+      toast.error('Failed to override leave');
     } finally {
       setIsSubmitting(false);
     }
@@ -69,16 +104,42 @@ export default function Escalations() {
   return (
     <div className="space-y-8 pb-20">
       
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm self-start inline-flex">
+        <button 
+          onClick={() => setActiveTab('tasks')}
+          className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === 'tasks' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Task Escalations ({tasks.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('leaves')}
+          className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === 'leaves' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Leave Deadlocks ({leaves.length})
+        </button>
+      </div>
+
       {/* Critical Overdue Section */}
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-        <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+        <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-white">
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Critical Escalation Inbox</h2>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Protracted deadlocks requiring executive intervention</p>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">
+              {activeTab === 'tasks' ? 'Critical Escalation Inbox' : 'Aged Leave Pending'}
+            </h2>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              Protracted deadlocks requiring executive intervention
+            </p>
           </div>
           <div className="flex items-center gap-3">
-             <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-red-500/20 uppercase tracking-wider">
-               {tasks.length} Active System Risks
+             {isReadOnly && (
+               <div className="flex items-center gap-2 px-4 py-2 bg-slate-900/5 border border-slate-900/10 rounded-xl mr-2">
+                 <ShieldCheck className="w-4 h-4 text-slate-400" />
+                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monitoring Mode</span>
+               </div>
+             )}
+             <span className={`text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider ${activeTab === 'tasks' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
+               {(activeTab === 'tasks' ? tasks : leaves).length} Active System Risks
              </span>
           </div>
         </div>
@@ -87,82 +148,150 @@ export default function Escalations() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white border-b border-slate-50">
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Task Objective</th>
+                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{activeTab === 'tasks' ? 'Task Objective' : 'Employee / Leave Type'}</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental Chain</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inertia</th>
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Context</th>
+                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{activeTab === 'tasks' ? 'Context' : 'Duration'}</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {tasks.length === 0 ? (
-                <tr>
-                   <td colSpan={5} className="px-10 py-20 text-center">
-                      <CheckCircle2 className="w-12 h-12 text-emerald-200 mx-auto mb-4" />
-                      <p className="text-sm font-bold text-slate-400">Governance Clean: All systemic escalations resolved.</p>
-                   </td>
-                </tr>
-              ) : tasks.map((task) => (
-                <tr key={task.id} className="group hover:bg-slate-50/50 transition-all">
-                  <td className="px-10 py-6">
-                    <div className="flex items-start gap-3">
-                       <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${task.daysOverdue > 7 ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
-                       <div>
-                         <div className="font-black text-slate-900 leading-tight mb-1">{task.title}</div>
-                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Deadline: {format(new Date(task.deadline), 'MMM dd, yyyy')}</div>
-                       </div>
-                    </div>
-                  </td>
-                  <td className="px-10 py-6">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+              {activeTab === 'tasks' ? (
+                tasks.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-10 py-20 text-center">
+                        <CheckCircle2 className="w-12 h-12 text-emerald-200 mx-auto mb-4" />
+                        <p className="text-sm font-bold text-slate-400">Governance Clean: All systemic task escalations resolved.</p>
+                    </td>
+                  </tr>
+                ) : tasks.map((task) => (
+                  <tr key={task.id} className="group hover:bg-slate-50/50 transition-all">
+                    <td className="px-10 py-6">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${task.daysOverdue > 7 ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+                        <div>
+                          <div className="font-black text-slate-900 leading-tight mb-1 flex items-center gap-2">
+                             {task.title}
+                             {task.isCritical && (
+                               <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[8px] font-black rounded-sm border border-red-200">
+                                 {task.escalationLabel || 'CRITICAL'}
+                               </span>
+                             )}
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Deadline: {format(new Date(task.deadline), 'MMM dd, yyyy')}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-10 py-6">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Admin:</span>
+                          <span className="font-bold text-slate-700">{task.deptAdmin?.name || 'Unassigned'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Owner:</span>
+                          <span className="font-bold text-slate-600 italic">{task.assignee?.name}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-10 py-6 text-center">
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ring-2 ring-transparent transition-all ${getUrgencyColor(task.daysOverdue)}`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        {task.daysOverdue} Days Overdue
+                      </div>
+                    </td>
+                    <td className="px-10 py-6">
+                      <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-black text-[10px] uppercase tracking-wider">
+                        {task.moduleSource}
+                      </span>
+                    </td>
+                    <td className="px-10 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {!isReadOnly && (
+                          <>
+                            <button 
+                              onClick={() => { setSelectedTask(task); setModalMode('resolve'); }}
+                              className="p-2.5 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-xl transition-all border border-transparent hover:border-emerald-100 group"
+                              title="Resolve Task"
+                            >
+                              <UserCheck className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => { setSelectedTask(task); setModalMode('reassign'); }}
+                              className="p-2.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                              title="Reassign Task"
+                            >
+                              <UserPlus className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                        <button 
+                          onClick={() => { setSelectedTask(task); setModalMode('chain'); }}
+                          className="p-2.5 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl transition-all border border-transparent hover:border-slate-800"
+                          title="View Governance Chain"
+                        >
+                          <History className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                leaves.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-10 py-20 text-center">
+                        <CheckCircle2 className="w-12 h-12 text-emerald-200 mx-auto mb-4" />
+                        <p className="text-sm font-bold text-slate-400">Governance Clean: No aged leave requests pending.</p>
+                    </td>
+                  </tr>
+                ) : leaves.map((leave) => (
+                  <tr key={leave.id} className="group hover:bg-slate-50/50 transition-all">
+                    <td className="px-10 py-6">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${leave.daysOverdue > 7 ? 'bg-red-500' : 'bg-amber-500'}`} />
+                        <div>
+                          <div className="font-black text-slate-900 leading-tight mb-1">{leave.employee?.name}</div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{leave.type} Request</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-10 py-6">
+                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Admin:</span>
-                        <span className="font-bold text-slate-700">{task.deptAdmin?.name || 'Unassigned'}</span>
+                        <span className="font-bold text-slate-700">{leave.deptAdmin?.name || 'Unassigned'}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Owner:</span>
-                        <span className="font-bold text-slate-600 italic">{task.assignee?.name}</span>
+                    </td>
+                    <td className="px-10 py-6 text-center">
+                       <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ${getUrgencyColor(leave.daysOverdue)}`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        {leave.daysOverdue} Days Pending
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-10 py-6 text-center">
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ring-2 ring-transparent transition-all ${getUrgencyColor(task.daysOverdue)}`}>
-                       <Clock className="w-3.5 h-3.5" />
-                       {task.daysOverdue} Days Overdue
-                    </div>
-                  </td>
-                  <td className="px-10 py-6">
-                     <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-black text-[10px] uppercase tracking-wider">
-                       {task.moduleSource}
-                     </span>
-                  </td>
-                  <td className="px-10 py-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                       <button 
-                        onClick={() => { setSelectedTask(task); setModalMode('resolve'); }}
-                        className="p-2.5 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-xl transition-all border border-transparent hover:border-emerald-100 group"
-                        title="Resolve Task"
-                       >
-                         <UserCheck className="w-5 h-5" />
-                       </button>
-                       <button 
-                        onClick={() => { setSelectedTask(task); setModalMode('reassign'); }}
-                        className="p-2.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-all border border-transparent hover:border-indigo-100"
-                        title="Reassign Task"
-                       >
-                         <UserPlus className="w-5 h-5" />
-                       </button>
-                       <button 
-                        onClick={() => { setSelectedTask(task); setModalMode('chain'); }}
-                        className="p-2.5 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl transition-all border border-transparent hover:border-slate-800"
-                        title="View Governance Chain"
-                       >
-                         <History className="w-5 h-5" />
-                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-10 py-6">
+                       <div className="text-[11px] font-bold text-slate-600">
+                          {format(new Date(leave.startDate), 'MMM dd')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
+                       </div>
+                    </td>
+                    <td className="px-10 py-6 text-right">
+                       {isReadOnly ? (
+                         <button 
+                          onClick={() => { setSelectedLeave(leave); setModalMode('chain'); }}
+                          className="px-4 py-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-slate-600 transition-all"
+                         >
+                           View Audit
+                         </button>
+                       ) : (
+                         <button 
+                          onClick={() => { setSelectedLeave(leave); setModalMode('override_leave'); }}
+                          className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg hover:shadow-slate-900/20 transition-all"
+                         >
+                           Executive Decision
+                         </button>
+                       )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -172,7 +301,7 @@ export default function Escalations() {
       {modalMode && selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
                     {modalMode === 'resolve' && <UserCheck className="w-5 h-5" />}
@@ -197,6 +326,7 @@ export default function Escalations() {
             <div className="p-8">
               {modalMode === 'resolve' && (
                 <div className="space-y-6">
+                  {/* ... same as before ... */}
                   <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-emerald-600 mt-0.5" />
                     <p className="text-xs font-bold text-emerald-800 leading-relaxed">
@@ -214,7 +344,7 @@ export default function Escalations() {
                     />
                   </div>
                   <button 
-                    onClick={handleResolve}
+                    onClick={handleResolveTask}
                     disabled={isSubmitting || !resolutionNotes}
                     className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:shadow-xl hover:shadow-slate-900/20 transition-all active:scale-[0.98] disabled:opacity-50"
                   >
@@ -223,12 +353,51 @@ export default function Escalations() {
                 </div>
               )}
 
+              {modalMode === 'override_leave' && selectedLeave && (
+                <div className="space-y-6">
+                   <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                      Executive override for {selectedLeave.employee?.name}'s leave request. This decision finalizes the institutional response.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Decision Notes</label>
+                    <textarea 
+                      value={resolutionNotes}
+                      onChange={(e) => setResolutionNotes(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 transition-all outline-none"
+                      placeholder="Ex: Approved due to medical urgency or Rejected due to critical project phase..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <button 
+                      onClick={() => handleOverrideLeave('approve')}
+                      disabled={isSubmitting || !resolutionNotes}
+                      className="bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-emerald-700 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                    >
+                      Institutional Approval
+                    </button>
+                    <button 
+                      onClick={() => handleOverrideLeave('reject')}
+                      disabled={isSubmitting || !resolutionNotes}
+                      className="bg-red-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-red-700 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20"
+                    >
+                      Executive Rejection
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {modalMode === 'reassign' && (
                 <div className="space-y-6">
                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
                      <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Current Chain</div>
                      <div className="flex items-center gap-2 text-sm font-bold text-indigo-900 text-center">
-                        <span>{selectedTask.assignee?.name}</span>
+                        <span>{selectedTask?.assignee?.name}</span>
                         <ArrowRight className="w-4 h-4" />
                         <span className="text-indigo-400 italic">Select Successor</span>
                      </div>
@@ -243,26 +412,26 @@ export default function Escalations() {
                 </div>
               )}
 
-              {modalMode === 'chain' && (
+              {modalMode === 'chain' && selectedTask && (
                 <div className="space-y-8 py-4">
                   {[
-                    { role: 'Employee', name: selectedTask.assignee?.name, status: 'Missed Deadline', date: '4 Days Ago', color: 'red' },
-                    { role: 'Dept Admin', name: selectedTask.deptAdmin?.name, status: 'Escalation Triggered', date: '2 Days Ago', color: 'amber' },
-                    { role: 'CEO', name: 'Awaiting Action', status: 'Current State', date: 'Now', color: 'slate' }
+                    { role: 'Employee', name: selectedTask.assignee?.name, status: 'Deadline Missed', date: `${selectedTask.daysOverdue} Days Ago`, color: 'red' },
+                    { role: 'Dept Admin', name: selectedTask.deptAdmin?.name, status: 'Inaction Period Passed', date: 'Escalated', color: 'amber' },
+                    { role: 'CEO', name: 'Academic CEO', status: 'Executive Oversight', date: 'Now', color: 'slate' }
                   ].map((step, idx, arr) => (
                     <div key={idx} className="relative flex items-center gap-6">
                        {idx !== arr.length - 1 && (
                          <div className="absolute left-6 top-10 w-0.5 h-10 bg-slate-100" />
                        )}
-                       <div className={`w-12 h-12 rounded-2xl bg-${step.color}-50 border border-${step.color}-100 flex items-center justify-center text-${step.color}-600 z-10 shadow-sm`}>
+                       <div className={`w-12 h-12 rounded-2xl ${idx === 0 ? 'bg-red-50 border-red-100 text-red-600' : idx === 1 ? 'bg-amber-50 border-amber-100 text-amber-600' : 'bg-slate-900 text-white'} border flex items-center justify-center z-10 shadow-sm`}>
                           {idx === 0 && <UserPlus className="w-5 h-5" />}
                           {idx === 1 && <UserCheck className="w-5 h-5" />}
                           {idx === 2 && <TrendingUp className="w-5 h-5" />}
                        </div>
                        <div>
                           <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{step.role}</div>
-                          <div className="text-sm font-black text-slate-900">{step.name}</div>
-                          <div className={`text-[10px] font-bold ${step.color === 'red' ? 'text-red-500' : 'text-slate-500'} mt-1`}>
+                          <div className="text-sm font-black text-slate-900">{step.name || 'Unassigned'}</div>
+                          <div className={`text-[10px] font-bold ${idx === 0 ? 'text-red-500' : idx === 1 ? 'text-amber-500' : 'text-slate-500'} mt-1 uppercase tracking-tighter`}>
                             {step.status} • {step.date}
                           </div>
                        </div>

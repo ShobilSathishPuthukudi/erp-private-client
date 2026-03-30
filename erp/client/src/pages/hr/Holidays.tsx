@@ -99,7 +99,7 @@ export default function Holidays() {
                 <input 
                     required
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 font-bold"
-                    placeholder="e.g. Founder's Day"
+                    placeholder="Founder's Day"
                     value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                 />
             </div>

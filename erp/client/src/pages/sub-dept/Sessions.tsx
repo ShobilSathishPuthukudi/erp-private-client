@@ -243,7 +243,7 @@ export default function SubDeptSessions() {
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Designated Name</label>
               <div className="relative group">
                 <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                <input {...register('name', { required: true })} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900" placeholder={sessionTypeFilter === 'ACADEMIC' ? "e.g. 2026-2027 Academic Year" : "e.g. July 2026 Admission Intake"} />
+                <input {...register('name', { required: true })} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900" placeholder={sessionTypeFilter === 'ACADEMIC' ? "2026-2027 Academic Year" : "July 2026 Admission Intake"} />
               </div>
             </div>
 

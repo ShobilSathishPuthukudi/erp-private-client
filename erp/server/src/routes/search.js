@@ -28,7 +28,11 @@ router.get('/', verifyToken, async (req, res) => {
       attributes: ['uid', 'name', 'role'],
       limit: 5
     });
-    users.forEach(u => results.push({ id: u.uid, title: u.name, type: 'User', role: u.role, path: `/dashboard/${u.role}` }));
+    users.forEach(u => {
+      const role = u.role.toLowerCase();
+      const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : role;
+      results.push({ id: u.uid, title: u.name, type: 'User', role: u.role, path: `/dashboard/${dashboardPath}` });
+    });
 
     // 2. Search Departments
     const departments = await Department.findAll({

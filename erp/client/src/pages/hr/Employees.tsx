@@ -14,6 +14,7 @@ interface Employee {
   status: 'active' | 'inactive' | 'suspended';
   deptId: number | null;
   department?: { id: number, name: string };
+  role?: string;
   createdAt: string;
 }
 
@@ -38,21 +39,24 @@ export default function Employees() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [roles, setRoles] = useState<any[]>([]);
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
 
   const fetchInitialData = async () => {
     try {
       setIsLoading(true);
-      const [empRes, deptRes, vacRes] = await Promise.all([
+      const [empRes, deptRes, vacRes, roleRes] = await Promise.all([
         api.get('/hr/employees'),
         api.get('/departments'),
-        api.get('/hr/vacancies')
+        api.get('/hr/vacancies'),
+        api.get('/org-admin/roles')
       ]);
       setEmployees(empRes.data);
       setAllEmployees(empRes.data);
       setDepartments(deptRes.data);
       setVacancies(vacRes.data);
+      setRoles(roleRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
@@ -76,7 +80,7 @@ export default function Employees() {
 
   const openCreateModal = () => {
     setEditingEmployee(null);
-    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '' });
+    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '', role: 'employee' });
     setIsModalOpen(true);
   };
 
@@ -88,7 +92,8 @@ export default function Employees() {
       password: '', 
       status: employee.status,
       deptId: employee.deptId || '',
-      reportingManagerUid: employee.reportingManagerUid || ''
+      reportingManagerUid: employee.reportingManagerUid || '',
+      role: employee.role || 'employee'
     });
     setIsModalOpen(true);
   };
@@ -150,6 +155,15 @@ export default function Employees() {
       cell: ({ row }) => {
         return (row.original as any).manager?.name || <span className="text-slate-400 italic">None</span>;
       }
+    },
+    {
+      accessorKey: 'role',
+      header: 'Functional Role',
+      cell: ({ row }) => (
+        <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+          {row.original.role || 'Employee'}
+        </span>
+      )
     },
     { 
       accessorKey: 'status', 
@@ -223,7 +237,7 @@ export default function Employees() {
             <input
               {...register('name', { required: 'Name is required' })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="e.g. John Smith"
+              placeholder="John Smith"
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message as string}</p>}
           </div>
@@ -234,7 +248,8 @@ export default function Employees() {
               type="email"
               {...register('email', { required: 'Email is required' })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="e.g. j.smith@iits.edu"
+              placeholder="j.smith@erp.com"
+
             />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message as string}</p>}
           </div>
@@ -270,7 +285,6 @@ export default function Employees() {
               {errors.vacancyId && <p className="text-red-500 text-xs mt-1">{errors.vacancyId.message as string}</p>}
             </div>
           )}
-
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Reporting Manager</label>
             <select
@@ -280,6 +294,18 @@ export default function Employees() {
               <option value="">-- No Direct Manager --</option>
               {allEmployees.filter(e => e.uid !== (editingEmployee as any)?.uid).map((e) => (
                 <option key={e.uid} value={e.uid}>{e.name} ({e.uid})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Functional Role</label>
+            <select
+              {...register('role')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+            >
+              {roles.map((r) => (
+                <option key={r.id} value={r.name}>{r.name}</option>
               ))}
             </select>
           </div>
@@ -297,17 +323,6 @@ export default function Employees() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Account Status</label>
-            <select
-              {...register('status')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
 
           <div className="pt-4 flex justify-end space-x-3 border-t border-slate-100 mt-6">
             <button

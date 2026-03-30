@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Download, Search } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
@@ -10,10 +11,24 @@ interface Props {
 }
 
 export default function MetricDrillDown({ isOpen, onClose, metricLabel, data }: Props) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] overflow-hidden">
+    <div className="fixed inset-0 z-[99999] overflow-hidden">
        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
        
        <div className={clsx(

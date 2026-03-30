@@ -166,7 +166,7 @@ export default function Departments() {
             <input
               {...register('name')}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="e.g. School of Computing"
+              placeholder="School of Computing"
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>

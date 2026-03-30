@@ -1,8 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import DepartmentsList from './DepartmentsList';
-import CustomDepartmentManage from './CustomDepartmentManage';
 import CEOPanelsList from './CEOPanelsList';
-import CEOPanelVisibility from './CEOPanelVisibility';
 import Overview from './Overview';
 import Alerts from './Alerts';
 import PermissionMatrix from './PermissionMatrix';
@@ -14,6 +12,8 @@ import SettingsGeneral from './SettingsGeneral';
 import SettingsIntegrations from './SettingsIntegrations';
 import SettingsCustomFields from './SettingsCustomFields';
 import SettingsStorageConfig from './SettingsStorageConfig';
+import SettingsGovernance from './SettingsGovernance';
+import RolesList from './RolesList';
 import SystemHealth from './SystemHealth';
 import DataManagement from './DataManagement';
 import CronMonitoring from './CronMonitoring';
@@ -28,13 +28,12 @@ export default function OrgAdminDashboard() {
       
       {/* Department Routes */}
       <Route path="departments" element={<DepartmentsList />} />
-      <Route path="departments/custom" element={<CustomDepartmentManage />} />
       
       {/* CEO Panel Routes */}
       <Route path="ceo-panels" element={<CEOPanelsList />} />
-      <Route path="ceo-panels/visibility" element={<CEOPanelVisibility />} />
       
       {/* Permissions */}
+      <Route path="permissions/roles" element={<RolesList />} />
       <Route path="permissions/matrix" element={<PermissionMatrix />} />
       <Route path="permissions/audit" element={<PermissionAudit />} />
       
@@ -48,6 +47,7 @@ export default function OrgAdminDashboard() {
       <Route path="settings/integrations" element={<SettingsIntegrations />} />
       <Route path="settings/custom-fields" element={<SettingsCustomFields />} />
       <Route path="settings/storage-config" element={<SettingsStorageConfig />} />
+      <Route path="settings/governance" element={<SettingsGovernance />} />
       
       {/* System Routes */}
       <Route path="system-health" element={<SystemHealth />} />

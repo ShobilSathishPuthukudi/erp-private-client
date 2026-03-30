@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Key, ShieldAlert, CheckCircle2, Timer, Lock, RefreshCw, Eye, EyeOff, AlertCircle, Building2, Send } from 'lucide-react';
+import { Key, ShieldAlert, Timer, Lock, Eye, EyeOff, AlertCircle, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 
@@ -216,7 +216,7 @@ export default function CredentialRequests() {
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Access Justification (Min 30 chars)</label>
               <textarea
                 {...register('remarks', { required: true, minLength: 30 })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
                 rows={4}
                 placeholder="Specify the operational necessity for this reveal..."
               />
@@ -270,7 +270,7 @@ export default function CredentialRequests() {
 
             <button
                 onClick={() => setIsRevealModalOpen(false)}
-                className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-black hover:bg-slate-200 transition-all active:scale-95 uppercase tracking-widest text-xs"
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest text-xs shadow-xl shadow-slate-900/20"
             >
                 Secure HUD / Exit
             </button>

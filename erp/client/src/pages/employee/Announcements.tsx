@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import AnnouncementBoard from '@/components/shared/AnnouncementBoard';
 import { Calendar, Bell, Info } from 'lucide-react';
@@ -102,9 +103,11 @@ export default function StaffAnnouncements() {
                 <div className="relative z-10">
                     <h3 className="font-black text-xl mb-2 leading-tight">Need to request a break?</h3>
                     <p className="text-indigo-100 text-xs font-medium mb-6 opacity-80">Submit your leave request through the HR portal for departmental approval.</p>
-                    <button className="bg-white text-indigo-600 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">
-                        Launch Leave Portal
-                    </button>
+                    <Link to="../leaves">
+                      <button className="bg-white text-indigo-600 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">
+                          Launch Leave Portal
+                      </button>
+                    </Link>
                 </div>
                 <Calendar className="absolute -bottom-4 -right-4 w-32 h-32 text-white opacity-5" />
             </div>

@@ -37,13 +37,22 @@ export default function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Focus input when opened
+  // Focus input and add blur when opened
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setQuery('');
       setResults([]);
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
     }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
   }, [isOpen]);
 
   // Handle search with debounce
@@ -107,7 +116,7 @@ export default function CommandPalette() {
     if (['org-admin', 'hr'].includes(user.role)) {
       quickActions.push({ id: 'add-emp', title: 'Add New Employee', type: 'Action', icon: Plus, action: () => navigate('/dashboard/hr/employees') });
     }
-    if (['org-admin', 'academic'].includes(user.role)) {
+    if (['org-admin', 'academic', 'operations'].includes(user.role)) {
       quickActions.push({ id: 'add-student', title: 'Register Student', type: 'Action', icon: Plus, action: () => navigate('/dashboard/academic/students') });
     }
     if (['sales', 'org-admin'].includes(user.role)) {
@@ -132,7 +141,7 @@ export default function CommandPalette() {
   const combinedItems = [...quickActions, ...results];
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] px-4 pointer-events-none">
+    <div className="fixed inset-0 z-[99999] flex items-start justify-center pt-[15vh] px-4 pointer-events-none">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm pointer-events-auto" 

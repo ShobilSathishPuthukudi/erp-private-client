@@ -74,12 +74,32 @@ router.post('/', verifyToken, isFinance, validate(feeSchemaZod), async (req, res
 
 router.get('/:programId', verifyToken, async (req, res) => {
   try {
+    const { programId } = req.params;
     const fees = await ProgramFee.findAll({
-      where: { programId: req.params.programId, isActive: true },
+      where: { programId, isActive: true },
       order: [['version', 'DESC']]
     });
+
+    if (!fees || fees.length === 0) {
+      const program = await Program.findByPk(programId);
+      if (program && program.totalFee > 0) {
+        return res.json([{
+          id: 'default_fee',
+          name: 'Default Fee Structure',
+          schema: {
+            type: 'full',
+            installments: [{ label: 'Full Program Fee', amount: program.totalFee }]
+          },
+          is_verified: true,
+          is_default: true,
+          total_amount: program.totalFee
+        }]);
+      }
+    }
+
     res.json(fees);
   } catch (error) {
+    console.error('Fee fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch program fees' });
   }
 });

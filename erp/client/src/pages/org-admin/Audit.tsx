@@ -118,7 +118,6 @@ export default function AuditLogs() {
         isOpen={!!selectedLog}
         onClose={() => setSelectedLog(null)}
         title="Audit Log Details"
-        maxWidth="4xl"
       >
         {selectedLog && (
           <div className="space-y-6">

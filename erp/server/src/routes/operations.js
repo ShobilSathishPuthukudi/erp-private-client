@@ -4,7 +4,7 @@ import { verifyToken, isOpsOrAdmin } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
 
 const router = express.Router();
-const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog } = models;
+const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram } = models;
 
 const getSubDeptId = (user) => {
   if (!user) return null;
@@ -22,7 +22,10 @@ const getSubDeptId = (user) => {
 
 router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const whereClause = { type: 'center', auditStatus: 'pending' };
+    const whereClause = { 
+      type: { [Op.in]: ['center', 'study-center'] }, 
+      auditStatus: 'pending' 
+    };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit
     if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
@@ -30,10 +33,10 @@ router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
       const subDeptId = getSubDeptId(req.user);
       const subDeptName = subDeptMapReverse[subDeptId] || req.user.subDepartment;
 
-      const mappedCenterIds = await CenterSubDept.findAll({
-        where: { subDeptName: { [Op.like]: `%${subDeptName}%` } },
+      const mappedCenterIds = await CenterProgram.findAll({
+        where: { subDeptId: subDeptId, isActive: true },
         attributes: ['centerId']
-      }).then(res => res.map(c => c.centerId));
+      }).then(res => [...new Set(res.map(c => c.centerId))]);
       
       whereClause.id = { [Op.in]: mappedCenterIds };
     }
@@ -51,7 +54,10 @@ router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
 router.get('/centers/approved', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const centers = await Department.findAll({
-      where: { type: 'center', auditStatus: 'approved' }
+      where: { 
+        type: { [Op.in]: ['center', 'study-center'] }, 
+        auditStatus: 'approved' 
+      }
     });
     res.json(centers);
   } catch (error) {
@@ -76,16 +82,7 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
       status: status === 'approved' ? 'active' : 'inactive'
     });
 
-    // Sync Sub-Department Mappings
-    if (status === 'approved' && subDepartments && Array.isArray(subDepartments)) {
-      // Clear existing and re-add (for simplicity in sync)
-      await CenterSubDept.destroy({ where: { centerId: id } });
-      const mappings = subDepartments.map(deptName => ({
-        centerId: id,
-        subDeptName: deptName
-      }));
-      await CenterSubDept.bulkCreate(mappings);
-    }
+    // Jurisdictional boundaries are now tracked via CenterProgram, no manual sync needed here.
 
     res.json({ message: `Center audit ${status} successfully and jurisdictional boundaries synchronized.`, center });
   } catch (error) {
@@ -187,15 +184,32 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
 
     // If Ops Admin, add breakdown
     if (!isSubDeptAdmin) {
-      const breakdown = await Student.findAll({
-        attributes: [
-          'subDepartmentId',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-          [sequelize.literal(`SUM(CASE WHEN reviewStage = 'OPS' THEN 1 ELSE 0 END)`), 'pendingOps'],
-          [sequelize.literal(`SUM(CASE WHEN reviewStage = 'SUB_DEPT' THEN 1 ELSE 0 END)`), 'pendingSubDept']
-        ],
-        group: ['subDepartmentId']
-      });
+      const subDeptIds = [8, 9, 10, 11];
+      const subDeptNames = ['Open School', 'Online', 'Skill', 'BVoc'];
+      const subDeptKeys = ['openschool', 'online', 'skill', 'bvoc'];
+
+      const breakdown = await Promise.all(subDeptIds.map(async (id, index) => {
+        const key = subDeptKeys[index];
+        const name = subDeptNames[index];
+        
+        const [studentCount, programCount, centerCount] = await Promise.all([
+          Student.count({ where: { subDepartmentId: id } }),
+          Program.count({ where: { subDeptId: id } }),
+          CenterProgram.count({ 
+            where: { subDeptId: id },
+            distinct: true,
+            col: 'centerId'
+          })
+        ]);
+
+        return {
+          id,
+          name,
+          studentCount,
+          programCount,
+          centerCount
+        };
+      }));
       stats.unitBreakdown = breakdown;
     }
 
@@ -250,30 +264,24 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
 router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
-    const whereClause = { type: 'center' };
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
-    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
+    const whereClause = { 
+       type: { [Op.in]: ['center', 'study-center'] } 
+    };
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const sid = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
 
-    if (subDeptId) {
-      // If we have a subDeptId, we need to filter by mapping or by students/programs
-      // The CenterSubDept table uses subDeptName (string) unfortunately.
-      const subDeptMapReverse = { 8: 'openschool', 9: 'online', 10: 'skill', 11: 'bvoc' };
-      const subDeptName = subDeptMapReverse[subDeptId];
-
-      const mappedCenterIds = await CenterSubDept.findAll({
-        where: { subDeptName: { [Op.like]: `%${subDeptName}%` } },
-        attributes: ['centerId']
-      }).then(res => res.map(c => c.centerId));
-      
-      whereClause.id = { [Op.in]: mappedCenterIds };
+    if (sid) {
+      whereClause.id = {
+        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId = ${sid} AND isActive = true)`)
+      };
     }
 
     const centers = await Department.findAll({
       where: whereClause,
       attributes: [
-        'id', 'name', 'status',
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${isSubDeptAdmin ? `AND students.subDepartmentId = ${subDeptId}` : ''})`), 'studentCount'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM program_offerings WHERE program_offerings.centerId = department.id ${isSubDeptAdmin ? `AND program_offerings.programId IN (SELECT id FROM programs WHERE subDeptId = ${subDeptId})` : ''})`), 'activePrograms']
+        'id', 'name', 'status', 'shortName',
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'studentCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM center_programs WHERE center_programs.centerId = department.id AND center_programs.isActive = true ${sid ? `AND center_programs.subDeptId = ${sid}` : ''})`), 'activePrograms']
       ]
     });
     res.json(centers);

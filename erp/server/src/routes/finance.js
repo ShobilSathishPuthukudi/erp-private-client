@@ -1,5 +1,6 @@
 import express from 'express';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { paymentSchema } from '../lib/schemas.js';
@@ -8,29 +9,131 @@ import { requireMandatoryRemarks } from '../middleware/auditMiddleware.js';
 import erpEvents from '../lib/events.js';
 
 const router = express.Router();
-const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program } = models;
+const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module } = models;
 
 const isFinanceOrAdmin = (req, res, next) => {
+  const userRole = req.user.role?.toLowerCase();
   const allowed = ['finance', 'org-admin', 'system-admin'];
-  if (!allowed.includes(req.user.role)) {
+  if (!allowed.includes(userRole)) {
     return res.status(403).json({ error: 'Access denied: Finance privileges required' });
   }
   next();
 };
 
 // Enforce mandatory remarks for all EDIT/DELETE actions in this module
-router.use(['/payments/:id', '/invoices/:id', '/students/:id/verify-fee'], requireMandatoryRemarks);
+router.use(['/payments/:id', '/invoices/:id', '/students/:id/verify-fee', '/centers/:centerId/programs/:programId/assign-fee', '/academic-action-requests/:id/approve'], requireMandatoryRemarks);
+
+// ==========================================
+// ACADEMIC ACTION REQUESTS (GOVERNANCE)
+// ==========================================
+
+router.get('/academic-action-requests', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const requests = await AcademicActionRequest.findAll({
+      where: status ? { status } : {},
+      include: [
+        { model: User, as: 'requester', attributes: ['name', 'role'] },
+        { model: User, as: 'approver', attributes: ['name'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch academic action requests' });
+  }
+});
+
+router.put('/academic-action-requests/:id/approve', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { remarks } = req.body;
+    
+    const request = await AcademicActionRequest.findByPk(id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') return res.status(400).json({ error: 'Protocol Conflict: Request already processed' });
+
+    // 1. Resolve and Execute the requested action
+    let entityName = request.entityType;
+    if (entityName === 'University') entityName = 'Department';
+    
+    const EntityModel = models[entityName];
+    if (!EntityModel) return res.status(500).json({ error: `System Error: Model [${entityName}] not found in registry.` });
+
+    const instance = await EntityModel.findByPk(request.entityId);
+    
+    if (instance) {
+      if (request.actionType === 'DELETE') {
+        await instance.destroy();
+      } else if (request.actionType === 'EDIT') {
+        const updateData = request.proposedData || {};
+        await instance.update(updateData);
+      }
+    } else if (request.actionType === 'EDIT') {
+        return res.status(404).json({ error: `Governance Error: Target entity [${request.entityType} ID: ${request.entityId}] no longer exists.` });
+    }
+
+    // 2. Finalize request status
+    await request.update({ 
+      status: 'approved', 
+      approvedBy: req.user.uid,
+      financeRemarks: remarks
+    });
+
+    await logAction({
+       userId: req.user.uid,
+       action: `APPROVE_${request.actionType}`,
+       entity: request.entityType,
+       details: `Finance approved ${request.actionType} for ${request.entityType} ID: ${request.entityId}. Remarks: ${remarks}`,
+       module: 'Finance'
+    });
+
+    res.json({ message: 'Institutional action executed and recorded.', request });
+  } catch (error) {
+    console.error('Approval execution error:', error);
+    res.status(500).json({ error: 'Failed to execute requested institutional action' });
+  }
+});
+
+router.put('/academic-action-requests/:id/reject', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { remarks } = req.body;
+    
+    const request = await AcademicActionRequest.findByPk(id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') return res.status(400).json({ error: 'Protocol Conflict: Request already processed' });
+
+    await request.update({ 
+      status: 'rejected', 
+      approvedBy: req.user.uid,
+      financeRemarks: remarks
+    });
+
+    await logAction({
+       userId: req.user.uid,
+       action: `REJECT_${request.actionType}`,
+       entity: request.entityType,
+       details: `Finance rejected ${request.actionType} for ${request.entityType} ID: ${request.entityId}. Remarks: ${remarks}`,
+       module: 'Finance'
+    });
+
+    res.json({ message: 'Institutional action rejected.', request });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to reject action request' });
+  }
+});
 
 router.get('/payments', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const payments = await Payment.findAll({
-      include: [{ model: Student, as: 'student', attributes: ['name', 'enrollStatus'] }],
+      include: [{ model: Student, as: 'student', attributes: ['name', 'enrollStatus'], required: false }],
       order: [['date', 'DESC']]
     });
-    res.json(payments);
+    res.json(payments || []);
   } catch (error) {
-    console.error('Fetch payments error:', error);
-    res.status(500).json({ error: 'Failed to fetch payments' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -61,6 +164,41 @@ router.post('/payments', verifyToken, isFinanceOrAdmin, validate(paymentSchema),
   }
 });
 
+// --- Center-Program Fee Assignment (Phase 3) ---
+router.post('/centers/:centerId/programs/:programId/assign-fee', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  try {
+    const { centerId, programId } = req.params;
+    const { feeSchemaId, remarks } = req.body;
+
+    const mapping = await CenterProgram.findOne({ where: { centerId, programId } });
+    if (!mapping) return res.status(404).json({ error: 'Governance Error: Center-Program mapping not authorized by Operations yet.' });
+
+    const feeSchema = await ProgramFee.findByPk(feeSchemaId);
+    if (!feeSchema || feeSchema.programId != programId) {
+        return res.status(400).json({ error: 'Validation Error: Mismatched or non-existent fee schema for this program architecture.' });
+    }
+
+    const previousSchemaId = mapping.feeSchemaId;
+    await mapping.update({ feeSchemaId });
+    
+    // Explicit Audit
+    await AuditLog.create({
+        entity: 'CenterProgram',
+        action: 'ASSIGN_FEE_SCHEMA',
+        userId: req.user.uid,
+        before: { feeSchemaId: previousSchemaId },
+        after: { feeSchemaId },
+        remarks: remarks || 'Initial institutional fee assignment',
+        module: 'Finance'
+    });
+
+    res.json({ message: 'Institutional Fee structure successfully synchronized with center mapping', mapping });
+  } catch (error) {
+    console.error('Fee assignment error:', error);
+    res.status(500).json({ error: 'Failed to synchronize institutional fee structure' });
+  }
+});
+
 router.post('/payments/:id/verify', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -75,30 +213,35 @@ router.post('/payments/:id/verify', verifyToken, isFinanceOrAdmin, async (req, r
       verifiedBy: req.user.uid 
     });
 
-    // GAP-1: Automatically Generate Issue Record
-    const gstRate = 0.18; // Fixed 18% tax simulation
-    const amountVal = parseFloat(payment.amount);
-    const gstVal = amountVal * gstRate;
-    const totalVal = amountVal + gstVal;
-    
-    const invoiceNo = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+    // GAP-1: Automatically Generate/Sync Issue Record
+    // Check if an invoice already exists for this payment (e.g. from Admission flow)
+    let invoice = await Invoice.findOne({ where: { paymentId: payment.id } });
+    let invoiceNo = invoice?.invoiceNo;
 
-    // KPI Attribution: Find student and center's BDE
-    const studentForKpi = await Student.findByPk(payment.studentId, {
-        include: [{ model: Department, as: 'center' }]
-    });
+    if (!invoice) {
+        const gstRate = 0.18; // Fixed 18% tax simulation
+        const amountVal = parseFloat(payment.amount);
+        const gstVal = amountVal * gstRate;
+        const totalVal = amountVal + gstVal;
+        
+        invoiceNo = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
 
-    const invoice = await Invoice.create({
-      paymentId: payment.id,
-      studentId: payment.studentId,
-      invoiceNo,
-      amount: amountVal,
-      gst: gstVal,
-      total: totalVal,
-      status: 'issued',
-      centerId: studentForKpi?.centerId,
-      salesUserId: studentForKpi?.center?.bdeId
-    });
+        invoice = await Invoice.create({
+          paymentId: payment.id,
+          studentId: payment.studentId,
+          invoiceNo,
+          amount: amountVal,
+          gst: gstVal,
+          total: totalVal,
+          status: 'issued',
+          centerId: (await Student.findByPk(payment.studentId))?.centerId
+        });
+    } else {
+        // Update existing invoice status if needed
+        if (invoice.status === 'issued') {
+            await invoice.update({ status: 'paid' });
+        }
+    }
 
     // Ensure transaction is permanently recorded globally
     await AuditLog.create({
@@ -120,20 +263,23 @@ router.post('/payments/:id/verify', verifyToken, isFinanceOrAdmin, async (req, r
       });
     }
 
-    // Transition student status to PAYMENT_VERIFIED if they were FINANCE_PENDING
+    // Transition student status to ACTIVE if they were FINANCE_PENDING (Phase 5)
     const student = await Student.findByPk(payment.studentId);
     if (student && student.status === 'FINANCE_PENDING') {
-        await student.update({ status: 'PAYMENT_VERIFIED' });
+        await student.update({ 
+          status: 'ACTIVE',
+          enrollStatus: 'active' 
+        });
         
         // Emit Institutional Event
-        erpEvents.emit('PAYMENT_VERIFIED', { 
+        erpEvents.emit('FINANCE_APPROVED', { 
             studentId: student.id, 
             paymentId: payment.id, 
             invoiceNo: invoice.invoiceNo 
         });
     }
 
-    res.json({ message: 'Payment successfully verified and auto-invoiced. Student readiness: PAYMENT_VERIFIED.', payment, invoice });
+    res.json({ message: 'Institutional Payment verified. Enrollment Status: ACTIVE.', payment, invoice });
   } catch (error) {
     console.error('Payment verification error:', error);
     res.status(500).json({ error: 'Failed to verify payment and process invoice' });
@@ -180,13 +326,18 @@ router.post('/student/pay-invoice/:id', verifyToken, async (req, res) => {
 
 router.get('/invoices', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
+    console.log("[FINANCE] Fetching all invoices...");
     const invoices = await Invoice.findAll({
-      include: [{ model: Student, attributes: ['name'] }],
+      include: [
+        { model: Student, required: false },
+        { model: Payment, required: false }
+      ],
       order: [['createdAt', 'DESC']]
     });
-    res.json(invoices);
+    res.json(invoices || []);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    console.error("[FINANCE_ERROR] GET /invoices failure:", error);
+    res.status(500).json({ error: 'Failed to fetch invoices', message: error.message });
   }
 });
 
@@ -194,43 +345,63 @@ router.get('/change-requests', verifyToken, isFinanceOrAdmin, async (req, res) =
   try {
     const requests = await ChangeRequest.findAll({
       where: { status: 'pending_finance' },
-      include: [{ model: User, attributes: ['name', 'role'] }]
+      include: [
+        { model: Department, as: 'center', attributes: ['name'], required: false },
+        { model: Program, as: 'currentProgram', attributes: ['name'], required: false },
+        { model: Program, as: 'requestedProgram', attributes: ['name'], required: false }
+      ]
     });
-    res.json(requests);
+    res.json(requests || []);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch finance change requests' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
 router.get('/admission-sessions', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const sessions = await AdmissionSession.findAll({
-       where: { financeStatus: 'pending' }
+       where: { financeStatus: 'pending' },
+       include: [
+         { model: Department, as: 'subDept', attributes: ['name'], required: false },
+         { model: Program, attributes: ['name'], required: false }
+       ]
     });
-    res.json(sessions);
+    res.json(sessions || []);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch pending sessions' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
 // --- Institutional Approval Queues ---
 
-// 1. Student Approval Queue (PAYMENT_VERIFIED Filter)
+// GET Student Approval Queue (Finance View)
 router.get('/approvals/students', verifyToken, isFinanceOrAdmin, async (req, res) => {
-  try {
+    try {
+      console.log("[FINANCE] Fetching student approval queue (Status: OPS_APPROVED)...");
+      const { type } = req.query;
+    let whereClause = { status: { [Op.in]: ['FINANCE_PENDING', 'PAYMENT_VERIFIED'] } };
+    
+    if (type === 'approved') {
+        whereClause = { status: 'ENROLLED' };
+    }
+
     const students = await Student.findAll({
-      where: { status: 'PAYMENT_VERIFIED' },
-      include: [
-        { model: Department, as: 'center', attributes: ['name'] },
-        { model: Program, attributes: ['name'] },
-        { model: Invoice, as: 'invoice', where: { status: 'paid' } } 
-      ],
-      order: [['updatedAt', 'ASC']]
-    });
-    res.json(students);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch student approval queue' });
-  }
+        where: whereClause,
+        include: [
+          { model: Program, attributes: ['name'], required: false },
+          { model: ProgramFee, as: 'feeSchema', required: false },
+          { model: Invoice, as: 'invoice', where: { status: 'paid' }, required: false },
+          { model: Payment, as: 'payments', required: false }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+      res.json(students || []);
+    } catch (error) {
+      console.error("ERROR:", error);
+      res.status(500).json({ message: error.message || "Internal Server Error" });
+    }
 });
 
 // 2. Center/Department Approval Queue
@@ -239,9 +410,10 @@ router.get('/approvals/centers', verifyToken, isFinanceOrAdmin, async (req, res)
     const centers = await Department.findAll({
       where: { type: 'study-center', status: 'pending_finance' }
     });
-    res.json(centers);
+    res.json(centers || []);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch center approval queue' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -251,13 +423,14 @@ router.get('/approvals/requests', verifyToken, isFinanceOrAdmin, async (req, res
     const requests = await ChangeRequest.findAll({
       where: { status: 'pending' },
       include: [
-        { model: User, attributes: ['name', 'role'] },
-        { model: Department, as: 'center', attributes: ['name'] }
+        { model: User, attributes: ['name', 'role'], required: false },
+        { model: Department, as: 'center', attributes: ['name'], required: false }
       ]
     });
-    res.json(requests);
+    res.json(requests || []);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch request approval queue' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -290,7 +463,8 @@ router.post('/approvals/requests/:id/approve', verifyToken, isFinanceOrAdmin, as
 
     res.json({ message: `Institutional request ${status} successfully`, request });
   } catch (error) {
-    res.status(500).json({ error: 'Request approval protocol failure' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -304,18 +478,27 @@ router.post('/approvals/students/:id/finalize', verifyToken, isFinanceOrAdmin, a
     if (!remarks) return res.status(400).json({ error: 'Forensic audit remarks required for status elevation' });
 
     const student = await Student.findByPk(id, {
-      include: [{ model: Invoice, as: 'invoice' }]
+      include: [{ model: Invoice, as: 'activationInvoice' }]
     });
 
     if (!student) return res.status(404).json({ error: 'Target student node not located' });
-    if (student.status !== 'FINANCE_APPROVED') {
-      return res.status(400).json({ error: 'Finalize protocol blocked: Student must have manual FINANCE_APPROVED clearance.' });
+    if (!['FINANCE_APPROVED', 'PAYMENT_VERIFIED', 'FINANCE_PENDING'].includes(student.status)) {
+      return res.status(400).json({ error: 'Finalize protocol blocked: Student must have manual FINANCE_APPROVED, automated PAYMENT_VERIFIED, or validated FINANCE_PENDING clearance.' });
     }
 
-    // Strict Payment Check
-    const linkedInvoice = student.invoice;
+    // GAP-15: Auto-settle activation invoice during manual finalization
+    let linkedInvoice = student.activationInvoice;
+    if (!linkedInvoice) {
+        // Fallback for students with loose associations
+        linkedInvoice = await Invoice.findOne({ where: { studentId: id }, order: [['createdAt', 'DESC']] });
+    }
+
+    if (linkedInvoice && linkedInvoice.status !== 'paid') {
+        await linkedInvoice.update({ status: 'paid' });
+    }
+
     if (!linkedInvoice || linkedInvoice.status !== 'paid') {
-      return res.status(400).json({ error: 'Security alert: Unpaid invoice linked. Activation blocked.' });
+      return res.status(400).json({ error: 'Security alert: No valid paid invoice linked. Activation blocked.' });
     }
 
     const nextStatus = 'ENROLLED';
@@ -346,10 +529,33 @@ router.post('/approvals/students/:id/finalize', verifyToken, isFinanceOrAdmin, a
       ipAddress: req.ip
     });
 
-    res.json({ message: 'Institutional enrollment finalized. Student is now ACTIVE.', student });
+    // --- Institutional Identity Provisioning (Student Portal Access) ---
+    // Check if a User account already exists for this student identity node
+    const studentUid = `STU${student.id}`;
+    let user = await User.findByPk(studentUid);
+
+    if (!user) {
+        const bcrypt = (await import('bcryptjs')).default;
+        const hashedPassword = await bcrypt.hash('Student@123', 10);
+        
+        user = await User.create({
+            uid: studentUid,
+            name: student.name,
+            email: student.email || `STU${student.id}@institution.edu`,
+            password: hashedPassword,
+            role: 'student',
+            deptId: student.deptId,
+            subDepartment: student.subDepartmentId?.toString(),
+            status: 'active'
+        });
+        
+        console.log(`[AUTH] Institutional identity provisioned for Student: ${studentUid}`);
+    }
+
+    res.json({ message: 'Institutional activation protocol finalized. Student is now ACTIVE and portal access provisioned.', student, user });
   } catch (error) {
-    console.error('Finalize enrollment error:', error);
-    res.status(500).json({ error: 'Institutional activation protocol failed' });
+    console.error("ERROR:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 });
 
@@ -367,8 +573,8 @@ router.post('/approvals/students/:id/approve', verifyToken, isFinanceOrAdmin, as
         const student = await Student.findByPk(id);
         if (!student) return res.status(404).json({ error: 'Student not found.' });
 
-        if (student.status !== 'PAYMENT_VERIFIED') {
-            return res.status(400).json({ error: 'Protocol Violation: Student must be in PAYMENT_VERIFIED state.' });
+        if (!['PAYMENT_VERIFIED', 'FINANCE_PENDING'].includes(student.status)) {
+            return res.status(400).json({ error: 'Protocol Violation: Student must be in FINANCE_PENDING or PAYMENT_VERIFIED state.' });
         }
 
         await student.update({
@@ -527,7 +733,6 @@ router.put('/admission-sessions/:id/approve', verifyToken, isFinanceOrAdmin, asy
   }
 });
 
-export default router;
 router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -552,8 +757,6 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
       remarks: remarks || student.remarks
     });
 
-    // If approved, trigger final admission tasks (UID generation, etc. - in a real system)
-    
     await logAction({
       userId: req.user.uid,
       action: 'UPDATE',
@@ -567,3 +770,5 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
     res.status(500).json({ error: 'Fee verification protocol failed' });
   }
 });
+
+export default router;

@@ -26,6 +26,10 @@ const ProgramFee = sequelize.define('program_fee', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
+  },
+  isDefault: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   }
 });
 

@@ -112,7 +112,6 @@ export default function SurveyCreator() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         title="Launch Institutional Survey"
-        maxWidth="2xl"
       >
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -135,6 +134,11 @@ export default function SurveyCreator() {
               >
                 <option value="student">All Students</option>
                 <option value="employee">All Employees</option>
+                <option value="hr">HR Department</option>
+                <option value="academic">Academic Staff</option>
+                <option value="finance">Finance Department</option>
+                <option value="dept-admin">Departmental Admins (Sub-Dept)</option>
+                <option value="ceo">CEO / Executive Panel</option>
                 <option value="all">Everyone</option>
               </select>
             </div>

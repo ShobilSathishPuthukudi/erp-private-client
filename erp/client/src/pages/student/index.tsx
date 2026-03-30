@@ -109,12 +109,18 @@ export default function StudentPortal() {
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                <BookOpen className="w-24 h-24" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Enrolled Program</p>
-            <h2 className="text-2xl font-black leading-tight mb-2">{profile?.program?.name || 'Academic Path Initializing...'}</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Academic Identity</p>
+            <h2 className="text-2xl font-black leading-tight mb-1">{profile?.program?.name || 'Path Initializing...'}</h2>
+            <div className="flex items-center gap-2 mb-4">
+               <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest px-2 py-0.5 bg-blue-500/10 rounded-lg">{profile?.program?.university?.name}</span>
+            </div>
             <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">{profile?.program?.type} | {profile?.program?.duration} Years</p>
             <div className="mt-8 pt-6 border-t border-slate-800">
-               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Assigned Center</p>
-               <p className="font-bold text-slate-300">{profile?.center?.name || 'General Batch'}</p>
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Study Center Node</p>
+               <p className="font-bold text-slate-200 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50" />
+                  {profile?.center?.name || 'Institutional Batch'}
+               </p>
             </div>
           </div>
 

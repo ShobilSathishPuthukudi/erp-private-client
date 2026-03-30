@@ -71,7 +71,7 @@ export default function AgingReport() {
             </thead>
             <tbody className="divide-y divide-slate-50 font-mono text-[11px] font-bold">
                {filtered.map((row) => (
-                  <tr key={row.centerId} className="hover:bg-slate-50/50 transition-colors group cursor-default">
+                  <tr key={`${row.centerId}-${row.uid}`} className="hover:bg-slate-50/50 transition-colors group cursor-default">
                      <td className="p-6">
                         <div className="flex items-center gap-3">
                            <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">

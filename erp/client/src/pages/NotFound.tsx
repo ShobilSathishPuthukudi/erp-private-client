@@ -5,13 +5,11 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 export default function NotFound() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
 
   const handleReturn = () => {
-    if (user && user.role) {
-      navigate(`/dashboard/${user.role}`);
-    } else {
-      navigate('/login');
-    }
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -39,7 +37,7 @@ export default function NotFound() {
             className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-slate-900 hover:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-all duration-200"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Return to Active Dashboard
+            Return to Login
           </button>
         </div>
 

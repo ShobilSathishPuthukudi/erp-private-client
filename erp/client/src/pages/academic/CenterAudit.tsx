@@ -33,7 +33,6 @@ export default function CenterAudit() {
   const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
   const fetchCenters = async () => {
     setIsLoading(true);
@@ -61,8 +60,7 @@ export default function CenterAudit() {
     try {
       await api.put(`/operations/centers/${selectedCenter?.id}/audit`, {
         status,
-        reason: rejectionReason,
-        subDepartments: selectedUnits
+        reason: rejectionReason
       });
       toast.success(`Center ${status} successfully`);
       setIsReviewModalOpen(false);
@@ -163,20 +161,20 @@ export default function CenterAudit() {
       >
         <div className="space-y-8">
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Center Type</p>
-                    <p className="font-bold text-slate-900">{selectedCenter?.type || 'Standard'}</p>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Center Type</p>
+                    <p className="font-black text-slate-900 ml-1 text-sm uppercase">{selectedCenter?.type || 'Standard'}</p>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Website</p>
-                    <a href={selectedCenter?.websiteUrl} target="_blank" className="font-bold text-blue-600 flex items-center gap-1">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Website</p>
+                    <a href={selectedCenter?.websiteUrl} target="_blank" className="font-bold text-blue-600 flex items-center gap-1 ml-1 text-sm">
                         Visit Portal <ExternalLink className="w-3 h-3" />
                     </a>
                 </div>
             </div>
 
             <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 space-y-4">
-                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                <h4 className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-2">
                     <FileText className="w-4 h-4" />
                     Infrastructure & Compliance
                 </h4>
@@ -190,33 +188,14 @@ export default function CenterAudit() {
                 </div>
             </div>
 
-            <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assign Operational Units</label>
-                <div className="grid grid-cols-2 gap-3">
-                    {['OpenSchool', 'Online', 'Skill', 'BVoc'].map(unit => (
-                        <label key={unit} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
-                            <input 
-                                type="checkbox"
-                                checked={selectedUnits.includes(unit)}
-                                onChange={(e) => {
-                                    if (e.target.checked) setSelectedUnits([...selectedUnits, unit]);
-                                    else setSelectedUnits(selectedUnits.filter((u: string) => u !== unit));
-                                }}
-                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <span className="text-sm font-bold text-slate-700">{unit}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
 
             <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Audit Decision Remarks</label>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1\">Audit Decision Remarks</label>
                 <textarea 
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Enter rejection reason if applicable..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 min-h-[100px] text-slate-900"
                 />
             </div>
 
@@ -230,7 +209,7 @@ export default function CenterAudit() {
                 </button>
                 <button 
                      onClick={() => handleAudit('approved')}
-                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 flex items-center gap-2 active:scale-95"
                 >
                     <CheckCircle2 className="w-4 h-4" />
                     Ratify Center

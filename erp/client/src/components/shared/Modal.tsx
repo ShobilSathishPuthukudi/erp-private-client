@@ -8,7 +8,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '5xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   hideHeader?: boolean;
 }
 
@@ -17,46 +17,55 @@ export function Modal({
   onClose, 
   title, 
   children, 
-  maxWidth = 'md',
+  maxWidth = '2xl',
   hideHeader = false 
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
     } else {
       document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
     }
     return () => {
       document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
     };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const maxWidthClasses = {
-    sm: 'sm:max-w-sm',
-    md: 'sm:max-w-md',
-    lg: 'sm:max-w-lg',
-    xl: 'sm:max-w-xl',
-    '2xl': 'sm:max-w-2xl',
-    '4xl': 'sm:max-w-4xl',
-    '5xl': 'sm:max-w-5xl',
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+    '7xl': 'max-w-7xl',
+    full: 'max-w-full lg:max-w-[95vw]',
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
           onClick={onClose}
         />
 
-        <div className={clsx(
-          "relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full my-8",
-          maxWidthClasses[maxWidth]
-        )}>
+        <div 
+          className={clsx(
+            "relative transform flex flex-col rounded-2xl bg-white text-left shadow-2xl transition-all w-full my-8 max-h-[90vh]",
+            maxWidthClasses[maxWidth]
+          )}
+          style={{ maxWidth: maxWidth === 'full' ? '95vw' : undefined }}
+        >
           {!hideHeader && (
-            <div className="bg-white px-6 py-5 border-b border-slate-200">
+            <div className="bg-white px-6 py-5 border-b border-slate-200 shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-slate-900 leading-6">{title}</h3>
                 <button
@@ -71,6 +80,7 @@ export function Modal({
           )}
           
           <div className={clsx(
+            "overflow-y-auto flex-1",
             !hideHeader ? "px-6 py-5 bg-slate-50/50" : "bg-white"
           )}>
             {children}

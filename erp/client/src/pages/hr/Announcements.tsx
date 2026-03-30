@@ -134,7 +134,7 @@ export default function Announcements() {
             <input 
               type="text" 
               required
-              placeholder="e.g. Office Closure, Benefit Enrollment"
+              placeholder="Office Closure, Benefit Enrollment"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} 
             />

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Zap, ArrowRight, UserCircle, X, Search } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
@@ -17,6 +17,15 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showStudentSelector, setShowStudentSelector] = useState(false);
+  const [showCEOSelector, setShowCEOSelector] = useState(false);
+  const [showCenterSelector, setShowCenterSelector] = useState(false);
+  const [demoStudents, setDemoStudents] = useState<any[]>([]);
+  const [demoCEOs, setDemoCEOs] = useState<any[]>([]);
+  const [demoCenters, setDemoCenters] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [fetchingCEOs, setFetchingCEOs] = useState(false);
+  const [fetchingCenters, setFetchingCenters] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.login);
 
@@ -24,11 +33,80 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema)
   });
 
+
+  const openStudentSelector = async () => {
+    try {
+      setSearching(true);
+      setShowStudentSelector(true);
+      const res = await api.get('/auth/demo-students');
+      setDemoStudents(res.data);
+    } catch (error) {
+      toast.error('Failed to wake student node');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const openCEOSelector = async () => {
+    try {
+      setFetchingCEOs(true);
+      setShowCEOSelector(true);
+      const res = await api.get('/auth/demo-ceos');
+      setDemoCEOs(res.data);
+    } catch (error) {
+      toast.error('Failed to fetch executive roster');
+    } finally {
+      setFetchingCEOs(false);
+    }
+  };
+
+  const openCenterSelector = async () => {
+    try {
+      setFetchingCenters(true);
+      setShowCenterSelector(true);
+      const res = await api.get('/auth/demo-centers');
+      setDemoCenters(res.data);
+    } catch (error) {
+      toast.error('Failed to fetch verified center roster');
+    } finally {
+      setFetchingCenters(false);
+    }
+  };
+
+  const selectStudent = (student: any) => {
+    setValue('email', student.email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', 'Student@123', { shouldValidate: true, shouldDirty: true });
+    setShowStudentSelector(false);
+    toast.success(`Identity assumed: ${student.name}`);
+  };
+
+  const selectCEO = (ceo: any) => {
+    console.log('Assuming Identity - Executive Payload:', { name: ceo.name, email: ceo.email, hasExplicitPassword: !!ceo.password });
+    setShowCEOSelector(false);
+    
+    // Micro-task delay to ensure browser auto-fill doesn't override the injected values
+    setTimeout(() => {
+      setValue('email', ceo.email, { shouldValidate: true, shouldDirty: true });
+      setValue('password', ceo.password || 'password123', { shouldValidate: true, shouldDirty: true });
+      toast.success(`Identity assumed: ${ceo.name}`);
+    }, 100);
+  };
+
+  const selectCenter = (center: any) => {
+    setValue('email', center.email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', 'password123', { shouldValidate: true, shouldDirty: true });
+    setShowCenterSelector(false);
+    toast.success(`Identity assumed: ${center.name}`);
+  };
+
   const onSubmit = async (data: LoginForm) => {
     try {
       const response = await api.post('/auth/login', data);
-      setAuth(response.data.user, response.data.token);
-      navigate(`/dashboard/${response.data.user.role}`);
+      const { user, token } = response.data;
+      setAuth(user, token);
+      const role = user.role.toLowerCase();
+      const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : role;
+      navigate(`/dashboard/${dashboardPath}`);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
     }
@@ -36,22 +114,22 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         
         {/* Left Side: Login Form */}
-        <div className="lg:col-span-5 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col h-full min-h-[520px]">
+        <div className="lg:col-span-5 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col">
           <div className="mb-10">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Institutional Login</h2>
-            <p className="text-slate-500 font-medium">Global Audit System v3.0 (GAP-5 Ready)</p>
+            <p className="text-slate-500 font-medium">Global Audit System v1.0</p>
           </div>
 
-          <form autoComplete="off" onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex-grow">
+          <form autoComplete="off" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Email Identifier</label>
               <input
                 type="email"
                 autoComplete="off"
-                placeholder="e.g. admin@iits.edu"
+                placeholder="admin@erp.com"
                 {...register('email')}
                 className="block w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none transition-all font-medium text-slate-900"
               />
@@ -91,11 +169,12 @@ export default function LoginPage() {
                     Authenticating...
                   </span>
                 ) : 'Enter Platform'}
+
               </button>
             </div>
           </form>
 
-          <div className="mt-10 pt-6 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             <span>Server: 127.0.0.1:3000</span>
             <span className="text-emerald-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -105,7 +184,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side: Quick Login Demo Access Card */}
-        <div className="lg:col-span-7 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 h-full min-h-[520px]">
+        <div className="lg:col-span-7 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col min-h-[520px]">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quick Login Panel</h2>
@@ -118,25 +197,36 @@ export default function LoginPage() {
 
           <div className="grid grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             {[
-              { role: 'System Admin', email: 'admin@iits.edu', initial: 'SA', color: 'bg-slate-900', desc: 'Org Configuration' },
-              { role: 'Executive CEO', email: 'ceo@iits.edu', initial: 'CEO', color: 'bg-indigo-950', desc: 'Global Dashboard' },
-              { role: 'Dept Head', email: 'dept@iits.edu', initial: 'DH', color: 'bg-blue-600', desc: 'Team Overseer' },
-              { role: 'Operations', email: 'ops@iits.edu', initial: 'OPS', color: 'bg-sky-600', desc: 'Academic Mgmt' },
-              { role: 'Finance', email: 'finance@iits.edu', initial: 'FO', color: 'bg-emerald-600', desc: 'Revenue & Audit' },
-              { role: 'HR Manager', email: 'hr@iits.edu', initial: 'HR', color: 'bg-rose-600', desc: 'People & Attendance' },
-              { role: 'BDE/Sales', email: 'sales@iits.edu', initial: 'SL', color: 'bg-amber-600', desc: 'Lead Pipeline' },
-              { role: 'Partner Center', email: 'center@iits.edu', initial: 'PC', color: 'bg-violet-600', desc: 'Center Ops' },
-              { role: 'Active Student', email: 'student@iits.edu', initial: 'ST', color: 'bg-indigo-600', desc: 'LMS & Fee' },
-              { role: 'Staff Portal', email: 'employee@iits.edu', initial: 'SP', color: 'bg-slate-500', desc: 'Personal Utility' },
-              { role: 'OpenSchool', email: 'openschool@iits.edu', initial: 'OS', color: 'bg-orange-600', desc: 'Sub-Dept Portal' },
-              { role: 'Online Ed', email: 'online@iits.edu', initial: 'ON', color: 'bg-cyan-600', desc: 'Virtual Learning' },
-              { role: 'Skill Dev', email: 'skill@iits.edu', initial: 'SK', color: 'bg-lime-600', desc: 'Vocational Training' },
-              { role: 'BVoc Admin', email: 'bvoc@iits.edu', initial: 'BV', color: 'bg-fuchsia-600', desc: 'Degree Portal' }
+              { role: 'Org Admin', email: 'admin@erp.com', initial: 'OA', color: 'bg-slate-900', desc: 'Org Configuration' },
+              { role: 'CEO Global', email: 'ceo@erp.com', initial: 'CEO', color: 'bg-indigo-950', desc: 'Corporate HUD' },
+              { role: 'Operations', email: 'operations@erp.com', initial: 'OPS', color: 'bg-sky-600', desc: 'Academic Mgmt' },
+              { role: 'Finance', email: 'finance@erp.com', initial: 'FO', color: 'bg-emerald-600', desc: 'Revenue & Audit' },
+              { role: 'HR Manager', email: 'hr@erp.com', initial: 'HR', color: 'bg-rose-600', desc: 'People & Attendance' },
+              { role: 'BDE/Sales', email: 'sales@erp.com', initial: 'SL', color: 'bg-amber-600', desc: 'Lead Pipeline' },
+              { role: 'Partner Center', email: 'center@erp.com', initial: 'PC', color: 'bg-violet-600', desc: 'Center Ops' },
+              { role: 'Active Student', email: 'student@erp.com', initial: 'ST', color: 'bg-indigo-600', desc: 'LMS & Fee' },
+              { role: 'Staff Portal', email: 'employee@erp.com', initial: 'SP', color: 'bg-slate-500', desc: 'Personal Utility' },
+              { role: 'OpenSchool', email: 'open-school@erp.com', initial: 'OS', color: 'bg-orange-600', desc: 'Sub-Dept Portal' },
+              { role: 'Online Ed', email: 'online@erp.com', initial: 'ON', color: 'bg-cyan-600', desc: 'Virtual Learning' },
+              { role: 'Skill Dev', email: 'skill@erp.com', initial: 'SK', color: 'bg-lime-600', desc: 'Vocational Training' },
+              { role: 'BVoc Admin', email: 'bvoc@erp.com', initial: 'BV', color: 'bg-fuchsia-600', desc: 'Degree Portal' }
             ].map((demo) => (
               <button
                 key={demo.email}
                 type="button"
                 onClick={() => {
+                  if (demo.role === 'Active Student') {
+                    openStudentSelector();
+                    return;
+                  }
+                  if (demo.role.includes('CEO')) {
+                    openCEOSelector();
+                    return;
+                  }
+                  if (demo.role === 'Partner Center') {
+                    openCenterSelector();
+                    return;
+                  }
                   setValue('email', demo.email, { shouldValidate: true, shouldDirty: true });
                   setValue('password', 'password123', { shouldValidate: true, shouldDirty: true });
                 }}
@@ -151,14 +241,205 @@ export default function LoginPage() {
                 </div>
               </button>
             ))}
-          </div>
           
-          <div className="mt-8 bg-blue-50/50 rounded-2xl p-4 flex items-center gap-4 border border-blue-50">
-             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-             <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Universal Dev Credentials: password123</p>
           </div>
         </div>
       </div>
+
+      {/* Institutional Student Selector Modal */}
+      {showStudentSelector && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowStudentSelector(false)} />
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Student Nodes</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an enrolled candidate to assume identity</p>
+              </div>
+              <button 
+                onClick={() => setShowStudentSelector(false)}
+                className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+              {searching ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest animate-pulse">Scanning Institutional Ledger...</p>
+                </div>
+              ) : demoStudents.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {demoStudents.map((student) => (
+                    <button
+                      key={student.uid}
+                      onClick={() => selectStudent(student)}
+                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all group text-left active:scale-[0.98]"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform flex-shrink-0">
+                        <UserCircle className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0 flex-grow">
+                        <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{student.name}</p>
+                        <p className="text-[11px] font-bold text-slate-400 truncate mt-0.5">{student.uid} • {student.email}</p>
+                      </div>
+                      <div className="bg-blue-50 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ArrowRight className="w-4 h-4 text-blue-600" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-4">
+                  <div className="bg-slate-100 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                    <Search className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase">No Active Nodes Located</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ensure students are finalized in the enrolled roster</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Student Guardrail: Student@123</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Executive CEO Selector Modal */}
+      {showCEOSelector && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCEOSelector(false)} />
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
+            <div className="p-6 border-b border-indigo-100 flex items-center justify-between bg-indigo-50/50">
+              <div>
+                <h3 className="text-xl font-black text-indigo-950 tracking-tight">Active Executive Nodes</h3>
+                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-1">Select a provisioned CEO to assume corporate identity</p>
+              </div>
+              <button 
+                onClick={() => setShowCEOSelector(false)}
+                className="p-2 hover:bg-indigo-100 rounded-xl transition-colors text-indigo-400 hover:text-indigo-950"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+              {fetchingCEOs ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-600 rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest animate-pulse">Syncing Executive Roster...</p>
+                </div>
+              ) : demoCEOs.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {demoCEOs.map((ceo) => (
+                    <button
+                      key={ceo.uid}
+                      onClick={() => selectCEO(ceo)}
+                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 transition-all group text-left active:scale-[0.98]"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-indigo-950 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform flex-shrink-0">
+                        <Zap className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0 flex-grow">
+                        <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{ceo.name}</p>
+                        <p className="text-[11px] font-bold text-slate-400 truncate mt-0.5">{ceo.uid} • {ceo.email}</p>
+                      </div>
+                      <div className="bg-indigo-50 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ArrowRight className="w-4 h-4 text-indigo-950" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-4">
+                  <div className="bg-slate-100 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                    <UserCircle className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase">No Executive Records</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Provision a CEO instance in the Org Admin panel first</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Executive Access: password123</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Partner Center Selector Modal */}
+      {showCenterSelector && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCenterSelector(false)} />
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
+            <div className="p-6 border-b border-violet-100 flex items-center justify-between bg-violet-50/50">
+              <div>
+                <h3 className="text-xl font-black text-violet-950 tracking-tight">Verified Institutional Centers</h3>
+                <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mt-1">Select a certified partner node to assume identity</p>
+              </div>
+              <button 
+                onClick={() => setShowCenterSelector(false)}
+                className="p-2 hover:bg-violet-100 rounded-xl transition-colors text-violet-400 hover:text-violet-950"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+              {fetchingCenters ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-10 h-10 border-4 border-violet-500/20 border-t-violet-600 rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-violet-600 uppercase tracking-widest animate-pulse">Scanning Partner Network...</p>
+                </div>
+              ) : demoCenters.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {demoCenters.map((center) => (
+                    <button
+                      key={center.uid}
+                      onClick={() => selectCenter(center)}
+                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-violet-300 hover:shadow-xl hover:shadow-violet-500/10 transition-all group text-left active:scale-[0.98]"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-110 transition-transform flex-shrink-0 uppercase font-black text-xs">
+                        {center.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-grow">
+                        <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{center.name}</p>
+                        <p className="text-[11px] font-bold text-slate-400 truncate mt-0.5">{center.uid} • {center.email}</p>
+                      </div>
+                      <div className="bg-violet-50 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ArrowRight className="w-4 h-4 text-violet-600" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-4">
+                  <div className="bg-slate-100 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                    <Zap className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase">No Verified Centers</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Register a center node via the BDE pipeline first</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Partner Access: password123</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

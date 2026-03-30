@@ -142,51 +142,51 @@ export default function CenterPerformance() {
         onClose={() => setIsModalOpen(false)}
         title={`Performance Deep-Dive: ${selectedCenter?.name}`}
       >
-        <div className="space-y-8">
-            <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-8 p-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                    { label: 'Enrollment Velocity', value: '+14%', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Quality Score', value: '9.2/10', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
-                    { label: 'Avg Review Time', value: '14.2h', icon: Calendar, color: 'text-indigo-500', bg: 'bg-indigo-50' }
+                    { label: 'Enrollment Velocity', value: '+14%', icon: TrendingUp, color: 'text-emerald-500' },
+                    { label: 'Quality Score', value: '9.2/10', icon: Award, color: 'text-amber-500' },
+                    { label: 'Avg Review Time', value: '14.2h', icon: Calendar, color: 'text-indigo-500' }
                 ].map((stat, i) => (
-                    <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-slate-100`}>
+                    <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
                             <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
                         </div>
-                        <p className="text-xl font-black text-slate-900">{stat.value}</p>
+                        <p className="text-2xl font-black text-slate-900">{stat.value}</p>
                     </div>
                 ))}
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-6 flex items-center gap-2">
-                    <PieChart className="w-4 h-4 text-indigo-500" />
-                    Student Outcome Distribution
+            <div className="bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-900/20 border border-white/5">
+                <h4 className="text-xs font-black text-white/50 uppercase mb-6 flex items-center gap-2 tracking-widest">
+                    <PieChart className="w-4 h-4 text-indigo-400" />
+                    Outcome Distribution
                 </h4>
-                <div className="space-y-4">
+                <div className="space-y-5">
                     {[
                         { label: 'First Division', percentage: 72, color: 'bg-emerald-500' },
                         { label: 'Second Division', percentage: 22, color: 'bg-amber-500' },
                         { label: 'Re-attempts Required', percentage: 6, color: 'bg-rose-500' }
                     ].map((row, i) => (
-                        <div key={i} className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-black uppercase">
-                                <span className="text-slate-500">{row.label}</span>
-                                <span className="text-slate-900">{row.percentage}%</span>
+                        <div key={i} className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest\">
+                                <span className="text-white/40">{row.label}</span>
+                                <span className="text-white">{row.percentage}%</span>
                             </div>
-                            <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                                <div className={`h-full ${row.color}`} style={{ width: `${row.percentage}%` }} />
+                            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                                <div className={`h-full ${row.color} shadow-[0_0_10px_rgba(0,0,0,0.2)] transition-all duration-1000`} style={{ width: `${row.percentage}%` }} />
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+            <div className="flex justify-end pt-6 border-t border-slate-100">
                  <button 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200"
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20"
                 >
                     Close Analytics
                 </button>

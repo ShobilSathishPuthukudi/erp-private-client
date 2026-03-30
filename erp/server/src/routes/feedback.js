@@ -7,7 +7,7 @@ const router = express.Router();
 const { Survey, SurveyResponse, User } = models;
 
 const isAdmin = (req, res, next) => {
-  if (['org-admin', 'system-admin', 'academic'].includes(req.user.role)) {
+  if (['org-admin', 'system-admin', 'academic', 'hr'].includes(req.user.role)) {
     return next();
   }
   res.status(403).json({ error: 'Access denied' });
@@ -30,13 +30,15 @@ router.post('/surveys', verifyToken, isAdmin, async (req, res) => {
     const io = req.io;
     const users = await User.findAll({ where: { role: targetRole === 'all' ? { [Op.ne]: null } : targetRole } });
     
-    users.forEach(user => {
-      io.emit('notification', {
-        targetUid: user.uid,
-        type: 'info',
-        message: `New Institutional Survey: ${title}`
+    if (io) {
+      users.forEach(user => {
+        io.emit('notification', {
+          targetUid: user.uid,
+          type: 'info',
+          message: `New Institutional Survey: ${title}`
+        });
       });
-    });
+    }
 
     res.status(201).json(survey);
   } catch (error) {

@@ -3,7 +3,6 @@ import { api } from '@/lib/api';
 import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Clock, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { clsx } from 'clsx';
-import io from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
 
 export default function NotificationCenter() {
@@ -16,8 +15,8 @@ export default function NotificationCenter() {
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
-      setNotifications(res.data.notifications);
-      setUnreadCount(res.data.unreadCount);
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unreadCount || 0);
     } catch (error) {
       console.error('Fetch notifications error:', error);
     }
@@ -25,20 +24,8 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     fetchNotifications();
-
-    // Listen for new ones
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
-    const socket = io(socketUrl, { withCredentials: true });
-
-    socket.on('notification', (data) => {
-      if (data.targetUid === user?.uid) {
-        // Add to list and increment count
-        setNotifications(prev => [data, ...prev].slice(0, 50));
-        setUnreadCount(prev => prev + 1);
-      }
-    });
-
-    return () => { socket.disconnect(); };
+    const interval = setInterval(fetchNotifications, 60000); // 60s poll for REST-based alerts
+    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
@@ -84,7 +71,7 @@ export default function NotificationCenter() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+        className="relative p-2 text-slate-400 hover:text-blue-600 transition-all group notification-bell-btn font-medium"
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (

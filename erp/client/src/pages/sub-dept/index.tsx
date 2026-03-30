@@ -8,6 +8,9 @@ import MarksEntry from '../academic/MarksEntry';
 import CredentialRequests from './CredentialRequests';
 import DashboardLanding from './DashboardLanding';
 import StudentValidation from './StudentValidation';
+import DepartmentTeam from '@/components/team/DepartmentTeam';
+import DepartmentTasks from '@/components/team/DepartmentTasks';
+import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SubDeptDashboard() {
@@ -26,6 +29,9 @@ export default function SubDeptDashboard() {
         <Route path="exams" element={<Exams />} />
         <Route path="exams/:id/marks" element={<MarksEntry />} />
         <Route path="credentials" element={<CredentialRequests />} />
+        <Route path="team" element={<DepartmentTeam />} />
+        <Route path="tasks" element={<DepartmentTasks />} />
+        <Route path="leaves" element={<DepartmentLeaves />} />
       </Route>
       
       {/* Fallback for role-specific unit landing */}

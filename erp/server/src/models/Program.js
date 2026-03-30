@@ -11,6 +11,10 @@ const Program = sequelize.define('program', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  shortName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   universityId: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -42,6 +46,20 @@ const Program = sequelize.define('program', {
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  totalFee: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0.00
+  },
+  paymentStructure: {
+    type: DataTypes.JSON,
+    allowNull: true, // e.g., ['monthly', 'yearly', 'custom']
+  },
+  tenure: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
   },
   syllabusDoc: {
     type: DataTypes.STRING,

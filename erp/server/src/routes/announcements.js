@@ -6,9 +6,10 @@ import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
 const { Announcement, AnnouncementRead, User, Program, Department } = models;
+import { createNotification } from './notifications.js';
 
 // HR: Get all announcements
-router.get('/hr', async (req, res) => {
+router.get('/hr', verifyToken, async (req, res) => {
     try {
         const announcements = await Announcement.findAll({
             include: [{ model: User, as: 'author', attributes: ['name'] }],
@@ -16,26 +17,40 @@ router.get('/hr', async (req, res) => {
         });
         res.json(announcements);
     } catch (error) {
+        console.error('[ANNOUNCEMENTS HR GET ERROR]:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 // HR: Post new announcement
-router.post('/hr', async (req, res) => {
+router.post('/hr', verifyToken, async (req, res) => {
     try {
+        const { title, message, priority, expiryDate } = req.body;
         const announcement = await Announcement.create({
-            ...req.body,
+            title,
+            message,
+            priority: priority || 'normal',
+            expiryDate: expiryDate || null,
+            authorId: req.user.uid,
             targetChannel: 'all_employees'
         });
-        await logAction(req.user?.uid, 'CREATE_ANNOUNCEMENT', 'announcement', announcement.id, null, announcement, 'HR broadcast directive issued');
+        await logAction({
+            userId: req.user.uid,
+            action: 'CREATE_ANNOUNCEMENT',
+            entity: 'Announcement',
+            module: 'HR',
+            details: `HR broadcast directive issued: ${announcement.title}`,
+            after: announcement
+        });
         res.status(201).json(announcement);
     } catch (error) {
+        console.error('[ANNOUNCEMENTS HR POST ERROR]:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 // Ops: Get center announcements
-router.get('/ops', async (req, res) => {
+router.get('/ops', verifyToken, async (req, res) => {
     try {
         const announcements = await Announcement.findAll({
             where: { targetChannel: 'centers_only' },
@@ -52,13 +67,35 @@ router.get('/ops', async (req, res) => {
 });
 
 // Ops: Post center announcement
-router.post('/ops', async (req, res) => {
+router.post('/ops', verifyToken, async (req, res) => {
     try {
         const announcement = await Announcement.create({
             ...req.body,
+            authorId: req.user.uid,
             targetChannel: 'centers_only'
         });
-        await logAction(req.user?.uid, 'CREATE_OPS_ANNOUNCEMENT', 'announcement', announcement.id, null, announcement, 'Operations center-broadcast issued');
+
+        const centerUsers = await User.findAll({
+            where: { role: ['study-center', 'center'] }
+        });
+
+        for (const u of centerUsers) {
+            await createNotification(null, {
+                targetUid: u.uid,
+                type: announcement.priority === 'urgent' ? 'warning' : 'info',
+                message: `New Directive: ${announcement.title}`,
+                link: '/dashboard/study-center/announcements'
+            });
+        }
+
+        await logAction({
+            userId: req.user.uid,
+            action: 'CREATE_OPS_ANNOUNCEMENT',
+            entity: 'Announcement',
+            module: 'Operations',
+            details: `Operations center-broadcast issued: ${announcement.title}`,
+            after: announcement
+        });
         res.status(201).json(announcement);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -76,7 +113,7 @@ router.get('/feed', verifyToken, async (req, res) => {
             ]
         };
 
-        if (role === 'center_admin') {
+        if (role === 'center_admin' || role === 'center' || role === 'study-center') {
             // Centers see Ops announcements matching their programs or all-center Ops announcements
             // Plus any HR all-employee ones? Prompt says HR to all employees.
             where.targetChannel = { [Op.in]: ['all_employees', 'centers_only'] };
@@ -126,11 +163,18 @@ router.post('/:id/read', verifyToken, async (req, res) => {
 });
 
 // Delete Announcement
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
     try {
         const announcement = await Announcement.findByPk(req.params.id);
         await announcement.destroy();
-        await logAction(req.user?.uid, 'DELETE_ANNOUNCEMENT', 'announcement', req.params.id, announcement, null, 'Institutional directive revoked');
+        await logAction({
+            userId: req.user.uid,
+            action: 'DELETE_ANNOUNCEMENT',
+            entity: 'Announcement',
+            module: 'Communications',
+            details: `Institutional directive revoked: ${announcement?.title}`,
+            before: announcement
+        });
         res.sendStatus(200);
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -55,6 +55,11 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    
+    --shell-border: #e2e8f0;
+    --layout-chrome-bg: #ffffff;
+    --layout-chrome-text: #475569;
+    --shell-surface: #ffffff;
   }
 
   .dark {
@@ -86,5 +91,13 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Global Immersive Focus: Blur entire app shell when modal is open */
+  body.modal-open-blur #root {
+    filter: blur(12px) grayscale(0.2);
+    opacity: 0.3;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

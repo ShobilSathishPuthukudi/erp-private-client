@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Download, CreditCard, ShieldCheck } from 'lucide-react';
+import { Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Invoice {
@@ -34,16 +34,6 @@ export default function Invoices() {
   useEffect(() => {
     fetchInvoices();
   }, []);
-
-  const handlePay = async (invoiceId: number) => {
-    try {
-      const res = await api.post(`/finance/student/pay-invoice/${invoiceId}`);
-      toast.success(res.data.message);
-      fetchInvoices(); // Refresh list
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Payment transaction failed');
-    }
-  };
 
   const downloadInvoice = async (invoiceId: number) => {
     toast.success(`Initializing download for Invoice #${invoiceId}...`);
@@ -79,30 +69,16 @@ export default function Invoices() {
     },
     {
       id: 'actions',
-      header: 'Interaction',
+      header: 'Document',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          {row.original.status === 'issued' && (
-            <button 
-              onClick={() => handlePay(row.original.id)}
-              className="flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition-all text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-200 active:scale-95"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-blue-400" />
-              <span>Pay Now</span>
-            </button>
-          )}
-          {row.original.status === 'paid' && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest">
-               <ShieldCheck className="w-3.5 h-3.5" />
-               <span>Verified</span>
-            </div>
-          )}
+        <div className="flex items-center">
           <button 
             onClick={() => downloadInvoice(row.original.id)}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 hover:bg-slate-900 hover:text-white rounded-xl transition-all text-[10px] font-black uppercase tracking-widest border border-slate-200 hover:border-slate-900 active:scale-95 group"
             title="Download PDF"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            <span>Download Invoice</span>
           </button>
         </div>
       )
@@ -114,7 +90,7 @@ export default function Invoices() {
       <div className="flex justify-between items-center shrink-0">
         <div>
            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional Billing</h1>
-           <p className="text-slate-500 text-sm font-medium">Settle your tuition fees securely via the integrated institutional gateway.</p>
+           <p className="text-slate-500 text-sm font-medium">Access and download your academic fee invoices issued by the institution.</p>
         </div>
       </div>
 

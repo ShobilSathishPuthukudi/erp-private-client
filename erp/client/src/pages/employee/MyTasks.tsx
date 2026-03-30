@@ -17,9 +17,9 @@ interface Task {
   deadline: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in_progress' | 'completed' | 'overdue';
-  remarks?: string;
-  evidenceUrl?: string;
   description?: string;
+  isOverdue?: boolean;
+  overdueLabel?: string;
 }
 
 export default function MyTasks() {
@@ -75,7 +75,7 @@ export default function MyTasks() {
       header: 'Operational Node',
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-black text-slate-900 uppercase tracking-tight text-sm italic">{row.original.title}</span>
+          <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{row.original.title}</span>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">
             Deadline: {new Date(row.original.deadline).toLocaleDateString()}
           </span>
@@ -107,15 +107,20 @@ export default function MyTasks() {
               disabled={s === 'completed'}
               className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-600 transition-all ${
                 s === 'completed' ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' :
-                s === 'overdue' ? 'bg-red-50 text-red-600 ring-red-100' :
+                (s === 'overdue' || row.original.isOverdue) ? 'bg-red-50 text-red-600 ring-red-100' :
                 'bg-white text-slate-700'
               }`}
             >
               <option value="pending">PENDING</option>
               <option value="in_progress">IN PROGRESS</option>
               {s === 'completed' && <option value="completed">COMPLETED</option>}
-              {s === 'overdue' && <option value="overdue">OVERDUE</option>}
+              {(s === 'overdue' || row.original.isOverdue) && <option value="overdue">OVERDUE</option>}
             </select>
+            {row.original.isOverdue && (
+               <span className="text-[8px] font-black text-red-500 uppercase tracking-tighter">
+                 {row.original.overdueLabel || 'Action Required'}
+               </span>
+            )}
           </div>
         );
       }
@@ -134,7 +139,7 @@ export default function MyTasks() {
               <span className="text-[10px] font-black uppercase tracking-widest">Finalize</span>
             </button>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 italic">
+            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                <CheckCircle2 className="w-3.5 h-3.5" />
                <span>Audited</span>
             </div>
@@ -152,8 +157,8 @@ export default function MyTasks() {
               <Activity className="w-6 h-6" />
            </div>
            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">Operational Desk</h1>
-              <p className="text-slate-500 text-sm font-medium italic">Synchronize your daily deliverables with the institutional executor.</p>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Operational Desk</h1>
+              <p className="text-slate-500 text-sm font-medium">Synchronize your daily deliverables with the institutional executor.</p>
            </div>
         </div>
       </div>
@@ -176,7 +181,13 @@ export default function MyTasks() {
         <form onSubmit={handleSubmit(onComplete)} className="space-y-6 p-2">
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Node</p>
-             <p className="font-bold text-slate-900 italic">{selectedTask?.title}</p>
+             <p className="font-bold text-slate-900 mb-3">{selectedTask?.title}</p>
+             {selectedTask?.description && (
+               <div className="pt-3 border-t border-slate-200/50">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Directive Intelligence</p>
+                 <p className="text-sm text-slate-600 font-medium leading-relaxed">{selectedTask.description}</p>
+               </div>
+             )}
           </div>
 
           <div className="space-y-2">

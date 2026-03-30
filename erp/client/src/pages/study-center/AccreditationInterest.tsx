@@ -41,7 +41,7 @@ export default function AccreditationInterest() {
                         <input 
                             {...register('courseName', { required: true })}
                             className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g. Diploma in Computer Architecture"
+                            placeholder="Diploma in Computer Architecture"
                         />
                     </div>
 
@@ -53,7 +53,7 @@ export default function AccreditationInterest() {
                         <input 
                             {...register('universityName', { required: true })}
                             className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g. Bangalore Central University"
+                            placeholder="Bangalore Central University"
                         />
                     </div>
 
