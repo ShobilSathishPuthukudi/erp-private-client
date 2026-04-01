@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { createPortal } from 'react-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -20,19 +21,24 @@ export default function LoginPage() {
   const [showStudentSelector, setShowStudentSelector] = useState(false);
   const [showCEOSelector, setShowCEOSelector] = useState(false);
   const [showCenterSelector, setShowCenterSelector] = useState(false);
+  const [showStaffSelector, setShowStaffSelector] = useState(false);
+  
   const [demoStudents, setDemoStudents] = useState<any[]>([]);
   const [demoCEOs, setDemoCEOs] = useState<any[]>([]);
   const [demoCenters, setDemoCenters] = useState<any[]>([]);
+  const [demoStaff, setDemoStaff] = useState<any[]>([]);
+  
   const [searching, setSearching] = useState(false);
   const [fetchingCEOs, setFetchingCEOs] = useState(false);
   const [fetchingCenters, setFetchingCenters] = useState(false);
+  const [fetchingStaff, setFetchingStaff] = useState(false);
+  
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.login);
 
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
   });
-
 
   const openStudentSelector = async () => {
     try {
@@ -73,6 +79,33 @@ export default function LoginPage() {
     }
   };
 
+  const openStaffSelector = async () => {
+    try {
+      setFetchingStaff(true);
+      setShowStaffSelector(true);
+      const res = await api.get('/auth/demo-staff');
+      setDemoStaff(res.data);
+    } catch (error) {
+      toast.error('Failed to scan staff registry');
+    } finally {
+      setFetchingStaff(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showStudentSelector || showCEOSelector || showCenterSelector || showStaffSelector) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
+  }, [showStudentSelector, showCEOSelector, showCenterSelector, showStaffSelector]);
+
   const selectStudent = (student: any) => {
     setValue('email', student.email, { shouldValidate: true, shouldDirty: true });
     setValue('password', 'Student@123', { shouldValidate: true, shouldDirty: true });
@@ -81,10 +114,7 @@ export default function LoginPage() {
   };
 
   const selectCEO = (ceo: any) => {
-    console.log('Assuming Identity - Executive Payload:', { name: ceo.name, email: ceo.email, hasExplicitPassword: !!ceo.password });
     setShowCEOSelector(false);
-    
-    // Micro-task delay to ensure browser auto-fill doesn't override the injected values
     setTimeout(() => {
       setValue('email', ceo.email, { shouldValidate: true, shouldDirty: true });
       setValue('password', ceo.password || 'password123', { shouldValidate: true, shouldDirty: true });
@@ -97,6 +127,13 @@ export default function LoginPage() {
     setValue('password', 'password123', { shouldValidate: true, shouldDirty: true });
     setShowCenterSelector(false);
     toast.success(`Identity assumed: ${center.name}`);
+  };
+
+  const selectStaff = (staff: any) => {
+    setValue('email', staff.email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', staff.password || 'password123', { shouldValidate: true, shouldDirty: true });
+    setShowStaffSelector(false);
+    toast.success(`Identity assumed: ${staff.name}`);
   };
 
   const onSubmit = async (data: LoginForm) => {
@@ -113,11 +150,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-12">
+      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-20 items-stretch">
         
         {/* Left Side: Login Form */}
-        <div className="lg:col-span-5 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col">
+        <div className="bg-white p-12 lg:p-16 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col">
           <div className="mb-10">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Institutional Login</h2>
             <p className="text-slate-500 font-medium">Global Audit System v1.0</p>
@@ -169,7 +206,6 @@ export default function LoginPage() {
                     Authenticating...
                   </span>
                 ) : 'Enter Platform'}
-
               </button>
             </div>
           </form>
@@ -184,7 +220,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side: Quick Login Demo Access Card */}
-        <div className="lg:col-span-7 bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col min-h-[520px]">
+        <div className="bg-white p-12 lg:p-16 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col min-h-[520px]">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quick Login Panel</h2>
@@ -212,7 +248,7 @@ export default function LoginPage() {
               { role: 'BVoc Admin', email: 'bvoc@erp.com', initial: 'BV', color: 'bg-fuchsia-600', desc: 'Degree Portal' }
             ].map((demo) => (
               <button
-                key={demo.email}
+                key={demo.role}
                 type="button"
                 onClick={() => {
                   if (demo.role === 'Active Student') {
@@ -227,12 +263,16 @@ export default function LoginPage() {
                     openCenterSelector();
                     return;
                   }
+                  if (demo.role === 'Staff Portal') {
+                    openStaffSelector();
+                    return;
+                  }
                   setValue('email', demo.email, { shouldValidate: true, shouldDirty: true });
                   setValue('password', 'password123', { shouldValidate: true, shouldDirty: true });
                 }}
                 className="flex items-center gap-3 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all group active:scale-[0.97]"
               >
-                <div className={`w-10 h-10 rounded-xl ${demo.color} text-white flex items-center justify-center text-xs font-black shadow-lg shadow-${demo.color.split('-')[1]}-500/20 group-hover:scale-110 transition-transform flex-shrink-0`}>
+                <div className={`w-10 h-10 rounded-xl ${demo.color} text-white flex items-center justify-center text-xs font-black shadow-lg shadow-current/20 group-hover:scale-110 transition-transform flex-shrink-0`}>
                   {demo.initial}
                 </div>
                 <div className="text-left min-w-0">
@@ -241,13 +281,12 @@ export default function LoginPage() {
                 </div>
               </button>
             ))}
-          
           </div>
         </div>
       </div>
 
-      {/* Institutional Student Selector Modal */}
-      {showStudentSelector && (
+      {/* Student Selector Modal */}
+      {showStudentSelector && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowStudentSelector(false)} />
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
@@ -256,14 +295,10 @@ export default function LoginPage() {
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Student Nodes</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an enrolled candidate to assume identity</p>
               </div>
-              <button 
-                onClick={() => setShowStudentSelector(false)}
-                className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900"
-              >
+              <button onClick={() => setShowStudentSelector(false)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900">
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
               {searching ? (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -273,11 +308,7 @@ export default function LoginPage() {
               ) : demoStudents.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
                   {demoStudents.map((student) => (
-                    <button
-                      key={student.uid}
-                      onClick={() => selectStudent(student)}
-                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all group text-left active:scale-[0.98]"
-                    >
+                    <button key={student.uid} onClick={() => selectStudent(student)} className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all group text-left active:scale-[0.98]">
                       <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform flex-shrink-0">
                         <UserCircle className="w-7 h-7" />
                       </div>
@@ -298,21 +329,19 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black text-slate-900 uppercase">No Active Nodes Located</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ensure students are finalized in the enrolled roster</p>
                   </div>
                 </div>
               )}
             </div>
-
             <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Student Guardrail: Student@123</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Student Guardrail: Student@123</p>
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Executive CEO Selector Modal */}
-      {showCEOSelector && (
+      {showCEOSelector && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCEOSelector(false)} />
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
@@ -321,14 +350,10 @@ export default function LoginPage() {
                 <h3 className="text-xl font-black text-indigo-950 tracking-tight">Active Executive Nodes</h3>
                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-1">Select a provisioned CEO to assume corporate identity</p>
               </div>
-              <button 
-                onClick={() => setShowCEOSelector(false)}
-                className="p-2 hover:bg-indigo-100 rounded-xl transition-colors text-indigo-400 hover:text-indigo-950"
-              >
+              <button onClick={() => setShowCEOSelector(false)} className="p-2 hover:bg-indigo-100 rounded-xl transition-colors text-indigo-400 hover:text-indigo-950">
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
               {fetchingCEOs ? (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -338,11 +363,7 @@ export default function LoginPage() {
               ) : demoCEOs.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
                   {demoCEOs.map((ceo) => (
-                    <button
-                      key={ceo.uid}
-                      onClick={() => selectCEO(ceo)}
-                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 transition-all group text-left active:scale-[0.98]"
-                    >
+                    <button key={ceo.uid} onClick={() => selectCEO(ceo)} className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 transition-all group text-left active:scale-[0.98]">
                       <div className="w-12 h-12 rounded-xl bg-indigo-950 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform flex-shrink-0">
                         <Zap className="w-6 h-6" />
                       </div>
@@ -363,21 +384,19 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black text-slate-900 uppercase">No Executive Records</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Provision a CEO instance in the Org Admin panel first</p>
                   </div>
                 </div>
               )}
             </div>
-
             <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Executive Access: password123</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Executive Access: password123</p>
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Partner Center Selector Modal */}
-      {showCenterSelector && (
+      {showCenterSelector && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCenterSelector(false)} />
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
@@ -386,14 +405,10 @@ export default function LoginPage() {
                 <h3 className="text-xl font-black text-violet-950 tracking-tight">Verified Institutional Centers</h3>
                 <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mt-1">Select a certified partner node to assume identity</p>
               </div>
-              <button 
-                onClick={() => setShowCenterSelector(false)}
-                className="p-2 hover:bg-violet-100 rounded-xl transition-colors text-violet-400 hover:text-violet-950"
-              >
+              <button onClick={() => setShowCenterSelector(false)} className="p-2 hover:bg-violet-100 rounded-xl transition-colors text-violet-400 hover:text-violet-950">
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
               {fetchingCenters ? (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -403,11 +418,7 @@ export default function LoginPage() {
               ) : demoCenters.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
                   {demoCenters.map((center) => (
-                    <button
-                      key={center.uid}
-                      onClick={() => selectCenter(center)}
-                      className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-violet-300 hover:shadow-xl hover:shadow-violet-500/10 transition-all group text-left active:scale-[0.98]"
-                    >
+                    <button key={center.uid} onClick={() => selectCenter(center)} className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-violet-300 hover:shadow-xl hover:shadow-violet-500/10 transition-all group text-left active:scale-[0.98]">
                       <div className="w-12 h-12 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-110 transition-transform flex-shrink-0 uppercase font-black text-xs">
                         {center.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </div>
@@ -428,18 +439,74 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black text-slate-900 uppercase">No Verified Centers</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Register a center node via the BDE pipeline first</p>
                   </div>
                 </div>
               )}
             </div>
-
             <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Partner Access: password123</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Universal Partner Access: password123</p>
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
+
+      {/* Institutional Staff Selector Modal */}
+      {showStaffSelector && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowStaffSelector(false)} />
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Staff Nodes</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an institutional employee to assume identity</p>
+              </div>
+              <button onClick={() => setShowStaffSelector(false)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+              {fetchingStaff ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-10 h-10 border-4 border-slate-500/20 border-t-slate-600 rounded-full animate-spin" />
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest animate-pulse">Scanning Staff Registry...</p>
+                </div>
+              ) : demoStaff.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {demoStaff.map((staff) => (
+                    <button key={staff.uid} onClick={() => selectStaff(staff)} className="flex items-center gap-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all group text-left active:scale-[0.98]">
+                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-500/20 group-hover:scale-110 transition-transform flex-shrink-0">
+                        <UserCircle className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0 flex-grow">
+                        <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{staff.name}</p>
+                        <p className="text-[11px] font-bold text-slate-400 truncate mt-0.5">{staff.role.toUpperCase()} • {staff.department}</p>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ArrowRight className="w-4 h-4 text-slate-900" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 space-y-4">
+                  <div className="bg-slate-100 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                    <Search className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase">No Staff Records Located</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                Universal Staff Guardrail: password123 <br/>
+                <span className="text-blue-500 ">Personalized: Registration Credentials Used</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      , document.body)}
     </div>
   );
 }

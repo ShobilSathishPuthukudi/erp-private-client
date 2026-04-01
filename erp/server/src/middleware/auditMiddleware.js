@@ -7,9 +7,9 @@ export const requireMandatoryRemarks = (req, res, next) => {
     
     // We only enforce this for PUT and DELETE on financial or sensitive routes
     if (['PUT', 'DELETE'].includes(req.method)) {
-        if (!remarks || remarks.length < 50) {
+        if (!remarks || remarks.length < 12) {
             return res.status(400).json({ 
-                error: 'Institutional Audit Violation: A justification of at least 50 characters is mandatory for this action.' 
+                error: 'Institutional Audit Violation: A justification of at least 12 characters is mandatory for this action.' 
             });
         }
     }

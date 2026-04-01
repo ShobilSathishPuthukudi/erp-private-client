@@ -124,7 +124,7 @@ export default function InstitutionalApprovals() {
     { accessorKey: 'center.name', header: 'Center Identity' },
     { accessorKey: 'currentProgram.name', header: 'Current Affiliation', cell: ({ row }) => <span className="text-slate-400">{row.original.currentProgram.name}</span> },
     { accessorKey: 'requestedProgram.name', header: 'Requested Target', cell: ({ row }) => <span className="font-bold text-blue-600">{row.original.requestedProgram.name}</span> },
-    { accessorKey: 'reason', header: 'Justification', cell: ({ row }) => <span className="text-xs italic text-slate-500">{row.original.reason.substring(0, 40)}...</span> },
+    { accessorKey: 'reason', header: 'Justification', cell: ({ row }) => <span className="text-xs text-slate-500">{row.original.reason.substring(0, 40)}...</span> },
     { 
         accessorKey: 'status', 
         header: 'Audit Status',
@@ -152,7 +152,7 @@ export default function InstitutionalApprovals() {
     { accessorKey: 'requester.name', header: 'Requester', cell: ({ row }) => <div><p className="font-bold text-slate-900">{row.original.requester?.name}</p><p className="text-[10px] text-slate-500 uppercase">{row.original.requester?.role}</p></div> },
     { accessorKey: 'entityType', header: 'Target Entity' },
     { accessorKey: 'actionType', header: 'Revision Type', cell: ({ row }) => <span className={`font-black uppercase text-[10px] ${row.original.actionType === 'DELETE' ? 'text-red-600' : 'text-blue-600'}`}>{row.original.actionType}</span> },
-    { accessorKey: 'reason', header: 'Justification', cell: ({ row }) => <p className="text-xs text-slate-500 font-medium italic max-w-xs truncate">{row.original.reason}</p> },
+    { accessorKey: 'reason', header: 'Justification', cell: ({ row }) => <p className="text-xs text-slate-500 font-medium max-w-xs truncate">{row.original.reason}</p> },
     { 
         accessorKey: 'status', 
         header: 'Status',
@@ -366,7 +366,7 @@ export default function InstitutionalApprovals() {
                     </div>
                     <div className="p-4 bg-white rounded-2xl border border-slate-100">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Reason for Revision</p>
-                        <p className="text-sm text-slate-700 font-medium italic">"{selectedItem.reason}"</p>
+                        <p className="text-sm text-slate-700 font-medium ">"{selectedItem.reason}"</p>
                     </div>
                  </div>
             )}

@@ -127,7 +127,18 @@ router.put('/academic-action-requests/:id/reject', verifyToken, isFinanceOrAdmin
 router.get('/payments', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const payments = await Payment.findAll({
-      include: [{ model: Student, as: 'student', attributes: ['name', 'enrollStatus'], required: false }],
+      include: [
+        { 
+          model: Student, 
+          as: 'student', 
+          attributes: ['id', 'name', 'email', 'uid', 'enrollStatus'],
+          required: false,
+          include: [
+            { model: Program, attributes: ['id', 'name', 'shortName'] },
+            { model: Department, as: 'center', attributes: ['id', 'name', 'shortName'] }
+          ]
+        }
+      ],
       order: [['date', 'DESC']]
     });
     res.json(payments || []);
@@ -263,12 +274,12 @@ router.post('/payments/:id/verify', verifyToken, isFinanceOrAdmin, async (req, r
       });
     }
 
-    // Transition student status to ACTIVE if they were FINANCE_PENDING (Phase 5)
+    // Transition student status to ENROLLED if their payment is verified (Final Institutional Enrollment Gate)
     const student = await Student.findByPk(payment.studentId);
-    if (student && student.status === 'FINANCE_PENDING') {
+    if (student) {
         await student.update({ 
-          status: 'ACTIVE',
-          enrollStatus: 'active' 
+          status: 'ENROLLED',
+          enrollStatus: 'enrolled' 
         });
         
         // Emit Institutional Event
@@ -329,8 +340,17 @@ router.get('/invoices', verifyToken, isFinanceOrAdmin, async (req, res) => {
     console.log("[FINANCE] Fetching all invoices...");
     const invoices = await Invoice.findAll({
       include: [
-        { model: Student, required: false },
-        { model: Payment, required: false }
+        { 
+          model: Student, 
+          as: 'student', 
+          attributes: ['id', 'name', 'email'], 
+          required: false 
+        },
+        { 
+          model: Payment, 
+          attributes: ['id', 'amount', 'mode', 'transactionId', 'receiptUrl'], 
+          required: false 
+        }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -439,8 +459,8 @@ router.post('/approvals/requests/:id/approve', verifyToken, isFinanceOrAdmin, as
     const { id } = req.params;
     const { status, remarks } = req.body; // status: approved/rejected
 
-    if (!remarks || remarks.length < 50) {
-      return res.status(400).json({ error: 'Mandatory audit remarks (min 50 chars) required' });
+    if (!remarks || remarks.length < 12) {
+      return res.status(400).json({ error: 'Mandatory audit remarks (min 12 chars) required' });
     }
 
     const request = await ChangeRequest.findByPk(id);
@@ -566,8 +586,8 @@ router.post('/approvals/students/:id/approve', verifyToken, isFinanceOrAdmin, as
         const { id } = req.params;
         const { remarks } = req.body;
 
-        if (!remarks || remarks.length < 50) {
-            return res.status(400).json({ error: 'Institutional Guardrail: Finance approval requires forensic remarks (min 50 chars).' });
+        if (!remarks || remarks.length < 12) {
+            return res.status(400).json({ error: 'Institutional Guardrail: Finance approval requires forensic remarks (min 12 chars).' });
         }
 
         const student = await Student.findByPk(id);
@@ -602,8 +622,8 @@ router.post('/approvals/students/:id/reject', verifyToken, isFinanceOrAdmin, asy
         const { id } = req.params;
         const { remarks } = req.body;
 
-        if (!remarks || remarks.length < 50) {
-            return res.status(400).json({ error: 'Institutional Guardrail: Rejection requires forensic remarks (min 50 chars).' });
+        if (!remarks || remarks.length < 12) {
+            return res.status(400).json({ error: 'Institutional Guardrail: Rejection requires forensic remarks (min 12 chars).' });
         }
 
         const student = await Student.findByPk(id);
@@ -707,8 +727,8 @@ router.put('/admission-sessions/:id/approve', verifyToken, isFinanceOrAdmin, asy
     const { id } = req.params;
     const { status, remarks } = req.body;
 
-    if (!remarks || remarks.length < 50) {
-      return res.status(400).json({ error: 'Mandatory audit remarks (min 50 chars) required' });
+    if (!remarks || remarks.length < 12) {
+      return res.status(400).json({ error: 'Mandatory audit remarks (min 12 chars) required' });
     }
 
     const session = await AdmissionSession.findByPk(id);

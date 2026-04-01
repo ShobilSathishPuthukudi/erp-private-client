@@ -58,7 +58,7 @@ Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
 User.hasMany(Department, { foreignKey: 'adminId' });
 
 // User -> Department
-User.belongsTo(Department, { foreignKey: 'deptId' });
+User.belongsTo(Department, { as: 'department', foreignKey: 'deptId' });
 Department.hasMany(User, { foreignKey: 'deptId' });
 
 // Student -> Department (Study Center mapping)
@@ -276,7 +276,7 @@ Program.hasMany(Result, { foreignKey: 'programId' });
 Program.hasMany(Subject, { foreignKey: 'programId', as: 'subjects' });
 Subject.belongsTo(Program, { foreignKey: 'programId' });
 
-Subject.hasMany(Module, { foreignKey: 'subjectId', as: 'modules' });
+Subject.hasMany(Module, { foreignKey: 'subjectId', as: 'modules', onDelete: 'CASCADE' });
 Module.belongsTo(Subject, { foreignKey: 'subjectId' });
 
 // --- Sub-Department Portals ---
@@ -397,8 +397,11 @@ const auditHook = async (action, instance, options) => {
 
   try {
     const model = instance.constructor;
+    const store = context.getStore();
+    const userId = store?.userId || 'SYSTEM';
+
     await AuditLog.create({
-      userId: store.userId,
+      userId: userId,
       action: action,
       entity: model.name || instance.constructor.name,
       module: 'System Intercept', // Can be refined if needed

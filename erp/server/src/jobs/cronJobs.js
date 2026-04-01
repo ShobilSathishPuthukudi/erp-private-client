@@ -31,7 +31,7 @@ export const initCronJobs = () => {
     try {
       const now = new Date();
       
-      // 1. Status Sync: Mark overdue
+      // 1. Status Sync: Mark overdue immediately when deadline passes
       const overdueTasks = await Task.findAll({
         where: {
           status: { [Op.in]: ['pending', 'in_progress'] },
@@ -44,67 +44,47 @@ export const initCronJobs = () => {
         processed++;
       }
 
-      // 2. GAP-2: Multi-tier Escalation
-      // LEVEL 1: 48h Overdue -> MANAGER
-      const level1Cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-      const level1Tasks = await Task.findAll({
+      // 2. Automated CEO Escalation (Grace Period Passed)
+      // Logic: If task is 'overdue' AND (Now - Deadline) > taskEscalationGraceHours (Default 48h)
+      // We look for tasks where escalationLevel is still 'EMPLOYEE' (Initial)
+      
+      // const configRes = await api.get('/ceo/configs').catch(() => ({ data: [] })); // API is frontend-only
+      const taskGrace = 48; // Standard fallback
+      const graceCutoff = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+
+      const criticalTasks = await Task.findAll({
         where: { 
           status: 'overdue', 
-          deadline: { [Op.lt]: level1Cutoff },
+          deadline: { [Op.lt]: graceCutoff },
           escalationLevel: 'EMPLOYEE'
         },
-        include: [{ model: User, as: 'assignee' }]
+        include: [{ model: User, as: 'assignee' }, { model: User, as: 'assigner' }]
       });
 
-      for (const task of level1Tasks) {
-        const managerUid = task.assignee?.reportingManagerUid;
-        if (managerUid) {
+      if (criticalTasks.length > 0) {
+        const ceo = await User.findOne({ where: { role: 'ceo' } }) || await User.findOne({ where: { role: 'system-admin' } });
+        
+        for (const task of criticalTasks) {
+          // Escalate to CEO
           await task.update({ 
-            assignedTo: managerUid, 
-            escalationLevel: 'MANAGER',
+            escalationLevel: 'CEO',
             escalatedAt: now,
-            remarks: 'Auto-escalation: Overdue > 48h (Employee -> Manager)'
+            remarks: `CRITICAL ESCALATION: Department Admin Inaction detected (> ${taskGrace}h Overdue). Systemic intervention required.`
           });
-          await Notification.create({
-            userUid: managerUid,
-            type: 'warning',
-            message: `ESCALATION LEVEL 1: Task "${task.title}" is >48h overdue. Assigned to you for intervention.`,
-          });
+
+          if (ceo) {
+            await Notification.create({
+              userUid: ceo.uid,
+              type: 'error',
+              message: `CRITICAL ESCALATION: Task "${task.title}" (Assigned by ${task.assigner?.name || 'Admin'}) has passed the ${taskGrace}h grace period with no action.`,
+            });
+          }
+          
           escalations++;
         }
       }
 
-      // LEVEL 2: Manager no action within 48h of escalation -> CEO
-      const level2Cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-      const level2Tasks = await Task.findAll({
-        where: { 
-          status: 'overdue', 
-          escalationLevel: 'MANAGER',
-          escalatedAt: { [Op.lt]: level2Cutoff } 
-        }
-      });
-
-      if (level2Tasks.length > 0) {
-        const ceo = await User.findOne({ where: { role: 'ceo' } }) || await User.findOne({ where: { role: 'system-admin' } });
-        if (ceo) {
-          for (const task of level2Tasks) {
-            await task.update({ 
-              assignedTo: ceo.uid, 
-              escalationLevel: 'CEO',
-              escalatedAt: now,
-              remarks: 'CRITICAL: CEO Escalation (Manager inaction > 48h)'
-            });
-            await Notification.create({
-              userUid: ceo.uid,
-              type: 'error',
-              message: `CRITICAL ESCALATION: Task "${task.title}" skipped manager intervention. Senior intervention required.`,
-            });
-            escalations++;
-          }
-        }
-      }
-
-      const result = `Processed ${processed} tasks, triggered ${escalations} escalations.`;
+      const result = `Processed ${processed} tasks, triggered ${escalations} critical escalations.`;
       await updateJobStatus('task-escalation', 'active', result);
       await logAction({ entity: 'System', action: 'CRON_RUN', details: `Task Escalation: ${result}`, module: 'Operations' });
 
