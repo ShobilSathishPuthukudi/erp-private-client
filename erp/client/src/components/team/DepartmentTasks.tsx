@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
-import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Edit2, Trash2, ClipboardList, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, ClipboardList, X, Share2, Printer, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
+import { downloadCSV } from '@/lib/exportUtils';
 
 interface TeamMember {
   uid: string;
   name: string;
+  role?: string;
+  deptId?: string;
 }
 
 interface Task {
@@ -28,25 +30,42 @@ interface Task {
 
 export default function Tasks() {
   const { user } = useAuthStore();
+  const currentRole = user?.role?.toLowerCase()?.trim() || '';
+  const isCEO = currentRole === 'ceo';
+  const isHR = currentRole === 'hr';
+  const isOpsOrAcad = ['operations', 'academic', 'ops'].includes(currentRole);
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
+  const watchAllFields = watch();
+
+  const isFormValid = 
+    !!watchAllFields.title?.trim() &&
+    !!watchAllFields.assignedTo &&
+    !!watchAllFields.deadline &&
+    !!watchAllFields.priority;
 
   const fetchData = async () => {
-    // Step 2: Prevent API call without departmentId
-    if (!user?.deptId) return;
+    // Oversight Logic: Only restrict if non-global role lacks department.
+    const isGlobal = isCEO || ['Organization Admin', 'system-admin', 'operations', 'academic'].includes(currentRole);
+    if (!user?.deptId && !isGlobal) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
       const [tasksRes, teamRes] = await Promise.all([
         api.get('/dept-admin/tasks', {
           params: {
-            departmentId: user.deptId,
-            subDepartmentId: user.subDepartment // Mapping to subDepartment scope
+            departmentId: user?.deptId,
+            subDepartmentId: user?.subDepartment // Mapping to subDepartment scope
           }
         }),
         api.get('/dept-admin/team')
@@ -54,7 +73,7 @@ export default function Tasks() {
       setTasks(tasksRes.data);
       setTeam(teamRes.data);
     } catch (error) {
-      toast.error('Failed to fetch tasks dashboard data');
+      toast.error('Failed to load institutional task directives');
     } finally {
       setIsLoading(false);
     }
@@ -111,14 +130,22 @@ export default function Tasks() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+  const handleDelete = (id: number) => {
+    setTaskToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!taskToDelete) return;
     try {
-      await api.delete(`/dept-admin/tasks/${id}`);
-      toast.success('Task deleted');
+      await api.delete(`/dept-admin/tasks/${taskToDelete}`);
+      toast.success('Institutional directive terminated', {
+        icon: '🗑️',
+        className: 'font-bold uppercase text-[10px] tracking-widest'
+      });
+      setTaskToDelete(null);
       fetchData();
     } catch (error) {
-      toast.error('Failed to delete task');
+      toast.error('Failed to terminate task directive');
     }
   };
 
@@ -135,7 +162,7 @@ export default function Tasks() {
         const emp = row.original.assignee;
         return emp ? 
           <span className="text-slate-700">{emp.name}</span> : 
-          <span className="text-slate-400 italic">User {row.original.assignedTo}</span>;
+          <span className="text-slate-400 ">User {row.original.assignedTo}</span>;
       }
     },
     { 
@@ -190,44 +217,93 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+      <div className="flex justify-between items-center shrink-0">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-              <ClipboardList className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Task Management</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <ClipboardList className="w-5 h-5 text-blue-600" />
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Task Management</h1>
           </div>
-          <p className="text-slate-500 font-medium ml-15">Assign, monitor, and update the status of your team's ongoing deliverables.</p>
+          <p className="text-slate-500 text-sm font-medium">Assign, monitor, and update the status of your team's ongoing deliverables.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <ClipboardList className="w-3.5 h-3.5 text-blue-500" />
-              Operational Directives
-           </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
+             <button 
+               onClick={() => {
+                 navigator.clipboard.writeText(window.location.href);
+                 toast.success('Tasks dashboard link copied to clipboard');
+               }}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Share Tasks"
+             >
+               <Share2 className="w-5 h-5" />
+             </button>
+             <button 
+               onClick={() => window.print()}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Print Tasks"
+             >
+               <Printer className="w-5 h-5" />
+             </button>
+             <button 
+               onClick={() => {
+                 const exportData = tasks.map(t => ({
+                   'Task ID': t.id,
+                   'Subject': t.title,
+                   'Assigned To': t.assignee?.name || t.assignedTo,
+                   'Deadline': new Date(t.deadline).toLocaleDateString(),
+                   'Priority': t.priority.toUpperCase(),
+                   'Status': t.status.toUpperCase(),
+                   'Created At': new Date(t.createdAt).toLocaleDateString()
+                 }));
+                 downloadCSV(exportData, 'departmental_tasks');
+                 toast.success('Tasks exported successfully');
+               }}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Export Tasks"
+             >
+               <Download className="w-5 h-5" />
+             </button>
+          </div>
+          {(tasks.length > 0 || !isLoading) && (
+            <button 
+               onClick={openCreateModal}
+               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 group"
+            >
+               <Plus className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+               Assign New Task
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-md shrink-0">
-        <DashCard 
-          title="Assign New Task"
-          description="Delegate operational directives and establish priority-based deadlines."
-          onClick={openCreateModal}
-          icon={Plus}
-          actionLabel="Assign New Task"
-        />
-      </div>
+      {tasks.length === 0 && !isLoading ? (
+        <div className="flex-1 flex items-center justify-center bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem]">
+          <button 
+            onClick={openCreateModal}
+            className="text-center p-12 aspect-[2/1] w-[720px] border-2 border-dashed border-slate-300 rounded-[3rem] bg-slate-50 hover:bg-blue-50/50 hover:border-blue-400 transition-all group cursor-pointer outline-none flex flex-col items-center justify-center"
+          >
+             <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-slate-200 group-hover:scale-110 transition-all duration-300">
+                <ClipboardList className="w-10 h-10 text-slate-200 group-hover:text-blue-500 transition-colors" />
+             </div>
+             <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-4 group-hover:text-slate-600 transition-colors">No active directives found</h4>
+             <span className="text-xs font-black text-blue-600 group-hover:text-blue-700 uppercase tracking-widest decoration-2 underline-offset-4 group-hover:underline transition-all">
+               Assign First Directive
+             </span>
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem] flex flex-col overflow-hidden">
+          <DataTable 
+            columns={columns} 
+            data={tasks} 
+            isLoading={isLoading} 
+            searchKey="title" 
+            searchPlaceholder="Search tasks by title..." 
+          />
+        </div>
+      )}
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
-        <DataTable 
-          columns={columns} 
-          data={tasks} 
-          isLoading={isLoading} 
-          searchKey="title" 
-          searchPlaceholder="Search tasks by title..." 
-        />
-      </div>
-
+      {/* Create/Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
           <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
@@ -262,18 +338,34 @@ export default function Tasks() {
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
                 placeholder="Complete Q3 Financial Audit Review"
               />
-              {errors.title && <p className="text-red-500 text-xs mt-1 ml-1">{errors.title.message as string}</p>}
+              {errors.title && <p className="text-red-500 text-xs mt-1 ml-1">{errors.title?.message as string}</p>}
             </div>
 
           {!editingTask && (
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Assign To (Team Member)</label>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                 {isCEO ? 'Assign To (HR Administrators Only)' : 
+                  isOpsOrAcad ? 'Assign To (Sub-Dept Admins & Team)' : 
+                  isHR ? 'Assign To (Department Admins & HR Team)' :
+                  'Assign To (Department Personnel)'}
+              </label>
               <select
                 {...register('assignedTo', { required: 'Assignee is required' })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
               >
-                <option value="">-- Select Team Member --</option>
-                {team.map((t) => (
+                <option value="">-- Select {isCEO ? 'HR Admin' : 'Assignee'} --</option>
+                {team.filter(t => {
+                  const targetRole = t.role?.toLowerCase()?.trim();
+                  if (isCEO) return targetRole === 'hr';
+                  if (isHR) {
+                    const adminRoles = ['academic', 'finance', 'ops', 'operations', 'sales', 'hr', 'bvoc', 'skill', 'online', 'openschool', 'Organization Admin', 'system-admin'];
+                    return adminRoles.includes(targetRole || '') || t.deptId === user?.deptId;
+                  }
+                  
+                  // For specialized units (BVoc, Skill, etc.), the backend already filters correctly.
+                  // We only apply broad deptId matching for others or as a fallback.
+                  return t.deptId === user?.deptId;
+                }).map((t) => (
                   <option key={t.uid} value={t.uid}>{t.name} (EMP: {t.uid})</option>
                 ))}
               </select>
@@ -332,14 +424,48 @@ export default function Tasks() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+              disabled={isSubmitting || !isFormValid}
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
                {isSubmitting ? 'Processing...' : (editingTask ? 'Save Updates' : 'Assign Directive')}
             </button>
           </div>
         </form>
        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal 
+        isOpen={!!taskToDelete} 
+        onClose={() => setTaskToDelete(null)} 
+        title="Termination protocol"
+        maxWidth="md"
+      >
+        <div className="p-6 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto ring-8 ring-red-50/50">
+            <Trash2 className="w-10 h-10 text-red-600" />
+          </div>
+          <div>
+            <h4 className="font-black text-slate-900 uppercase tracking-tight text-xl mb-3">Confirm Deletion</h4>
+            <p className="text-sm text-slate-500 font-medium max-w-3xl leading-relaxed mb-10">
+              Are you sure you want to terminate this operational directive? This action is permanent and will be logged in the audit trail.
+            </p>
+          </div>
+          <div className="flex gap-4 pt-4">
+            <button 
+              onClick={() => setTaskToDelete(null)}
+              className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all"
+            >
+              Abandom
+            </button>
+            <button 
+              onClick={confirmDelete}
+              className="flex-1 px-6 py-3 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all active:scale-95"
+            >
+              Terminate
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

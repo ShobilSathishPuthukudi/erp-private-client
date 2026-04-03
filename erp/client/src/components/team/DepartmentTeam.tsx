@@ -3,10 +3,11 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { UserPlus, ShieldCheck } from 'lucide-react';
+import { UserPlus, ShieldCheck, Share2, Printer, Download } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import { downloadCSV } from '@/lib/exportUtils';
 
 interface TeamMember {
   uid: string;
@@ -45,6 +46,8 @@ export default function Team() {
   const user = useAuthStore((state) => state.user);
   const userRole = user?.role?.toLowerCase().trim();
   const isHR = userRole === 'hr';
+  const isCEO = userRole === 'ceo';
+  const canManage = isHR; // Currently only HR can manage personnel status/enrollment
   const [deptName, setDeptName] = useState('');
   const [suggestedEmail, setSuggestedEmail] = useState('');
   const watchedName = watch('name');
@@ -74,12 +77,18 @@ export default function Team() {
   }, [watchedName, deptName]);
 
   const fetchTeam = async () => {
+    const isGlobal = isCEO || ['Organization Admin', 'system-admin', 'operations', 'academic', 'ops'].includes(user?.role?.toLowerCase()?.trim() || '');
+    if (!user?.deptId && !isGlobal) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const res = await api.get('/dept-admin/team');
       setTeam(res.data);
     } catch (error) {
-      toast.error('Failed to fetch team members');
+      toast.error('Failed to load institutional roster');
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +99,7 @@ export default function Team() {
   }, []);
 
   const handleAccept = async (uid: string) => {
-    if (!isHR) return;
+    if (!canManage) return;
     try {
       await api.put(`/dept-admin/team/${uid}/accept`);
       toast.success('Personnel Sanctioned & Enrolled');
@@ -101,7 +110,7 @@ export default function Team() {
   };
 
   const handleToggleStatus = async (uid: string, currentStatus: string) => {
-    if (!isHR) return;
+    if (!canManage) return;
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
       await api.put(`/dept-admin/team/${uid}/status`, { status: newStatus });
@@ -153,7 +162,7 @@ export default function Team() {
             <StatusToggle 
               checked={isActive} 
               onChange={() => handleToggleStatus(row.original.uid, status)} 
-              disabled={!isHR}
+              disabled={!canManage}
             />
             <span className={`text-[10px] font-bold uppercase tracking-widest ${isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
               {status.toUpperCase()}
@@ -166,7 +175,7 @@ export default function Team() {
       id: 'actions',
       header: 'Jurisdiction',
       cell: ({ row }) => {
-        if (row.original.status === 'pending_dept' && isHR) {
+        if (row.original.status === 'pending_dept' && canManage) {
           return (
             <button 
               onClick={() => handleAccept(row.original.uid)}
@@ -177,10 +186,15 @@ export default function Team() {
             </button>
           );
         }
-        return <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{isHR && row.original.status === 'pending_dept' ? 'Pending Action' : 'Authorized'}</span>;
+        return <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ">{canManage && row.original.status === 'pending_dept' ? 'Pending Action' : 'Authorized'}</span>;
       }
     }
   ];
+
+  if (isCEO) {
+    // Hide 'Jurisdiction' column for CEO
+    columns.pop();
+  }
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
@@ -188,19 +202,54 @@ export default function Team() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="w-5 h-5 text-blue-600" />
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Departmental Roster</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isCEO ? 'Institutional Roster' : 'Departmental Roster'}
+            </h1>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Manage personnel sanctuary and institutional enrollment</p>
+          <p className="text-slate-500 text-sm font-medium">
+            {isCEO ? 'Institutional oversight and personnel status monitoring' : 'Manage personnel sanctuary and institutional enrollment'}
+          </p>
         </div>
-        {isHR && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 group"
-          >
-            <UserPlus className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            Enroll Personnel
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
+             <button 
+               onClick={() => {
+                 navigator.clipboard.writeText(window.location.href);
+                 toast.success('Roster link copied to clipboard');
+               }}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Share Roster"
+             >
+               <Share2 className="w-5 h-5" />
+             </button>
+             <button 
+               onClick={() => window.print()}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Print Roster"
+             >
+               <Printer className="w-5 h-5" />
+             </button>
+             <button 
+               onClick={() => {
+                 downloadCSV(team, 'institutional_roster');
+                 toast.success('Institutional roster exported successfully');
+               }}
+               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+               title="Export Data"
+             >
+               <Download className="w-5 h-5" />
+             </button>
+          </div>
+          {canManage && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 group"
+            >
+              <UserPlus className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+              Enroll Personnel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem] flex flex-col overflow-hidden">
@@ -222,7 +271,7 @@ export default function Team() {
            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
               <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
-                Direct enrollment by department admins bypasses intermediate sanctuary. The personnel will be immediately <span className="font-black italic">Active</span> within your jurisdiction.
+                Direct enrollment by department admins bypasses intermediate sanctuary. The personnel will be immediately <span className="font-black ">Active</span> within your jurisdiction.
               </p>
            </div>
 

@@ -15,23 +15,23 @@ async function seed() {
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     const usersToSeed = [
-      { uid: 'ORG-ADMIN-001', email: 'admin@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Org Admin', role: 'org-admin', status: 'active' },
-      { uid: 'CEO-001', email: 'ceo@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Executive CEO', role: 'ceo', status: 'active' },
-      { uid: 'CEO-ACAD-DEFAULT', email: 'ceo.academic@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Academic CEO', role: 'ceo', status: 'active' },
-      { uid: 'DEPT-ADMIN-001', email: 'dept@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Department Head', role: 'dept-admin', status: 'active' },
-      { uid: 'OPS-001', email: 'ops@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Operations Manager', role: 'academic', status: 'active' },
-      { uid: 'FIN-001', email: 'finance@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Finance Officer', role: 'finance', status: 'active' },
-      { uid: 'HR-001', email: 'hr@erp.com', password: hashedPassword, devPassword: 'password123', name: 'HR Manager', role: 'hr', status: 'active' },
-      { uid: 'SALES-DEMO-001', name: 'Rahul Varma', email: 'rahul@erp.com', role: 'sales', password: hashedPassword, devPassword: 'password123', status: 'active' },
-      { uid: 'SALES-DEMO-002', name: 'Priya Sharma', email: 'priya@erp.com', role: 'sales', password: hashedPassword, devPassword: 'password123', status: 'active' },
-      { uid: 'EMP-DEMO-001', name: 'Arjun Das', email: 'arjun@erp.com', role: 'employee', password: hashedPassword, devPassword: 'password123', status: 'active' },
-      { uid: 'EMP-DEMO-002', name: 'Ananya Iyer', email: 'ananya@erp.com', role: 'employee', password: hashedPassword, devPassword: 'password123', status: 'active' },
+      { uid: 'ORG-ADMIN-001', email: 'admin@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Org Admin', role: 'Organization Admin', status: 'active' },
+      { uid: 'CEO-001', email: 'ceo@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Executive CEO', role: 'CEO', status: 'active' },
+      { uid: 'CEO-ACAD-DEFAULT', email: 'ceo.academic@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Academic CEO', role: 'CEO', status: 'active' },
+      { uid: 'OPS-001', email: 'ops@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Operations Manager', role: 'Operations Admin', status: 'active' },
+      { uid: 'FIN-001', email: 'finance@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Finance Officer', role: 'Finance Admin', status: 'active' },
+      { uid: 'HR-001', email: 'hr@erp.com', password: hashedPassword, devPassword: 'password123', name: 'HR Manager', role: 'HR Admin', status: 'active' },
+      { uid: 'SALES-DEMO-001', name: 'Rahul Varma', email: 'rahul@erp.com', role: 'Sales & CRM Admin', password: hashedPassword, devPassword: 'password123', status: 'active' },
+      { uid: 'SALES-DEMO-002', name: 'Priya Sharma', email: 'priya@erp.com', role: 'Sales & CRM Admin', password: hashedPassword, devPassword: 'password123', status: 'active' },
       { uid: 'STU-001', email: 'student@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Active Student', role: 'student', status: 'active' },
-      { uid: 'EMP-001', email: 'employee@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Staff Member', role: 'employee', status: 'active' },
-      { uid: 'OS-001', email: 'openschool@erp.com', password: hashedPassword, devPassword: 'password123', name: 'OpenSchool Admin', role: 'openschool', status: 'active' },
-      { uid: 'ON-001', email: 'online@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Online Ed Admin', role: 'online', status: 'active' },
-      { uid: 'SK-001', email: 'skill@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Skill Dev Admin', role: 'skill', status: 'active' },
-      { uid: 'BV-001', email: 'bvoc@erp.com', password: hashedPassword, devPassword: 'password123', name: 'BVoc Admin', role: 'bvoc', status: 'active', subDepartment: 'BVoc' }
+      { uid: 'EMP-001', email: 'employee@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Staff Member', role: 'Employee', status: 'active' },
+      { uid: 'OS-001', email: 'openschool@erp.com', password: hashedPassword, devPassword: 'password123', name: 'OpenSchool Admin', role: 'Open School Admin', status: 'active' },
+      { uid: 'ON-001', email: 'online@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Online Ed Admin', role: 'Online Department Admin', status: 'active' },
+      { uid: 'SK-001', email: 'skill@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Skill Dev Admin', role: 'Skill Department Admin', status: 'active' },
+      { uid: 'BV-001', email: 'bvoc@erp.com', password: hashedPassword, devPassword: 'password123', name: 'BVoc Admin', role: 'BVoc Department Admin', status: 'active', subDepartment: 'BVoc' },
+      { uid: 'FIN-DUMMY-01', email: 'finance.employee@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Finance Associate', role: 'Finance Admin', status: 'active' },
+      { uid: 'SALES-DUMMY-01', email: 'sales.employee@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Sales Executive', role: 'Sales & CRM Admin', status: 'active' },
+      { uid: 'SALES-ADMIN-GENERIC', email: 'sales@erp.com', password: hashedPassword, devPassword: 'password123', name: 'Sales Administrator', role: 'Sales & CRM Admin', status: 'active' }
     ];
 
 

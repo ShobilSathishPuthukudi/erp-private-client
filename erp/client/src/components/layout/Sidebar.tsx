@@ -39,7 +39,7 @@ type MenuGroup = {
 type MenuLink = MenuItem | MenuGroup;
 
 const menus: Record<string, MenuLink[]> = {
-  'org-admin': [
+  'Organization Admin': [
     {
       name: 'Dashboard',
       icon: Home,
@@ -96,14 +96,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Custom Fields', path: '/dashboard/org-admin/settings/custom-fields' },
       ]
     },
-    {
-      name: 'File Storage',
-      icon: Database,
-      isGroup: true,
-      items: [
-        { name: 'Storage Config', path: '/dashboard/org-admin/settings/storage-config' },
-      ]
-    },
   ],
   'ceo': [
     {
@@ -111,13 +103,22 @@ const menus: Record<string, MenuLink[]> = {
       icon: PieChart,
       isGroup: true,
       items: [
-        { name: 'KPIs Overview', path: '/dashboard/ceo/kpis' },
+        { name: 'Overview', path: '/dashboard/ceo/kpis' },
         { name: 'Growth Trends', path: '/dashboard/ceo/trends' },
         { name: 'Critical Inbox', path: '/dashboard/ceo/escalations' },
         { name: 'Dept Scorecard', path: '/dashboard/ceo/performance' },
         { name: 'Board Reports', path: '/dashboard/ceo/reports' },
         { name: 'Governance Hub', path: '/dashboard/ceo/policy' },
         { name: 'Executive Surveys', path: '/dashboard/shared/surveys' },
+      ]
+    },
+    {
+      name: 'Team Management',
+      icon: Users,
+      isGroup: true,
+      items: [
+        { name: 'My Team', path: '/dashboard/ceo/team' },
+        { name: 'Tasks', path: '/dashboard/ceo/tasks' },
       ]
     },
     {
@@ -191,8 +192,8 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Workforce Planning', path: '/dashboard/hr/vacancies' },
         { name: 'Registration', path: '/dashboard/hr/employees' },
         { name: 'Performance Audit', path: '/dashboard/hr/performance' },
-        { name: 'Leave Approv.', path: '/dashboard/hr/leaves' },
         { name: 'Attendance', path: '/dashboard/hr/attendance' },
+        { name: 'Leave Approval', path: '/dashboard/hr/leaves' },
       ]
     },
     {
@@ -227,7 +228,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Accreditation Queue', path: '/dashboard/operations/accreditation' },
         { name: 'Center Performance', path: '/dashboard/operations/center-performance' },
         { name: 'Sub-Dept Overview', path: '/dashboard/operations/sub-dept-overview' },
-        { name: 'Referred Leads', path: '/dashboard/operations/referrals' },
       ]
     },
     {
@@ -264,8 +264,9 @@ const menus: Record<string, MenuLink[]> = {
       icon: BookOpen,
       isGroup: true,
       items: [
-        { name: 'Session Management', path: '/dashboard/operations/sessions' },
-        { name: 'Exams & Results', path: '/dashboard/operations/exams' },
+        { name: 'Internal Marks', path: '/dashboard/academic/internal-marks' },
+        { name: 'Session Management', path: '/dashboard/academic/sessions' },
+        { name: 'Exams & Results', path: '/dashboard/academic/exams' },
       ]
     },
     {
@@ -307,7 +308,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Accreditation Queue', path: '/dashboard/academic/accreditation' },
         { name: 'Center Performance', path: '/dashboard/academic/center-performance' },
         { name: 'Sub-Dept Overview', path: '/dashboard/academic/sub-dept-overview' },
-        { name: 'Referred Leads', path: '/dashboard/academic/referrals' },
       ]
     },
     {
@@ -344,6 +344,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: BookOpen,
       isGroup: true,
       items: [
+        { name: 'Internal Marks', path: '/dashboard/academic/internal-marks' },
         { name: 'Session Management', path: '/dashboard/academic/sessions' },
         { name: 'Exams & Results', path: '/dashboard/academic/exams' },
       ]
@@ -394,6 +395,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Assigned Programs', path: '/dashboard/subdept/openschool/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
+        { name: 'Internal Marks', path: '/dashboard/subdept/openschool/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/openschool/students' },
       ]
@@ -428,6 +430,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Assigned Programs', path: '/dashboard/subdept/online/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
+        { name: 'Internal Marks', path: '/dashboard/subdept/online/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/online/students' },
       ]
@@ -462,6 +465,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Assigned Programs', path: '/dashboard/subdept/skill/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
+        { name: 'Internal Marks', path: '/dashboard/subdept/skill/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/skill/students' },
       ]
@@ -497,6 +501,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Assigned Programs', path: '/dashboard/subdept/bvoc/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
+        { name: 'Internal Marks', path: '/dashboard/subdept/bvoc/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
         { name: 'Institutional Roster', path: '/dashboard/subdept/bvoc/students' },
       ]
@@ -522,6 +527,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Programs', path: '/dashboard/study-center/programs' },
         { name: 'Students', path: '/dashboard/study-center/students' },
+        { name: 'Internal Marks', path: '/dashboard/study-center/internal-marks' },
         { name: 'Re-Registration', path: '/dashboard/study-center/rereg' },
         { name: 'Announcements', path: '/dashboard/study-center/announcements' },
       ]
@@ -550,6 +556,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'My Tasks', path: '/dashboard/employee/tasks' },
         { name: 'My Leaves', path: '/dashboard/employee/leaves' },
+        { name: 'My Centers', path: '/dashboard/employee/centers' },
       ]
     },
     {
@@ -571,6 +578,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Active Pipeline', path: '/dashboard/sales/crm/pipeline' },
         { name: 'Strategic Outcome', path: '/dashboard/sales/crm/outcome' },
+        { name: 'Institutional Referrals', path: '/dashboard/sales/referrals' },
       ]
     },
     {
@@ -625,11 +633,56 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const { orgName, orgLogo } = useOrgStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const role = user?.role?.toLowerCase() === 'center' ? 'study-center' : (user?.role?.toLowerCase() || 'default');
+
+  const getNormalizedRole = (rawRole: string) => {
+    if (!rawRole) return 'default';
+    const r = rawRole.toLowerCase().trim();
+    
+    // Pillar Mappings
+    if (r.includes('hr')) return 'hr';
+    if (r.includes('finance')) return 'finance';
+    if (r.includes('sales')) return 'sales';
+    if (r.includes('operations') || r.includes('academic')) return 'operations';
+    
+    // Unit Mappings
+    if (r.includes('openschool')) return 'openschool';
+    if (r.includes('online')) return 'online';
+    if (r.includes('skill')) return 'skill';
+    if (r.includes('bvoc')) return 'bvoc';
+    
+    // Executive Mappings
+    if (r === 'ceo') return 'ceo';
+    if (r.includes('organization admin') || r.includes('org-admin') || r === 'system-admin' || r === 'admin') return 'Organization Admin';
+    
+    // Specialized Mappings
+    if (r === 'center' || r === 'study-center') return 'study-center';
+    if (r === 'student') return 'student';
+    if (r === 'employee') return 'employee';
+    
+    return rawRole; // Fallback to raw if no match
+  };
+
+  const role = useMemo(() => getNormalizedRole(user?.role || ''), [user?.role]);
   const unit = user?.subDepartment?.toLowerCase() || 'portal';
   
   const links = useMemo(() => {
-    const rawLinks = menus[role as keyof typeof menus] || menus['default'];
+    let rawLinks = [...(menus[role as keyof typeof menus] || menus['default'])];
+
+    // Institutional Hierarchy: Dynamically inject Team Management for any staff with subordinates
+    if ((user as any)?.isManager && !rawLinks.some(l => l.name === 'Team Management')) {
+      const dashboardPath = role === 'Organization Admin' ? 'org-admin' : role;
+      rawLinks.push({
+        name: 'Team Management',
+        icon: Users,
+        isGroup: true,
+        items: [
+          { name: 'My Team', path: `/dashboard/${dashboardPath}/team` },
+          { name: 'Tasks', path: `/dashboard/${dashboardPath}/tasks` },
+          { name: 'Team Leave', path: `/dashboard/${dashboardPath}/leaves` },
+        ]
+      });
+    }
+
     return rawLinks.map(link => {
       if (link.isGroup) {
         return {
@@ -707,9 +760,9 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
           <div 
             className="sidebar-logo-modern cursor-pointer"
             onClick={() => {
-              const role = user?.role?.toLowerCase();
-              const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role || 'default');
-              const finalPath = role === 'org-admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
+              const role = user?.role;
+              const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role?.toLowerCase() || 'default');
+              const finalPath = role === 'Organization Admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
               navigate(finalPath);
             }}
           >
@@ -721,7 +774,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
               )}
             </div>
             <div className="logo-text">
-              <span className="logo-name">{orgName || 'IITS RPS'}</span>
+              <span className="logo-name">{orgName || 'ERP'}</span>
               <span className="logo-subtitle">Enterprise System</span>
             </div>
           </div>
@@ -734,9 +787,9 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 <div 
                   className="sidebar-logo-modern cursor-pointer"
                   onClick={() => {
-                    const role = user?.role?.toLowerCase();
-                    const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role || 'default');
-                    const finalPath = role === 'org-admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
+                    const role = user?.role;
+                    const dashboardPath = (role === 'center' || role === 'study-center') ? 'study-center' : (role?.toLowerCase() || 'default');
+                    const finalPath = role === 'Organization Admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
                     navigate(finalPath);
                   }}
                 >
@@ -748,7 +801,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                     )}
                   </div>
                   <div className="logo-text">
-                    <span className="logo-name">{orgName || 'IITS RPS'}</span>
+                    <span className="logo-name">{orgName || 'ERP'}</span>
                     <span className="logo-subtitle">Enterprise System</span>
                   </div>
                 </div>

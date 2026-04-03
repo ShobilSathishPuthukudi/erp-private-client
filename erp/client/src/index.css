@@ -101,3 +101,35 @@
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
+
+@media print {
+  /* Hide navigation chrome and secondary UI */
+  aside, 
+  nav,
+  header,
+  .sidebar-container,
+  [role="banner"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset main content layout for full-width printing */
+  .flex-1.flex.flex-col {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  main {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure background colors and text contrast are preserved */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
