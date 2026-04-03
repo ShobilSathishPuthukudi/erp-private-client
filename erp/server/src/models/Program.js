@@ -36,9 +36,10 @@ const Program = sequelize.define('program', {
     allowNull: false, // BVoc, Skill, Online, OpenSchool, etc.
   },
   status: {
-    type: DataTypes.ENUM('draft', 'active', 'open'),
+    type: DataTypes.ENUM('draft', 'staged', 'active'),
     defaultValue: 'draft',
   },
+
   eligibility: {
     type: DataTypes.JSON,
     allowNull: true, // Rules for student validation
@@ -52,6 +53,16 @@ const Program = sequelize.define('program', {
     allowNull: true,
     defaultValue: 0.00
   },
+  baseFee: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0.00
+  },
+  taxPercentage: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    defaultValue: 18.00
+  },
   paymentStructure: {
     type: DataTypes.JSON,
     allowNull: true, // e.g., ['monthly', 'yearly', 'custom']
@@ -64,6 +75,11 @@ const Program = sequelize.define('program', {
   syllabusDoc: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  totalCredits: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
   }
 });
 

@@ -21,6 +21,14 @@ const Role = sequelize.define('role', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  isAdminEligible: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  isAudited: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active',

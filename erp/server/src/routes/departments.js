@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 
@@ -6,7 +7,7 @@ const router = express.Router();
 const { Department, User } = models;
 
 const isOrgAdmin = (req, res, next) => {
-  const allowedRoles = ['org-admin', 'finance', 'hr', 'academic', 'system-admin'];
+  const allowedRoles = ['Organization Admin', 'org-admin', 'system-admin', 'Finance Admin', 'HR Admin', 'Operations Admin'];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ error: 'Access denied: Requires administrative or institutional role' });
   }
@@ -28,11 +29,44 @@ router.get('/', verifyToken, isOrgAdmin, async (req, res) => {
 
 router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
   try {
-    const { name, type, adminId, status, features, activateNow } = req.body;
+    const { name, type, adminId, status, features, activateNow, adminName, adminEmail, adminPassword } = req.body;
     
     const existing = await Department.findOne({ where: { name } });
     if (existing) {
       return res.status(400).json({ error: 'Department name already exists' });
+    }
+
+    let finalAdminId = adminId;
+
+    // Handle new admin creation if credentials are provided
+    if (adminEmail && adminPassword && adminName) {
+      const userExists = await User.findOne({ where: { email: adminEmail } });
+      if (userExists) {
+        return res.status(400).json({ error: 'Admin email already exists' });
+      }
+
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      
+      // Determine role based on department type
+      let role = 'Operations Admin';
+      const typeLower = type.toLowerCase();
+      if (['HR Admin', 'Finance Admin', 'Sales & CRM Admin', 'Operations Admin'].includes(typeLower)) {
+        role = typeLower;
+      }
+
+      const generatedUid = `${role.toUpperCase().substring(0,3)}-${Date.now().toString().slice(-6)}`;
+
+      const newUser = await User.create({
+        uid: generatedUid,
+        email: adminEmail,
+        password: hashedPassword,
+        devPassword: adminPassword,
+        role: role,
+        name: adminName,
+        status: 'active'
+      });
+
+      finalAdminId = newUser.uid;
     }
 
     // Handle status consistency
@@ -43,10 +77,15 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
     const newDept = await Department.create({
       name, 
       type, 
-      adminId: adminId || null, 
+      adminId: finalAdminId || null, 
       status: finalStatus,
       metadata: features ? { features } : null
     });
+
+    // SYNC: Ensure the assigned admin's User record also points to this department
+    if (finalAdminId) {
+      await User.update({ deptId: newDept.id }, { where: { uid: finalAdminId } });
+    }
 
     res.status(201).json(newDept);
   } catch (error) {
@@ -58,17 +97,62 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
 router.put('/:id', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, adminId, status, features } = req.body;
+    const { name, type, adminId, status, features, adminName, adminEmail, adminPassword } = req.body;
 
     const dept = await Department.findByPk(id);
     if (!dept) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
-    const updateData = { name, type, adminId: adminId || null, status };
+    let finalAdminId = adminId;
+
+    // Support creating a new admin during update if credentials are provided
+    if (adminEmail && adminPassword && adminName) {
+      const userExists = await User.findOne({ where: { email: adminEmail } });
+      if (userExists) {
+        return res.status(400).json({ error: 'Admin email already exists' });
+      }
+
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      
+      // Determine role based on department type
+      let role = 'Operations Admin';
+      const typeLower = type ? type.toLowerCase() : (dept.type || 'custom').toLowerCase();
+      if (['HR Admin', 'Finance Admin', 'Sales & CRM Admin', 'Operations Admin'].includes(typeLower)) {
+        role = typeLower;
+      }
+
+      const generatedUid = `${role.toUpperCase().substring(0,3)}-${Date.now().toString().slice(-6)}`;
+
+      const newUser = await User.create({
+        uid: generatedUid,
+        email: adminEmail,
+        password: hashedPassword,
+        devPassword: adminPassword,
+        role: role,
+        name: adminName,
+        status: 'active',
+        deptId: dept.id // Auto-link to this department
+      });
+
+      finalAdminId = newUser.uid;
+    }
+
+    const updateData = { name, type, adminId: finalAdminId || null, status };
     if (features) updateData.metadata = { features };
 
     await dept.update(updateData);
+
+    // SYNC: Ensure the assigned admin's User record also points to this department
+    if (finalAdminId) {
+      // Clear previous admin's link (optional but good for data integrity)
+      if (dept.adminId && dept.adminId !== finalAdminId) {
+        await User.update({ deptId: null }, { where: { uid: dept.adminId, deptId: dept.id } });
+      }
+      // Set new admin's link
+      await User.update({ deptId: dept.id }, { where: { uid: finalAdminId } });
+    }
+
     await dept.reload({ include: [{ model: User, as: 'admin', attributes: ['name', 'email', 'uid'] }] });
     res.json(dept);
   } catch (error) {

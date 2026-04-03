@@ -1,5 +1,6 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 import { authenticate, authorize } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
 
@@ -9,9 +10,9 @@ const { Lead, Department, Student, Payment, User, Referral, Program, AdmissionSe
 const Center = Department; // Alias for consistency with user request
 
 // GET All Leads
-router.get('/leads', authenticate, authorize(['sales', 'org-admin', 'employee']), async (req, res) => {
+router.get('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin', 'employee']), async (req, res) => {
   try {
-    const where = ['sales', 'employee'].includes(req.user.role) ? { 
+    const where = ['Sales & CRM Admin', 'employee'].includes(req.user.role) ? { 
       [Op.or]: [
         { bdeId: req.user.uid },
         { employeeId: req.user.uid }
@@ -42,7 +43,7 @@ router.get('/leads', authenticate, authorize(['sales', 'org-admin', 'employee'])
 });
 
 // CREATE Lead
-router.post('/leads', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.post('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
     const lead = await Lead.create({
       ...req.body,
@@ -58,7 +59,7 @@ router.post('/leads', authenticate, authorize(['sales', 'org-admin']), async (re
 });
 
 // GET unique referral code for current BDE
-router.get('/referral-code', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.get('/referral-code', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
     const userId = req.user?.uid; // Using uid as per current architecture
 
@@ -73,19 +74,29 @@ router.get('/referral-code', authenticate, authorize(['sales', 'org-admin']), as
       code = await Referral.create({ userId, code: newCode });
     }
 
-    return res.json(code || { code: null });
+    if (code) {
+      return res.json({ referralCode: code.code });
+    }
+
+    return res.json({ referralCode: null });
   } catch (error) {
     console.error("SALES ERROR (Referral):", error);
-    return res.status(500).json({
-      message: error.message || "Internal Server Error"
-    });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // GET Sales Performance Overview
-router.get('/performance', authenticate, authorize(['sales', 'org-admin', 'finance']), async (req, res) => {
+router.get('/performance', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin', 'Finance Admin']), async (req, res) => {
   try {
+    const where = req.user.role === 'Sales & CRM Admin' ? { 
+      [Op.or]: [
+        { bdeId: req.user.uid },
+        { employeeId: req.user.uid }
+      ]
+    } : {};
+
     const leads = await Lead.findAll({
+      where,
       attributes: ['id', 'name', 'status', 'createdAt', 'expectedValue']
     });
 
@@ -113,11 +124,11 @@ router.get('/performance', authenticate, authorize(['sales', 'org-admin', 'finan
   }
 });
 
-router.get('/conversion-options', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
     const [programs, salesStaff] = await Promise.all([
       Program.findAll({ attributes: ['id', 'name', 'shortName', 'type'] }),
-      User.findAll({ where: { role: 'sales' }, attributes: ['uid', 'name'] })
+      User.findAll({ where: { role: 'Sales & CRM Admin' }, attributes: ['uid', 'name'] })
     ]);
 
     return res.json({
@@ -133,7 +144,7 @@ router.get('/conversion-options', authenticate, authorize(['sales', 'org-admin']
 });
 
 // CONVERT Lead to Center
-router.post('/leads/:id/convert-to-center', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.post('/leads/:id/convert-to-center', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -147,7 +158,8 @@ router.post('/leads/:id/convert-to-center', authenticate, authorize(['sales', 'o
       name: lead.name,
       shortName: shortName || lead.name.substring(0, 5).toUpperCase(),
       type: 'study-center',
-      status: 'active',
+      status: 'inactive',
+      auditStatus: 'pending',
       sourceLeadId: lead.id,
       bdeId: lead.bdeId || lead.employeeId, // Fallback to captured employee if BDE is null
       metadata: {
@@ -159,7 +171,8 @@ router.post('/leads/:id/convert-to-center', authenticate, authorize(['sales', 'o
     // 1b. Create User for Center Login (GAP-5 Ready)
     const { User: UserModel } = models;
     const centerEmail = req.body.email || lead.email || `center_${center.id}@erp.com`;
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const password = req.body.password || 'password123';
+    const hashedPassword = await bcrypt.hash(password, 10);
     const generatedUid = `CTR-${Date.now().toString().slice(-6)}-${center.id}`;
 
     const centerUser = await UserModel.create({
@@ -167,6 +180,7 @@ router.post('/leads/:id/convert-to-center', authenticate, authorize(['sales', 'o
       name: lead.name,
       email: centerEmail,
       password: hashedPassword,
+      devPassword: password,
       role: 'study-center',
       deptId: center.id,
       status: 'active'
@@ -220,7 +234,7 @@ router.post('/leads/:id/convert-to-center', authenticate, authorize(['sales', 'o
 });
 
 // Legacy routes preserved or simplified
-router.post('/leads/:id/assign', authenticate, authorize(['org-admin', 'sales']), async (req, res) => {
+router.post('/leads/:id/assign', authenticate, authorize(['Organization Admin', 'Sales & CRM Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { assignedTo } = req.body;
@@ -234,7 +248,7 @@ router.post('/leads/:id/assign', authenticate, authorize(['org-admin', 'sales'])
   }
 });
 
-router.put('/leads/:id/status', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.put('/leads/:id/status', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -249,7 +263,7 @@ router.put('/leads/:id/status', authenticate, authorize(['sales', 'org-admin']),
 });
 
 // GET Programs for a Converted Lead's Center
-router.get('/leads/:id/center-programs', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.get('/leads/:id/center-programs', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const lead = await Lead.findByPk(id);
@@ -268,7 +282,7 @@ router.get('/leads/:id/center-programs', authenticate, authorize(['sales', 'org-
 });
 
 // SYNC Programs for a Converted Lead's Center
-router.put('/leads/:id/sync-programs', authenticate, authorize(['sales', 'org-admin']), async (req, res) => {
+router.put('/leads/:id/sync-programs', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;

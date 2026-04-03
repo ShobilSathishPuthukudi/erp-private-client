@@ -21,6 +21,7 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
     name: initialData?.name || '',
     description: initialData?.description || '',
     status: initialData?.status || 'active',
+    isAdminEligible: initialData?.isAdminEligible || false
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,6 +127,32 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
                   <p className="text-xs font-bold text-slate-900 uppercase tracking-tighter">Suspended Identity</p>
                 </div>
                 <AlertCircle className={`w-5 h-5 ${formData.status === 'inactive' ? 'text-rose-600' : 'text-slate-300'}`} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Governance Setting</label>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isAdminEligible: !formData.isAdminEligible })}
+                className={`w-full flex items-center justify-between px-6 py-5 rounded-2xl border-2 transition-all ${
+                  formData.isAdminEligible 
+                    ? 'border-blue-600 bg-blue-50/30 shadow-sm shadow-blue-500/10' 
+                    : 'border-slate-100 bg-slate-50/50 grayscale opacity-50 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 rounded-xl transition-all duration-300 ${formData.isAdminEligible ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-200 text-slate-500'}`}>
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-tight">Verified Admin Candidate</p>
+                    <p className="text-[10px] font-medium text-slate-500 leading-tight">Enable if users with this role can manage departments.</p>
+                  </div>
+                </div>
+                <div className={`w-11 h-6 rounded-full p-1 transition-all duration-300 flex items-center ${formData.isAdminEligible ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                  <div className={`w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-sm ${formData.isAdminEligible ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </button>
             </div>
           </div>

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
-import { Modal } from '@/components/shared/Modal';
-import { RemarkModal } from '@/components/shared/RemarkModal';
+import { PaymentReviewModal } from '@/components/finance/PaymentReviewModal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, FileText, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 import jsPDF from 'jspdf';
 
 interface Payment {
@@ -24,8 +24,8 @@ interface Payment {
 export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
-  const [pendingActionId, setPendingActionId] = useState<number | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
   const fetchPayments = async () => {
     try {
@@ -43,16 +43,16 @@ export default function Payments() {
     fetchPayments();
   }, []);
 
-  const handleVerifyRequest = (id: number) => {
-    setPendingActionId(id);
-    setIsRemarkModalOpen(true);
+  const handleVerifyRequest = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setIsReviewModalOpen(true);
   };
 
   const verifyPayment = async (remarks: string) => {
     try {
-      if (!pendingActionId) return;
+      if (!selectedPayment) return;
       // Step 1: Verify on Backend & Auto-Generate Invoice record
-      const res = await api.post(`/finance/payments/${pendingActionId}/verify`, { remarks });
+      const res = await api.post(`/finance/payments/${selectedPayment.id}/verify`, { remarks });
       toast.success('Payment verified! Executing GAP-1 Invoice auto-generation...');
       
       const { invoice } = res.data;
@@ -112,8 +112,8 @@ export default function Payments() {
       // Trigger user side download intercept
       doc.save(`${invoice.invoiceNo}.pdf`);
       
-      setIsRemarkModalOpen(false);
-      setPendingActionId(null);
+      setIsReviewModalOpen(false);
+      setSelectedPayment(null);
       // Refresh local Datatable UI
       fetchPayments();
     } catch (error: any) {
@@ -161,11 +161,11 @@ export default function Payments() {
         if (payment.status !== 'pending') return <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase border border-slate-200 px-2 py-1 rounded bg-slate-50">Locked Log</span>;
         return (
           <button 
-            onClick={() => handleVerifyRequest(payment.id)} 
+            onClick={() => handleVerifyRequest(payment)} 
             className="flex items-center space-x-1 text-xs font-semibold text-white bg-slate-900 px-3 py-1.5 rounded shadow-sm hover:bg-slate-800 transition-colors"
           >
             <FileText className="w-3 h-3" />
-            <span>Deploy Auto-Invoice (GAP-1)</span>
+            <span>Deploy Auto-Invoice</span>
           </button>
         );
       }
@@ -174,12 +174,11 @@ export default function Payments() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">Student Payment Pipelines <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] rounded uppercase tracking-widest ml-2">GAP-1 Module</span></h1>
-          <p className="text-slate-500 mt-1">Review pending student transfers and securely generate fully tax-compliant PDF invoices instantly on the client.</p>
-        </div>
-      </div>
+      <PageHeader 
+        title="Student Payment Pipelines"
+        description="Review pending student transfers and securely generate fully tax-compliant PDF invoices instantly."
+        icon={CreditCard}
+      />
 
       <DataTable 
         columns={columns} 
@@ -187,12 +186,11 @@ export default function Payments() {
         isLoading={isLoading} 
       />
 
-      <RemarkModal 
-        isOpen={isRemarkModalOpen}
-        onClose={() => setIsRemarkModalOpen(false)}
+      <PaymentReviewModal 
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
         onConfirm={verifyPayment}
-        title="Verify Payment Audit"
-        actionLabel="Verify & Issue Invoice"
+        payment={selectedPayment}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { toSentenceCase } from '@/lib/utils';
 
 interface TeamMember {
   uid: string;
@@ -109,17 +110,17 @@ export default function Tasks() {
   const columns: ColumnDef<Task>[] = [
     { 
       accessorKey: 'title', 
-      header: 'Task Title',
+      header: 'Task title',
       cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.title}</span>
     },
     { 
       id: 'assignee', 
-      header: 'Assigned To',
+      header: 'Assigned to',
       cell: ({ row }) => {
         const emp = row.original.assignee;
         return emp ? 
           <span className="text-slate-700">{emp.name}</span> : 
-          <span className="text-slate-400 italic">User {row.original.assignedTo}</span>;
+          <span className="text-slate-400 ">User {row.original.assignedTo}</span>;
       }
     },
     { 
@@ -137,7 +138,7 @@ export default function Tasks() {
         if (p === 'medium') color = 'bg-yellow-50 text-yellow-700';
         if (p === 'high') color = 'bg-orange-100 text-orange-700';
         if (p === 'urgent') color = 'bg-red-100 text-red-700 font-bold';
-        return <span className={`px-2 py-1 text-[10px] rounded-sm uppercase ${color}`}>{p}</span>;
+        return <span className={`px-2 py-1 text-[10px] rounded-sm ${color}`}>{toSentenceCase(p)}</span>;
       }
     },
     { 
@@ -155,11 +156,11 @@ export default function Tasks() {
         return (
           <div className="flex flex-col items-start gap-1">
             <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>
-              {isOverdue ? 'OVERDUE' : s.replace('_', ' ').toUpperCase()}
+              {isOverdue ? 'Overdue' : toSentenceCase(s)}
             </span>
             {isOverdue && (
-              <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">
-                {row.original.overdueLabel || 'Employee Level'}
+              <span className="text-[9px] font-black text-red-500 tracking-tighter">
+                {toSentenceCase(row.original.overdueLabel || 'Employee Level')}
               </span>
             )}
           </div>

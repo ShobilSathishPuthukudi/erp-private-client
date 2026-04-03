@@ -17,7 +17,7 @@ export default function PayoutApproval() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
-  const isReadOnly = user?.role === 'ceo';
+  const isReadOnly = user?.role === 'CEO';
 
   useEffect(() => {
     fetchPayouts();
@@ -83,12 +83,12 @@ export default function PayoutApproval() {
 
             <div className="flex items-center gap-8">
                <div className="text-right">
-                  <p className="text-2xl font-black text-slate-900 italic">₹{payout.amount.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-slate-900 ">₹{payout.amount.toLocaleString()}</p>
                   <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Calculated Incentive</p>
                </div>
                <div className="flex gap-2">
                   {isReadOnly ? (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-400 rounded-xl border border-slate-100 italic text-[10px] font-bold">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-400 rounded-xl border border-slate-100 text-[10px] font-bold">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       Oversight Only
                     </div>

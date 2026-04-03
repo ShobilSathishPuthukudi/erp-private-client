@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { 
   Mail, 
   CreditCard, 
-  Cloud, 
   Eye, 
   EyeOff, 
   Send,
@@ -207,11 +206,6 @@ export default function SettingsIntegrations() {
               </div>
             </div>
             
-            <div className="p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center opacity-70 group hover:opacity-100 transition-all hover:bg-white">
-              <Cloud className="w-10 h-10 text-slate-300 mb-2 group-hover:text-blue-500 group-hover:animate-bounce" />
-              <p className="text-sm font-bold text-slate-600">Connect S3 Storage (GAP-4)</p>
-              <button className="mt-4 text-[10px] font-bold text-blue-600 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">Configure in File Storage Panel →</button>
-            </div>
           </div>
         </div>
       </div>

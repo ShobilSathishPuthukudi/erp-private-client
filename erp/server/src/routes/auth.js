@@ -43,7 +43,15 @@ router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ 
+      where: { 
+        [Op.or]: [
+          { email: email },
+          { uid: email }
+        ]
+      },
+      include: [{ model: Department, as: 'department', attributes: ['name'] }]
+    });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -57,11 +65,20 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       return res.status(403).json({ error: 'Account is suspended or inactive' });
     }
 
+    const isManager = await User.count({ where: { reportingManagerUid: user.uid, status: 'active' } }) > 0;
+
     const payload = {
       uid: user.uid,
       email: user.email,
       role: user.role,
+      isManager,
       deptId: user.deptId,
+      departmentName: user.role?.toLowerCase().includes('center')
+        ? 'Center Department'
+        : (user.department?.name 
+          ? (user.department.name.toLowerCase().includes('department') ? user.department.name : `${user.department.name} Department`)
+          : (user.subDepartment || 'Institutional Unit')),
+      subDepartment: user.subDepartment,
       name: user.name,
       avatar: user.avatar
     };
@@ -202,6 +219,33 @@ router.get('/demo-students', async (req, res) => {
   }
 });
 
+router.get('/recent-admins', async (req, res) => {
+  try {
+    const recentAdmins = await User.findAll({
+      where: { 
+        role: { [Op.notIn]: ['student', 'admin', 'ceo', 'Organization Admin', 'Organization Admin'] },
+        status: 'active'
+      },
+      limit: 4,
+      order: [['createdAt', 'DESC']],
+      attributes: ['uid', 'name', 'email', 'role', 'devPassword']
+    });
+
+    const formatted = recentAdmins.map(u => ({
+      uid: u.uid,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      password: u.devPassword || 'password123'
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Recent Admins Fetch Error:', error);
+    res.status(500).json({ error: 'Failed to fetch recently provisioned admins' });
+  }
+});
+
 router.get('/latest-center', async (req, res) => {
   try {
     const latestUser = await User.findOne({
@@ -227,11 +271,18 @@ router.get('/demo-centers', async (req, res) => {
         role: { [Op.in]: ['center', 'study-center'] },
         status: 'active'
       },
-      attributes: ['uid', 'name', 'email'],
+      attributes: ['uid', 'name', 'email', 'devPassword'],
       order: [['name', 'ASC']]
     });
     
-    res.json(centers);
+    const formatted = centers.map(c => ({
+      uid: c.uid,
+      name: c.name,
+      email: c.email,
+      password: c.devPassword || 'password123'
+    }));
+
+    res.json(formatted);
   } catch (error) {
     console.error('Demo Centers Fetch Error:', error);
     res.status(500).json({ error: 'Failed to fetch verified center roster' });
@@ -279,6 +330,38 @@ router.get('/demo-ceos', async (req, res) => {
       stack: error.stack
     });
     res.status(500).json({ error: 'Failed to fetch executive roster', details: error.message });
+  }
+});
+
+router.get('/demo-staff', async (req, res) => {
+  try {
+    const staff = await User.findAll({
+      where: { 
+        role: { [Op.notIn]: ['student', 'center', 'study-center', 'admin', 'ceo'] },
+        status: 'active'
+      },
+      attributes: ['uid', 'name', 'email', 'role', 'devPassword'],
+      include: [{ 
+        model: Department, 
+        attributes: ['name'] 
+      }],
+      limit: 30,
+      order: [['name', 'ASC']]
+    });
+
+    const formatted = staff.map(s => ({
+      uid: s.uid,
+      name: s.name,
+      email: s.email,
+      role: s.role,
+      department: s.Department?.name || 'Institutional Unit',
+      password: s.devPassword || (s.name === 'Shobil Sathish' ? 'shobilsathish' : 'password123')
+    }));
+    
+    res.json(formatted);
+  } catch (error) {
+    console.error('Demo Staff Fetch Error:', error);
+    res.status(500).json({ error: 'Failed to fetch institutional staff roster' });
   }
 });
 

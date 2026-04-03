@@ -49,16 +49,53 @@ export const roleGuard = (allowedRoles) => {
   };
 };
 
-const UNIT_ROLES = ['openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+// Standardized Guards for Institutional Control
+export const isAcademicOrAdmin = (req, res, next) => {
+  const UNIT_ROLES = [
+    'Open School Admin', 
+    'Online Department Admin', 
+    'Skill Department Admin', 
+    'BVoc Department Admin', 
+    'Academic Admin', 
+    'Organization Admin', 
+    'Finance Admin', 
+    'Operations Admin', 
+    'Sales & CRM Admin'
+  ];
+  const userRole = req.user.role || '';
+  const deptName = req.user.departmentName || '';
 
-// Architecture Admin: Can create/edit Universities, Programs (Academic Ops)
-export const isArchitectureAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'operations', 'OPS_ADMIN']);
+  const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
+  const roleMatch = normalizedRoles.includes(userRole.toLowerCase());
 
-// Academic Read/Operations: Units + Architecture Admins + Finance/Ops for config
-export const isAcademicOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'finance', 'operations', 'OPS_ADMIN', ...UNIT_ROLES]);
+  if (roleMatch || (userRole.toLowerCase() === 'employee' && deptName.toLowerCase().includes('sales & crm admin'))) {
+    return next();
+  }
+  return res.status(403).json({ error: `Forbidden: Institutional access denied for: ${userRole}` });
+};
 
-// Ops/Review Admin: Can perform student verification
-export const isOpsOrAdmin = roleGuard(['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'operations', 'OPS_ADMIN', ...UNIT_ROLES]);
+export const isOpsOrAdmin = (req, res, next) => {
+  const UNIT_ROLES = [
+    'Open School Admin', 
+    'Online Department Admin', 
+    'Skill Department Admin', 
+    'BVoc Department Admin', 
+    'Operations Admin', 
+    'Organization Admin', 
+    'Sales & CRM Admin'
+  ];
+  const userRole = req.user.role || '';
+  const deptName = req.user.departmentName || '';
 
-export const isSubDeptAdmin = roleGuard(['SUB_DEPT_ADMIN', ...UNIT_ROLES]);
-export const isSystemAdmin = roleGuard(['system-admin', 'org-admin']);
+  const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
+  const roleMatch = normalizedRoles.includes(userRole.toLowerCase());
+
+  if (roleMatch || (userRole.toLowerCase() === 'employee' && deptName.toLowerCase().includes('sales & crm admin'))) {
+    return next();
+  }
+  return res.status(403).json({ error: `Forbidden: Operations access denied for: ${userRole}` });
+};
+
+export const isSubDeptAdmin = roleGuard(['BVoc Department Admin', 'Skill Department Admin', 'Open School Admin', 'Online Department Admin']);
+export const isSystemAdmin = roleGuard(['Organization Admin']);
+export const isArchitectureAdmin = roleGuard(['Operations Admin', 'Organization Admin']);

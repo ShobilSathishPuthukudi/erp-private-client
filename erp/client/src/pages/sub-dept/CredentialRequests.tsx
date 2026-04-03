@@ -152,7 +152,7 @@ export default function CredentialRequests() {
             ) : isApproved && isExpired ? (
               <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Window Expired</span>
             ) : (
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Awaiting Approval</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Awaiting Approval</span>
             )}
           </div>
         );

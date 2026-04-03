@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Download, Clock, CalendarDays } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { format, subDays } from 'date-fns';
+import { toSentenceCase } from '@/lib/utils';
 
 interface ShiftLog {
   id: string;
@@ -83,10 +84,14 @@ export default function Attendance() {
   const columns: ColumnDef<ShiftLog>[] = [
     { 
       accessorKey: 'name', 
-      header: 'Employee Name',
-      cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span>
+      header: 'Employee name',
+      cell: ({ row }) => <span className="font-semibold text-slate-900">{toSentenceCase(row.original.name)}</span>
     },
-    { accessorKey: 'department', header: 'Department' },
+    { 
+      accessorKey: 'department', 
+      header: 'Department',
+      cell: ({ row }) => toSentenceCase(row.original.department)
+    },
     { 
       accessorKey: 'date', 
       header: 'Date',
@@ -94,7 +99,7 @@ export default function Attendance() {
     },
     { 
       accessorKey: 'checkIn', 
-      header: 'Check In',
+      header: 'Check in',
       cell: ({ row }) => (
         <span className={`font-mono text-xs ${row.original.checkIn === '--:--' ? 'text-slate-300' : 'text-slate-600'}`}>
           {row.original.checkIn}
@@ -103,7 +108,7 @@ export default function Attendance() {
     },
     { 
       accessorKey: 'checkOut', 
-      header: 'Check Out',
+      header: 'Check out',
       cell: ({ row }) => (
         <span className={`font-mono text-xs ${row.original.checkOut === '--:--' ? 'text-slate-300' : 'text-slate-600'}`}>
           {row.original.checkOut}
@@ -131,8 +136,8 @@ export default function Attendance() {
           'half-day': 'bg-blue-100 text-blue-700'
         };
         return (
-          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full uppercase tracking-wider ${colors[s]}`}>
-            {s}
+          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${colors[s]}`}>
+            {toSentenceCase(s)}
           </span>
         );
       }
@@ -141,20 +146,20 @@ export default function Attendance() {
 
   return (
     <div className="space-y-6">
-      {/* Header Panel */}
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-           <h1 className="text-2xl font-bold text-slate-900">Attendance & Shifts</h1>
-           <p className="text-slate-500">Monitor employee biometric clock inputs and timesheet logs across the entire organization.</p>
-        </div>
-        <button 
-          onClick={handleExport}
-          className="bg-white border text-slate-700 border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors flex items-center shadow-sm"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Export Timesheets
-        </button>
-      </div>
+      <PageHeader 
+        title="Attendance & Shifts"
+        description="Monitor employee biometric clock inputs and timesheet logs across the organization."
+        icon={Clock}
+        action={
+          <button 
+            onClick={handleExport}
+            className="bg-white border text-slate-700 border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors flex items-center shadow-sm whitespace-nowrap"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Timesheets
+          </button>
+        }
+      />
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

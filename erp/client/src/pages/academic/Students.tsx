@@ -12,6 +12,7 @@ interface Student {
   feeStatus: string;
   marks: any;
   program?: { name: string; type?: string };
+  subDepartment?: { name: string };
   verificationLogs?: any[];
 }
 
@@ -42,7 +43,7 @@ export default function Students() {
       header: 'Sub-Department', 
       cell: ({ row }) => (
         <div className="inline-block text-slate-700 bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded border border-slate-200 leading-normal max-w-[140px]">
-          {row.original.program?.type || 'Unassigned'}
+          {row.original.subDepartment?.name || 'GEN-ADMIN'}
         </div>
       )
     },
@@ -60,21 +61,15 @@ export default function Students() {
       header: 'Status', 
       cell: ({ row }) => {
         const s = row.original.status;
-        const e = row.original.enrollStatus;
         return (
-          <div className="flex flex-col gap-1">
-            <span className={`uppercase font-black text-[9px] tracking-widest px-2 py-0.5 rounded border ${
-              s === 'ENROLLED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
-              s === 'OPS_APPROVED' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-              s === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
-              'bg-slate-50 text-slate-700 border-slate-200'
-            }`}>
-              {s || 'In Review'}
-            </span>
-            <span className="text-[10px] text-slate-400 font-bold uppercase ml-1 opacity-60">
-              {e}
-            </span>
-          </div>
+          <span className={`uppercase font-black text-[9px] tracking-widest px-3 py-1.5 rounded-full border ${
+            s === 'ENROLLED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+            s === 'OPS_APPROVED' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+            s === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+            'bg-slate-50 text-slate-700 border-slate-200'
+          }`}>
+            {s || 'In Review'}
+          </span>
         );
       }
     },

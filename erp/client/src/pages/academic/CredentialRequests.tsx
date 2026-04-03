@@ -97,7 +97,7 @@ export default function CredentialRequests() {
       header: 'Justification / Purpose',
       cell: ({ row }) => (
         <div className="max-w-md">
-            <p className="text-xs text-slate-600 line-clamp-2 italic">"{row.original.remarks}"</p>
+            <p className="text-xs text-slate-600 line-clamp-2 ">"{row.original.remarks}"</p>
         </div>
       )
     },

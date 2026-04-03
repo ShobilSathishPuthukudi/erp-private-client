@@ -116,7 +116,7 @@ export default function SettingsGeneral() {
 
   if (loading) {
     return (
-      <div className="p-8 max-w-7xl mx-auto py-32 text-center text-slate-400 italic animate-pulse">
+      <div className="p-8 max-w-7xl mx-auto py-32 text-center text-slate-400 animate-pulse">
         Synchronizing institutional constants...
       </div>
     );

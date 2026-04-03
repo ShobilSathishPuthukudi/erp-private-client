@@ -10,6 +10,7 @@ interface ModalProps {
   children: ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   hideHeader?: boolean;
+  isTransparent?: boolean;
 }
 
 export function Modal({ 
@@ -18,7 +19,8 @@ export function Modal({
   title, 
   children, 
   maxWidth = '2xl',
-  hideHeader = false 
+  hideHeader = false,
+  isTransparent = false
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -59,7 +61,8 @@ export function Modal({
 
         <div 
           className={clsx(
-            "relative transform flex flex-col rounded-2xl bg-white text-left shadow-2xl transition-all w-full my-8 max-h-[90vh]",
+            "relative transform flex flex-col transition-all w-full my-8 max-h-[90vh]",
+            !isTransparent && "rounded-2xl bg-white shadow-2xl",
             maxWidthClasses[maxWidth]
           )}
           style={{ maxWidth: maxWidth === 'full' ? '95vw' : undefined }}
@@ -81,7 +84,7 @@ export function Modal({
           
           <div className={clsx(
             "overflow-y-auto flex-1",
-            !hideHeader ? "px-6 py-5 bg-slate-50/50" : "bg-white"
+            !hideHeader ? "px-6 py-5 bg-slate-50/50" : (!isTransparent ? "bg-white" : "")
           )}>
             {children}
           </div>

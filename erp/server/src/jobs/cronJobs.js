@@ -62,7 +62,7 @@ export const initCronJobs = () => {
       });
 
       if (criticalTasks.length > 0) {
-        const ceo = await User.findOne({ where: { role: 'ceo' } }) || await User.findOne({ where: { role: 'system-admin' } });
+        const ceo = await User.findOne({ where: { role: 'ceo' } }) || await User.findOne({ where: { role: 'Organization Admin' } });
         
         for (const task of criticalTasks) {
           // Escalate to CEO

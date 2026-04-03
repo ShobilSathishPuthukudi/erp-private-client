@@ -215,6 +215,72 @@ export default function Alerts() {
           </button>
         </div>
       </Modal>
+      
+      {/* Alert Glossary Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-8 space-y-6 border-b-4 border-b-blue-600">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600" />
+              Institutional Alert Registry
+            </h2>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">What alerts are currently being monitored?</p>
+          </div>
+          <div className="hidden md:flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full uppercase">
+              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
+              Live Monitoring Active
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { 
+              type: 'Escalated Task', 
+              icon: Clock, 
+              color: 'text-rose-600', 
+              bg: 'bg-rose-50', 
+              border: 'border-rose-100',
+              desc: 'High-priority task has exceeded its institutional deadline without resolution.' 
+            },
+            { 
+              type: 'Structural Gap', 
+              icon: Users, 
+              color: 'text-amber-600', 
+              bg: 'bg-amber-50', 
+              border: 'border-amber-100',
+              desc: 'A department is currently lacking a designated administrator (Unassigned Admin).' 
+            },
+            { 
+              type: 'Scope Failure', 
+              icon: Layout, 
+              color: 'text-blue-600', 
+              bg: 'bg-blue-50', 
+              border: 'border-blue-100',
+              desc: 'An executive CEO panel is missing visibility scopes, preventing data aggregation.' 
+            },
+            { 
+              type: 'Audit Exception', 
+              icon: Activity, 
+              color: 'text-emerald-600', 
+              bg: 'bg-emerald-50', 
+              border: 'border-emerald-100',
+              desc: 'Anomalous record activity detected (e.g. bulk deletions in target modules).' 
+            },
+          ].map((item, i) => (
+            <div key={i} className={`p-5 rounded-2xl border ${item.border} ${item.bg}/30 hover:shadow-lg transition-all group`}>
+               <div className={`w-10 h-10 rounded-xl ${item.bg} ${item.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
+                 <item.icon className="w-5 h-5" />
+               </div>
+               <h4 className="text-sm font-bold text-slate-800 mb-2 uppercase tracking-tight">{item.type}</h4>
+               <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                 {item.desc}
+               </p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">

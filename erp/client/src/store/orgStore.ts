@@ -9,8 +9,8 @@ interface OrgState {
 }
 
 export const useOrgStore = create<OrgState>((set) => ({
-  orgName: 'IITS RPS',
-  orgLogo: '/uploads/branding/org-logo-1774678934055.jpg',
+  orgName: 'ERP',
+  orgLogo: '',
   fetchConfig: async () => {
     try {
       const { data } = await api.get('/org-admin/config');

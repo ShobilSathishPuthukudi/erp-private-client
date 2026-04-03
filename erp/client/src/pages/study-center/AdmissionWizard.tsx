@@ -195,7 +195,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             ))}
                         </select>
                     </div>
-                    {programs.length === 0 && <p className="text-center text-xs text-slate-400 italic">No programs currently authorized for this center.</p>}
+                    {programs.length === 0 && <p className="text-center text-xs text-slate-400 ">No programs currently authorized for this center.</p>}
                 </div>
             )}
 
@@ -238,7 +238,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             ))}
                         </select>
                         {feeSchemas.length === 0 && (
-                            <p className="text-[10px] text-slate-400 italic text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 mt-4">
+                            <p className="text-[10px] text-slate-400 text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 mt-4">
                                 No specialized fee structures located for this academic node.
                             </p>
                         )}
@@ -290,8 +290,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             )}
 
             {/* Step 4: Student Data */}
-            {step === 4 && (
-                <div className="space-y-6">
+            <div className={`space-y-6 ${step === 4 ? 'block' : 'hidden'}`}>
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Legal Name</label>
@@ -411,11 +410,10 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         </button>
                         <button type="button" onClick={() => setStep(3)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to Fees</button>
                     </div>
-                </div>
-            )}
+            </div>
 
-            {step === 5 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* Step 5: Payment */}
+            <div className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 ${step === 5 ? 'block' : 'hidden'}`}>
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Initial Liability</h4>
@@ -503,8 +501,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         </button>
                         <button type="button" onClick={() => setStep(4)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to Candidate Info</button>
                     </div>
-                </div>
-            )}
+            </div>
         </form>
     );
 }

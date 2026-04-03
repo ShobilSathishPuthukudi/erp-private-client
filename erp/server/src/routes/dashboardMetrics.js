@@ -7,7 +7,7 @@ const router = express.Router();
 const { Task, Student, Payment, User, Department, Target, Program } = models;
 
 // Middleware for management-level access
-const isManagementOrAdmin = roleGuard(['org-admin', 'system-admin', 'ceo', 'academic']);
+const isManagementOrAdmin = roleGuard(['Organization Admin', 'Organization Admin', 'ceo', 'Academic Admin']);
 
 // Threshold definitions (configurable)
 const THRESHOLDS = {
@@ -74,7 +74,7 @@ router.get('/reports/daily-admissions', verifyToken, async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const allowedRoles = ['ADMIN', 'CEO', 'FINANCE', 'org-admin', 'system-admin', 'ceo', 'finance'];
+        const allowedRoles = ['ADMIN', 'CEO', 'FINANCE', 'Organization Admin', 'Organization Admin', 'ceo', 'Finance Admin'];
         if (!allowedRoles.includes(req.user.role) && !allowedRoles.includes(req.user.role?.toUpperCase())) {
             return res.status(403).json({ message: "Forbidden" });
         }

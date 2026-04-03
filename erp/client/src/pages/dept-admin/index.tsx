@@ -33,13 +33,13 @@ export default function DeptAdminDashboard() {
     <div className="space-y-8">
        <div className="flex justify-between items-center bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
           <div>
-             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter italic">Department Intelligence</h1>
-             <p className="text-slate-500 font-medium italic mt-1 text-sm uppercase tracking-widest">Forensic Oversight & Risk Telemetry / {new Date().toLocaleDateString()}</p>
+             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter ">Department Intelligence</h1>
+             <p className="text-slate-500 font-medium mt-1 text-sm uppercase tracking-widest">Forensic Oversight & Risk Telemetry / {new Date().toLocaleDateString()}</p>
           </div>
           <div className="flex gap-4">
              <div className="text-right">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">System Vital</p>
-                <div className="flex items-center gap-2 text-emerald-500 font-black italic">
+                <div className="flex items-center gap-2 text-emerald-500 font-black ">
                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                    HEALTHY / SYNCED
                 </div>

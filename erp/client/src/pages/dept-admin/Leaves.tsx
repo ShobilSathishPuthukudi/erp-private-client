@@ -96,7 +96,7 @@ export default function Leaves() {
     { 
       accessorKey: 'reason', 
       header: 'Reason / Details',
-      cell: ({ row }) => <span className="text-xs text-slate-600 italic line-clamp-1" title={row.original.reason}>{row.original.reason || 'No details provided'}</span>
+      cell: ({ row }) => <span className="text-xs text-slate-600 line-clamp-1" title={row.original.reason}>{row.original.reason || 'No details provided'}</span>
     },
     { 
       id: 'dates', 
@@ -130,7 +130,7 @@ export default function Leaves() {
       cell: ({ row }) => {
         const leave = row.original;
         if (leave.status !== 'pending_step1') {
-          return <span className="text-xs text-slate-400 italic">No action required</span>;
+          return <span className="text-xs text-slate-400 ">No action required</span>;
         }
 
         return (

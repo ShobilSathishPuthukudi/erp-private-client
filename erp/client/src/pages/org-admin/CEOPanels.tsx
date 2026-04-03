@@ -90,7 +90,7 @@ export default function CEOPanels() {
       header: 'Initial Visibility Scope',
       cell: ({ row }) => {
         const scopes = row.original.visibilityScope || [];
-        if (scopes.length === 0) return <span className="text-[10px] font-bold text-slate-400 italic">No Restriction Scope</span>;
+        if (scopes.length === 0) return <span className="text-[10px] font-bold text-slate-400 ">No Restriction Scope</span>;
         return (
           <div className="flex flex-wrap gap-1">
             {scopes.map(scope => (

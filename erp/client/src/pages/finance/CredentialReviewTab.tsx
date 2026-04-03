@@ -51,7 +51,7 @@ export default function CredentialReviewTab() {
               <ShieldCheck className="w-8 h-8 text-blue-600" />
               Security Authorization Control
            </h2>
-           <p className="text-slate-500 mt-1 font-medium italic">High-protocol review for Study Center credential reveals. All decisions are physically Grounded and audited.</p>
+           <p className="text-slate-500 mt-1 font-medium ">High-protocol review for Study Center credential reveals. All decisions are physically Grounded and audited.</p>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export default function CredentialReviewTab() {
 
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Justification</p>
-                   <p className="text-sm font-medium italic leading-relaxed text-slate-600">"{req.remarks}"</p>
+                   <p className="text-sm font-medium leading-relaxed text-slate-600">"{req.remarks}"</p>
                 </div>
              </div>
 

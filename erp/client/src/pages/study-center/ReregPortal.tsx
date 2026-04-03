@@ -57,7 +57,7 @@ export default function ReregPortal() {
          </div>
          <div className="relative z-10 max-w-2xl">
             <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Academic Re-Registration</h2>
-            <p className="text-slate-400 font-medium mb-8 leading-relaxed italic">Initiate the next academic cycle for your students. Ensure payment proofs are forensic and amounts match the program's fee schema for auto-approval.</p>
+            <p className="text-slate-400 font-medium mb-8 leading-relaxed ">Initiate the next academic cycle for your students. Ensure payment proofs are forensic and amounts match the program's fee schema for auto-approval.</p>
          </div>
       </div>
 

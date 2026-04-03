@@ -51,7 +51,7 @@ export default function DistributionDashboard() {
               <PieChart className="w-8 h-8 text-blue-600" />
               Partner Revenue Distributions
            </h2>
-           <p className="text-slate-500 mt-1 font-medium italic">Configure program-based fee splits and monitor partner-based payout queues forensically.</p>
+           <p className="text-slate-500 mt-1 font-medium ">Configure program-based fee splits and monitor partner-based payout queues forensically.</p>
         </div>
         <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
            <Download className="w-4 h-4" /> Export Ledger
@@ -63,7 +63,7 @@ export default function DistributionDashboard() {
            <div key={stat.partnerType} className="bg-white p-8 border border-slate-200 rounded-[32px] shadow-sm group">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{stat.partnerType} Share</p>
               <div className="flex justify-between items-baseline">
-                 <p className="text-3xl font-black text-slate-900 tracking-tighter italic">₹{(stat.totalAmount || 0).toLocaleString()}</p>
+                 <p className="text-3xl font-black text-slate-900 tracking-tighter ">₹{(stat.totalAmount || 0).toLocaleString()}</p>
                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{stat.count} Entries</span>
               </div>
            </div>

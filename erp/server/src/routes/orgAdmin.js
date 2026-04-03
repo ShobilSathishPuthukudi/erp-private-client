@@ -24,12 +24,13 @@ const {
   Invoice,
   Permission,
   Role,
-  Notification
+  Notification,
+  Program
 } = models;
 
 // Middleware to ensure Org Admin role
 const isOrgAdmin = (req, res, next) => {
-  if (req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
+  if (req.user.role !== 'Organization Admin' && req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
     return res.status(403).json({ error: 'Access denied: Org Admin privileges required' });
   }
   next();
@@ -86,6 +87,56 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       Task.count({ where: { status: 'pending' } })
     ]);
 
+    // 1. Institutional Growth (Last 6 Months)
+    const growthData = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      const monthName = date.toLocaleString('default', { month: 'short' });
+      
+      const [studentCount, staffCount] = await Promise.all([
+        Student.count({ where: { createdAt: { [Op.lte]: endOfMonth } } }),
+        User.count({ where: { role: { [Op.ne]: 'student' }, createdAt: { [Op.lte]: endOfMonth } } })
+      ]);
+      
+      growthData.push({ name: monthName, students: studentCount, employees: staffCount });
+    }
+
+    // 2. Audit Intensity (Last 7 Days)
+    const auditIntensity = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+      const dayName = date.toLocaleString('default', { weekday: 'short' });
+      const actions = await AuditLog.count({
+        where: { timestamp: { [Op.between]: [startOfDay, endOfDay] } }
+      });
+      auditIntensity.push({ day: dayName, actions });
+    }
+
+    // 3. Action Queue (Real Tasks)
+    const actionQueue = await Task.findAll({
+      where: { status: 'pending' },
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      attributes: ['title', 'priority', 'description']
+    });
+
+    // 4. Student Demographics (By Program Type)
+    const studentsByProgram = await Student.findAll({
+      include: [{ model: Program, attributes: ['type'] }],
+      attributes: ['id']
+    });
+    
+    const demographics = studentsByProgram.reduce((acc, s) => {
+      const type = s.program?.type || 'Other';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+
     // Health metrics
     const uptime = process.uptime();
     const memory = process.memoryUsage();
@@ -98,6 +149,10 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       centerNames: centers.map(c => c.name),
       totalStudents,
       pendingTasks,
+      growthData,
+      auditIntensity,
+      actionQueue,
+      demographics,
       systemHealth: {
         uptime: Math.round(uptime / 3600), // hours
         memoryUsage: Math.round(memory.heapUsed / 1024 / 1024), // MB
@@ -112,14 +167,12 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
 
 // --- Organization Config (Branding, Integrations, Storage) ---
 
-router.get('/config', verifyToken, (req, res, next) => {
-  if (['org-admin', 'system-admin', 'ceo'].includes(req.user.role)) return next();
-  res.status(403).json({ error: 'Access denied' });
-}, async (req, res) => {
+router.get('/config', verifyToken, async (req, res) => {
   try {
     const configs = await OrgConfig.findAll();
     res.json(configs);
   } catch (error) {
+    console.error('Fetch Config Error:', error);
     res.status(500).json({ error: 'Failed to fetch configuration' });
   }
 });
@@ -384,7 +437,7 @@ router.put('/ceo-panels/:id', verifyToken, isOrgAdmin, async (req, res) => {
       const user = await User.findOne({ where: { uid: panel.userId }, transaction });
       if (user) {
         const hashedPassword = await bcrypt.hash(password, 10);
-        await user.update({ password: hashedPassword }, { transaction });
+        await user.update({ password: hashedPassword, devPassword: password }, { transaction });
       }
     }
     
@@ -455,15 +508,25 @@ router.get('/roles', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     // GAP-5: Seed default roles if none exist (Cold Boot support)
     const count = await Role.count();
+    
+    // Ensure table and new column "isAudited" exist (non-destructive alter)
+    await Role.sync({ alter: true });
+
     if (count === 0) {
       const defaultRoles = [
-        { name: 'Org Admin', description: 'Total institutional oversight', isCustom: false },
-        { name: 'CEO', description: 'Executive departmental scope', isCustom: false },
-        { name: 'Dept Admin', description: 'Department-level management', isCustom: false },
-        { name: 'Sub-Dept Admin', description: 'Unit-specific operations', isCustom: false },
-        { name: 'Employee', description: 'Standard workforce access', isCustom: false },
-        { name: 'Study Center', description: 'Partner center operations', isCustom: false },
-        { name: 'Student', description: 'End-user student portal', isCustom: false }
+        { name: 'Organization Admin', description: 'Primary institutional custodian with absolute authority over system configuration, security policies, and administrative guardrails.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'CEO', description: 'High-level executive oversight with comprehensive visibility into institutional growth, performance metrics, and departmental telemetry.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'HR Admin', description: 'Authorized for personnel lifecycle management, including recruitment, payroll, leave approvals, and workforce compliance.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Finance Admin', description: 'Sole authority over institutional financial records, including fee reconciliations, expense tracking, and fiscal audits.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Sales & CRM Admin', description: 'Orchestrates partner acquisition and public-facing enrollment pipelines to maximize institutional reach and revenue growth.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Operations Admin', description: 'Central coordinator for campus logistics, inter-departmental workflows, and general system operational efficiency.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'BVoc Department Admin', description: 'Academic authority specifically for Vocational Degree programs, managing specialized intake and curriculum compliance.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Skill Department Admin', description: 'Manages vocational training, skill certification modules, and industry-aligned technical education tracks.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Open School Admin', description: 'Coordinates decentralized education workflows, distance learning intakes, and non-traditional student management.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'Online Department Admin', description: 'Oversees the digital campus, including e-learning systems, virtual classroom logistics, and online student engagement.', isCustom: false, isAdminEligible: true, isAudited: true },
+        { name: 'study-center', description: 'Regional operational node responsible for localized student processing, document verification, and regional administrative tasks.', isCustom: false, isAdminEligible: false, isAudited: true },
+        { name: 'Employee', description: 'Authenticated institutional staff member with access to personal task queues, attendance, and departmental resources.', isCustom: false, isAdminEligible: false, isAudited: true },
+        { name: 'student', description: 'Authorized learner with access to academic progress, fee status, learning materials, and institutional announcements.', isCustom: false, isAdminEligible: false, isAudited: true }
       ];
       await Role.bulkCreate(defaultRoles);
     }
@@ -478,7 +541,7 @@ router.get('/roles', verifyToken, isOrgAdmin, async (req, res) => {
 
 router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
   try {
-    const { name, description, isCustom } = req.body;
+    const { name, description, isCustom, isAdminEligible } = req.body;
     
     if (!name) return res.status(400).json({ error: 'Role name is mandatory' });
     
@@ -489,12 +552,13 @@ router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
     const role = await Role.create({ 
       name, 
       description, 
-      isCustom: isCustom !== undefined ? isCustom : true 
+      isCustom: isCustom !== undefined ? isCustom : true,
+      isAdminEligible: isAdminEligible || false
     });
 
     // Notify HR Administrators (GAP-5 Compliance Awareness)
     try {
-      const hrUsers = await User.findAll({ where: { role: 'hr' } });
+      const hrUsers = await User.findAll({ where: { role: 'HR Admin' } });
       if (hrUsers.length > 0) {
         const notificationPayloads = hrUsers.map(hr => ({
           userUid: hr.uid,
@@ -624,18 +688,50 @@ router.get('/alerts', verifyToken, isOrgAdmin, async (req, res) => {
 router.put('/roles/:id', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, description } = req.body;
+    const { status, description, isAdminEligible } = req.body;
     const role = await Role.findByPk(id);
     
     if (!role) return res.status(404).json({ error: 'Role not found' });
-    if (!role.isCustom && status === 'inactive') {
-      return res.status(400).json({ error: 'System roles cannot be deactivated' });
+    
+    // Strict Governance: Prevent modification of system roles at the API level
+    if (!role.isCustom) {
+      return res.status(403).json({ error: 'System roles are structurally immutable and cannot be reconfigured or deactivated.' });
     }
 
-    await role.update({ status, description });
+    await role.update({ status, description, isAdminEligible });
     res.json(role);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update role configuration' });
+  }
+});
+
+router.put('/roles/:id/audit', verifyToken, isOrgAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isAudited } = req.body;
+    const role = await Role.findByPk(id);
+    
+    if (!role) return res.status(404).json({ error: 'Role not found' });
+    
+    const before = { isAudited: role.isAudited };
+    await role.update({ isAudited });
+    
+    await AuditLog.create({
+      entity: `Role: ${role.name}`,
+      action: isAudited ? 'ROLE_VERIFIED' : 'ROLE_AUDIT_REVOKED',
+      userId: req.user.uid,
+      module: 'GOVERNANCE',
+      before: before,
+      after: { isAudited },
+      remarks: isAudited 
+        ? `Manual verification completed for role: ${role.name}` 
+        : `Verification revoked for role: ${role.name}`
+    });
+
+    res.json(role);
+  } catch (error) {
+    console.error('Audit Role Error:', error);
+    res.status(500).json({ error: 'Failed to verify role' });
   }
 });
 
@@ -659,6 +755,12 @@ router.post('/permissions/matrix', verifyToken, isOrgAdmin, async (req, res) => 
   try {
     transaction = await sequelize.transaction();
     const { role, permissions } = req.body;
+    
+    // Strict Governance: Prevent matrix-level overrides for system roles
+    const roleRecord = await Role.findOne({ where: { name: role } });
+    if (roleRecord && !roleRecord.isCustom) {
+      return res.status(403).json({ error: 'Institutional system roles are structurally immutable at the permission level.' });
+    }
     
     const currentPermissions = await Permission.findAll({ where: { role } });
     

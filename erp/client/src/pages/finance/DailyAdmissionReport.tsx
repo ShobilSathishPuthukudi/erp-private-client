@@ -45,7 +45,7 @@ export default function DailyAdmissionReport() {
     <div className="p-12 text-center">
       <div className="inline-block p-8 bg-red-50 rounded-[32px] border border-red-100">
         <h2 className="text-red-900 font-black uppercase tracking-tighter text-xl">System Synchronization Failure</h2>
-        <p className="text-red-600 font-medium italic mt-2">The institutional admission stream is currently offline or unreachable.</p>
+        <p className="text-red-600 font-medium mt-2">The institutional admission stream is currently offline or unreachable.</p>
         <button 
           onClick={() => window.location.reload()}
           className="mt-6 bg-red-600 text-white px-6 py-2 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all"
@@ -64,7 +64,7 @@ export default function DailyAdmissionReport() {
               <FileText className="w-8 h-8 text-blue-600" />
               Daily Admission Intelligence
            </h2>
-           <p className="text-slate-500 mt-1 font-medium italic">Monitor institutional growth in real-time. Branded PDF export enabled for executive reporting.</p>
+           <p className="text-slate-500 mt-1 font-medium ">Monitor institutional growth in real-time. Branded PDF export enabled for executive reporting.</p>
         </div>
         <button 
           onClick={exportPDF}
@@ -125,7 +125,7 @@ function MetricBox({ icon, label, value, sub }: any) {
             {icon}
          </div>
          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{label}</p>
-         <h4 className="text-2xl font-black text-slate-900 tracking-tighter italic">{value}</h4>
+         <h4 className="text-2xl font-black text-slate-900 tracking-tighter ">{value}</h4>
          <p className="text-[9px] font-bold text-slate-500 mt-2 uppercase tracking-widest">{sub}</p>
       </div>
    );

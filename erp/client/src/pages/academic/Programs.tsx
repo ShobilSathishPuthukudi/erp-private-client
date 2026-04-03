@@ -19,11 +19,16 @@ interface Program {
   subDeptId: number;
   intakeCapacity: number;
   type: string;
+  status: 'draft' | 'staged' | 'active';
   totalFee?: number;
+  baseFee?: number;
+  taxPercentage?: number;
   paymentStructure?: string[];
   tenure?: number;
+  totalCredits?: number;
   university?: {
     name: string;
+    shortName?: string;
   };
   createdAt: string;
 }
@@ -41,8 +46,11 @@ interface ProgramFormData {
   intakeCapacity: number;
   type: string;
   totalFee: number;
+  baseFee: number;
+  taxPercentage: number;
   paymentStructure: string[];
   tenure: number;
+  totalCredits: number;
 }
 
 export default function Programs() {
@@ -51,25 +59,39 @@ export default function Programs() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Program | null>(null);
+  const [deletingItem, setDeletingItem] = useState<Program | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestReason, setRequestReason] = useState('');
   const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
   const { user } = useAuthStore();
-  const isOps = user?.role === 'operations';
+  const isOps = user?.role === 'Operations Admin';
 
-  const { register, handleSubmit, reset, formState: { isSubmitting }, watch } = useForm<ProgramFormData>({
+  const { register, handleSubmit, reset, formState: { isSubmitting }, watch, setValue } = useForm<ProgramFormData>({
     defaultValues: {
       name: '',
       shortName: '',
       universityId: '',
       duration: 12,
       intakeCapacity: 50,
-      type: 'Online',
+      type: 'online',
       totalFee: 0,
+      baseFee: 0,
+      taxPercentage: 18,
       paymentStructure: [],
-      tenure: 0
+      tenure: 0,
+      totalCredits: 0
     }
   });
+
+  const watchBaseFee = watch('baseFee');
+  const watchTax = watch('taxPercentage');
+
+  useEffect(() => {
+    const base = parseFloat(String(watchBaseFee)) || 0;
+    const tax = parseFloat(String(watchTax)) || 0;
+    const total = base * (1 + tax / 100);
+    setValue('totalFee', parseFloat(total.toFixed(2)));
+  }, [watchBaseFee, watchTax, setValue]);
 
   const watchAllFields = watch();
   const selectedStructures = watchAllFields.paymentStructure;
@@ -84,11 +106,11 @@ export default function Programs() {
     !!watchAllFields.shortName?.trim() &&
     !!watchAllFields.universityId &&
     !!watchAllFields.duration &&
-    !!watchAllFields.intakeCapacity &&
     !!watchAllFields.type &&
     watchAllFields.totalFee !== undefined && watchAllFields.totalFee !== null && String(watchAllFields.totalFee).trim() !== '' &&
     watchAllFields.paymentStructure && watchAllFields.paymentStructure.length > 0 &&
-    (isCustomSelected ? !!watchAllFields.tenure : true);
+    (isCustomSelected ? !!watchAllFields.tenure : true) &&
+    watchAllFields.totalCredits !== undefined;
 
   const fetchData = async () => {
     try {
@@ -112,12 +134,16 @@ export default function Programs() {
 
   const openCreateModal = () => {
     setEditingItem(null);
-    reset({ name: '', shortName: '', universityId: '', duration: 12, intakeCapacity: 50, type: 'Online', totalFee: 0, paymentStructure: [], tenure: 0 });
+    reset({ name: '', shortName: '', universityId: '', duration: 12, intakeCapacity: 50, type: 'online', totalFee: 0, baseFee: 0, taxPercentage: 18, paymentStructure: [], tenure: 0, totalCredits: 0 });
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: Program) => {
     setEditingItem(item);
+    // Reverse calculate base fee if it is not present for legacy records
+    const initialBaseFee = item.baseFee || (item.totalFee ? (item.totalFee / 1.18) : 0);
+    const initialTax = item.taxPercentage || 18;
+
     reset({ 
       name: item.name, 
       shortName: item.shortName || '',
@@ -126,8 +152,11 @@ export default function Programs() {
       intakeCapacity: item.intakeCapacity,
       type: item.type,
       totalFee: item.totalFee || 0,
+      baseFee: parseFloat(initialBaseFee.toFixed(2)),
+      taxPercentage: initialTax,
       paymentStructure: item.paymentStructure || [],
-      tenure: item.tenure || 0
+      tenure: item.tenure || 0,
+      totalCredits: item.totalCredits || 0
     });
     setIsModalOpen(true);
   };
@@ -178,17 +207,24 @@ export default function Programs() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (item: Program) => {
+    setDeletingItem(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deletingItem) return;
+
     if (isOps) {
-        setPendingAction({ type: 'DELETE', id });
+        setPendingAction({ type: 'DELETE', id: deletingItem.id });
         setIsRequestModalOpen(true);
+        setDeletingItem(null);
         return;
     }
     
-    if (!window.confirm('Delete this active program? This halts all ongoing structural telemetry.')) return;
     try {
-      await api.delete(`/academic/programs/${id}`);
+      await api.delete(`/academic/programs/${deletingItem.id}`);
       toast.success('Program wiped from matrix.');
+      setDeletingItem(null);
       fetchData();
     } catch (error) {
       toast.error('Deletion block failed.');
@@ -202,7 +238,7 @@ export default function Programs() {
       cell: ({ row }) => (
         <div className="flex flex-col">
           <Link to={`/dashboard/academic/programs/${row.original.id}`} className="font-bold text-slate-900 hover:text-blue-600 transition-colors">
-            {row.original.name}
+            {row.original.shortName || row.original.name}
           </Link>
           <span className="text-[10px] font-mono text-slate-400">UUID-PRG-{row.original.id}</span>
         </div>
@@ -215,7 +251,7 @@ export default function Programs() {
         <div className="flex items-center gap-2">
           <Landmark className="w-4 h-4 text-slate-400" />
           <span className="text-sm font-medium text-slate-600">
-            {row.original.university?.name || 'Local Institutional Core'}
+            {row.original.university?.shortName || row.original.university?.name || 'Local Institutional Core'}
           </span>
         </div>
       )
@@ -231,29 +267,44 @@ export default function Programs() {
       ) 
     },
     { 
+      accessorKey: 'totalCredits', 
+      header: 'Credits', 
+      cell: ({ row }) => (
+        <span className="text-sm font-bold text-slate-700">{row.original.totalCredits || 0} PTS</span>
+      ) 
+    },
+    { 
       accessorKey: 'type', 
       header: 'Sub-Department',
       cell: ({ row }) => (
         <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${
-          row.original.type === 'Online' ? 'bg-blue-100 text-blue-700' :
-          row.original.type === 'Skill' ? 'bg-purple-100 text-purple-700' :
-          row.original.type === 'BVoc' ? 'bg-orange-100 text-orange-700' :
+          row.original.type?.toLowerCase() === 'online' ? 'bg-blue-100 text-blue-700' :
+          row.original.type?.toLowerCase() === 'skill' ? 'bg-purple-100 text-purple-700' :
+          row.original.type?.toLowerCase() === 'bvoc' ? 'bg-orange-100 text-orange-700' :
           'bg-slate-100 text-slate-700'
         }`}>
           {row.original.type}
         </span>
       )
     },
+
     { 
-      accessorKey: 'intakeCapacity', 
-      header: 'Intake Velocity', 
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-slate-400" />
-          <span className="text-sm font-medium text-slate-600">{row.original.intakeCapacity} Seats / Session</span>
-        </div>
-      ) 
+      accessorKey: 'status', 
+      header: 'Status',
+      cell: ({ row }) => {
+        const s = row.original.status;
+        let color = 'bg-slate-100 text-slate-700';
+        if (s === 'active') color = 'bg-emerald-100 text-emerald-700';
+        if (s === 'draft') color = 'bg-amber-100 text-amber-700';
+        if (s === 'staged') color = 'bg-blue-100 text-blue-700';
+        return (
+          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${color}`}>
+            {s}
+          </span>
+        );
+      }
     },
+
     {
       id: 'actions',
       header: 'Controls',
@@ -264,7 +315,7 @@ export default function Programs() {
             <button onClick={() => openEditModal(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white">
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
+            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -285,23 +336,28 @@ export default function Programs() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Configure multi-university programs and cross-departmental duration tracks.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <Library className="w-3.5 h-3.5 text-indigo-500" />
-              Academic Framework HUD
-           </div>
-        </div>
+        {programs.length > 0 && (
+          <button 
+            onClick={openCreateModal}
+            className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
+          >
+            <Library className="w-4 h-4" />
+            Add Program
+          </button>
+        )}
       </div>
 
-      <div className="max-w-md">
-        <DashCard 
-          title="Initialize Academic Pipeline"
-          description="Design and deploy new academic curricula and multi-university program structures."
-          onClick={openCreateModal}
-          icon={Library}
-          actionLabel="Formulate Program"
-        />
-      </div>
+      {programs.length === 0 && !isLoading && (
+        <div className="max-w-md">
+          <DashCard 
+            title="Initialize Academic Pipeline"
+            description="Design and deploy new academic curricula and multi-university program structures."
+            onClick={openCreateModal}
+            icon={Library}
+            actionLabel="Add Program"
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable 
@@ -312,6 +368,47 @@ export default function Programs() {
           searchPlaceholder="Locate by program syntax..." 
         />
       </div>
+
+      <Modal
+        isOpen={!!deletingItem}
+        onClose={() => setDeletingItem(null)}
+        title={['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? "Confirm Deletion" : "Governance Restriction"}
+        maxWidth="md"
+      >
+        <div className="space-y-6">
+          <div className={`p-4 rounded-2xl border flex gap-4 ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'}`}>
+            <ShieldAlert className={`w-6 h-6 mt-1 shrink-0 ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-600' : 'text-amber-600'}`} />
+            <div>
+              <h4 className={`text-sm font-black uppercase tracking-tight ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-900' : 'text-amber-900'}`}>
+                {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'Syllabus Revocation Protocol' : 'Institutional Deletion Guardrail'}
+              </h4>
+              <p className={`text-xs mt-1 leading-relaxed font-medium ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-700' : 'text-amber-700'}`}>
+                {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') 
+                  ? `You are about to eradicate the program "${deletingItem?.name}" from the curriculum architecture. This action halts all ongoing structural telemetry.`
+                  : `Institutional Guardrail: Program deletion restricted. The program "${deletingItem?.name}" is currently in the ${deletingItem?.status.toUpperCase()} state. Active frameworks must be retained for institutional data integrity.`
+                }
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 uppercase">
+            <button
+              onClick={() => setDeletingItem(null)}
+              className="px-6 py-2 text-slate-500 font-black text-[10px] tracking-widest"
+            >
+              Cancel
+            </button>
+            {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') && (
+              <button
+                onClick={executeDelete}
+                className="px-8 py-2 bg-rose-600 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true} maxWidth="2xl">
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
@@ -398,31 +495,66 @@ export default function Programs() {
                 </div>
                 </div>
 
+
+
                 <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Intake Velocity (Max Seats)</label>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Total Credits</label>
                 <div className="relative group">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
                     type="number"
-                    {...register('intakeCapacity', { required: true, valueAsNumber: true })}
+                    {...register('totalCredits', { required: true, valueAsNumber: true })}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                    min="1"
+                    min="0"
                     />
                 </div>
+                </div>
+
+                <div className="col-span-2 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Base Academic Fee (₹)</label>
+                    <div className="relative group">
+                        <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                        <input
+                        type="number"
+                        {...register('baseFee', { required: true, valueAsNumber: true })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Tax (%)</label>
+                    <div className="relative group">
+                        <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                        <input
+                        type="number"
+                        {...register('taxPercentage', { required: true, valueAsNumber: true })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                        placeholder="18"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="col-span-2">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Total Institutional Fee (₹)</label>
                 <div className="relative group">
-                    <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                     type="number"
-                    {...register('totalFee', { required: true, valueAsNumber: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                    disabled
+                    {...register('totalFee')}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500 cursor-not-allowed"
                     placeholder="0.00"
-                    min="0"
                     />
                 </div>
+                <p className="mt-1.5 text-[10px] text-slate-400 font-bold uppercase ml-1 tracking-tight">Auto-calculated: Base + (Base * Tax / 100)</p>
                 </div>
 
                 <div className="col-span-2">
@@ -446,7 +578,7 @@ export default function Programs() {
 
                 {isCustomSelected && (
                 <div className="col-span-2">
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 italic text-blue-600">
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 text-blue-600">
                     EMI Tenure (Custom Installments)
                     </label>
                     <div className="relative group">
@@ -472,10 +604,10 @@ export default function Programs() {
                     {...register('type', { required: true })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
                 >
-                    <option value="BVoc">BVoc Gateway</option>
-                    <option value="Skill">Skill Development</option>
-                    <option value="Online">Online Learning</option>
-                    <option value="OpenSchool">OpenSchool Access</option>
+                    <option value="Bvoc">Bvoc</option>
+                    <option value="Skill">Skill</option>
+                    <option value="online">online</option>
+                    <option value="OpenSchool">OpenSchool</option>
                 </select>
                 {editingItem && watch('type') !== editingItem.type && (
                     <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-2">

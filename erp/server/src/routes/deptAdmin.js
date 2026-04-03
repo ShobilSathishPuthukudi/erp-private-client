@@ -11,35 +11,60 @@ const { User, Task, Leave, Department } = models;
 const isDeptAdmin = (req, res, next) => {
   const role = req.user.role?.toLowerCase();
   const deptId = req.user.deptId || req.user.departmentId;
-  const allowedRoles = ['dept-admin', 'dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic', 'finance', 'sales', 'hr', 'ops', 'operations', 'org-admin', 'system-admin'];
+  const allowedRoles = ['dept-admin', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Finance Admin', 'Sales & CRM Admin', 'HR Admin', 'Operations Admin', 'Organization Admin', 'ceo'];
 
-  if (!allowedRoles.includes(role)) {
+  const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+
+  if (!normalizedAllowed.includes(role)) {
     console.warn(`[AUTH] Unauthorized Role: ${role} for UID ${req.user.uid}`);
     return res.status(403).json({ error: `Access denied: Role ${role} not authorized for management.` });
   }
 
   // If no deptId, we only block if it's NOT one of the center-level roles that MUST have a deptId
-  const centerRoles = ['openschool', 'online', 'skill', 'bvoc'];
+  const centerRoles = ['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'];
   if (centerRoles.includes(role) && !deptId) {
     return res.status(403).json({ error: 'Access denied: Unit ID missing for specialized role.' });
   }
 
   req.user.deptId = deptId;
+  req.user.subDepartment = req.user.subDepartment || (centerRoles.includes(role) ? role.charAt(0).toUpperCase() + role.slice(1) : null);
   next();
 };
 
 // --- Team Management ---
 router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const role = req.user.role?.toLowerCase().trim();
+    const role = req.user.role?.toLowerCase()?.trim();
     const queryWhere = {};
     
-    // Isolation logic: Only filter by deptId if the user is a departmental role
-    // Global roles (Academic, Operations, Org-Admin) see the full roster for institutional oversight.
-    const globalRoles = ['academic', 'operations', 'org-admin', 'system-admin', 'ops', 'finance'];
-    
-    if (req.user.deptId && !globalRoles.includes(role)) {
-      queryWhere.deptId = req.user.deptId;
+    // Narrow Scope for Operations: See specified departments only
+    if (role === 'Operations Admin') {
+      queryWhere.deptId = { [Op.in]: ['Operations Admin', 'BVoc Department Admin', 'Skill Department Admin', 'Online Department Admin', 'Open School Admin'] };
+    } else if (role === 'HR Admin') {
+      // HR Oversight: Own department + all departmental admins
+      const adminRoles = ['Academic Admin', 'Finance Admin', 'ops', 'Operations Admin', 'Sales & CRM Admin', 'HR Admin', 'BVoc Department Admin', 'Skill Department Admin', 'Online Department Admin', 'Open School Admin', 'Organization Admin', 'Organization Admin'];
+      queryWhere[Op.or] = [
+        { deptId: req.user.deptId },
+        { role: { [Op.in]: adminRoles } }
+      ];
+    } else {
+      // Oversight Policy: Only filter by deptId if the user is a departmental role
+      // Global roles continue to have institutional oversight.
+      const globalRoles = ['Organization Admin', 'Operations Admin', 'Finance Admin', 'ceo'];
+      
+      if (req.user.deptId && !globalRoles.includes(role)) {
+        queryWhere.deptId = req.user.deptId;
+        
+        // Specialized Unit Isolation (BVoc, Skill, etc.)
+        const unitRoles = ['BVoc Department Admin', 'Skill Department Admin', 'Online Department Admin', 'Open School Admin'];
+        if (unitRoles.includes(role)) {
+            // Find users in the same sub-department OR users with the same administrative role
+            queryWhere[Op.or] = [
+                { subDepartment: req.user.subDepartment },
+                { role: role }
+            ];
+        }
+      }
     }
 
     const team = await User.findAll({
@@ -58,7 +83,7 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
 router.post('/team/onboard', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
-    if (userRole !== 'hr' && userRole !== 'org-admin' && userRole !== 'system-admin') {
+    if (userRole !== 'HR Admin' && userRole !== 'Organization Admin' && userRole !== 'Organization Admin') {
       return res.status(403).json({ error: 'Governance Error: Employee enrollment is restricted to the Human Resources department.' });
     }
     const { email, password, name, subDepartment, role, reportingManagerUid } = req.body;
@@ -79,12 +104,14 @@ router.post('/team/onboard', verifyToken, isDeptAdmin, async (req, res) => {
       uid: generatedUid,
       email,
       password: hashedPassword,
+      devPassword: password,
       role: role || 'employee',
       name,
       deptId: req.user.deptId,
       subDepartment: subDepartment || req.user.subDepartment || 'General',
       reportingManagerUid: reportingManagerUid || req.user.uid,
-      status: 'active' // Direct registration by Dept Admin is immediate
+      status: 'active', // Direct registration by Dept Admin is immediate
+      devPassword: password
     });
 
     res.status(201).json(newUser);
@@ -144,24 +171,31 @@ router.put('/team/:uid/status', verifyToken, isDeptAdmin, async (req, res) => {
 // --- Tasks Management ---
 router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   const { departmentId, subDepartmentId } = req.query;
+  const role = req.user.role?.toLowerCase();
+  const globalRoles = ['Organization Admin', 'Operations Admin', 'Finance Admin', 'ceo'];
 
-  // Step 3: Backend Validation
-  if (!departmentId) {
+  // Oversight Policy: departmentId is mandatory for department roles but optional for executives.
+  if (!departmentId && !globalRoles.includes(role)) {
     return res.status(400).json({ 
-        message: "departmentId is required",
+        message: "departmentId is required for departmental task oversight.",
         module: "DEPT_ADMIN"
     });
   }
 
-  // Step 9: Logging
-  console.log("Dept Tasks API:", { departmentId, subDepartmentId });
+  // Diagnostic Logging
+  console.log(`[DEPT_ADMIN] Fetching Tasks: Role=${role}, Dept=${departmentId}, SubDept=${subDepartmentId}`);
 
   try {
-    // Step 4 & 5: Safe Query & Null-Safe Joins
-    const whereClause = { 
-        departmentId,
-        // Step 1: Optional Sub-Department Filter
-        ...(subDepartmentId && { subDepartmentId })
+    // Oversight Query: Filter by departmentId only if provided (execs might skip for total view)
+    // Fix: Always include tasks assigned DIRECTLY to the requester, even if department filter is active.
+    const whereClause = {
+        [Op.or]: [
+            {
+                ...(departmentId && { departmentId }),
+                ...(subDepartmentId && { subDepartmentId })
+            },
+            { assignedTo: req.user.uid }
+        ]
     };
 
     const now = new Date();
@@ -203,13 +237,53 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
 
 router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const { assignedTo, title, deadline, priority, departmentId, subDepartmentId } = req.body;
-    
-    // Verify assignee belongs to the department scope
-    const assignee = await User.findOne({ where: { uid: assignedTo, deptId: departmentId } });
-    if (!assignee) {
-      return res.status(400).json({ error: 'Assignee must be a member of the target department scope' });
+    let { assignedTo, title, deadline, priority, departmentId, subDepartmentId } = req.body;
+    let targetUser;
+
+    // Refined Task Assignment Governance
+    const userRole = req.user.role?.toLowerCase()?.trim();
+    const isCEO = userRole === 'ceo';
+    const isOpsOrAcad = ['operations admin', 'organization admin', 'ceo'].includes(userRole);
+
+    if (isCEO) {
+      targetUser = await User.findOne({ where: { uid: assignedTo } });
+      if (!targetUser || targetUser.role?.toLowerCase()?.trim() !== 'hr admin') {
+        return res.status(403).json({ error: 'Access denied: CEO can only assign tasks to HR personnel' });
+      }
+    } else if (isOpsOrAcad) {
+      targetUser = await User.findOne({ where: { uid: assignedTo } });
+      if (!targetUser) return res.status(404).json({ error: 'Assignee not found' });
+      
+      const subDeptRoles = ['bvoc department admin', 'skill department admin', 'online department admin', 'open school admin'];
+      const isSubDeptAdmin = subDeptRoles.includes(targetUser.role?.toLowerCase()?.trim());
+      const isSameDept = targetUser.deptId === req.user.deptId;
+
+      if (!isSubDeptAdmin && !isSameDept) {
+        return res.status(403).json({ error: 'Access denied: Operations can only assign tasks to Sub-Dept Admins or their own department team' });
+      }
+    } else if (userRole === 'hr admin') {
+      targetUser = await User.findOne({ where: { uid: assignedTo } });
+      if (!targetUser) return res.status(404).json({ error: 'Assignee not found' });
+      
+      const adminRoles = ['academic admin', 'finance admin', 'ops', 'operations admin', 'sales & crm admin', 'hr admin', 'bvoc department admin', 'skill department admin', 'online department admin', 'open school admin', 'organization admin'];
+      const isTargetAdmin = adminRoles.includes(targetUser.role?.toLowerCase()?.trim());
+      const isSameDept = targetUser.deptId === req.user.deptId;
+
+      if (!isTargetAdmin && !isSameDept) {
+        return res.status(403).json({ error: 'Access denied: HR can only assign tasks to administrators or their own department personnel' });
+      }
+    } else {
+      // Standard Dept Admin restriction: Own department only
+      targetUser = await User.findOne({ where: { uid: assignedTo, deptId: req.user.deptId } });
+      if (!targetUser) {
+        return res.status(403).json({ error: 'Access denied: You can only assign tasks to team members within your department scope' });
+      }
     }
+
+    // Step 10: Automatic Context Resolution
+    // If the creator doesn't specify a department (e.g., CEO), fallback to the target's department
+    if (!departmentId && targetUser) departmentId = targetUser.deptId;
+    if (!subDepartmentId && targetUser) subDepartmentId = targetUser.subDepartment;
 
     const task = await Task.create({
       assignedTo,
@@ -225,10 +299,10 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
     // GAP-2: Real-Time & Persistent Notification
     await createNotification(req.io, {
       targetUid: assignedTo,
-      title: 'Institutional Directive Assigned',
+      title: 'New Institutional Directive',
       message: `New task: ${title}. High-priority delivery expected.`,
       type: 'info',
-      link: '/dashboard/employee/tasks'
+      link: '/dashboard/tasks'
     });
 
     res.status(201).json(task);
@@ -277,7 +351,8 @@ router.get('/leaves', verifyToken, isDeptAdmin, async (req, res) => {
         { 
           model: User, 
           as: 'employee', 
-          attributes: ['uid', 'name', 'email'],
+          attributes: ['uid', 'name', 'email', 'deptId'],
+          include: [{ model: Department, as: 'department', attributes: ['name'] }],
           where: { deptId: req.user.deptId } 
         }
       ],
@@ -310,15 +385,14 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
       step1By: req.user.uid
     });
     
-    // Notify employee of Step 1 approval
-    if (req.io) {
-      req.io.emit('notification', {
-        targetUid: leave.employeeId,
-        title: 'Leave Update',
-        message: `Your leave request to ${new Date(leave.toDate).toLocaleDateString()} was Step-1 Approved`,
-        type: 'success'
-      });
-    }
+    // Notify employee of Step 1 approval (Persistent Alert)
+    await createNotification(req.io, {
+      targetUid: leave.employeeId,
+      title: 'Leave Update (Step-1)',
+      message: `Your leave request for ${leave.type} (${leave.fromDate} to ${leave.toDate}) was Step-1 APPROVED by your Department Head and forwarded to HR.`,
+      type: 'success',
+      link: '/dashboard/employee/leaves'
+    });
     
     res.json(leave);
   } catch (error) {
@@ -347,7 +421,14 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
       step1By: req.user.uid
     });
     
-    res.json(leave);
+    // Notify employee of Step 1 rejection (Persistent Alert)
+    await createNotification(req.io, {
+      targetUid: leave.employeeId,
+      title: 'Leave Rejected (Step-1)',
+      message: `Your leave request for ${leave.type} was rejected by your Department Head.`,
+      type: 'error',
+      link: '/dashboard/employee/leaves'
+    });
   } catch (error) {
     console.error('Reject team leave error:', error);
     res.status(500).json({ error: 'Failed to reject team leave' });

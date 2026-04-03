@@ -12,9 +12,11 @@ const router = express.Router();
 const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module } = models;
 
 const isFinanceOrAdmin = (req, res, next) => {
-  const userRole = req.user.role?.toLowerCase();
-  const allowed = ['finance', 'org-admin', 'system-admin'];
-  if (!allowed.includes(userRole)) {
+  const userRole = req.user.role?.toLowerCase()?.trim();
+  const allowed = ['Finance Admin', 'Organization Admin'];
+  const normalizedAllowed = allowed.map(r => r.toLowerCase());
+  
+  if (!normalizedAllowed.includes(userRole)) {
     return res.status(403).json({ error: 'Access denied: Finance privileges required' });
   }
   next();

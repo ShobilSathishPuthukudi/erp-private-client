@@ -15,6 +15,10 @@ const User = sequelize.define('user', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  devPassword: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   role: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -81,6 +85,8 @@ const User = sequelize.define('user', {
     type: DataTypes.INTEGER,
     defaultValue: 20,
   }
+}, {
+  timestamps: true
 });
 
 export default User;

@@ -54,7 +54,7 @@ export default function SecurityControl() {
            </div>
            <div className="relative z-10 max-w-2xl">
               <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Institutional Security Control</h2>
-              <p className="text-slate-400 font-medium mb-8 leading-relaxed italic">Manage time-limited access to Study Center credentials. All requests are forensically audited and require Finance authorization.</p>
+              <p className="text-slate-400 font-medium mb-8 leading-relaxed ">Manage time-limited access to Study Center credentials. All requests are forensically audited and require Finance authorization.</p>
            </div>
         </div>
       )}
@@ -138,7 +138,7 @@ export default function SecurityControl() {
                          {req.status}
                        </span>
                     </div>
-                    <p className="text-slate-500 italic truncate">"{req.remarks}"</p>
+                    <p className="text-slate-500 truncate">"{req.remarks}"</p>
                  </div>
                ))}
             </div>

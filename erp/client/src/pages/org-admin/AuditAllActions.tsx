@@ -221,7 +221,7 @@ export default function AuditAllActions() {
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-slate-300 font-bold py-10 text-center italic text-xs uppercase tracking-widest">Initial Provisioning</div>
+                                <div className="text-slate-300 font-bold py-10 text-center text-xs uppercase tracking-widest">Initial Provisioning</div>
                               )}
                             </div>
                           </div>
@@ -245,7 +245,7 @@ export default function AuditAllActions() {
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-rose-400 font-bold py-10 text-center italic text-xs uppercase tracking-widest">Resource Decommissioned</div>
+                                <div className="text-rose-400 font-bold py-10 text-center text-xs uppercase tracking-widest">Resource Decommissioned</div>
                               )}
                             </div>
                           </div>

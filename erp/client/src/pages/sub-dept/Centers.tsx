@@ -5,6 +5,7 @@ import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { toSentenceCase } from '@/lib/utils';
 
 interface Center {
   id: number;
@@ -44,7 +45,7 @@ export default function Centers() {
   const columns: ColumnDef<Center>[] = [
     { 
       accessorKey: 'name', 
-      header: 'Center Identity',
+      header: 'Center identity',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">

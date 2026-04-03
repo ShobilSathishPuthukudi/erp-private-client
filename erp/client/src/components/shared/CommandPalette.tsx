@@ -113,13 +113,13 @@ export default function CommandPalette() {
   const quickActions: QuickAction[] = [];
   
   if (user) {
-    if (['org-admin', 'hr'].includes(user.role)) {
+    if (['Organization Admin', 'hr'].includes(user.role)) {
       quickActions.push({ id: 'add-emp', title: 'Add New Employee', type: 'Action', icon: Plus, action: () => navigate('/dashboard/hr/employees') });
     }
-    if (['org-admin', 'academic', 'operations'].includes(user.role)) {
+    if (['Organization Admin', 'academic', 'operations'].includes(user.role)) {
       quickActions.push({ id: 'add-student', title: 'Register Student', type: 'Action', icon: Plus, action: () => navigate('/dashboard/academic/students') });
     }
-    if (['sales', 'org-admin'].includes(user.role)) {
+    if (['sales', 'Organization Admin'].includes(user.role)) {
       quickActions.push({ id: 'add-lead', title: 'Capture Sales Lead', type: 'Action', icon: Send, action: () => navigate('/dashboard/sales') });
     }
     quickActions.push({ id: 'leave-req', title: 'Request Leave', type: 'Action', icon: Briefcase, action: () => navigate('/dashboard/employee/leaves') });

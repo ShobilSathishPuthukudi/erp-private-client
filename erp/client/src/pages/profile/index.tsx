@@ -151,7 +151,7 @@ export default function ProfilePage() {
               <h1 className="hero-name">{user?.name || 'System User'}</h1>
               <span className="hero-role-badge">
                 <ShieldCheck size={14} className="mr-1 inline" />
-                {user?.role === 'org-admin' ? 'Organization Admin' : user?.role?.replace('-', ' ')}
+                {user?.role === 'Organization Admin' ? 'Organization Admin' : user?.role?.replace('-', ' ')}
               </span>
             </div>
             <p className="hero-subtext mt-2">

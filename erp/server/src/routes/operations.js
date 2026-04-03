@@ -2,17 +2,18 @@ import express from 'express';
 import { models, sequelize } from '../models/index.js';
 import { verifyToken, isOpsOrAdmin } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
-const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram } = models;
+const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram, Notification } = models;
 
 const getSubDeptId = (user) => {
   if (!user) return null;
   const unitStr = (user.subDepartment || user.role || '').toLowerCase();
-  if (unitStr.includes('openschool')) return 8;
-  if (unitStr.includes('online')) return 9;
-  if (unitStr.includes('skill')) return 10;
-  if (unitStr.includes('bvoc')) return 11;
+  if (unitStr.includes('Open School Admin')) return 8;
+  if (unitStr.includes('Online Department Admin')) return 9;
+  if (unitStr.includes('Skill Department Admin')) return 10;
+  if (unitStr.includes('BVoc Department Admin')) return 11;
   return null;
 };
 
@@ -20,18 +21,17 @@ const getSubDeptId = (user) => {
 // CENTER AUDIT SYSTEM
 // ==========================================
 
-router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
+router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
+    const { status } = req.query; // pending | approved | rejected
     const whereClause = { 
       type: { [Op.in]: ['center', 'study-center'] }, 
-      auditStatus: 'pending' 
+      auditStatus: status || 'pending' 
     };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit
-    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
-      const subDeptMapReverse = { 8: 'openschool', 9: 'online', 10: 'skill', 11: 'bvoc' };
+    if (['SUB_DEPT_ADMIN', 'Openschool', 'Online', 'Skill', 'Bvoc', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role)) {
       const subDeptId = getSubDeptId(req.user);
-      const subDeptName = subDeptMapReverse[subDeptId] || req.user.subDepartment;
 
       const mappedCenterIds = await CenterProgram.findAll({
         where: { subDeptId: subDeptId, isActive: true },
@@ -43,46 +43,76 @@ router.get('/centers/pending', verifyToken, isOpsOrAdmin, async (req, res) => {
 
     const centers = await Department.findAll({
       where: whereClause,
+      include: [
+        { model: User, as: 'referringBDE', attributes: ['name'] }
+      ],
       order: [['createdAt', 'DESC']]
     });
     res.json(centers);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch pending center audits' });
-  }
-});
-
-router.get('/centers/approved', verifyToken, isOpsOrAdmin, async (req, res) => {
-  try {
-    const centers = await Department.findAll({
-      where: { 
-        type: { [Op.in]: ['center', 'study-center'] }, 
-        auditStatus: 'approved' 
-      }
-    });
-    res.json(centers);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch approved centers' });
+    res.status(500).json({ error: 'Failed to fetch center audit ledger' });
   }
 });
 
 router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, infrastructureDetails, subDepartments } = req.body;
+    const { status, reason, infrastructureDetails, subDepartments, loginId, password, programIds } = req.body;
 
     const center = await Department.findByPk(id);
-    if (!center || center.type !== 'center') {
+    if (!center || !['center', 'study-center'].includes(center.type)) {
       return res.status(404).json({ error: 'Study center not found' });
+    }
+
+    if (status === 'approved' && loginId && password) {
+      if (!center.adminId) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await User.create({
+          uid: loginId,
+          password: hashedPassword,
+          devPassword: password, // For administrative reference during beta
+          name: center.name,
+          email: center.metadata?.contactEmail || `${loginId}@center.erp`,
+          role: 'study-center',
+          deptId: center.id,
+          status: 'active'
+        });
+        center.adminId = newUser.uid;
+      }
+      center.loginId = loginId;
+      center.password = password; // For administrative tracking in Department UI
     }
 
     await center.update({
       auditStatus: status,
       rejectionReason: status === 'rejected' ? reason : null,
       infrastructureDetails: infrastructureDetails || center.infrastructureDetails,
-      status: status === 'approved' ? 'active' : 'inactive'
+      status: status === 'approved' ? 'active' : 'inactive',
+      loginId: center.loginId,
+      password: center.password,
+      adminId: center.adminId
     });
 
-    // Jurisdictional boundaries are now tracked via CenterProgram, no manual sync needed here.
+     if (status === 'approved' && center.bdeId) {
+        await Notification.create({
+            userUid: center.bdeId,
+            type: 'success',
+            message: `Institutional Ratification: Center "${center.name}" has been approved by Operations.`,
+            link: '/dashboard/sales/referrals'
+        });
+    }
+
+    if (status === 'approved' && programIds && Array.isArray(programIds)) {
+        for (const progId of programIds) {
+            const program = await Program.findByPk(progId);
+            if (program) {
+                await CenterProgram.findOrCreate({
+                    where: { centerId: center.id, programId: program.id },
+                    defaults: { subDeptId: program.subDeptId || 1, isActive: true }
+                });
+            }
+        }
+    }
 
     res.json({ message: `Center audit ${status} successfully and jurisdictional boundaries synchronized.`, center });
   } catch (error) {
@@ -94,9 +124,30 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
 // SYLLABUS MANAGEMENT
 // ==========================================
 
+async function recalculateSyllabusStatus(programId) {
+  try {
+    const program = await Program.findByPk(programId);
+    if (!program) return;
+
+    // Only transition to 'staged' if it's currently 'draft'
+    if (program.status !== 'draft' && program.status !== 'staged') return;
+
+    const subjects = await Subject.findAll({ where: { programId } });
+    const currentCredits = subjects.reduce((sum, s) => sum + (s.credits || 0), 0);
+    
+    const isThresholdMet = currentCredits >= (program.totalCredits || 0) && currentCredits > 0;
+    const newStatus = isThresholdMet ? 'staged' : 'draft';
+
+    await program.update({ status: newStatus });
+  } catch (error) {
+    console.error('[SYLLABUS SYNC ERROR]:', error);
+  }
+}
+
 router.post('/subjects', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const subject = await Subject.create(req.body);
+    await recalculateSyllabusStatus(req.body.programId);
     res.status(201).json(subject);
   } catch (error) {
     res.status(500).json({ error: 'Failed to add academic subject' });
@@ -115,7 +166,17 @@ router.post('/modules', verifyToken, isOpsOrAdmin, async (req, res) => {
 router.delete('/subjects/:id', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await Subject.destroy({ where: { id } });
+    const subject = await Subject.findByPk(id);
+    if (!subject) return res.status(404).json({ error: 'Subject not found' });
+    
+    const programId = subject.programId;
+    
+    // Manual Cascade for stabilization
+    await Module.destroy({ where: { subjectId: id } });
+    await subject.destroy();
+    
+    await recalculateSyllabusStatus(programId);
+    
     res.json({ message: 'Subject removed from architecture' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to revoke subject' });
@@ -154,7 +215,7 @@ router.put('/programs/:id/syllabus', verifyToken, isOpsOrAdmin, async (req, res)
 router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
     const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
     
     // Base stats
@@ -186,7 +247,7 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     if (!isSubDeptAdmin) {
       const subDeptIds = [8, 9, 10, 11];
       const subDeptNames = ['Open School', 'Online', 'Skill', 'BVoc'];
-      const subDeptKeys = ['openschool', 'online', 'skill', 'bvoc'];
+      const subDeptKeys = ['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'];
 
       const breakdown = await Promise.all(subDeptIds.map(async (id, index) => {
         const key = subDeptKeys[index];
@@ -267,7 +328,7 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
     const whereClause = { 
        type: { [Op.in]: ['center', 'study-center'] } 
     };
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
     const sid = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
 
     if (sid) {
@@ -296,7 +357,7 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
 
 router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
     const subDeptId = getSubDeptId(req.user);
     const whereClause = isSubDeptAdmin ? { subDepartmentId: subDeptId } : {};
 

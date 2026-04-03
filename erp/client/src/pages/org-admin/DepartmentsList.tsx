@@ -9,13 +9,13 @@ import {
   CheckCircle2, 
   AlertCircle,
   Building2,
-  ChevronRight,
   ShieldCheck,
   Shield,
   Database
 } from 'lucide-react';
 import { Modal } from '../../components/shared/Modal';
 import DepartmentCreate from './DepartmentCreate';
+import { PageHeader } from '../../components/shared/PageHeader';
 
 export default function DepartmentsList() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -24,11 +24,6 @@ export default function DepartmentsList() {
   const [policy, setPolicy] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDept, setSelectedDept] = useState<any>(null);
-
-  useEffect(() => {
-    fetchDepartments();
-    fetchPolicy();
-  }, []);
 
   const fetchPolicy = async () => {
     try {
@@ -54,6 +49,11 @@ export default function DepartmentsList() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchPolicy();
+  }, []);
 
   const toggleStatus = async (id: number, currentStatus: string) => {
     try {
@@ -116,17 +116,11 @@ export default function DepartmentsList() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Database className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">All Departments</h1>
-            <p className="text-slate-500 mt-1">The master list of organizational units and their administrators.</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
+      <PageHeader 
+        title="All Departments"
+        description="The master list of organizational units and their administrators."
+        icon={Database}
+        action={
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
@@ -134,8 +128,8 @@ export default function DepartmentsList() {
             <Plus className="w-5 h-5 mr-2" />
             New Department
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <Modal
         isOpen={isModalOpen}
@@ -234,7 +228,7 @@ export default function DepartmentsList() {
                             );
                         })}
                         {(dept.metadata?.features || dept.features || []).length === 0 && (
-                            <span className="text-[9px] text-slate-400 font-medium italic">No features provisioned</span>
+                            <span className="text-[9px] text-slate-400 font-medium ">No features provisioned</span>
                         )}
                     </div>
                   </div>
@@ -285,19 +279,6 @@ export default function DepartmentsList() {
               </div>
             ))}
             
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8 flex flex-col items-center justify-center text-center opacity-70 group hover:opacity-100 transition-all"
-            >
-              <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Plus className="w-8 h-8 text-slate-400" />
-              </div>
-              <h4 className="font-bold text-slate-900">Add Department</h4>
-              <p className="text-xs text-slate-500 mt-2 max-w-[200px]">Expand your organizational structure with a new functional unit.</p>
-              <div className="mt-6 text-sm font-bold text-blue-600 flex items-center">
-                Get Started <ChevronRight className="w-4 h-4 ml-1" />
-              </div>
-            </button>
           </div>
         )}
       </div>

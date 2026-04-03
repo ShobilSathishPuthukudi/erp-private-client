@@ -67,7 +67,7 @@ export default function ReferralForm() {
                 <h1 className="text-4xl lg:text-5xl font-black leading-none uppercase tracking-tighter mb-6">
                     Expand Your <br/> <span className="text-blue-500">Academic</span> <br/> Horizon.
                 </h1>
-                <p className="text-slate-400 font-medium max-w-xs leading-relaxed italic">Join India's most advanced ERP-driven educational ecosystem and scale your study center operations.</p>
+                <p className="text-slate-400 font-medium max-w-xs leading-relaxed ">Join India's most advanced ERP-driven educational ecosystem and scale your study center operations.</p>
             </div>
             <div className="pt-12 border-t border-white/10 mt-12 relative z-10">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mb-4">Trusted by 500+ Centers</p>
@@ -80,7 +80,7 @@ export default function ReferralForm() {
         </div>
 
         <div className="p-12 lg:p-16">
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-8 italic">Register Interest</h2>
+            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-8 ">Register Interest</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
                     <div>

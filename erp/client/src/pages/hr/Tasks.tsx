@@ -3,9 +3,11 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, ShieldAlert } from 'lucide-react';
+import { Plus, ShieldAlert, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { useAuthStore } from '@/store/authStore';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Task {
   id: number;
@@ -27,6 +29,8 @@ export default function HRTasks() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user } = useAuthStore();
+  const isCEO = user?.role?.toLowerCase() === 'ceo';
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
 
@@ -121,16 +125,20 @@ export default function HRTasks() {
 
   return (
     <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Global Task Control</h1>
-          <p className="text-slate-500">Monitor and escalate institutional deliverables</p>
-        </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-all font-medium">
-          <Plus className="w-5 h-5" />
-          Assign Global Task
-        </button>
-      </div>
+      <PageHeader 
+        title="Global Task Control"
+        description="Monitor and escalate institutional deliverables"
+        icon={ClipboardList}
+        action={
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-all font-medium whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" />
+            Assign Global Task
+          </button>
+        }
+      />
 
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         <DataTable columns={columns} data={tasks} isLoading={isLoading} searchKey="title" />
@@ -147,10 +155,12 @@ export default function HRTasks() {
             <textarea {...register('description')} className="mt-1 w-full p-2 border rounded-lg" rows={3} placeholder="SOPs or evidence requirements..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Assign To (Staff)</label>
+            <label className="block text-sm font-medium text-slate-700">
+              {isCEO ? 'Assign To (HR Administrators Only)' : 'Assign To (Staff)'}
+            </label>
             <select {...register('assignedTo', { required: true })} className="mt-1 w-full p-2 border rounded-lg">
               <option value="">Select Personnel</option>
-              {employees.map(e => <option key={e.uid} value={e.uid}>{e.name} ({e.uid})</option>)}
+              {(isCEO ? employees.filter(e => e.role?.toLowerCase() === 'hr') : employees).map(e => <option key={e.uid} value={e.uid}>{e.name} ({e.uid})</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">

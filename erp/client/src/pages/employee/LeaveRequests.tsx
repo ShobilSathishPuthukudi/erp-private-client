@@ -13,6 +13,9 @@ interface Leave {
   fromDate: string;
   toDate: string;
   status: string;
+  employee?: {
+    department?: { name: string };
+  };
   createdAt: string;
 }
 
@@ -21,7 +24,16 @@ export default function LeaveRequests() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
+  const fromDate = watch('fromDate');
+
+  // Calculate minimum selectable end date (must be at least one day after start date)
+  const getMinEndDate = (startDate: string) => {
+    if (!startDate) return undefined;
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + 1);
+    return date.toISOString().split('T')[0];
+  };
 
   const fetchLeaves = async () => {
     try {
@@ -103,7 +115,7 @@ export default function LeaveRequests() {
         
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
-            {s.replace('_', ' ')}
+            {s === 'pending_step1' ? 'pending approval' : (s === 'pending_step2' ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'forwarded to hr') : s.replace('_', ' '))}
           </span>
         );
       }
@@ -187,8 +199,14 @@ export default function LeaveRequests() {
               <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
               <input
                 type="date"
-                {...register('toDate', { required: 'End date is required' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                disabled={!fromDate}
+                min={getMinEndDate(fromDate)}
+                {...register('toDate', { 
+                  required: 'End date is required',
+                  validate: (value) => 
+                    !fromDate || value > fromDate || 'End date must be after start date'
+                })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
               />
               {errors.toDate && <p className="text-red-500 text-xs mt-1">{errors.toDate.message as string}</p>}
             </div>

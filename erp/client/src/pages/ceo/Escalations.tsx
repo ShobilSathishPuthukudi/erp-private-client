@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Clock, UserCheck, UserPlus, History, X, CheckCircle2, AlertTriangle, ArrowRight, TrendingUp, ShieldCheck } from 'lucide-react';
@@ -39,11 +40,25 @@ export default function Escalations() {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuthStore();
-  const isReadOnly = user?.role === 'ceo';
+  const isReadOnly = user?.role === 'CEO';
 
   useEffect(() => {
     fetchEscalations();
   }, []);
+
+  useEffect(() => {
+    if (modalMode) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
+  }, [modalMode]);
 
   const fetchEscalations = async () => {
     try {
@@ -190,7 +205,7 @@ export default function Escalations() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Owner:</span>
-                          <span className="font-bold text-slate-600 italic">{task.assignee?.name}</span>
+                          <span className="font-bold text-slate-600 ">{task.assignee?.name}</span>
                         </div>
                       </div>
                     </td>
@@ -298,7 +313,7 @@ export default function Escalations() {
       </div>
 
       {/* Modern Modal Overlays */}
-      {modalMode && selectedTask && (
+      {(modalMode && (selectedTask || selectedLeave)) && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -307,12 +322,15 @@ export default function Escalations() {
                     {modalMode === 'resolve' && <UserCheck className="w-5 h-5" />}
                     {modalMode === 'reassign' && <UserPlus className="w-5 h-5" />}
                     {modalMode === 'chain' && <History className="w-5 h-5" />}
+                    {modalMode === 'override_leave' && <AlertTriangle className="w-5 h-5" />}
                  </div>
                  <div>
                     <h3 className="text-lg font-black text-slate-900 tracking-tight capitalize">
-                      {modalMode === 'chain' ? 'Governance Audit' : `${modalMode} Escalation`}
+                      {modalMode === 'chain' ? 'Governance Audit' : modalMode.replace('_', ' ') + ' Escalation'}
                     </h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedTask.title}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                       {selectedTask?.title || selectedLeave?.employee?.name + ' - ' + selectedLeave?.type}
+                    </p>
                  </div>
               </div>
               <button 
@@ -324,9 +342,8 @@ export default function Escalations() {
             </div>
 
             <div className="p-8">
-              {modalMode === 'resolve' && (
+              {modalMode === 'resolve' && selectedTask && (
                 <div className="space-y-6">
-                  {/* ... same as before ... */}
                   <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-emerald-600 mt-0.5" />
                     <p className="text-xs font-bold text-emerald-800 leading-relaxed">
@@ -392,14 +409,14 @@ export default function Escalations() {
                 </div>
               )}
 
-              {modalMode === 'reassign' && (
+              {modalMode === 'reassign' && selectedTask && (
                 <div className="space-y-6">
                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
                      <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Current Chain</div>
                      <div className="flex items-center gap-2 text-sm font-bold text-indigo-900 text-center">
                         <span>{selectedTask?.assignee?.name}</span>
                         <ArrowRight className="w-4 h-4" />
-                        <span className="text-indigo-400 italic">Select Successor</span>
+                        <span className="text-indigo-400 ">Select Successor</span>
                      </div>
                    </div>
                    <p className="text-sm text-slate-500 font-medium text-center">Reassignment resets the administrative timer and updates the compliance ledger.</p>
@@ -412,11 +429,11 @@ export default function Escalations() {
                 </div>
               )}
 
-              {modalMode === 'chain' && selectedTask && (
+              {modalMode === 'chain' && (selectedTask || selectedLeave) && (
                 <div className="space-y-8 py-4">
                   {[
-                    { role: 'Employee', name: selectedTask.assignee?.name, status: 'Deadline Missed', date: `${selectedTask.daysOverdue} Days Ago`, color: 'red' },
-                    { role: 'Dept Admin', name: selectedTask.deptAdmin?.name, status: 'Inaction Period Passed', date: 'Escalated', color: 'amber' },
+                    { role: 'Employee', name: selectedTask?.assignee?.name || selectedLeave?.employee?.name, status: 'Deadline Missed', date: `${selectedTask?.daysOverdue || selectedLeave?.daysOverdue} Days Ago`, color: 'red' },
+                    { role: 'Dept Admin', name: selectedTask?.deptAdmin?.name || selectedLeave?.deptAdmin?.name, status: 'Inaction Period Passed', date: 'Escalated', color: 'amber' },
                     { role: 'CEO', name: 'Academic CEO', status: 'Executive Oversight', date: 'Now', color: 'slate' }
                   ].map((step, idx, arr) => (
                     <div key={idx} className="relative flex items-center gap-6">
@@ -442,7 +459,7 @@ export default function Escalations() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
     </div>
   );

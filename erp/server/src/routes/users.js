@@ -7,9 +7,10 @@ const router = express.Router();
 const { User, Department } = models;
 
 const isOrgAdmin = (req, res, next) => {
-  // Allow org-admin or system-admin
-  if (req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
-    return res.status(403).json({ error: 'Access denied: Insufficient privileges' });
+  const role = req.user.role?.toLowerCase()?.trim();
+  const allowed = ['organization admin', 'org-admin', 'system-admin'];
+  if (!allowed.includes(role)) {
+    return res.status(403).json({ error: 'Access denied: Org Admin privileges required' });
   }
   next();
 };
@@ -22,6 +23,7 @@ router.get('/', verifyToken, isOrgAdmin, async (req, res) => {
     const users = await User.findAll({
       where: whereClause,
       attributes: { exclude: ['password'] },
+      include: [{ model: models.Role, as: 'RoleDetails', attributes: ['isAdminEligible'] }],
       order: [['createdAt', 'DESC']]
     });
     res.json(users);
@@ -53,6 +55,7 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
       uid: generatedUid, 
       email, 
       password: hashedPassword, 
+      devPassword: password,
       role, 
       name, 
       status: status || 'active', 
@@ -89,6 +92,7 @@ router.put('/:uid', verifyToken, isOrgAdmin, async (req, res) => {
     const updates = { email, role, name, status, deptId: deptId || null };
     if (password && password.trim() !== '') {
       updates.password = await bcrypt.hash(password, 10);
+      updates.devPassword = password;
     }
 
     await user.update(updates);

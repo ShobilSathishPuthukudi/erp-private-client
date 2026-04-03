@@ -154,14 +154,14 @@ export default function AuditComplianceReport() {
           <select 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
           <select 
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -251,7 +251,7 @@ export default function AuditComplianceReport() {
             <div className="space-y-4">
               <button 
                 onClick={handleDownloadPDF}
-                className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold"
+                className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold cursor-pointer"
                 title="Generate standard compliance PDF"
               >
                 <div className="flex items-center">
@@ -260,7 +260,7 @@ export default function AuditComplianceReport() {
                 </div>
                 <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
               </button>
-              <button className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold">
+              <button className="w-full bg-white/10 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all p-4 rounded-2xl flex items-center justify-between group/btn text-sm font-bold cursor-pointer">
                 <div className="flex items-center text-emerald-400">
                   <Download className="w-5 h-5 mr-3" />
                   Excel Data Export

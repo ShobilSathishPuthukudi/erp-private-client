@@ -15,7 +15,7 @@ const getSubDeptId = (name) => {
 };
 
 const isAcademicOrAdmin = (req, res, next) => {
-  const allowed = ['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN'];
+  const allowed = ['academic', 'Organization Admin', 'system-admin', 'SUB_DEPT_ADMIN'];
   if (!allowed.includes(req.user.role)) {
     return res.status(403).json({ error: 'Access denied: Academic privileges required' });
   }
@@ -23,7 +23,7 @@ const isAcademicOrAdmin = (req, res, next) => {
 };
 
 const isOpsOrAdmin = (req, res, next) => {
-    const allowed = ['academic', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN'];
+    const allowed = ['academic', 'Organization Admin', 'system-admin', 'SUB_DEPT_ADMIN'];
     if (!allowed.includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied: Operations privileges required' });
     }

@@ -2,7 +2,9 @@ import { Routes, Route, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Universities from './Universities';
+import UniversityDetails from './UniversityDetails';
 import Programs from './Programs';
+import ProgramDetails from './ProgramDetails';
 import Students from './Students';
 import PendingReviews from './PendingReviews';
 import Sessions from './Sessions';
@@ -21,6 +23,7 @@ import PipelineTracking from './PipelineTracking';
 import ResubmissionLogs from './ResubmissionLogs';
 import CenterPerformance from './CenterPerformance';
 import SubDeptOverview from './SubDeptOverview';
+import OpsInternalMarksView from './InternalMarksView';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
@@ -37,9 +40,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 
-// Sub-module Placeholders (to be implemented in detail later or as requested)
-const UniversityDetails = () => <div className="p-8"><h2 className="text-2xl font-black">University Registry Depth</h2></div>;
-const ProgramDetails = () => <div className="p-8"><h2 className="text-2xl font-black">Program Architecture Depth</h2></div>;
+// Import internal announcements
 import InternalAnnouncements from './Announcements';
 
 function DashboardLanding() {
@@ -220,6 +221,7 @@ export default function AcademicDashboard() {
 
       {/* Marks & Sessions */}
       <Route path="sessions" element={<Sessions />} />
+      <Route path="internal-marks" element={<OpsInternalMarksView />} />
       <Route path="exams" element={<Exams />} />
       <Route path="exams/:id/marks" element={<MarksEntry />} />
 

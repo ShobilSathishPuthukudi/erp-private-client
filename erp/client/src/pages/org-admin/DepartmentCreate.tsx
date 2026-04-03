@@ -12,7 +12,12 @@ import {
   Eye,
   Edit3,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  TrendingUp,
+  Award,
+  FileText,
+  Box,
+  UserPlus
 } from 'lucide-react';
 
 interface DepartmentCreateProps {
@@ -22,10 +27,14 @@ interface DepartmentCreateProps {
 }
 
 export default function DepartmentCreate({ onClose, onSuccess, initialData }: DepartmentCreateProps) {
+  const [isNewAdmin, setIsNewAdmin] = useState(false);
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     type: initialData?.type || '',
     adminId: initialData?.adminId || '',
+    adminName: '',
+    adminEmail: '',
+    adminPassword: '',
     activateNow: initialData ? initialData.status === 'active' : true,
     features: (initialData?.metadata?.features || []).map((f: any) => 
       typeof f === 'string' ? { id: f, permissions: ['read'] } : f
@@ -43,18 +52,22 @@ export default function DepartmentCreate({ onClose, onSuccess, initialData }: De
 
   const availableFeatures = [
     { id: 'dashboards', name: 'Dashboards', icon: Layout, desc: 'Real-time metrics and analytics' },
+    { id: 'performance', name: 'Employee Performance', icon: TrendingUp, desc: 'Track KPIs, appraisals and productivity' },
     { id: 'tasks', name: 'Task Management', icon: CheckSquare, desc: 'Assign and track employee tasks' },
     { id: 'reports', name: 'Reports', icon: BarChart3, desc: 'Generate system-wide data exports' },
     { id: 'announcements', name: 'Announcements', icon: Bell, desc: 'Blast messages and news' },
     { id: 'leave', name: 'Leave Management', icon: Calendar, desc: 'Approve and track employee leaves' },
     { id: 'directory', name: 'Employee Directory', icon: Users, desc: 'List and search department staff' },
+    { id: 'marks', name: 'Internal Marks', icon: Award, desc: 'Academic assessments and grade management' },
+    { id: 'audit', name: 'Financial Audit', icon: FileText, desc: 'Revenue reconciliation and fee tracking' },
+    { id: 'inventory', name: 'Inventory Mgmt', icon: Box, desc: 'Manage institutional assets and stock' },
   ];
 
   const DEFAULT_FEATURES_MAP: Record<string, string[]> = {
-    'Operations': ['dashboards', 'tasks', 'reports'],
-    'HR': ['leave', 'directory', 'announcements'],
-    'Finance': ['dashboards', 'reports'],
-    'Sales': ['dashboards', 'tasks', 'announcements'],
+    'Operations': ['dashboards', 'tasks', 'reports', 'marks'],
+    'HR': ['leave', 'directory', 'announcements', 'performance'],
+    'Finance': ['dashboards', 'reports', 'audit'],
+    'Sales': ['dashboards', 'tasks', 'announcements', 'inventory'],
     'Custom': []
   };
 
@@ -222,22 +235,86 @@ export default function DepartmentCreate({ onClose, onSuccess, initialData }: De
           </div>
 
           {/* Admin Assignment */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Assign Department Admin</label>
-            <div className="relative group">
-                <select 
-                  className="w-full px-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white hover:border-slate-300"
-                  value={formData.adminId}
-                  onChange={(e) => setFormData({ ...formData, adminId: e.target.value })}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Assign admin</label>
+              
+              <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setIsNewAdmin(false)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    !isNewAdmin 
+                      ? 'bg-white text-blue-600 shadow-md shadow-blue-500/10' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
                 >
-                  <option value="">Select admin</option>
-                  {users.map((u) => (
-                    <option key={u.uid} value={u.uid}>{u.name} ({u.role})</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-hover:text-blue-500 transition-colors" />
+                  <Users className="w-3.5 h-3.5" />
+                  Existing Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewAdmin(true)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    isNewAdmin 
+                      ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Create New
+                </button>
+              </div>
             </div>
-            <p className="text-[10px] text-slate-400">Select admin</p>
+
+            {!isNewAdmin ? (
+              <div className="space-y-2">
+                <div className="relative group">
+                    <select 
+                      className="w-full px-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white hover:border-slate-300"
+                      value={formData.adminId}
+                      onChange={(e) => setFormData({ ...formData, adminId: e.target.value })}
+                    >
+                      <option value="">Select verified admin</option>
+                      {users.filter(u => u.RoleDetails?.isAdminEligible).map((u) => (
+                        <option key={u.uid} value={u.uid}>{u.name} — Verified Eligible ({u.role})</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-hover:text-blue-500 transition-colors" />
+                </div>
+                <p className="text-[10px] text-slate-400">Select an existing user to manage this department</p>
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-right-2 duration-300">
+                <div>
+                  <input 
+                    type="text" 
+                    placeholder="Admin Full Name"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs font-medium"
+                    value={formData.adminName}
+                    onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <input 
+                    type="email" 
+                    placeholder="Login Email / ID"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs font-medium"
+                    value={formData.adminEmail}
+                    onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <input 
+                    type="password" 
+                    placeholder="Set Password"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs font-medium"
+                    value={formData.adminPassword}
+                    onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -254,76 +331,16 @@ export default function DepartmentCreate({ onClose, onSuccess, initialData }: De
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {availableFeatures.map((feature) => {
-                  const config = formData.features.find(f => f.id === feature.id);
-                  const isEnabled = !!config;
-
-                  return (
-                    <div key={feature.id} className={`group rounded-2xl border-2 transition-all duration-300 ${
-                      isEnabled ? 'border-blue-600 bg-white ring-4 ring-blue-50/50' : 'border-slate-100 bg-slate-50/30 hover:border-slate-300'
-                    }`}>
-                      <div className="p-4 flex items-center justify-between">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className={`p-2 rounded-xl border transition-all ${
-                            isEnabled ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-50 text-slate-400 border-slate-200'
-                          }`}>
-                            <feature.icon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className={`text-xs font-bold truncate ${isEnabled ? 'text-blue-900' : 'text-slate-800'}`}>
-                              {feature.name}
-                            </h4>
-                          </div>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => toggleFeature(feature.id)}
-                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 ${
-                            isEnabled 
-                            ? 'bg-blue-100 text-blue-700 hover:bg-rose-100 hover:text-rose-700' 
-                            : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-900 hover:text-white'
-                          }`}
-                        >
-                          {isEnabled ? 'Disable' : 'Enable'}
-                        </button>
-                      </div>
-
-                      {isEnabled && (
-                        <div className="px-4 pb-4 pt-0 flex flex-col gap-3">
-                          <div className="h-px bg-slate-100 w-full" />
-                          <div className="flex items-center gap-2">
-                            {[
-                              { id: 'read', label: 'View', icon: Eye },
-                              { id: 'write', label: 'Manage', icon: Edit3 },
-                              { id: 'approve', label: 'Audit', icon: ShieldCheck }
-                            ].map((perm) => {
-                              const isPermActive = config.permissions.includes(perm.id);
-                              return (
-                                <button
-                                  key={perm.id}
-                                  type="button"
-                                  onClick={() => togglePermission(feature.id, perm.id)}
-                                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[9px] font-black transition-all hover:scale-105 active:scale-95 ${
-                                    isPermActive
-                                    ? 'bg-blue-600 border-blue-600 text-white'
-                                    : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                                  }`}
-                                >
-                                  {perm.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-               })}
+               {availableFeatures.map((feature) => (
+                  <FeatureConfigCard 
+                    key={feature.id}
+                    feature={feature}
+                    config={formData.features.find(f => f.id === feature.id)}
+                    onToggle={() => toggleFeature(feature.id)}
+                    onPermissionToggle={(permId: string) => togglePermission(feature.id, permId)}
+                  />
+               ))}
             </div>
-          </div>
-        )}
-
 
           <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-2xl flex items-start gap-4 mx-2">
             <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
@@ -333,6 +350,9 @@ export default function DepartmentCreate({ onClose, onSuccess, initialData }: De
               Custom departments allow you to select individual features and build a tailored permissions matrix later.
             </p>
           </div>
+        </div>
+        )}
+
         </div>
 
         <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
@@ -345,13 +365,96 @@ export default function DepartmentCreate({ onClose, onSuccess, initialData }: De
           </button>
           <button 
             type="submit"
-            disabled={!formData.type || !formData.name || !!validation.singletonError || loading}
+            disabled={!formData.type || !formData.name || !!validation.singletonError || loading || (isNewAdmin && (!formData.adminEmail || !formData.adminPassword || !formData.adminName))}
             className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
           >
             {initialData ? 'Save Changes' : 'Complete Registration'}
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function FeatureConfigCard({ feature, config, onToggle, onPermissionToggle }: any) {
+  const [showDetails, setShowDetails] = useState(false);
+  const isEnabled = !!config;
+
+  return (
+    <div className={`group rounded-2xl border-2 transition-all duration-300 flex flex-col ${
+      isEnabled ? 'border-blue-600 bg-white ring-4 ring-blue-50/50' : 'border-slate-100 bg-slate-50/30 hover:border-slate-300'
+    }`}>
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setShowDetails(!showDetails)}
+            title="Click for full module brief"
+            className={`p-2 rounded-xl border transition-all hover:scale-110 active:scale-95 shrink-0 ${
+              isEnabled ? 'bg-blue-600 text-white border-blue-500' : 'bg-white text-slate-400 border-slate-200 shadow-sm'
+            }`}
+          >
+            <feature.icon className="w-4 h-4" />
+          </button>
+          <div className="min-w-0 cursor-default" onClick={() => setShowDetails(!showDetails)}>
+            <h4 className={`text-xs font-bold truncate ${isEnabled ? 'text-blue-900' : 'text-slate-800'}`}>
+              {feature.name}
+            </h4>
+          </div>
+        </div>
+        
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shrink-0 ${
+            isEnabled 
+            ? 'bg-blue-100 text-blue-700 hover:bg-rose-100 hover:text-rose-700' 
+            : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-900 hover:text-white'
+          }`}
+        >
+          {isEnabled ? 'Disable' : 'Enable'}
+        </button>
+      </div>
+
+      {showDetails && (
+        <div className="px-4 pb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`p-3 rounded-xl text-[10px] leading-relaxed font-medium border ${
+            isEnabled ? 'bg-blue-50/50 border-blue-100 text-blue-700' : 'bg-white border-slate-100 text-slate-500 italic'
+          }`}>
+            {feature.desc}
+          </div>
+        </div>
+      )}
+
+      {isEnabled && (
+        <div className="px-4 pb-4 pt-0 flex flex-col gap-3 mt-auto">
+          <div className="h-px bg-slate-100 w-full" />
+          <div className="flex items-center gap-2">
+             {[
+               { id: 'read', label: 'View', icon: Eye },
+               { id: 'write', label: 'Manage', icon: Edit3 },
+               { id: 'approve', label: 'Audit', icon: ShieldCheck }
+             ].map((perm) => {
+               const isPermActive = config.permissions.includes(perm.id);
+               return (
+                 <button
+                   key={perm.id}
+                   type="button"
+                   onClick={() => onPermissionToggle(perm.id)}
+                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[9px] font-black transition-all hover:scale-105 active:scale-95 ${
+                     isPermActive
+                     ? 'bg-blue-600 border-blue-600 text-white'
+                     : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                   }`}
+                 >
+                   <perm.icon className="w-3 h-3" />
+                   {perm.label}
+                 </button>
+               );
+             })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

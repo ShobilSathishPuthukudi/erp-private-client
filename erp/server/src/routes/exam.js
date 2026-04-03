@@ -6,7 +6,7 @@ const router = express.Router();
 const { Exam, Mark, Result, Student, Program, Department } = models;
 
 const isSubDeptOrAcademic = (req, res, next) => {
-  const allowed = ['academic', 'openschool', 'online', 'skill', 'bvoc'];
+  const allowed = ['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Operations Admin', 'Organization Admin'];
   if (!allowed.includes(req.user.role)) {
     return res.status(403).json({ error: 'Access denied: Academic or Sub-Dept privileges required' });
   }
@@ -27,7 +27,7 @@ const calculateGrade = (total) => {
 router.get('/', verifyToken, isSubDeptOrAcademic, async (req, res) => {
   try {
     const where = {};
-    if (req.user.role !== 'academic') {
+    if (!['Operations Admin', 'Organization Admin'].includes(req.user.role)) {
         where.subDeptId = req.user.deptId;
     }
     const exams = await Exam.findAll({

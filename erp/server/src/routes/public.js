@@ -1,17 +1,24 @@
 import express from 'express';
 import { models } from '../models/index.js';
 import { Op } from 'sequelize';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
-const { User, Department, Lead } = models;
+const { User, Department, Lead, Program, Notification } = models;
 
-// GET BDE Info for Public Form
-router.get('/bde-info/:uid', async (req, res) => {
+// GET BDE Info for Public Form via Referral Code
+router.get('/bde-info/:code', async (req, res) => {
   try {
-    const { uid } = req.params;
+    const { code } = req.params;
     const bde = await User.findOne({
-      where: { uid, role: 'sales' },
-      attributes: ['uid', 'name'],
+      where: { 
+        [Op.or]: [
+          { referralCode: code },
+          { uid: code }
+        ],
+        role: { [Op.in]: ['Sales & CRM Admin', 'employee'] } // Inclusive institutional role
+      },
+      attributes: ['uid', 'name', 'referralCode', 'role'],
       include: [{
         model: Department,
         attributes: ['name']
@@ -29,55 +36,140 @@ router.get('/bde-info/:uid', async (req, res) => {
   }
 });
 
-// POST Register Center (Public)
-router.post('/register-center', async (req, res) => {
+// GET Institutional Branding Info
+router.get('/org-info', async (req, res) => {
   try {
-    const { name, email, phone, bdeId, infrastructure, description } = req.body;
+    const { OrgConfig } = models;
+    const [name, shortName] = await Promise.all([
+        OrgConfig.findOne({ where: { key: 'ORG_NAME' } }),
+        OrgConfig.findOne({ where: { key: 'ORG_SHORT_NAME' } })
+    ]);
 
-    if (!name || !phone || !bdeId) {
-      return res.status(400).json({ error: 'Name, Phone, and BDE ID are required' });
+    res.json({
+        name: name?.value || 'Institutional Portal',
+        shortName: shortName?.value || 'IP'
+    });
+  } catch (error) {
+    console.error('Org Info Fetch Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET Public University List
+router.get('/universities', async (req, res) => {
+  try {
+    const universities = await Department.findAll({
+      where: { type: 'university', status: { [Op.in]: ['draft', 'staged', 'active'] } },
+      attributes: ['id', 'name']
+    });
+    res.json(universities);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch university roster' });
+  }
+});
+
+// GET Public Program List (Filtered by University)
+router.get('/programs/:universityId', async (req, res) => {
+  try {
+    const { universityId } = req.params;
+    const programs = await Program.findAll({
+      where: { universityId, status: { [Op.in]: ['draft', 'staged', 'active'] } },
+      attributes: ['id', 'name', 'type', 'subDeptId']
+    });
+    res.json(programs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch program catalog' });
+  }
+});
+
+// POST Register Center (Public Direct Onboarding)
+router.post('/register-center', async (req, res) => {
+  const { sequelize } = await import('../models/index.js');
+  const t = await sequelize.transaction();
+  try {
+    const { name, email, phone, code, infrastructure, description, interest } = req.body;
+    const hashedPassword = await bcrypt.hash('password123', 10);
+
+    if (!name || !phone || !code || !email || !interest?.universityId || !interest?.programId) {
+      return res.status(400).json({ error: 'All fields (Name, Email, Phone, University, and Program) are strictly mandatory.' });
     }
 
-    // 1. Verify BDE
-    const bde = await User.findOne({ where: { uid: bdeId, role: 'sales' } });
+    // 1. Verify BDE via Referral Code or UID
+    const bde = await User.findOne({ 
+      where: { 
+        [Op.or]: [
+          { referralCode: code },
+          { uid: code }
+        ]
+      } 
+    });
     if (!bde) {
-      return res.status(400).json({ error: 'Invalid referral link' });
+      return res.status(400).json({ error: 'Invalid or expired referral link' });
     }
 
-    // 2. Create Lead for CRM tracking
+    const bdeId = bde.uid;
+
+    // 2. Create high-fidelity Department record
+    const center = await Department.create({
+      name,
+      shortName: name.substring(0, 5).toUpperCase(),
+      type: 'study-center',
+      status: 'inactive',
+      auditStatus: 'pending', // Key for Ops Audit
+      bdeId,
+      metadata: {
+        referralCode: code,
+        contactPhone: phone,
+        infrastructure,
+        onboardingNotes: description,
+        onboardedAt: new Date().toISOString(),
+        primaryInterest: interest // Captured from Cascading Selects
+      }
+    }, { transaction: t });
+
+
+    // 4. Create Trace Lead for CRM compatibility
     const lead = await Lead.create({
       name,
       email,
       phone,
-      source: 'BDE Share Link',
+      source: 'Referral Onboarding',
       bdeId,
-      status: 'NEW',
-      notes: description || `Public registration via BDE link (${bde.name})`
-    });
+      centerId: center.id,
+      status: 'converted', // Auto-convert
+      notes: description || `Direct onboarding via ${code} (${bde.name})`
+    }, { transaction: t });
+    
+    // 5. Trigger Institutional State Transitions: Stage the university and selected program
+    await Department.update(
+      { status: 'staged' }, 
+      { where: { id: interest.universityId, type: 'university' }, transaction: t }
+    );
+    
+    await Program.update(
+      { status: 'staged' }, 
+      { where: { id: interest.programId }, transaction: t }
+    );
 
-    // 3. Create Department record as 'LEAD' status
-    const center = await Department.create({
-      name,
-      type: 'study-center',
-      centerStatus: 'LEAD',
-      status: 'active',
-      bdeId,
-      sourceLeadId: lead.id,
-      infrastructureDetails: infrastructure || {},
-      description
-    });
+    // 6. Alert BDE of high-value conversion
+    await Notification.create({
+      userUid: bdeId,
+      type: 'success',
+      message: `Strategic Partnership Initialized: ${name} registered via your institutional link.`,
+      link: '/dashboard/sales/referrals'
+    }, { transaction: t });
 
-    // Update lead with centerId link
-    await lead.update({ centerId: center.id });
-
+    await t.commit();
     res.status(201).json({ 
       success: true, 
-      message: 'Registration successful. Our team will contact you shortly.',
+      message: 'Institutional node initialized. Awaiting audit.',
+      centerId: center.id,
       leadId: lead.id 
     });
   } catch (error) {
-    console.error('Center Registration Error:', error);
-    res.status(500).json({ error: 'Failed to process registration' });
+    if (t) await t.rollback();
+    console.error('Center Registration Onboarding Error:', error);
+    res.status(500).json({ error: 'Failed to initialize institutional node' });
   }
 });
 

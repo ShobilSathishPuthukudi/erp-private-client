@@ -11,6 +11,7 @@ import SurveyCreator from '../org-admin/SurveyCreator';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
+import EmployeeCards from './EmployeeCards';
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
@@ -61,10 +62,11 @@ function DashboardLanding() {
     { title: 'Leave Radar', path: 'leaves', icon: Calendar, desc: 'Time-Off Appraisal Hub' },
     { title: 'Performance HUD', path: 'performance', icon: TrendingUp, desc: 'Efficiency & KPI Tracking' },
     { title: 'Survey Master', path: 'surveys', icon: FileText, desc: 'Quality & Sentiment Audits' },
+    { title: 'Employee click to fill', path: 'employee-cards', icon: Zap, desc: 'Unique Employee Identity Nodes' },
   ];
 
   return (
-    <div className="space-y-10 max-w-[1600px] mx-auto p-4 lg:p-8">
+    <div className="space-y-10 max-w-none mx-auto p-4 lg:p-8">
       {/* Premium Header Section */}
       <div className="bg-slate-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
         <div className="relative z-10 max-w-3xl">
@@ -200,6 +202,7 @@ export default function HRDashboard() {
       <Route path="dept-team" element={<DepartmentTeam />} />
       <Route path="dept-tasks" element={<DepartmentTasks />} />
       <Route path="dept-leaves" element={<DepartmentLeaves />} />
+      <Route path="employee-cards" element={<EmployeeCards />} />
     </Routes>
   );
 }

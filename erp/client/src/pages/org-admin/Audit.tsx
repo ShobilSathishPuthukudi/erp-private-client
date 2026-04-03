@@ -3,8 +3,10 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Eye } from 'lucide-react';
+import { Eye, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { toSentenceCase } from '@/lib/utils';
 
 interface AuditLogEntry {
   id: number;
@@ -65,18 +67,18 @@ export default function AuditLogs() {
         );
       }
     },
-    { accessorKey: 'module', header: 'Module', cell: ({ row }) => <span className="uppercase text-xs font-bold text-slate-500">{row.original.module}</span> },
+    { accessorKey: 'module', header: 'Module', cell: ({ row }) => <span className="text-xs font-bold text-slate-500">{toSentenceCase(row.original.module)}</span> },
     { accessorKey: 'entity', header: 'Entity' },
     { 
       accessorKey: 'action', 
       header: 'Action',
       cell: ({ row }) => {
-        const action = row.original.action.toUpperCase();
+        const action = row.original.action;
         let color = 'bg-slate-100 text-slate-700';
         if (action === 'CREATE') color = 'bg-green-100 text-green-700';
         if (action === 'UPDATE') color = 'bg-blue-100 text-blue-700';
         if (action === 'DELETE') color = 'bg-red-100 text-red-700';
-        return <span className={`px-2 py-1 text-[10px] rounded-full font-bold ${color}`}>{action}</span>;
+        return <span className={`px-2 py-1 text-[10px] rounded-full font-bold ${color}`}>{toSentenceCase(action)}</span>;
       }
     },
     {
@@ -96,12 +98,11 @@ export default function AuditLogs() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">System Audit Logs</h1>
-          <p className="text-slate-500">Immutable record of system-wide entity modifications mapped sequentially</p>
-        </div>
-      </div>
+      <PageHeader 
+        title="System Audit Logs"
+        description="Immutable record of system-wide entity modifications mapped sequentially"
+        icon={ShieldCheck}
+      />
 
       <DataTable 
         columns={columns} 
@@ -123,13 +124,13 @@ export default function AuditLogs() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-slate-200">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Actor Info</p>
+                <p className="text-xs font-semibold text-slate-500">Actor Info</p>
                 <p className="text-sm font-medium">{selectedLog.user?.name || selectedLog.userId}</p>
                 <p className="text-xs text-slate-500">{selectedLog.user?.email || 'System Operation'}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Modification</p>
-                <p className="text-sm font-bold text-blue-600 uppercase">{selectedLog.action} <span className="text-slate-900">{selectedLog.entity}</span></p>
+                <p className="text-xs font-semibold text-slate-500">Modification</p>
+                <p className="text-sm font-bold text-blue-600">{toSentenceCase(selectedLog.action)} <span className="text-slate-900">{toSentenceCase(selectedLog.entity)}</span></p>
                 <p className="text-xs text-slate-500">{new Date(selectedLog.timestamp).toUTCString()}</p>
               </div>
             </div>

@@ -50,7 +50,7 @@ export default function ReregManager() {
     <div className="space-y-8">
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 italic tracking-tight">
+           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
               <RefreshCw className="w-7 h-7 text-blue-600" />
               Re-Registration Queue
            </h2>
@@ -84,7 +84,7 @@ export default function ReregManager() {
                   <div className="flex items-center gap-2 justify-end text-emerald-600 font-black text-lg">
                     <CreditCard className="w-4 h-4" /> ₹{req.amountPaid.toLocaleString()}
                   </div>
-                  <a href={req.paymentProof} target="_blank" className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline italic">View Proof</a>
+                  <a href={req.paymentProof} target="_blank" className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline ">View Proof</a>
                </div>
                <div className="flex gap-2">
                   <button 

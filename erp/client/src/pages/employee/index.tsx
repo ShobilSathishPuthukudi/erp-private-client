@@ -5,6 +5,9 @@ import MyTasks from './MyTasks';
 import LeaveRequests from './LeaveRequests';
 import Announcements from './Announcements';
 import CRM from '../sales/CRM';
+import MyCenters from './MyCenters';
+import InstitutionalUniversities from './InstitutionalUniversities';
+import InstitutionalPrograms from './InstitutionalPrograms';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { 
@@ -16,7 +19,9 @@ import {
   Calendar,
   ArrowRight,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Building2,
+  GraduationCap
 } from 'lucide-react';
 
 export default function EmployeePortal() {
@@ -61,7 +66,7 @@ export default function EmployeePortal() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-blue-500 transition-all">
              <div className="flex justify-between items-start">
                 <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -113,6 +118,36 @@ export default function EmployeePortal() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Overdue Breaches</p>
              </div>
           </div>
+
+          {stats?.universityCount !== undefined && (
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-blue-600 transition-all shadow-xl shadow-blue-50/50 border-blue-50">
+               <div className="flex justify-between items-start">
+                  <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                     <Building2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Growth</span>
+               </div>
+               <div className="mt-4">
+                  <p className="text-3xl font-black text-slate-900 tracking-tighter">{stats?.universityCount}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Universities</p>
+               </div>
+            </div>
+          )}
+
+          {stats?.programCount !== undefined && (
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-indigo-600 transition-all shadow-xl shadow-indigo-50/50 border-indigo-50">
+               <div className="flex justify-between items-start">
+                  <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                     <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Catalog</span>
+               </div>
+               <div className="mt-4">
+                  <p className="text-3xl font-black text-slate-900 tracking-tighter">{stats?.programCount}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Academic Programs</p>
+               </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Links */}
@@ -146,38 +181,66 @@ export default function EmployeePortal() {
            </Link>
         </div>
 
-        {/* Sales Link & CRM for BDEs */}
-        <div className="bg-slate-50 border border-slate-100 rounded-[3rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-           <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-blue-100 italic font-black text-2xl">
-                 <ShieldCheck className="w-8 h-8 text-white/90" />
+        {/* Sales Link & CRM for BDEs - Visible if Role is Sales OR Department is Sales */}
+        {(user?.role === 'Sales & CRM Admin' || user?.departmentName?.toLowerCase().includes('sales')) && (
+          <div className="space-y-8">
+            <div className="bg-slate-50 border border-slate-100 rounded-[3rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-blue-100 font-black text-2xl">
+                    <ShieldCheck className="w-8 h-8 text-white/90" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Outreach</h2>
+                    <p className="text-slate-500 font-medium">Your unique center registration link is active. Share it to capture new leads into your pipeline.</p>
+                  </div>
               </div>
-              <div>
-                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Outreach</h2>
-                 <p className="text-slate-500 font-medium">Your unique center registration link is active. Share it to capture new leads into your pipeline.</p>
+              <div className="flex items-center gap-3 shrink-0">
+                  <button 
+                    onClick={() => {
+                      const link = `${window.location.origin}/register-center/${user?.uid}`;
+                      navigator.clipboard.writeText(link);
+                      toast.success('Partnership link copied to clipboard!');
+                    }}
+                    className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+                  >
+                    <Zap className="w-4 h-4 text-blue-600" />
+                    Copy Share Link
+                  </button>
+
               </div>
-           </div>
-           <div className="flex items-center gap-3 shrink-0">
-              <button 
-                onClick={() => {
-                  const link = `${window.location.origin}/register-center/${user?.uid}`;
-                  navigator.clipboard.writeText(link);
-                  toast.success('Partnership link copied to clipboard!');
-                }}
-                className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
-              >
-                <Zap className="w-4 h-4 text-blue-600" />
-                Copy Share Link
-              </button>
-              <Link 
-                to="crm"
-                className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3"
-              >
-                Open Pipeline
-                <ArrowRight className="w-4 h-4" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Link to="universities" className="bg-white p-10 rounded-[3rem] border-2 border-slate-100 shadow-xl shadow-slate-100/50 relative overflow-hidden group hover:scale-[1.02] transition-all hover:border-blue-100">
+                  <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform text-blue-600">
+                    <Building2 className="w-24 h-24" />
+                  </div>
+                  <div className="relative z-10">
+                    <h2 className="text-2xl font-black mb-2 text-slate-900">Partnered Universities</h2>
+                    <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">View all institutional affiliations and accreditation data for partner enrollment.</p>
+                    <div className="mt-6 flex items-center gap-3 text-blue-600 font-black uppercase text-[10px] tracking-widest">
+                        <span>View University Roster</span>
+                        <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </div>
               </Link>
-           </div>
-        </div>
+
+              <Link to="programs" className="bg-white p-10 rounded-[3rem] border-2 border-slate-100 shadow-xl shadow-slate-100/50 relative overflow-hidden group hover:scale-[1.02] transition-all hover:border-blue-100">
+                  <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform text-indigo-600">
+                    <GraduationCap className="w-24 h-24" />
+                  </div>
+                  <div className="relative z-10">
+                    <h2 className="text-2xl font-black mb-2 text-slate-900">Academic Catalog</h2>
+                    <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">Access the full list of degree programs, vocational streams, and fee structures.</p>
+                    <div className="mt-6 flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-widest">
+                        <span>Search Programs</span>
+                        <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </div>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -188,7 +251,14 @@ export default function EmployeePortal() {
       <Route path="tasks" element={<MyTasks />} />
       <Route path="leaves" element={<LeaveRequests />} />
       <Route path="announcements" element={<Announcements />} />
-      <Route path="crm/*" element={<CRM />} />
+      {(user?.role === 'Sales & CRM Admin' || user?.departmentName?.toLowerCase().includes('sales')) && (
+        <>
+          <Route path="crm/*" element={<CRM />} />
+          <Route path="centers" element={<MyCenters />} />
+          <Route path="universities" element={<InstitutionalUniversities />} />
+          <Route path="programs" element={<InstitutionalPrograms />} />
+        </>
+      )}
     </Routes>
   );
 }

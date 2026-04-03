@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ShieldCheck, Building2, Phone, Mail, FileText, CheckCircle2, ArrowRight, Loader2, Globe } from 'lucide-react';
+import { ShieldCheck, Building2, Phone, Mail, FileText, CheckCircle2, ArrowRight, Loader2, Globe, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function CenterRegistration() {
-  const { bdeId } = useParams();
+  const { code } = useParams();
   const navigate = useNavigate();
   const [bdeInfo, setBdeInfo] = useState<any>(null);
+  const [orgInfo, setOrgInfo] = useState<any>(null);
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -22,17 +25,22 @@ export default function CenterRegistration() {
     infrastructure: {
       labCapacity: '',
       classroomCount: '',
-      internetSpeed: '',
+    },
+    interest: {
+      universityId: '',
+      programId: ''
     }
   });
 
   useEffect(() => {
     fetchBdeInfo();
-  }, [bdeId]);
+    fetchOrgInfo();
+    fetchUniversities();
+  }, [code]);
 
   const fetchBdeInfo = async () => {
     try {
-      const res = await axios.get(`${API_URL}/public/bde-info/${bdeId}`);
+      const res = await axios.get(`${API_URL}/public/bde-info/${code}`);
       setBdeInfo(res.data);
     } catch (error) {
       console.error('Invalid BDE ID:', error);
@@ -41,6 +49,44 @@ export default function CenterRegistration() {
       setLoading(false);
     }
   };
+ 
+  const fetchOrgInfo = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/public/org-info`);
+      setOrgInfo(res.data);
+    } catch (error) {
+      console.error('Failed to fetch org info');
+    }
+  };
+
+  const fetchUniversities = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/public/universities`);
+      setUniversities(res.data);
+    } catch (error) {
+       console.error('Fetch Universities failed');
+    }
+  };
+
+  const fetchPrograms = async (uniId: string) => {
+    try {
+      const res = await axios.get(`${API_URL}/public/programs/${uniId}`);
+      setPrograms(res.data);
+    } catch (error) {
+       console.error('Fetch Programs failed');
+    }
+  };
+
+  const handleUniversityChange = (uniId: string) => {
+    setFormData({ 
+      ...formData, 
+      interest: { universityId: uniId, programId: '' } 
+    });
+    setPrograms([]);
+    if (uniId) fetchPrograms(uniId);
+  };
+
+  const selectedProgramDetails = programs.find(p => p.id === Number(formData.interest.programId));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +94,7 @@ export default function CenterRegistration() {
     try {
       await axios.post(`${API_URL}/public/register-center`, {
         ...formData,
-        bdeId
+        code
       });
       setSubmitted(true);
       toast.success('Registration request submitted successfully!');
@@ -101,7 +147,7 @@ export default function CenterRegistration() {
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
                <ShieldCheck className="w-6 h-6 text-slate-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter uppercase italic">IITS RPS</span>
+            <span className="text-xl font-black tracking-tighter uppercase italic">{orgInfo?.name || 'Institutional Portal'}</span>
           </div>
 
           <h1 className="text-5xl lg:text-6xl font-black tracking-tighter italic uppercase leading-[0.9] mb-8">
@@ -125,9 +171,9 @@ export default function CenterRegistration() {
         </div>
 
         {bdeInfo && (
-          <div className="mt-20 relative z-10">
-            <div className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md">
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] mb-3">Partner Invitation</p>
+          <div className="mt-12 relative z-10">
+            <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] backdrop-blur-md">
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2 leading-none">Partner Invitation</p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-xl italic">
                   {bdeInfo.name?.charAt(0)}
@@ -198,19 +244,50 @@ export default function CenterRegistration() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">Primary Interest: University</label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <select 
+                    required
+                    className="w-full bg-white border-2 border-slate-100 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:border-blue-600 focus:ring-0 transition-all shadow-sm appearance-none"
+                    value={formData.interest.universityId}
+                    onChange={e => handleUniversityChange(e.target.value)}
+                  >
+                    <option value="">Select Institution</option>
+                    {universities.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">Internet Speed (Mbps)</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">Primary Interest: Program</label>
                 <div className="relative">
-                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                  <input 
-                    type="text" 
-                    className="w-full bg-white border-2 border-slate-100 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:border-blue-600 focus:ring-0 transition-all shadow-sm"
-                    placeholder="100 Mbps"
-                    value={formData.infrastructure.internetSpeed}
-                    onChange={e => setFormData({...formData, infrastructure: { ...formData.infrastructure, internetSpeed: e.target.value}})}
-                  />
+                  <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <select 
+                    required
+                    disabled={!formData.interest.universityId}
+                    className="w-full bg-white border-2 border-slate-100 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:border-blue-600 focus:ring-0 transition-all shadow-sm appearance-none disabled:opacity-50 disabled:bg-slate-50 cursor-not-allowed"
+                    value={formData.interest.programId}
+                    onChange={e => setFormData({...formData, interest: { ...formData.interest, programId: e.target.value }})}
+                  >
+                    <option value="">Select Framework</option>
+                    {programs.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
+                {selectedProgramDetails && (
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Stream: {selectedProgramDetails.type}</p>
+                  </div>
+                )}
               </div>
             </div>
 

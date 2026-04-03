@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 const MapPin = ({ className }: { className?: string }) => (
@@ -66,6 +67,20 @@ export default function StudentValidation() {
   useEffect(() => {
     fetchStudents();
   }, [activeTab, unit]);
+
+  useEffect(() => {
+    if (isReviewOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
+  }, [isReviewOpen]);
 
   const handleApprove = async (id: number) => {
     try {
@@ -138,7 +153,10 @@ export default function StudentValidation() {
       id: 'docs',
       header: 'Documents',
       cell: ({ row }) => {
-        const docCount = row.original.documents ? Object.keys(row.original.documents).length : 0;
+        let docCount = 0;
+        if (row.original.documents) docCount += Object.keys(row.original.documents).length;
+        if (row.original.marks?.marksProof) docCount += 1;
+        
         return (
           <div className="flex items-center gap-1.5">
             <FileText className={`w-4 h-4 ${docCount > 0 ? 'text-blue-500' : 'text-slate-200'}`} />
@@ -223,7 +241,7 @@ export default function StudentValidation() {
       </div>
 
       {/* Review Modal */}
-      {isReviewOpen && selectedStudent && (
+      {isReviewOpen && selectedStudent && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -380,7 +398,7 @@ export default function StudentValidation() {
                 {activeTab === 'REJECTED' && (
                    <section className="bg-rose-50 border border-rose-100 rounded-[2rem] p-8 space-y-4">
                       <h4 className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Rejection Logic History</h4>
-                      <p className="text-sm font-medium text-slate-700 italic">"{selectedStudent.lastRejectionReason || 'No reason provided'}"</p>
+                      <p className="text-sm font-medium text-slate-700 ">"{selectedStudent.lastRejectionReason || 'No reason provided'}"</p>
                       <div className="pt-4 border-t border-rose-200">
                          <p className="text-[9px] font-black text-rose-400 uppercase tracking-tight">Reviewed on: {selectedStudent.reviewedAt ? new Date(selectedStudent.reviewedAt).toLocaleDateString() : 'N/A'}</p>
                       </div>
@@ -390,7 +408,7 @@ export default function StudentValidation() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

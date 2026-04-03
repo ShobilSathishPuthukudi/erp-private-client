@@ -32,7 +32,9 @@ import CenterRegistration from '@/pages/public/CenterRegistration';
 import CEODashboard from '@/pages/ceo';
 import SurveyCreator from '@/pages/org-admin/SurveyCreator';
 import SurveyHub from '@/pages/shared/SurveyHub';
+import Notifications from '@/pages/shared/Notifications';
 import NotFound from '@/pages/NotFound';
+import TasksRedirect from '@/components/shared/TasksRedirect';
 
 // Portals - Placeholders
 function ProtectedRoute({ children, allowedRoles }: { children: ReactNode, allowedRoles?: string[] }) {
@@ -82,7 +84,21 @@ export default function App() {
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/login" element={user ? <Navigate to={(['center', 'study-center'].includes(user.role.toLowerCase()) ? '/dashboard/study-center' : `/dashboard/${user.role.toLowerCase()}`)} replace /> : <LoginPage />} />
+          <Route path="/login" element={user ? <Navigate to={(
+            ['center', 'study-center'].includes(user.role.toLowerCase().trim()) 
+              ? '/dashboard/study-center' 
+              : user.role === 'Organization Admin' 
+                ? '/dashboard/org-admin/overview'
+                : user.role === 'HR Admin'
+                  ? '/dashboard/hr'
+                  : user.role === 'Finance Admin'
+                    ? '/dashboard/finance'
+                    : user.role === 'Sales & CRM Admin'
+                      ? '/dashboard/sales'
+                      : user.role === 'Operations Admin'
+                        ? '/dashboard/operations/overview'
+                        : `/dashboard/${user.role.toLowerCase().trim()}`
+          )} replace /> : <LoginPage />} />
           
           {/* Dashboards wrapped in DashboardLayout */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -90,11 +106,19 @@ export default function App() {
                 user 
                    ? (['openschool', 'online', 'skill', 'bvoc'].includes(user.role.toLowerCase().trim()) 
                         ? `/dashboard/subdept/${user.role.toLowerCase().trim()}` 
-                        : (user.role.toLowerCase().trim() === 'operations' 
+                        : (user.role.toLowerCase().trim() === 'operations admin' 
                            ? '/dashboard/operations/overview'
-                           : (['center', 'study-center'].includes(user.role.toLowerCase().trim()) 
+                           : ['center', 'study-center'].includes(user.role.toLowerCase().trim()) 
                               ? '/dashboard/study-center' 
-                              : `/dashboard/${user.role.toLowerCase().trim()}`)))
+                              : user.role === 'Organization Admin'
+                                ? '/dashboard/org-admin/overview'
+                                : user.role === 'HR Admin'
+                                  ? '/dashboard/hr'
+                                  : user.role === 'Finance Admin'
+                                    ? '/dashboard/finance'
+                                    : user.role === 'Sales & CRM Admin'
+                                      ? '/dashboard/sales'
+                                      : `/dashboard/${user.role.toLowerCase().trim()}`))
                    : '/login'
             } replace />} />
 
@@ -102,21 +126,23 @@ export default function App() {
             <Route path="center" element={<Navigate to="/dashboard/study-center" replace />} />
             <Route path="center/*" element={<Navigate to="/dashboard/study-center" replace />} />
             
+            <Route path="tasks" element={<ProtectedRoute><TasksRedirect /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
             <Route path="profile/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />
-            <Route path="org-admin/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><OrgAdminDashboard /></ProtectedRoute>} />
-            <Route path="org-admin/system-health" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'ceo']}><SystemHealth /></ProtectedRoute>} />
-            <Route path="org-admin/data" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><DataManagement /></ProtectedRoute>} />
-            <Route path="org-admin/cron" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin']}><CronMonitoring /></ProtectedRoute>} />
-            <Route path="org-admin/surveys" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'academic']}><SurveyCreator /></ProtectedRoute>} />
+            <Route path="org-admin/*" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin']}><OrgAdminDashboard /></ProtectedRoute>} />
+            <Route path="org-admin/system-health" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin', 'ceo']}><SystemHealth /></ProtectedRoute>} />
+            <Route path="org-admin/data" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin']}><DataManagement /></ProtectedRoute>} />
+            <Route path="org-admin/cron" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin']}><CronMonitoring /></ProtectedRoute>} />
+            <Route path="org-admin/surveys" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin', 'academic']}><SurveyCreator /></ProtectedRoute>} />
             <Route path="shared/surveys" element={<ProtectedRoute><SurveyHub /></ProtectedRoute>} />
+            <Route path="notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="ceo/*" element={<ProtectedRoute allowedRoles={['ceo']}><CEODashboard /></ProtectedRoute>} />
-            <Route path="academic/*" element={<ProtectedRoute allowedRoles={['academic', 'operations']}><AcademicDashboard /></ProtectedRoute>} />
-            <Route path="operations/*" element={<ProtectedRoute allowedRoles={['operations', 'academic']}><AcademicDashboard /></ProtectedRoute>} />
-            <Route path="finance/*" element={<ProtectedRoute allowedRoles={['finance']}><FinanceDashboard /></ProtectedRoute>} />
-            <Route path="hr/*" element={<ProtectedRoute allowedRoles={['hr']}><HRDashboard /></ProtectedRoute>} />
-            <Route path="sales/*" element={<ProtectedRoute allowedRoles={['sales']}><SalesDashboard /></ProtectedRoute>} />
+            <Route path="academic/*" element={<ProtectedRoute allowedRoles={['academic', 'operations', 'Operations Admin']}><AcademicDashboard /></ProtectedRoute>} />
+            <Route path="operations/*" element={<ProtectedRoute allowedRoles={['operations', 'academic', 'Operations Admin']}><AcademicDashboard /></ProtectedRoute>} />
+            <Route path="finance/*" element={<ProtectedRoute allowedRoles={['finance', 'Finance Admin']}><FinanceDashboard /></ProtectedRoute>} />
+            <Route path="hr/*" element={<ProtectedRoute allowedRoles={['hr', 'HR Admin']}><HRDashboard /></ProtectedRoute>} />
+            <Route path="sales/*" element={<ProtectedRoute allowedRoles={['sales', 'Sales & CRM Admin', 'Organization Admin', 'org-admin', 'ceo']}><SalesDashboard /></ProtectedRoute>} />
             <Route path="study-center/*" element={<ProtectedRoute allowedRoles={['study-center', 'center']}><StudyCenterDashboard /></ProtectedRoute>} />
             <Route path="student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
             <Route path="employee/*" element={<ProtectedRoute allowedRoles={['employee']}><EmployeePortal /></ProtectedRoute>} />
@@ -126,12 +152,12 @@ export default function App() {
             <Route path="skill/*" element={<Navigate to="/dashboard/subdept/skill/portal" replace />} />
             <Route path="bvoc/*" element={<Navigate to="/dashboard/subdept/bvoc/portal" replace />} />
             
-            <Route path="subdept/*" element={<ProtectedRoute allowedRoles={['org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'academic', 'openschool', 'online', 'skill', 'bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
+            <Route path="subdept/*" element={<ProtectedRoute allowedRoles={['Organization Admin', 'org-admin', 'system-admin', 'SUB_DEPT_ADMIN', 'academic', 'openschool', 'online', 'skill', 'bvoc']}><SubDeptDashboard /></ProtectedRoute>} />
           </Route>
           
           {/* Public Referral & Registration Links */}
           <Route path="/referral/:code" element={<ReferralForm />} />
-          <Route path="/register-center/:bdeId" element={<CenterRegistration />} />
+          <Route path="/register-center/:code" element={<CenterRegistration />} />
           
           {/* Global Fallbacks */}
           <Route path="/404" element={<NotFound />} />

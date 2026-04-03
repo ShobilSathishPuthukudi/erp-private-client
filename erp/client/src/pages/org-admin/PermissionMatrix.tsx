@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { 
@@ -9,7 +9,9 @@ import {
   UserCheck,
   Info,
   Save,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 export default function PermissionMatrix() {
@@ -20,17 +22,31 @@ export default function PermissionMatrix() {
 
   const [permissions, setPermissions] = useState<any[]>([]);
   const [initialPermissions, setInitialPermissions] = useState<string>('');
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  // Base module set for the institutional ERP
+  // Master permission set: Institutional Modules (Core Pillars) and functional Nodes
   const DEFAULT_MODULE_PAGES = [
-    { module: 'Dashboard', page: 'Overview' },
-    { module: 'Dashboard', page: 'Alerts' },
-    { module: 'Departments', page: 'All Departments' },
-    { module: 'Finance', page: 'Fee Structures' },
-    { module: 'Finance', page: 'Payment Processing' },
-    { module: 'HR', page: 'Employee Onboarding' },
-    { module: 'Academic', page: 'Partner Universities' },
-    { module: 'Sales', page: 'Lead Pipeline' }
+    // --- Category: Institutional Modules ---
+    { category: 'Institutional Modules', module: 'Organization Admin', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Academic', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Finance', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'HR', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Sales & CRM', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Operations', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Portals', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Assessment', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Accreditation', page: 'Master Access' },
+    { category: 'Institutional Modules', module: 'Inventory & Public', page: 'Master Access' },
+
+    // --- Category: Governance Permission Nodes ---
+    { category: 'Governance Permission Nodes', module: 'Academic', page: 'Partner Universities' },
+    { category: 'Governance Permission Nodes', module: 'Finance', page: 'Fee Structures' },
+    { category: 'Governance Permission Nodes', module: 'Finance', page: 'Payment Processing' },
+    { category: 'Governance Permission Nodes', module: 'HR', page: 'Employee Onboarding' },
+    { category: 'Governance Permission Nodes', module: 'Sales', page: 'Lead Pipeline' },
+    { category: 'Governance Permission Nodes', module: 'Departments', page: 'All Departments' },
+    { category: 'Governance Permission Nodes', module: 'Dashboard', page: 'Overview' },
+    { category: 'Governance Permission Nodes', module: 'Dashboard', page: 'Alerts' }
   ];
 
   useEffect(() => {
@@ -60,29 +76,88 @@ export default function PermissionMatrix() {
       setLoading(true);
       const { data } = await api.get(`/org-admin/permissions/matrix?role=${selectedRole}`);
       
-      // If no permissions exist for this role yet, initialize with defaults
-      if (data.length === 0) {
-        const defaultPerms = DEFAULT_MODULE_PAGES.map((mp, idx) => ({
-          id: `new-${idx}`,
-          module: mp.module,
-          page: mp.page,
-          read: selectedRole === 'Org Admin',
-          write: selectedRole === 'Org Admin',
-          approve: selectedRole === 'Org Admin',
-          locked: false
-        }));
-        setPermissions(defaultPerms);
-        setInitialPermissions(JSON.stringify(defaultPerms));
-      } else {
-        const formattedData = data.map((p: any) => ({
-          ...p,
-          read: p.canRead,
-          write: p.canWrite,
-          approve: p.canApprove
-        }));
-        setPermissions(formattedData);
-        setInitialPermissions(JSON.stringify(formattedData));
-      }
+      // Mirror and Synchronize: Match database records with our authoritative DEFAULT_MODULE_PAGES
+      const syncedPerms = DEFAULT_MODULE_PAGES.map((def, idx) => {
+        const existing = data.find((p: any) => p.module === def.module && p.page === def.page);
+        const isCustom = roles.find(r => r.name === selectedRole)?.isCustom;
+
+        let canRead = existing?.canRead || false;
+        let canWrite = existing?.canWrite || false;
+        let canApprove = existing?.canApprove || false;
+
+        // --- Institutional Authority Ledger (System Managed Overrides) ---
+        if (!isCustom) {
+            // Absolute Authority: Admins and Executives
+            if (selectedRole === 'Organization Admin' || selectedRole === 'CEO' || selectedRole === 'Operations Admin') {
+                canRead = true;
+                canWrite = true;
+                canApprove = true;
+            }
+            // Functional Authority: Finance Pillar
+            else if (selectedRole === 'Finance Admin') {
+                if (['Finance', 'Assessment', 'Inventory & Public'].includes(def.module)) {
+                    canRead = true;
+                    canWrite = true;
+                    canApprove = true;
+                } else {
+                    canRead = true;
+                }
+            }
+            // Functional Authority: HR Pillar
+            else if (selectedRole === 'HR Admin') {
+                if (['HR', 'Departments', 'Operations'].includes(def.module)) {
+                    canRead = true;
+                    canWrite = true;
+                    canApprove = true;
+                } else {
+                    canRead = true;
+                }
+            }
+            // Functional Authority: Sales Pillar
+            else if (selectedRole === 'Sales & CRM Admin') {
+                if (['Sales & CRM', 'Portals', 'Sales'].includes(def.module)) {
+                    canRead = true;
+                    canWrite = true;
+                    canApprove = true;
+                } else {
+                    canRead = true;
+                }
+            }
+            // Functional Authority: Academic/Unit Pillars
+            else if (['BVoc Department Admin', 'Skill Department Admin', 'Open School Admin', 'Online Department Admin'].includes(selectedRole)) {
+                if (['Academic', 'Portals', 'Departments', 'Accreditation'].includes(def.module)) {
+                    canRead = true;
+                    canWrite = true;
+                    canApprove = true;
+                } else {
+                    canRead = true;
+                }
+            }
+            // Operational Authority
+            else if (selectedRole === 'study-center') {
+                if (['Portals', 'Academic', 'Sales'].includes(def.module)) {
+                    canRead = true;
+                    canWrite = true;
+                } else {
+                    canRead = true;
+                }
+            }
+        }
+
+        return {
+          id: existing?.id || `new-${idx}`,
+          category: def.category,
+          module: def.module,
+          page: def.page,
+          read: canRead,
+          write: canWrite,
+          approve: canApprove,
+          locked: !isCustom
+        };
+      });
+
+      setPermissions(syncedPerms);
+      setInitialPermissions(JSON.stringify(syncedPerms));
     } catch (error) {
       toast.error('Failed to fetch institutional access rights');
     } finally {
@@ -131,6 +206,14 @@ export default function PermissionMatrix() {
     }));
   };
   
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category) 
+        : [...prev, category]
+    );
+  };
+
   const hasChanges = initialPermissions !== JSON.stringify(permissions);
 
   return (
@@ -149,7 +232,7 @@ export default function PermissionMatrix() {
           <div className="relative group">
             <label className="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-slate-400 tracking-wider z-10 pointer-events-none group-focus-within:text-blue-600 transition-colors">Configure role</label>
             <select 
-              className="px-4 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:border-blue-600 transition-all min-w-[200px]"
+              className="px-4 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:border-blue-600 transition-all min-w-[200px] cursor-pointer"
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
             >
@@ -166,8 +249,15 @@ export default function PermissionMatrix() {
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 font-display">Access Rights: {selectedRole}</h3>
-              <p className="text-[10px] text-slate-400 font-bold tracking-wider">Modified: 2 minutes ago</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900 font-display">Access Rights: {selectedRole}</h3>
+                {!roles.find(r => r.name === selectedRole)?.isCustom && (
+                  <span className="px-2 py-0.5 bg-slate-900 text-white text-[9px] rounded-md font-black uppercase tracking-widest flex items-center gap-1">
+                    <LockIcon className="w-2.5 h-2.5" /> System Managed
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold tracking-wider">Reflected from Institutional Registry</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -201,53 +291,105 @@ export default function PermissionMatrix() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {permissions.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-8 py-5">
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full tracking-wider">
-                        {p.module}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="font-bold text-slate-800 text-base tracking-tight">{p.page}</div>
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                      <button 
-                        onClick={() => togglePermission(p.id, 'read')}
-                        className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center hover:scale-110 active:scale-95 ${
-                          p.read ? 'bg-blue-600 border-blue-600 shadow-xl shadow-blue-500/40 scale-110' : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {p.read ? <Eye className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
-                      </button>
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                      <button 
-                        onClick={() => togglePermission(p.id, 'write')}
-                        className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center ${
-                          p.write ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-500/40 scale-110' : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {p.write ? <Edit3 className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
-                      </button>
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                      <button 
-                        onClick={() => togglePermission(p.id, 'approve')}
-                        className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center hover:scale-110 active:scale-95 ${
-                          p.approve ? 'bg-emerald-600 border-emerald-600 shadow-xl shadow-emerald-500/40 scale-110' : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {p.approve ? <UserCheck className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
-                      </button>
-                    </td>
-                    <td className="px-8 py-5 text-center text-slate-400 group-hover:text-slate-600">
-                      <div className="flex items-center justify-center">
-                        <LockIcon className="w-4 h-4 opacity-20" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {['Institutional Modules', 'Governance Permission Nodes'].map((category) => {
+                  const categoryPerms = permissions.filter(p => p.category === category);
+                  if (categoryPerms.length === 0) return null;
+
+                  // Group by module within category
+                  const modulesInCategory = Array.from(new Set(categoryPerms.map(p => p.module)));
+
+                  return (
+                    <Fragment key={category}>
+                      <tr className="bg-slate-50/80 sticky top-0 z-20 group/cat cursor-pointer select-none" onClick={() => toggleCategory(category)}>
+                        <td colSpan={6} className="px-8 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 flex items-center justify-center rounded-lg bg-white border border-slate-200 group-hover/cat:border-blue-400 group-hover/cat:text-blue-600 transition-all shadow-sm">
+                              {expandedCategories.includes(category) ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </div>
+                            <div className={`w-2 h-2 rounded-full ${category === 'Institutional Modules' ? 'bg-blue-600' : 'bg-emerald-600'}`}></div>
+                            <span className="text-[11px] font-black text-slate-600 uppercase tracking-[0.25em]">
+                              {category}
+                            </span>
+                            <div className="h-px flex-1 bg-slate-200/60 ml-2"></div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3 py-1 bg-white/50 rounded-full border border-slate-100">
+                              {categoryPerms.length} nodes
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedCategories.includes(category) && modulesInCategory.map(moduleName => {
+                        const modulePerms = categoryPerms.filter(p => p.module === moduleName);
+                        return (
+                          <Fragment key={moduleName}>
+                            {modulePerms.map((p, idx) => (
+                              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-50 last:border-b-0">
+                                <td className="px-8 py-5">
+                                  {idx === 0 && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg tracking-wider border border-slate-200/50 transition-all group-hover:border-blue-200 group-hover:bg-blue-50 group-hover:text-blue-600">
+                                        {p.module}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <div className="font-bold text-slate-800 text-sm lg:text-base tracking-tight">{p.page}</div>
+                                  {p.page === 'Master Access' && (
+                                    <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter mt-0.5">Primary Pillar Authorization</p>
+                                  )}
+                                </td>
+                                <td className="px-8 py-5 text-center">
+                                  <button 
+                                    onClick={() => togglePermission(p.id, 'read')}
+                                    disabled={!roles.find(r => r.name === selectedRole)?.isCustom}
+                                    className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center hover:scale-110 active:scale-95 cursor-pointer ${
+                                      p.read ? 'bg-blue-600 border-blue-600 shadow-xl shadow-blue-500/40' : 'bg-white border-slate-200 hover:border-slate-300'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                                  >
+                                    {p.read ? <Eye className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
+                                  </button>
+                                </td>
+                                <td className="px-8 py-5 text-center">
+                                  <button 
+                                    onClick={() => togglePermission(p.id, 'write')}
+                                    disabled={!roles.find(r => r.name === selectedRole)?.isCustom}
+                                    className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center hover:scale-110 active:scale-95 cursor-pointer ${
+                                      p.write ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-500/40' : 'bg-white border-slate-200 hover:border-slate-300'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                                  >
+                                    {p.write ? <Edit3 className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
+                                  </button>
+                                </td>
+                                <td className="px-8 py-5 text-center">
+                                  <button 
+                                    onClick={() => togglePermission(p.id, 'approve')}
+                                    disabled={!roles.find(r => r.name === selectedRole)?.isCustom}
+                                    className={`w-10 h-10 rounded-full border-2 transition-all mx-auto flex items-center justify-center hover:scale-110 active:scale-95 cursor-pointer ${
+                                      p.approve ? 'bg-emerald-600 border-emerald-600 shadow-xl shadow-emerald-500/40' : 'bg-white border-slate-200 hover:border-slate-300'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                                  >
+                                    {p.approve ? <UserCheck className="w-5 h-5 text-white" /> : <LockIcon className="w-4 h-4 text-slate-200" />}
+                                  </button>
+                                </td>
+                                <td className="px-8 py-5 text-center">
+                                  <div className="flex items-center justify-center text-[10px] font-bold">
+                                    {!roles.find(r => r.name === selectedRole)?.isCustom ? (
+                                      <span className="flex items-center gap-1.5 text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                        <LockIcon className="w-3 h-3" /> Static
+                                      </span>
+                                    ) : (
+                                      <span className="text-blue-500 bg-blue-50 px-2.5 py-1 rounded-lg">Customizable</span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -268,17 +410,17 @@ export default function PermissionMatrix() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto relative z-10">
-            <button className="px-6 py-3.5 bg-white/5 text-white font-bold text-sm rounded-2xl border border-white/10 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center min-w-[160px]">
+            <button className="px-6 py-3.5 bg-white/5 text-white font-bold text-sm rounded-2xl border border-white/10 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center min-w-[160px] cursor-pointer">
               <RotateCcw className="w-4 h-4 mr-2" /> Reset Defaults
             </button>
             <button 
               className={`px-10 py-3.5 font-bold text-sm rounded-2xl shadow-2xl transition-all flex items-center justify-center min-w-[180px] hover:scale-[1.02] active:scale-[0.98] ${
-                saving || !hasChanges 
+                saving || !hasChanges || !roles.find(r => r.name === selectedRole)?.isCustom
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
-                  : 'bg-blue-600 text-white shadow-blue-600/40 hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-blue-600 text-white shadow-blue-600/40 hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
               }`}
               onClick={handleSave}
-              disabled={saving || !hasChanges}
+              disabled={saving || !hasChanges || !roles.find(r => r.name === selectedRole)?.isCustom}
             >
               {saving ? (
                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>

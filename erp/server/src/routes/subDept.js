@@ -10,27 +10,27 @@ const { Program, Student, Department, AccreditationRequest, ProgramOffering, Pay
 const getSubDeptId = (user) => {
   if (!user) return null;
   const roleStr = (user.role || '').toLowerCase();
-  if (['academic', 'operations'].includes(roleStr)) return null;
+  if (['Operations Admin', 'Organization Admin'].includes(roleStr)) return null;
   
   const unitStr = (user.subDepartment || user.role || '').toLowerCase();
-  if (unitStr.includes('openschool')) return 8;
-  if (unitStr.includes('online')) return 9;
-  if (unitStr.includes('skill')) return 10;
-  if (unitStr.includes('bvoc')) return 11;
+  if (unitStr.includes('Open School Admin')) return 8;
+  if (unitStr.includes('Online Department Admin')) return 9;
+  if (unitStr.includes('Skill Department Admin')) return 10;
+  if (unitStr.includes('BVoc Department Admin')) return 11;
   return user.deptId || user.departmentId;
 };
 
 const isSubDeptAdmin = (req, res, next) => {
   const role = req.user.role?.toLowerCase();
   const deptId = getSubDeptId(req.user);
-  const allowedRoles = ['dept-admin', 'dept_admin', 'sub_dept_admin', 'openschool', 'online', 'skill', 'bvoc', 'academic', 'operations'];
+  const allowedRoles = ['dept-admin', 'dept_admin', 'sub_dept_admin', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Operations Admin', 'Organization Admin'];
   
   if (!allowedRoles.includes(role)) {
     return res.status(403).json({ error: 'Access denied: Insufficient privileges' });
   }
 
   // Academic admins can bypass deptId requirement
-  if (['academic', 'operations'].includes(role) && !deptId) {
+  if (['Operations Admin', 'Organization Admin'].includes(role) && !deptId) {
     return next();
   }
 
@@ -107,7 +107,7 @@ router.get('/programs', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
     const deptId = querySubDeptId || req.user.deptId;
-    const isGlobal = (['academic', 'operations'].includes(req.user.role) && !querySubDeptId);
+    const isGlobal = (['Operations Admin', 'Organization Admin'].includes(req.user.role) && !querySubDeptId);
     
     const programs = await Program.findAll({
       where: isGlobal ? {} : { subDeptId: deptId },
@@ -153,7 +153,7 @@ router.put('/programs/:id/status', verifyToken, isSubDeptAdmin, async (req, res)
 router.get('/students', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     // We fetch students that belong to programs under this subDeptId
-    const isGlobal = (['academic', 'operations'].includes(req.user.role));
+    const isGlobal = (['Operations Admin', 'Organization Admin'].includes(req.user.role));
     const students = await Student.findAll({
       include: [
         { 
@@ -353,7 +353,7 @@ router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, r
 
     const { unit } = req.query;
     const roleNormalized = req.user.role?.toLowerCase().trim();
-    const targetType = unit || (['academic', 'operations'].includes(roleNormalized) ? null : roleNormalized);
+    const targetType = unit || (['Organization Admin', 'Operations Admin'].includes(roleNormalized) ? null : roleNormalized);
     
     console.log("Accreditation Request Filter:", { unit, targetType, role: req.user.role });
 

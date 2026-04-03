@@ -13,6 +13,14 @@
     z-index: 1000;
     transition: all 0.3s ease;
 }
+ 
+/* Global Immersive Focus: Blur header when modal is open */
+body.modal-open-blur .header-modern-glass {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+    transition: all 0.3s ease;
+}
 
 /* Removed bottom glow for unified blended shell */
 
@@ -166,9 +174,17 @@
     box-shadow: 0 0 8px #2563eb;
 }
 
-.branding-text {
-    display: none;
-    /* Scrubbed for white-label */
+.branding-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.branding-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--layout-chrome-text);
 }
 
 .header-dropdown-wrapper {

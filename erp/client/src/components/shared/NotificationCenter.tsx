@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Clock, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,6 +12,7 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore(state => state.user);
+  const navigate = useNavigate();
 
   const fetchNotifications = async () => {
     try {
@@ -38,14 +40,25 @@ export default function NotificationCenter() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const markAsRead = async (id: number) => {
-    try {
-      await api.patch(`/notifications/${id}/read`);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Mark read error:', error);
+  const handleNotificationClick = async (n: any) => {
+    // 1. Mark as read if it's currently unread
+    if (!n.isRead) {
+      try {
+        await api.patch(`/notifications/${n.id}/read`);
+        setNotifications(notifications.map(item => item.id === n.id ? { ...item, isRead: true } : item));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Mark read error:', error);
+      }
     }
+
+    // 2. Navigate if link exist
+    if (n.link) {
+      navigate(n.link);
+    }
+
+    // 3. Close the dropdown
+    setIsOpen(false);
   };
 
   const markAllRead = async () => {
@@ -100,10 +113,10 @@ export default function NotificationCenter() {
               <div 
                 key={n.id} 
                 className={clsx(
-                  "p-4 hover:bg-slate-50 transition-all flex space-x-3 relative group",
+                  "p-4 hover:bg-slate-50 transition-all flex space-x-3 relative group cursor-pointer",
                   !n.isRead && "bg-blue-50/30"
                 )}
-                onClick={() => !n.isRead && markAsRead(n.id)}
+                onClick={() => handleNotificationClick(n)}
               >
                 <div className="flex-shrink-0 mt-1">
                   {getIcon(n.type)}
@@ -130,7 +143,10 @@ export default function NotificationCenter() {
           </div>
           
           <div className="p-3 bg-slate-50/50 text-center border-t border-slate-50">
-             <button className="text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase tracking-widest">
+             <button 
+               onClick={() => { navigate('/dashboard/notifications'); setIsOpen(false); }}
+               className="text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase tracking-widest"
+             >
                 View Full History
              </button>
           </div>

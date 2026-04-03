@@ -7,7 +7,7 @@ const router = express.Router();
 const { EMI, Student, Invoice } = models;
 
 const isFinanceOrAdmin = (req, res, next) => {
-  const allowed = ['finance', 'org-admin', 'system-admin'];
+  const allowed = ['Finance Admin', 'Organization Admin', 'Organization Admin'];
   if (!allowed.includes(req.user.role)) {
     return res.status(403).json({ error: 'Access denied: Finance clearance required' });
   }

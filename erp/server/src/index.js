@@ -56,7 +56,13 @@ const io = null;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -122,46 +128,44 @@ initCronJobs();
 
 const cleanupDuplicateIndexes = async () => {
   try {
-    // 1. Cleanup 'users' redundant email indexes
-    const [userResults] = await sequelize.query(`
-      SELECT INDEX_NAME 
+    console.log('[DATABASE] Starting global index sanitization...');
+    
+    // 1. Find all non-primary unique indexes that look like duplicates (numeric suffixes or multiple per column)
+    const [redundantIndexes] = await sequelize.query(`
+      SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
       FROM information_schema.statistics 
       WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'users' 
-      AND COLUMN_NAME = 'email' 
-      AND NON_UNIQUE = 0
+      AND NON_UNIQUE = 0 
+      AND INDEX_NAME != 'PRIMARY'
+      AND (
+        INDEX_NAME REGEXP '_[0-9]+$' OR 
+        INDEX_NAME IN (
+          SELECT INDEX_NAME 
+          FROM (
+            SELECT TABLE_NAME, COLUMN_NAME, COUNT(*) as cnt, MIN(INDEX_NAME) as keep_name
+            FROM information_schema.statistics 
+            WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0 AND INDEX_NAME != 'PRIMARY'
+            GROUP BY TABLE_NAME, COLUMN_NAME
+            HAVING cnt > 1
+          ) as dups 
+          WHERE statistics.TABLE_NAME = dups.TABLE_NAME 
+          AND statistics.COLUMN_NAME = dups.COLUMN_NAME
+          AND statistics.INDEX_NAME != dups.keep_name
+        )
+      )
     `);
 
-    const userRedundant = userResults
-      .map(r => r.INDEX_NAME)
-      .filter(name => name !== 'idx_user_email' && name !== 'PRIMARY');
-
-    for (const indexName of userRedundant) {
-      console.log(`Dropping redundant user index: ${indexName}`);
-      await sequelize.query(`ALTER TABLE users DROP INDEX ${indexName}`).catch(() => {});
+    if (redundantIndexes.length > 0) {
+      console.log(`[DATABASE] Found ${redundantIndexes.length} redundant indexes. Cleaning up...`);
+      for (const { TABLE_NAME, INDEX_NAME } of redundantIndexes) {
+        console.log(`[DATABASE] Dropping redundant index ${INDEX_NAME} from ${TABLE_NAME}`);
+        await sequelize.query(`ALTER TABLE \`${TABLE_NAME}\` DROP INDEX \`${INDEX_NAME}\``).catch(() => {});
+      }
+    } else {
+      console.log('[DATABASE] No redundant indexes found.');
     }
 
-    // 2. Cleanup 'invoices' redundant invoiceNo indexes (ER_TOO_MANY_KEYS fix)
-    const [invoiceResults] = await sequelize.query(`
-      SELECT INDEX_NAME 
-      FROM information_schema.statistics 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'invoices' 
-      AND COLUMN_NAME = 'invoiceNo' 
-      AND NON_UNIQUE = 0
-    `);
-
-    const invoiceRedundant = invoiceResults
-      .map(r => r.INDEX_NAME)
-      .filter(name => name !== 'invoiceNo' && name !== 'PRIMARY' && !name.includes('unique'));
-
-    for (const indexName of invoiceRedundant) {
-      if (indexName === 'invoiceNo') continue; // Safety check
-      console.log(`Dropping redundant invoice index: ${indexName}`);
-      await sequelize.query(`ALTER TABLE invoices DROP INDEX ${indexName}`).catch(() => {});
-    }
-
-    // 3. Ensure Student Model schema reconciliation (Phase 4.2 Fix)
+    // 2. Ensure Student Model schema reconciliation (Phase 4.2 Fix)
     const [columns] = await sequelize.query('SHOW COLUMNS FROM students');
     const columnNames = columns.map(c => c.Field);
     
@@ -182,7 +186,7 @@ const cleanupDuplicateIndexes = async () => {
       await sequelize.query('ALTER TABLE students ADD COLUMN uid VARCHAR(255) UNIQUE NULL').catch(err => console.error(err.message));
     }
 
-    // 4. Ensure Department Model schema reconciliation (Phase 4.3 Fix)
+    // 3. Ensure Department Model schema reconciliation (Phase 4.3 Fix)
     const [deptCols] = await sequelize.query('SHOW COLUMNS FROM departments');
     const deptColNames = deptCols.map(c => c.Field);
 
@@ -193,6 +197,15 @@ const cleanupDuplicateIndexes = async () => {
     if (!deptColNames.includes('password')) {
       console.log('Adding missing password column to departments...');
       await sequelize.query('ALTER TABLE departments ADD COLUMN password VARCHAR(255) NULL').catch(err => console.error(err.message));
+    }
+
+    // 4. Ensure Program Model schema reconciliation (Phase 4.4 Fix)
+    const [progCols] = await sequelize.query('SHOW COLUMNS FROM programs');
+    const columnNamesProg = progCols.map(c => c.Field);
+
+    if (!columnNamesProg.includes('totalCredits')) {
+      console.log('Adding missing totalCredits column to programs...');
+      await sequelize.query('ALTER TABLE programs ADD COLUMN totalCredits INT DEFAULT 0').catch(err => console.error(err.message));
     }
   } catch (err) {
     console.warn('Index cleanup skipped:', err.message);
@@ -210,6 +223,36 @@ const startServer = (port) => {
       // 1.1 FORCE SYNC CRITICAL GOVERNANCE MODELS (GAP-5)
       await models.Role.sync({ alter: true });
       await models.Permission.sync({ alter: true });
+
+      // [GAP-5.1] Institutional Role & Eligibility Seeding
+      const baselineRoles = [
+        'Organization Admin', 'CEO', 'HR Admin', 'Finance Admin', 'Operations Admin', 
+        'Sales & CRM Admin', 'Open School Admin', 'Online Department Admin', 
+        'Skill Department Admin', 'BVoc Department Admin', 'study-center',
+        'Employee', 'student'
+      ];
+      
+      const eligibleRoles = ['Organization Admin', 'CEO', 'Finance Admin'];
+      const { Op } = (await import('sequelize')).default;
+
+      // Ensure all baseline roles exist
+      for (const roleName of baselineRoles) {
+        await models.Role.findOrCreate({
+          where: { name: roleName },
+          defaults: { 
+            name: roleName, 
+            isCustom: false,
+            status: 'active',
+            isAdminEligible: eligibleRoles.includes(roleName)
+          }
+        });
+      }
+
+      // Update eligibility for any pre-existing roles that match
+      await models.Role.update(
+        { isAdminEligible: true },
+        { where: { name: { [Op.in]: eligibleRoles } } }
+      );
 
       // 2. Sync models with a soft fail (Sync already verified manually via DESC)
       await sequelize.sync({ alter: true }).catch(err => {

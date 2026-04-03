@@ -170,7 +170,7 @@ export default function FeeConfig() {
                 
                 <div className="space-y-3">
                     {fields.map((field, index) => (
-                        <div key={field.id} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">
+                        <div key={field.id} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 ">
                             <input 
                                 {...register(`installments.${index}.label` as const, { required: true })}
                                 className="flex-1 bg-transparent font-medium text-slate-900 outline-none"

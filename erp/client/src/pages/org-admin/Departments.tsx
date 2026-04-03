@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toSentenceCase } from '@/lib/utils';
 
 interface Department {
   id: number;
@@ -95,9 +96,9 @@ export default function Departments() {
   };
 
   const columns: ColumnDef<Department>[] = [
-    { accessorKey: 'id', header: 'ID' },
-    { accessorKey: 'name', header: 'Department Name' },
-    { accessorKey: 'type', header: 'Type', cell: ({ row }) => <span className="capitalize">{row.original.type}</span> },
+    { accessorKey: 'id', header: 'Id' },
+    { accessorKey: 'name', header: 'Department name' },
+    { accessorKey: 'type', header: 'Type', cell: ({ row }) => <span>{toSentenceCase(row.original.type)}</span> },
     { 
       accessorKey: 'status', 
       header: 'Status',
@@ -105,7 +106,7 @@ export default function Departments() {
         const status = row.original.status;
         return (
           <span className={`px-2 py-1 text-xs rounded-full font-medium ${status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-            {status.toUpperCase()}
+            {toSentenceCase(status)}
           </span>
         );
       }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid institutional email format'),
+    email: z.string().min(3, 'Invalid institutional credential format'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
   })
 });
@@ -42,7 +42,7 @@ export const universitySchema = z.object({
     accreditation: z.string().optional(),
     websiteUrl: z.string().url().optional().or(z.literal('')),
     affiliationDoc: z.string().optional(),
-    status: z.enum(['active', 'inactive']).optional(),
+    status: z.enum(['proposed', 'draft', 'staged', 'active', 'inactive']).optional(),
   })
 });
 
@@ -57,5 +57,6 @@ export const programSchema = z.object({
     totalFee: z.coerce.number().nonnegative().optional(),
     paymentStructure: z.array(z.string()).optional(),
     tenure: z.coerce.number().int().positive().optional(),
+    totalCredits: z.coerce.number().int().nonnegative().optional(),
   })
 });

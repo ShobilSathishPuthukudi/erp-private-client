@@ -56,7 +56,7 @@ export default function CredentialRevealConsole({ requestId, onExpiry }: Props) 
           <div className="flex justify-between items-start">
              <div>
                 <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Authenticated Reveal</h3>
-                <p className="text-slate-400 text-xs font-medium italic">High-security window authorized by Finance. Document and destroy upon closure.</p>
+                <p className="text-slate-400 text-xs font-medium ">High-security window authorized by Finance. Document and destroy upon closure.</p>
              </div>
              <div className="bg-rose-500/10 border border-rose-500/20 px-6 py-4 rounded-3xl flex flex-col items-center gap-1 min-w-[120px]">
                 <Clock className="w-5 h-5 text-rose-500 animate-pulse" />

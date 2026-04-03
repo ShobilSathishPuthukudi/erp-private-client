@@ -97,10 +97,10 @@ async function autoSeedFees(program, userUid) {
 const getSubDeptId = (input) => {
   if (!input) return null;
   const unitStr = (typeof input === 'string' ? input : (input.subDepartment || input.role || '')).toLowerCase();
-  if (unitStr.includes('openschool')) return 8;
-  if (unitStr.includes('online')) return 9;
-  if (unitStr.includes('skill')) return 10;
-  if (unitStr.includes('bvoc')) return 11;
+  if (unitStr.includes('Open School Admin')) return 8;
+  if (unitStr.includes('Online Department Admin')) return 9;
+  if (unitStr.includes('Skill Department Admin')) return 10;
+  if (unitStr.includes('BVoc Department Admin')) return 11;
   return input.deptId || input.departmentId || null;
 };
 
@@ -190,7 +190,7 @@ router.get('/action-requests', verifyToken, isOpsOrAdmin, async (req, res) => {
 router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { restricted, filter: visibilityFilter } = req.visibility;
-    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
     const sid = getSubDeptId(req.user);
 
@@ -280,7 +280,7 @@ router.post('/universities', verifyToken, isArchitectureAdmin, validate(universi
       shortName,
       type: 'university',
       adminId: req.user.uid,
-      status: status || 'active',
+      status: status || 'draft',
       accreditation,
       websiteUrl,
       affiliationDoc
@@ -289,7 +289,7 @@ router.post('/universities', verifyToken, isArchitectureAdmin, validate(universi
        userId: req.user.uid,
        action: 'CREATE',
        entity: 'University',
-       details: `Established university branch: ${uni.name}`,
+       details: `Established university branch: ${uni.name} in Proposed state`,
        module: 'Academic'
     });
 
@@ -319,6 +319,13 @@ router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req,
     const uni = await Department.findOne({ where: { id, type: 'university' } });
     if (!uni) return res.status(404).json({ error: 'University not found' });
 
+    // Status Guard: Only draft universities can be eradicated
+    if (uni.status !== 'draft') {
+      return res.status(400).json({ 
+        error: 'Compliance Violation: Persistent university records cannot be terminated. Status must be DRAFT.' 
+      });
+    }
+
     await uni.destroy();
     res.json({ message: 'University records permanently revoked.' });
   } catch (error) {
@@ -333,7 +340,7 @@ router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req,
 router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { restricted, filter: visibilityFilter } = req.visibility;
-    const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isIsolated = rolesWithIsolation.includes(req.user.role);
     const sid = getSubDeptId(req.user);
 
@@ -367,7 +374,7 @@ router.get('/programs', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     const { subDeptId } = req.query;
     const whereClause = { ...visibilityFilter };
     
-    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc'].includes(req.user.role)) {
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role)) {
       whereClause.subDeptId = getSubDeptId(req.user);
     } else if (subDeptId) {
       whereClause.subDeptId = subDeptId;
@@ -376,7 +383,7 @@ router.get('/programs', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     const programs = await Program.findAll({
       where: whereClause,
       include: [
-        { model: Department, as: 'university', attributes: ['name'] },
+        { model: Department, as: 'university', attributes: ['id', 'name', 'shortName'] },
         { model: ProgramFee, as: 'fees', attributes: ['id', 'name', 'isActive'] },
         { model: Subject, as: 'subjects', attributes: ['id', 'name', 'credits'] }
       ],
@@ -392,13 +399,13 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
   try {
     const program = await Program.findByPk(req.params.id, {
       include: [
-        { model: Department, as: 'university', attributes: ['id', 'name'] },
+        { model: Department, as: 'university', attributes: ['id', 'name', 'shortName'] },
         { model: ProgramFee, as: 'fees', where: { isActive: true }, required: false },
         { model: Student, attributes: ['id', 'name', 'enrollStatus'] },
         { 
             model: ProgramOffering, 
             as: 'offeringCenters',
-            include: [{ model: Department, as: 'center', attributes: ['id', 'name'] }]
+            include: [{ model: Department, as: 'center', attributes: ['id', 'name', 'shortName'] }]
         },
         {
             model: Subject,
@@ -416,11 +423,16 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
 
 router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchema), async (req, res) => {
   try {
-    const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, paymentStructure } = req.body;
+    const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, baseFee, taxPercentage, paymentStructure, totalCredits } = req.body;
     
     // SubDept mapping (simplified for now, usually correlates to Dept ID)
     const subDeptId = getSubDeptId({ role: type }); // Try to map via role-like type
     
+    // Calculate totalFee from baseFee and taxPercentage if provided
+    const calculatedTotalFee = baseFee !== undefined && taxPercentage !== undefined 
+      ? parseFloat(baseFee) * (1 + parseFloat(taxPercentage) / 100)
+      : (totalFee || 0);
+
     const p = await Program.create({
       name,
       shortName,
@@ -429,8 +441,12 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
       type,
       subDeptId: subDeptId || 0,
       intakeCapacity: intakeCapacity || 0,
-      totalFee: totalFee || 0,
-      paymentStructure: paymentStructure || []
+      totalFee: calculatedTotalFee,
+      baseFee: baseFee || 0,
+      taxPercentage: taxPercentage || 18,
+      paymentStructure: paymentStructure || [],
+      totalCredits: totalCredits || 0,
+      status: 'draft'
     });
     await logAction({
        userId: req.user.uid,
@@ -439,6 +455,11 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
        details: `Configured academic program: ${p.name}`,
        module: 'Academic'
     });
+    
+    // Trigger University Status: Staged (Standardized Transition)
+    if (universityId) {
+       await Department.update({ status: 'staged' }, { where: { id: universityId, type: 'university' } });
+    }
 
     // Auto-provision initial fee structures
     await autoSeedFees(p, req.user.uid);
@@ -490,6 +511,12 @@ router.post('/centers/:id/map-programs', verifyToken, isAcademicOrAdmin, async (
       await mapping.update({ feeSchemaId, subDeptId, isActive: true });
     }
 
+    // Trigger University & Program Status: Staged (Selection Trigger)
+    if (program.universityId) {
+        await Department.update({ status: 'staged' }, { where: { id: program.universityId, type: 'university' } });
+        await Program.update({ status: 'staged' }, { where: { id: program.id } });
+    }
+
     res.status(201).json(mapping);
   } catch (error) {
     console.error('Center-Program mapping error:', error);
@@ -538,15 +565,28 @@ router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) =
       }
     }
 
+    const { status, ...updateData } = req.body;
+
+    // Recalculate totalFee if baseFee or taxPercentage is updated
+    let calculatedTotalFee = updateData.totalFee;
+    if (updateData.baseFee !== undefined || updateData.taxPercentage !== undefined) {
+      const base = updateData.baseFee !== undefined ? updateData.baseFee : p.baseFee;
+      const tax = updateData.taxPercentage !== undefined ? updateData.taxPercentage : p.taxPercentage;
+      calculatedTotalFee = parseFloat(base) * (1 + parseFloat(tax) / 100);
+    }
+
     await p.update({ 
-      ...req.body,
-      name: req.body.name || p.name,
-      shortName: req.body.shortName !== undefined ? req.body.shortName : p.shortName,
-      universityId: req.body.universityId || p.universityId, 
-      subDeptId: req.body.subDeptId || p.subDeptId,
-      totalFee: req.body.totalFee !== undefined ? req.body.totalFee : p.totalFee,
-      paymentStructure: req.body.paymentStructure || p.paymentStructure,
-      tenure: req.body.tenure !== undefined ? req.body.tenure : p.tenure
+      ...updateData,
+      name: updateData.name || p.name,
+      shortName: updateData.shortName !== undefined ? updateData.shortName : p.shortName,
+      universityId: updateData.universityId || p.universityId, 
+      subDeptId: updateData.subDeptId || p.subDeptId,
+      totalFee: calculatedTotalFee !== undefined ? calculatedTotalFee : p.totalFee,
+      baseFee: updateData.baseFee !== undefined ? updateData.baseFee : p.baseFee,
+      taxPercentage: updateData.taxPercentage !== undefined ? updateData.taxPercentage : p.taxPercentage,
+      paymentStructure: updateData.paymentStructure || p.paymentStructure,
+      tenure: updateData.tenure !== undefined ? updateData.tenure : p.tenure,
+      totalCredits: updateData.totalCredits !== undefined ? updateData.totalCredits : p.totalCredits
     });
 
     // Synchronize fee structures on update in case payment structures were toggled
@@ -563,6 +603,14 @@ router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res
     const { id } = req.params;
     const p = await Program.findByPk(id);
     if (!p) return res.status(404).json({ error: 'Program core not found' });
+
+    // Status Guard: Only draft programs can be wiped
+    const allowed = ['draft'];
+    if (!allowed.includes(p.status?.toLowerCase())) {
+        return res.status(400).json({ 
+            error: 'Institutional Guardrail: Program deletion restricted. Active frameworks must be retained for data integrity.' 
+        });
+    }
 
     await p.destroy();
     res.json({ message: 'Program safely sunsetted.' });
@@ -593,7 +641,7 @@ router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     if (subDeptId) whereClause.subDepartmentId = subDeptId;
 
     // Isolation: Sub-Dept Admin only sees their unit's students
-    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
       whereClause.subDepartmentId = getSubDeptId(req.user);
     }
 
@@ -605,7 +653,8 @@ router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
       where: finalWhere,
       include: [
         { model: Program, attributes: ['id', 'name', 'subDeptId'] },
-        { model: Department, as: 'center', attributes: ['id', 'name'] }
+        { model: Department, as: 'center', attributes: ['id', 'name'] },
+        { model: Department, as: 'subDepartment', attributes: ['id', 'name'] }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -628,9 +677,9 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
     });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
 
-    const isOpsAdmin = ['academic', 'org-admin', 'system-admin'].includes(req.user.role);
+    const isOpsAdmin = ['Operations Admin', 'Organization Admin'].includes(req.user.role);
 
     // 1. Sub-Dept Admin Review Phase
     if (isSubDeptAdmin) {
@@ -648,53 +697,11 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
         return res.json({ message: `Sub-department review ${status} recorded. Stage: ${nextStage}`, student });
     }
 
-    // 2. Academic/Ops Admin Review Phase
+    // 2. Academic/Ops Admin Review Phase (READ-ONLY as per new institutional policy)
     if (isOpsAdmin) {
-        if (student.reviewStage === 'SUB_DEPT' && !stageOverride) {
-            return res.status(400).json({ error: 'Institutional Guardrail: Sub-Department clearance required. Use stageOverride to bypass.' });
-        }
-
-        if (status === 'approved') {
-            // Guardrail: Cannot approve student without approved center
-            if (!student.centerId) {
-              return res.status(400).json({ error: 'Compliance Violation: Student is not assigned to a Study Center.' });
-            }
-            if (!student.center || student.center.auditStatus !== 'approved') {
-              return res.status(400).json({ error: `Institutional Guardrail: Associated Study Center [${student.center?.name || 'Unknown'}] must be Approved.` });
-            }
-
-            const logs = student.verificationLogs || [];
-            logs.push({ step: 'Ops Review', time: new Date(), status, by: req.user.uid, remarks });
-
-            await student.update({
-              status: 'FINANCE_PENDING',
-              enrollStatus: 'pending_payment', 
-              reviewStage: 'FINANCE',
-              reviewedBy: req.user.uid,
-              verificationLogs: logs,
-              remarks: remarks || student.remarks
-            });
-
-            // Trigger Institutional Event
-            erpEvents.emit('STUDENT_APPROVED', { 
-                studentId: student.id, 
-                deptId: student.deptId, 
-                by: req.user.uid 
-            });
-        } else {
-            // Rejection flow
-            await student.update({
-              enrollStatus: 'rejected',
-              reviewStage: 'SUB_DEPT', // Push back to start
-              resubmittedTo: 'SUB_DEPT',
-              attemptCount: (student.attemptCount || 1) + 1,
-              lastRejectionReason: remarks,
-              remarks: remarks || student.remarks
-            });
-        }
-        
-        return res.json({ message: `Application approved and routed to Finance for payment verification.`, student });
+        return res.status(403).json({ error: 'Governance Violation: Operations/Academic roles are now Restricted to Read-Only for eligibility appraisals. Validation must be performed by the Sub-Department.' });
     }
+
 
     res.status(403).json({ error: 'Access denied: Review privileges required' });
   } catch (error) {
@@ -747,7 +754,7 @@ router.post('/students/bulk-verify', verifyToken, isAcademicOrAdmin, async (req,
 router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const whereClause = {};
-    if (['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
         whereClause.subDeptId = getSubDeptId(req.user);
     }
 
@@ -778,9 +785,9 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
     const program = await Program.findByPk(programId);
     if (!program) return res.status(404).json({ error: 'Program core not found' });
 
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
 
-    const subDeptId = ['SUB_DEPT_ADMIN', 'openschool', 'online', 'skill', 'bvoc', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role) ? getSubDeptId(req.user) : program.subDeptId;
+    const subDeptId = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role) ? getSubDeptId(req.user) : program.subDeptId;
 
     if (isSubDeptAdmin && program.subDeptId !== subDeptId) {
         return res.status(403).json({ error: 'Jurisdictional Violation: Program does not belong to your academic unit.' });
@@ -875,8 +882,8 @@ router.put('/sessions/:id/approve', verifyToken, async (req, res) => {
         const { id } = req.params;
         const { status, remarks } = req.body; // status: 'APPROVED' or 'REJECTED'
         
-        const isAcademic = req.user.role === 'academic' || req.user.role === 'org-admin' || req.user.role === 'system-admin' || req.user.role === 'OPS_ADMIN';
-        const isFinance = req.user.role === 'finance';
+        const isAcademic = ['Operations Admin', 'Organization Admin'].includes(req.user.role);
+        const isFinance = req.user.role === 'Finance Admin';
 
         if (!isAcademic && !isFinance) {
             return res.status(403).json({ error: 'Access denied: Approval privileges required' });

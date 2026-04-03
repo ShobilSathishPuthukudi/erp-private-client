@@ -2,10 +2,22 @@ import express from 'express';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import sequelize from '../config/db.js';
+import { Op } from 'sequelize';
 import erpEvents from '../lib/events.js';
 
 const router = express.Router();
-const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment } = models;
+const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam } = models;
+import { createNotification } from './notifications.js';
+
+const getSubDeptId = (user) => {
+  if (!user) return null;
+  const unitStr = (user.subDepartment || user.role || '').toLowerCase();
+  if (unitStr.includes('open school admin')) return 8;
+  if (unitStr.includes('online department admin')) return 9;
+  if (unitStr.includes('skill department admin')) return 10;
+  if (unitStr.includes('bvoc department admin')) return 11;
+  return user.deptId || user.departmentId;
+};
 
 const requireRole = (role) => (req, res, next) => {
   const userRole = req.user.role?.toLowerCase();
@@ -27,7 +39,8 @@ router.get('/study-center/students', verifyToken, requireRole('study-center'), a
     let centerId = req.user.deptId;
     
     if (!centerId) {
-      const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+      let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
       if (center) centerId = center.id;
     }
 
@@ -54,7 +67,8 @@ router.get('/study-center/programs', verifyToken, requireRole('study-center'), a
   try {
     let centerId = req.user.deptId;
     if (!centerId) {
-      const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+      let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
       if (center) centerId = center.id;
     }
 
@@ -74,23 +88,32 @@ router.get('/study-center/programs', verifyToken, requireRole('study-center'), a
   }
 });
 
-router.get('/study-center/sessions', verifyToken, requireRole('study-center'), async (req, res) => {
+router.get('/sessions', verifyToken, async (req, res) => {
   try {
-    const { programId } = req.query;
-    let centerId = req.user.deptId;
-    if (!centerId) {
-      const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
-      if (center) centerId = center.id;
-    }
-
-    if (!centerId) return res.status(400).json({ error: 'Center ID not assigned' });
-
-    const whereClause = { 
-      centerId, 
+    const { programId, centerId: queryCenterId } = req.query;
+    const role = req.user.role?.toLowerCase();
+    
+    let whereClause = { 
       isActive: true, 
       approvalStatus: 'APPROVED' 
     };
+
     if (programId) whereClause.programId = programId;
+
+    // Jurisdictional Filtering for Sessions
+    if (role === 'center' || role === 'study-center') {
+        let centerId = req.user.deptId;
+        if (!centerId) {
+            const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+            if (center) centerId = center.id;
+        }
+        if (centerId) whereClause.centerId = centerId;
+    } else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) {
+        const subDeptId = getSubDeptId(req.user);
+        if (subDeptId) whereClause.subDeptId = subDeptId;
+    } else if (['Operations Admin', 'Organization Admin'].includes(role)) {
+        if (queryCenterId && queryCenterId !== 'all') whereClause.centerId = queryCenterId;
+    }
 
     const sessions = await AdmissionSession.findAll({
       where: whereClause,
@@ -98,14 +121,15 @@ router.get('/study-center/sessions', verifyToken, requireRole('study-center'), a
     });
     res.json(sessions);
   } catch (error) {
-    console.error('Fetch center sessions error:', error);
+    console.error('Fetch sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch active batches' });
   }
 });
 
 router.post('/study-center/accept-proposal', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found for this identity' });
     
     if (center.centerStatus !== 'PROPOSED') {
@@ -136,7 +160,8 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
     const programId = Number(req.body.programId);
     
     // Validate center
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(400).json({ error: 'Center profile not found for this user' });
 
     // --- Phase 3 & 5: Center-Program Mapping Validation ---
@@ -151,19 +176,38 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
     if (!program) return res.status(404).json({ error: 'Program framework not found' });
 
     // --- Step: Identify Applicable Fee Schema ---
-    let effectiveFeeSchemaId = mapping.feeSchemaId;
+    let effectiveFeeSchemaId = mapping.feeSchemaId || feeSchemaId;
+    let feeSchema = null;
 
-    if (!effectiveFeeSchemaId) {
-        // Fallback: Use the default fee schema for this program (Phase 5 Enrollment Stabilization)
-        const defaultSchema = await ProgramFee.findOne({ 
-            where: { programId, isDefault: true, isActive: true },
-            order: [['version', 'DESC']]
-        });
-
-        if (defaultSchema) {
-            effectiveFeeSchemaId = defaultSchema.id;
+    if (effectiveFeeSchemaId === 'default_fee') {
+        if (program.totalFee > 0) {
+            feeSchema = {
+                id: null,
+                programId: programId,
+                schema: {
+                    installments: [{ label: 'Full Program Fee', amount: program.totalFee }]
+                }
+            };
+            effectiveFeeSchemaId = null; 
         } else {
-            return res.status(400).json({ error: 'Institutional Fee structure not yet finalized for this center-program pairing by Finance and no Default backup located.' });
+             return res.status(400).json({ error: 'No fee configuration located for this program.' });
+        }
+    } else {
+        if (!effectiveFeeSchemaId) {
+            const defaultSchema = await ProgramFee.findOne({ 
+                where: { programId, isDefault: true, isActive: true },
+                order: [['version', 'DESC']]
+            });
+            if (defaultSchema) {
+                effectiveFeeSchemaId = defaultSchema.id;
+            } else {
+                return res.status(400).json({ error: 'Institutional Fee structure not yet finalized for this center-program pairing by Finance and no Default backup located.' });
+            }
+        }
+
+        feeSchema = await ProgramFee.findByPk(effectiveFeeSchemaId);
+        if (!feeSchema || feeSchema.programId !== programId) {
+          return res.status(400).json({ error: 'Invalid or misaligned fee schema detected in center mapping' });
         }
     }
 
@@ -178,12 +222,6 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
     const enrolledCount = await Student.count({ where: { sessionId, status: ['PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_PENDING', 'PAYMENT_VERIFIED', 'FINANCE_APPROVED', 'ENROLLED'] } });
     if (enrolledCount >= session.maxCapacity) {
         return res.status(400).json({ error: 'Selected batch has reached maximum intake capacity' });
-    }
-
-    // Validate fee schema
-    const feeSchema = await ProgramFee.findByPk(effectiveFeeSchemaId);
-    if (!feeSchema || feeSchema.programId !== programId) {
-      return res.status(400).json({ error: 'Invalid or misaligned fee schema detected in center mapping' });
     }
 
     // Phase 2: Transactional Admission & Invoice Logic
@@ -250,6 +288,14 @@ router.post('/study-center/admission', verifyToken, requireRole('study-center'),
         centerId: result.student.centerId 
     });
 
+    // Trigger University Status: Active (Refining Phase 3)
+    if (program.universityId) {
+        await Department.update({ status: 'active' }, { where: { id: program.universityId, type: 'university' } });
+    }
+
+    // Trigger Program Status: Active
+    await Program.update({ status: 'active' }, { where: { id: programId } });
+
     res.status(201).json(result);
   } catch (error) {
     console.error('Admission Phase 2 Failure:', error);
@@ -262,7 +308,8 @@ router.put('/study-center/admission/:id', verifyToken, requireRole('study-center
     const { id } = req.params;
     const { name, email, marks, payment } = req.body;
 
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const student = await Student.findOne({
@@ -325,7 +372,8 @@ router.put('/study-center/admission/:id', verifyToken, requireRole('study-center
 router.post('/study-center/students/:id/submit', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
     const { id } = req.params;
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const student = await Student.findOne({ where: { id, centerId: center.id } });
@@ -480,12 +528,28 @@ router.get('/employee/performance', verifyToken, requireRole('employee'), async 
     
     const completionRate = total > 0 ? (completed / total) * 100 : 0;
 
+    // --- GAP-12 Institutional Context for Sales ---
+    let institutionalStats = {};
+    const isSales = req.user.departmentName?.toLowerCase().includes('Sales & CRM Admin');
+
+    if (isSales) {
+      const [uniCount, progCount] = await Promise.all([
+        Department.count({ where: { type: 'university' } }),
+        Program.count({})
+      ]);
+      institutionalStats = { 
+        universityCount: uniCount, 
+        programCount: progCount 
+      };
+    }
+
     res.json({
       total,
       completed,
       pending,
       overdue,
-      completionRate: Math.round(completionRate)
+      completionRate: Math.round(completionRate),
+      ...institutionalStats
     });
   } catch (error) {
     console.error('Fetch employee performance error:', error);
@@ -493,10 +557,42 @@ router.get('/employee/performance', verifyToken, requireRole('employee'), async 
   }
 });
 
+router.get('/employee/my-centers', verifyToken, requireRole('employee'), async (req, res) => {
+  try {
+    const userProfile = await User.findByPk(req.user.uid);
+    const validBdeIds = [req.user.uid];
+    if (userProfile?.referralCode) validBdeIds.push(userProfile.referralCode);
+
+    const aliasUsers = await User.findAll({ where: { referralCode: req.user.uid } });
+    aliasUsers.forEach(u => validBdeIds.push(u.uid));
+
+    const centers = await Department.findAll({
+      where: { 
+        bdeId: { [Op.in]: validBdeIds },
+        type: { [Op.in]: ['center', 'study-center'] }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(centers);
+  } catch (error) {
+    console.error('[PORTAL] Fetch My-Centers Error:', error);
+    res.status(500).json({ error: 'Failed to synchronize referred institutional roster' });
+  }
+});
+
+
 router.get('/employee/leaves', verifyToken, requireRole('employee'), async (req, res) => {
   try {
     const leaves = await Leave.findAll({
       where: { employeeId: req.user.uid },
+      include: [
+        { 
+          model: User, 
+          as: 'employee', 
+          attributes: ['uid', 'name', 'deptId'],
+          include: [{ model: Department, as: 'department', attributes: ['name'] }]
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
     res.json(leaves);
@@ -509,14 +605,99 @@ router.get('/employee/leaves', verifyToken, requireRole('employee'), async (req,
 router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req, res) => {
   try {
     const { type, fromDate, toDate, reason } = req.body;
+    
+    // Resolve Department Head to determine workflow (Shortcut Rule: Head is Admin -> Skip Step 1)
+    let initialStatus = 'pending_step1';
+    try {
+      const employee = await User.findOne({ where: { uid: req.user.uid } });
+      if (employee?.deptId) {
+        const dept = await Department.findByPk(employee.deptId, {
+          include: [{ model: User, as: 'department', attributes: ['role'] }]
+        });
+        
+        // Use the alias defined in models/index.js (User belongsTo Department as department)
+        // Wait, check if Head is aliased as 'admin' in Department model
+        const head = await User.findOne({ 
+          where: { uid: dept?.adminId },
+          attributes: ['role']
+        });
+
+        const headRole = head?.role?.toLowerCase();
+        if (headRole === 'Organization Admin' || headRole === 'admin') {
+          initialStatus = 'pending_step2';
+        }
+      }
+    } catch (err) {
+      console.error('[LEAVE-WORKFLOW] Head resolution failed, falling back to 2-step:', err);
+    }
+
     const leave = await Leave.create({
       employeeId: req.user.uid,
       type,
       fromDate,
       toDate,
       reason: reason || null,
-      status: 'pending_step1'
+      status: initialStatus
     });
+
+    // Unified Notification Logic (Phase 10 Oversight)
+    try {
+      // 1. Notify HR administrators (Standard Oversight)
+      const hrUsers = await User.findAll({ where: { role: 'HR Admin' } });
+      const employee = await User.findOne({ where: { uid: req.user.uid } });
+      const employeeName = employee?.name || req.user.uid;
+
+      for (const hr of hrUsers) {
+        await createNotification(req.io, {
+          targetUid: hr.uid,
+          title: 'New Leave Request (HR)',
+          message: `${employeeName} submitted a ${type} request${initialStatus === 'pending_step2' ? ' (Admin Shortcut)' : ''}.`,
+          type: 'info',
+          link: '/dashboard/hr/leaves'
+        });
+      }
+
+      // 2. Notify Department Head (Only if they didn't already skip Step-1)
+      if (initialStatus === 'pending_step1') {
+        const dept = await Department.findByPk(employee?.deptId);
+        
+        if (dept?.adminId) {
+          const targetAdmin = await User.findByPk(dept.adminId);
+          const role = targetAdmin?.role?.toLowerCase()?.trim();
+          let adminLink = '/dashboard/team/leaves'; 
+          
+          if (role === 'HR Admin') adminLink = '/dashboard/hr/dept-leaves';
+          else if (role === 'Sales & CRM Admin') adminLink = '/dashboard/sales/leaves';
+          else if (role === 'Finance Admin') adminLink = '/dashboard/finance/leaves';
+          else if (role === 'Operations Admin') adminLink = '/dashboard/operations/leaves';
+          else if (role === 'Operations Admin') adminLink = '/dashboard/operations';
+          else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) adminLink = `/dashboard/subdept/${role}/leaves`;
+
+          await createNotification(req.io, {
+            targetUid: dept.adminId,
+            title: 'Team Leave Application',
+            message: `${employeeName} is requesting ${type} (${fromDate} to ${toDate}).`,
+            type: 'info',
+            link: adminLink
+          });
+        }
+      }
+
+      // 3. Notify Employee (If it's an auto-forward case)
+      if (initialStatus === 'pending_step2') {
+        await createNotification(req.io, {
+          targetUid: req.user.uid,
+          title: 'Institutional Forwarding',
+          message: `Your ${type} request has been automatically forwarded to HR for finalization based on departmental hierarchy.`,
+          type: 'success',
+          link: '/dashboard/employee/leaves'
+        });
+      }
+    } catch (notifyError) {
+      console.error('[NOTIFY-HR] Failure sending leave alerts:', notifyError);
+      // Non-blocking error for notifications
+    }
+
     res.status(201).json(leave);
   } catch (error) {
     console.error('Create leave error:', error);
@@ -548,7 +729,8 @@ router.delete('/employee/leaves/:id', verifyToken, requireRole('employee'), asyn
 // --- STUDY CENTER OFFERINGS & ACCREDITATION ---
 router.get('/study-center/offerings', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const offerings = await ProgramOffering.findAll({
@@ -568,7 +750,8 @@ router.get('/study-center/offerings', verifyToken, requireRole('study-center'), 
 router.post('/study-center/offerings', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
     const { programId } = req.body;
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const program = await Program.findByPk(programId);
@@ -591,7 +774,8 @@ router.post('/study-center/offerings', verifyToken, requireRole('study-center'),
 router.post('/study-center/accreditation-interest', verifyToken, requireRole('study-center'), async (req, res) => {
   try {
     const { courseName, universityId, type, description } = req.body;
-    const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const request = await AccreditationRequest.create({
@@ -610,8 +794,184 @@ router.post('/study-center/accreditation-interest', verifyToken, requireRole('st
   }
 });
 
+// --- ASSESSMENT & GRADING (STUDY CENTER) ---
+
+router.get('/subjects/:programId', verifyToken, async (req, res) => {
+  try {
+    const { programId } = req.params;
+    const subjects = await Subject.findAll({ 
+        where: { programId },
+        order: [['name', 'ASC']]
+    });
+    res.json(subjects);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to synchronize curriculum subjects' });
+  }
+});
+
+router.get('/study-center/marks/grading-roster', verifyToken, requireRole('study-center'), async (req, res) => {
+  try {
+    const { programId, sessionId, subjectName } = req.query;
+    let centerId = req.user.deptId;
+    if (!centerId) {
+      let center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+      if (center) centerId = center.id;
+    }
+
+    if (!centerId || !programId || !sessionId) {
+      return res.status(400).json({ error: 'Missing mandatory grading context (Program/Batch)' });
+    }
+
+    // Find all enrolled students for this batch/center
+    const students = await Student.findAll({
+      where: { 
+          centerId, 
+          programId, 
+          sessionId,
+          status: { [Op.in]: ['ENROLLED', 'FINANCE_APPROVED', 'PAYMENT_VERIFIED', 'OPS_APPROVED'] }
+      },
+      attributes: ['id', 'uid', 'name'],
+      include: [
+        {
+          model: Mark,
+          as: 'examMarks',
+          where: { subjectName: subjectName || { [Op.ne]: null } },
+          required: false
+        }
+      ]
+    });
+
+    res.json(students);
+  } catch (error) {
+    console.error('Grading roster failure:', error);
+    res.status(500).json({ error: 'Failed to generate institutional grading roster' });
+  }
+});
+
+// --- MULTI-DEPARTMENT ASSESSMENT PROTOCOLS ---
+
+router.get('/marks/grading-roster', verifyToken, async (req, res) => {
+  try {
+    const { programId, sessionId, subjectName, centerId: queryCenterId } = req.query;
+    const role = req.user.role?.toLowerCase();
+    
+    let whereClause = { 
+        programId, 
+        sessionId,
+        status: { [Op.in]: ['ENROLLED', 'FINANCE_APPROVED', 'PAYMENT_VERIFIED', 'OPS_APPROVED'] }
+    };
+
+    // Role-based Jurisdictional Filtering
+    if (role === 'center' || role === 'study-center') {
+      let centerId = req.user.deptId;
+      if (!centerId) {
+        const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'center' } });
+        if (center) centerId = center.id;
+      }
+      if (!centerId) return res.status(403).json({ error: 'Jurisdictional Error: Center ID not resolved' });
+      whereClause.centerId = centerId;
+    } else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role) || req.user.subDepartment) {
+      const subDeptId = getSubDeptId(req.user);
+      if (subDeptId) whereClause.subDepartmentId = subDeptId;
+    } else if (['Operations Admin', 'Organization Admin'].includes(role)) {
+       // Operations/Admin: Filter by specific center if requested, otherwise global view
+       if (queryCenterId && queryCenterId !== 'all') whereClause.centerId = queryCenterId;
+    } else {
+      return res.status(403).json({ error: 'Access denied: Role not authorized for assessment review' });
+    }
+
+    if (!programId || !sessionId) {
+      return res.status(400).json({ error: 'Missing mandatory grading context (Program/Batch)' });
+    }
+
+    const students = await Student.findAll({
+      where: whereClause,
+      attributes: ['id', 'uid', 'name'],
+      include: [
+        {
+          model: Mark,
+          as: 'examMarks',
+          where: { subjectName: subjectName || { [Op.ne]: null } },
+          required: false
+        }
+      ]
+    });
+
+    res.json(students);
+  } catch (error) {
+    console.error('Unified grading roster failure:', error);
+    res.status(500).json({ error: 'Failed to synchronize institutional grading roster' });
+  }
+});
+
+router.post('/marks/bulk', verifyToken, async (req, res) => {
+  try {
+    const { programId, sessionId, subjectName, marks } = req.body;
+    const role = req.user.role?.toLowerCase();
+
+    // Restriction: Operations/Academic cannot edit marks (Read-only as per User Rule)
+    if (['Operations Admin', 'Organization Admin'].includes(role)) {
+        return res.status(403).json({ error: 'Governance Error: Central Operations retains read-only oversight for assessments.' });
+    }
+
+    // 1. Identify or Create an Exam record to anchor these marks
+    const [exam] = await Exam.findOrCreate({
+      where: { 
+        programId, 
+        sessionId, 
+        name: `Internal Assessment - ${subjectName}`,
+      },
+      defaults: {
+        batch: new Date().getFullYear().toString(),
+        status: 'published'
+      }
+    });
+
+    // 2. Transactional Upsert
+    await sequelize.transaction(async (t) => {
+      for (const entry of marks) {
+        // Jurisdictional Verification: Ensure the student exists within the caller's territory
+        const verifyWhere = { id: entry.studentId };
+        if (role === 'center' || role === 'study-center') {
+           verifyWhere.centerId = req.user.deptId;
+        } else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) {
+           verifyWhere.subDepartmentId = getSubDeptId(req.user);
+        }
+
+        const student = await Student.findOne({ where: verifyWhere, transaction: t });
+        if (!student) continue; // Skip unauthorized/missing students
+
+        const [mark, created] = await Mark.findOrCreate({
+          where: { 
+            studentId: entry.studentId, 
+            examId: exam.id, 
+            subjectName 
+          },
+          defaults: {
+            internalMarks: entry.internalMarks || 0,
+            totalMarks: entry.internalMarks || 0
+          },
+          transaction: t
+        });
+
+        if (!created) {
+          await mark.update({ 
+            internalMarks: entry.internalMarks,
+            totalMarks: entry.internalMarks 
+          }, { transaction: t });
+        }
+      }
+    });
+
+    res.json({ message: `Institutional Ledger Synchronized: ${marks.length} assessments published.` });
+  } catch (error) {
+    console.error('Unified bulk grading failure:', error);
+    res.status(500).json({ error: 'Failed to commit marks to institutional record' });
+  }
+});
+
 // --- SALES PORTAL (CRM INTAKE PLACEHOLDER) ---
-router.get('/sales/leads', verifyToken, requireRole('sales'), async (req, res) => {
+router.get('/sales/leads', verifyToken, requireRole('Sales & CRM Admin'), async (req, res) => {
   // Placeholder for robust CRM features
   res.json([]);
 });

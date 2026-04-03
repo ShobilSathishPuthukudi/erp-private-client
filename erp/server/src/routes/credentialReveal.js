@@ -44,7 +44,7 @@ router.post('/request', verifyToken, isAcademicOrAdmin, async (req, res) => {
 });
 
 // Finance: Approve Reveal/Reset
-router.post('/approve/:id', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+router.post('/approve/:id', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const request = await CredentialRequest.findByPk(req.params.id, {
@@ -125,7 +125,7 @@ router.get('/reveal/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
 });
 
 // Finance: Get Pending Queue
-router.get('/pending', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+router.get('/pending', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   try {
     console.log("[CREDENTIALS] Fetching pending reveal queue...");
     const queue = await CredentialRequest.findAll({

@@ -27,13 +27,17 @@ const Department = sequelize.define('department', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  devPassword: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   adminId: {
     type: DataTypes.STRING,
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive'),
-    defaultValue: 'active',
+    type: DataTypes.ENUM('proposed', 'draft', 'staged', 'active', 'inactive'),
+    defaultValue: 'proposed',
   },
   centerStatus: {
     type: DataTypes.ENUM('LEAD', 'SHORTLISTED', 'PROPOSED', 'APPROVED_BY_CENTER', 'REGISTERED', 'ACTIVE'),

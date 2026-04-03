@@ -7,8 +7,8 @@ const router = express.Router();
 const { AuditLog, User, sequelize } = models;
 
 const isOrgAdmin = (req, res, next) => {
-  if (req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
-    return res.status(403).json({ error: 'Access denied: Requires org-admin privileges' });
+  if (req.user.role !== 'Organization Admin' && req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
+    return res.status(403).json({ error: 'Access denied: Org Admin privileges required' });
   }
   next();
 };

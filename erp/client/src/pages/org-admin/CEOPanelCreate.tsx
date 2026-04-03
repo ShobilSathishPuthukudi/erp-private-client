@@ -24,7 +24,7 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
   });
 
   const [departments, setDepartments] = useState<string[]>([
-    'Operations', 'Finance', 'Human Resources', 'Sales & CRM' // Default Fallback
+    'Operations', 'Finance', 'Human Resources', 'Sales & CRM', 'Employee Performance' // Default Fallback
   ]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +36,8 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
         if (deptsRes.ok) {
           const data = await deptsRes.json();
           const deptNames = data.map((d: any) => d.name);
-          if (deptNames.length > 0) setDepartments(deptNames);
+          // Ensure Employee Performance is always a selectable dimension
+          setDepartments([...new Set([...deptNames, 'Employee Performance'])]);
         }
       } catch (error) {
         console.error("Failed to fetch departments", error);
@@ -163,7 +164,7 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
               <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <p className="text-[11px] font-medium text-blue-800 leading-relaxed">
                 <span className="block font-black uppercase tracking-wider text-[9px] mb-1">Administrative Alert</span>
-                The provisioned executive identity will only be authorized to access telemetry from the specific visibility scope selected on the right. Scoped data includes Finance, HR, and Operational logs.
+                The provisioned executive identity will only be authorized to access telemetry from the specific visibility scope selected on the right. Scoped data includes Finance, HR, Employee Performance, and Operational logs.
               </p>
             </div>
           </div>

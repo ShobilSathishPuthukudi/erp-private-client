@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet } from 'lucide-react';
+import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 
@@ -49,6 +49,8 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const [selectedBrief, setSelectedBrief] = useState<{ type: string; title: string; dId?: number } | null>(null);
   const [briefData, setBriefData] = useState<any>(null);
   const [briefLoading, setBriefLoading] = useState(false);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   useEffect(() => {
     fetchMetrics();
@@ -136,6 +138,30 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   if (view === 'kpis') {
     return (
       <div className="space-y-6">
+        {/* Executive Header */}
+        <div className="mb-10 flex flex-col md:flex-row md:items-start justify-between gap-6 shrink-0 pt-4">
+          <div className="flex items-start gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-900/20 mt-1 relative overflow-hidden group">
+              <PieChart className="w-8 h-8 group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </div>
+            <div>
+              <div className="flex items-center gap-4 mb-2">
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                  {greeting}, Chief
+                </h1>
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest leading-none">Read-Only Oversight</span>
+                </div>
+              </div>
+              <p className="text-slate-500 font-bold text-sm tracking-tight opacity-70">
+                System telemetry and institutional performance overview for {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {metrics.visibilityScope && metrics.visibilityScope.length > 0 && (
           <div className="flex items-center gap-3 bg-blue-50/50 border border-blue-100 p-4 rounded-3xl mb-10 shadow-sm shadow-blue-500/5">
             <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
@@ -147,7 +173,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                 <span className="text-sm font-black text-slate-900 uppercase tracking-tight">
                   {metrics.visibilityScope.join(' • ')}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 italic">(Partitioned Executive Identity)</span>
+                <span className="text-[10px] font-bold text-slate-400 ">(Partitioned Executive Identity)</span>
               </div>
             </div>
           </div>
@@ -273,7 +299,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                 <div className="relative z-10">
                   <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Lead Conversion Efficiency</p>
                   <div className="flex items-baseline gap-2">
-                    <h4 className="text-5xl font-black italic">
+                    <h4 className="text-5xl font-black ">
                       {metrics.salesIntelligence.totalLeads > 0 
                         ? Math.round((metrics.salesIntelligence.convertedLeads / metrics.salesIntelligence.totalLeads) * 100) 
                         : 0}%
@@ -542,7 +568,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                                 </div>
                                 <div>
                                    <div className="text-sm font-black text-slate-900">{inv.invoiceNo}</div>
-                                   <div className="text-[9px] font-bold text-teal-600 uppercase tracking-widest font-black italic">{inv.student?.name}</div>
+                                   <div className="text-[9px] font-bold text-teal-600 uppercase tracking-widest font-black ">{inv.student?.name}</div>
                                 </div>
                               </div>
                               <div className="text-right">

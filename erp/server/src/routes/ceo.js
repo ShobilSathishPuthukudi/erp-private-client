@@ -8,7 +8,8 @@ const router = express.Router();
 const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig } = models;
 
 const isCEO = (req, res, next) => {
-  if (req.user.role !== 'ceo' && req.user.role !== 'org-admin' && req.user.role !== 'system-admin') {
+  const role = req.user.role?.toLowerCase()?.trim();
+  if (role !== 'ceo' && role !== 'organization admin') {
     return res.status(403).json({ error: 'Access denied: CEO privileges required' });
   }
   next();
@@ -118,7 +119,8 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     const auditExceptions = await AuditLog.count({
       where: {
         action: { [Op.in]: ['DELETE', 'UNAUTHORIZED_ATTEMPT'] },
-        timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+        timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+        ...(restricted ? { userId: { [Op.in]: await User.findAll({ where: whereUser, attributes: ['uid'] }).then(users => users.map(u => u.uid)) } } : {})
       }
     });
 
@@ -154,16 +156,23 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     // 3. Advanced Risk Metrics
     const highValuePending = await Invoice.count({
       where: { 
-        status: 'issued', // Correction: 'issued' is the pending state in the model
+        status: 'issued',
         total: { [Op.gt]: 50000 },
         createdAt: { [Op.lt]: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000) }
-      }
+      },
+      include: restricted ? [{
+        model: Student,
+        as: 'student',
+        required: true,
+        where: whereStudent
+      }] : []
     });
 
     const revealRequests = await AuditLog.count({
       where: {
         action: 'CREDENTIAL_REVEAL',
-        timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+        timestamp: { [Op.gt]: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+        ...(restricted ? { userId: { [Op.in]: await User.findAll({ where: whereUser, attributes: ['uid'] }).then(users => users.map(u => u.uid)) } } : {})
       }
     });
 
@@ -215,7 +224,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       revealRequests,
       enrollmentTrend,
       revenueTrend,
-      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales')) ? {
+      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales & crm admin')) ? {
         totalLeads: await Lead.count({ 
           where: restricted ? {
             [Op.or]: [
@@ -238,7 +247,16 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
           include: [{ model: User, as: 'assignee', required: true }]
         }),
         avgLeadAge: Math.round((await Lead.findAll({
-          where: { status: 'CONVERTED' },
+          where: { 
+            status: 'CONVERTED',
+            ...(restricted ? {
+              [Op.or]: [
+                { '$assignee.deptId$': { [Op.in]: deptIds } },
+                { '$assignee.subDepartment$': { [Op.in]: names } }
+              ]
+            } : {})
+          },
+          include: [{ model: User, as: 'assignee', required: true }],
           limit: 100,
           attributes: ['createdAt', 'updatedAt']
         })).reduce((sum, l) => sum + (new Date(l.updatedAt) - new Date(l.createdAt)), 0) / 100 / (1000 * 60 * 60 * 24)) || 5

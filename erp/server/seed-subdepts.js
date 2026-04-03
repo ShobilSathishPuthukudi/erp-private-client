@@ -25,7 +25,9 @@ async function seedSubDepts() {
     const user = await User.findOne({ where: { uid: sd.adminUid } });
     if (user) {
       await user.update({ deptId: dept.id });
-      console.log(`Linked ${sd.adminUid} to Dept ${dept.id}`);
+      // Bi-directional link for Organization Dashboard / Governance HUD
+      await dept.update({ adminId: user.uid });
+      console.log(`Linked ${sd.adminUid} to Dept ${dept.id} (Bi-directional)`);
     } else {
       console.log(`User ${sd.adminUid} NOT FOUND!`);
     }

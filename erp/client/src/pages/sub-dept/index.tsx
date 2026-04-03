@@ -11,6 +11,7 @@ import StudentValidation from './StudentValidation';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
+import SubDeptInternalMarks from './InternalMarks';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SubDeptDashboard() {
@@ -26,6 +27,7 @@ export default function SubDeptDashboard() {
         <Route path="validation" element={<StudentValidation />} />
         <Route path="centers" element={<Centers />} />
         <Route path="sessions" element={<Sessions />} />
+        <Route path="internal-marks" element={<SubDeptInternalMarks />} />
         <Route path="exams" element={<Exams />} />
         <Route path="exams/:id/marks" element={<MarksEntry />} />
         <Route path="credentials" element={<CredentialRequests />} />

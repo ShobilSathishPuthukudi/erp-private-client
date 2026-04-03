@@ -17,6 +17,7 @@ interface Student {
   id: number;
   name: string;
   enrollStatus: string;
+  status: string;
   subDeptReviewStatus: string;
   feeStatus: string;
   program?: { name: string, duration: number };
@@ -114,10 +115,12 @@ export default function Students() {
                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all overflow-hidden border border-slate-100">
                       <Users className="w-8 h-8" />
                    </div>
-                   <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg ${
-                      student.enrollStatus === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                   <span className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full border ${
+                      student.status === 'ENROLLED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                      student.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
                    }`}>
-                      {student.enrollStatus}
+                      {student.status || student.enrollStatus}
                    </span>
                 </div>
 

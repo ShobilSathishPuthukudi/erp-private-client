@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, CalendarDays } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
+import { toSentenceCase } from '@/lib/utils';
 
 interface Holiday {
   id: number;
@@ -59,9 +61,21 @@ export default function Holidays() {
   };
 
   const columns: ColumnDef<Holiday>[] = [
-    { accessorKey: 'date', header: 'Timestamp', cell: ({ row }) => <span className="font-mono font-black text-slate-500">{new Date(row.original.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> },
-    { accessorKey: 'name', header: 'Institutional Event', cell: ({ row }) => <span className="font-black text-slate-900 uppercase tracking-tighter">{row.original.name}</span> },
-    { accessorKey: 'description', header: 'Directive Context' },
+    { 
+      accessorKey: 'date', 
+      header: 'Date', 
+      cell: ({ row }) => <span className="font-mono font-black text-slate-500">{new Date(row.original.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> 
+    },
+    { 
+      accessorKey: 'name', 
+      header: 'Institutional event', 
+      cell: ({ row }) => <span className="font-black text-slate-900 tracking-tighter">{toSentenceCase(row.original.name)}</span> 
+    },
+    { 
+      accessorKey: 'description', 
+      header: 'Description',
+      cell: ({ row }) => toSentenceCase(row.original.description || '')
+    },
     {
       id: 'actions',
       cell: ({ row }) => (
@@ -74,19 +88,20 @@ export default function Holidays() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Holiday Synchronization</h1>
-           <p className="text-slate-500 text-sm font-medium">Coordinate organization-wide breaks across all departmental pods.</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Certify Holiday
-        </button>
-      </div>
+      <PageHeader 
+        title="Holiday Synchronization"
+        description="Coordinate organization-wide breaks across all departmental pods."
+        icon={CalendarDays}
+        action={
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2 whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Certify Holiday
+          </button>
+        }
+      />
 
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden min-h-[400px]">
         <DataTable columns={columns} data={holidays} isLoading={isLoading} searchKey="name" />

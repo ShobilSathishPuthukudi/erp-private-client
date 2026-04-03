@@ -59,7 +59,7 @@ export default function FinanceRequests() {
                                 <span className="text-[10px] font-bold text-slate-400 uppercase bg-white border border-slate-200 px-2 py-0.5 rounded-lg">Audit Protocol v3</span>
                             </div>
                             <p className="text-xs font-bold text-slate-700">Target ID: {r.entityId}</p>
-                            <p className="text-xs text-slate-400 font-medium italic">"{r.reason}"</p>
+                            <p className="text-xs text-slate-400 font-medium ">"{r.reason}"</p>
                             {r.financeRemarks && (
                                 <p className="text-xs text-indigo-500 font-bold mt-2">Finance: {r.financeRemarks}</p>
                             )}

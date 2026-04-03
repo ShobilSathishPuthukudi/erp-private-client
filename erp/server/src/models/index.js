@@ -61,11 +61,13 @@ User.hasMany(Department, { foreignKey: 'adminId' });
 User.belongsTo(Department, { as: 'department', foreignKey: 'deptId' });
 Department.hasMany(User, { foreignKey: 'deptId' });
 
-// Student -> Department (Study Center mapping)
+// Student -> Department (Institutional unit mapping)
 Student.belongsTo(Department, { as: 'department', foreignKey: 'deptId' });
 Student.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
+Student.belongsTo(Department, { as: 'subDepartment', foreignKey: 'subDepartmentId' });
 Department.hasMany(Student, { foreignKey: 'deptId' });
 Department.hasMany(Student, { foreignKey: 'centerId', as: 'enrolledStudents' });
+Department.hasMany(Student, { foreignKey: 'subDepartmentId', as: 'unitStudents' });
 
 // Student -> Program
 Student.belongsTo(Program, { foreignKey: 'programId' });
@@ -209,6 +211,10 @@ AcademicActionRequest.belongsTo(User, { as: 'approver', foreignKey: 'approvedBy'
 // User Hierarchy (Self-reference)
 User.belongsTo(User, { as: 'manager', foreignKey: 'reportingManagerUid', targetKey: 'uid' });
 User.hasMany(User, { as: 'subordinates', foreignKey: 'reportingManagerUid', sourceKey: 'uid' });
+
+// User -> Role (Eligibility verification)
+User.belongsTo(Role, { foreignKey: 'role', targetKey: 'name', as: 'RoleDetails' });
+Role.hasMany(User, { foreignKey: 'role', sourceKey: 'name', as: 'Employees' });
 
 // User -> Vacancy
 User.belongsTo(Vacancy, { foreignKey: 'vacancyId', as: 'hiringVacancy' });

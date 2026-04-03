@@ -224,7 +224,7 @@ export default function AuditFilterSearch() {
                     {loading ? (
                       <tr><td colSpan={4} className="p-10 text-center animate-pulse">Filtering institutional records...</td></tr>
                     ) : results.length === 0 ? (
-                      <tr><td colSpan={4} className="p-10 text-center text-slate-400 italic">No matching records found.</td></tr>
+                      <tr><td colSpan={4} className="p-10 text-center text-slate-400 ">No matching records found.</td></tr>
                     ) : (results || []).map(row => (
                       <Fragment key={row.id}>
                         <tr className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)}>
@@ -261,7 +261,7 @@ export default function AuditFilterSearch() {
                                           <span className="font-semibold text-slate-600">{typeof v === 'object' ? 'JSON' : String(v)}</span>
                                         </div>
                                       ))
-                                    ) : <div className="text-slate-300 italic py-4 text-center">Initial State</div>}
+                                    ) : <div className="text-slate-300 py-4 text-center">Initial State</div>}
                                   </div>
                                 </div>
                                 <div className="space-y-2">
@@ -274,7 +274,7 @@ export default function AuditFilterSearch() {
                                           <span className="font-semibold text-slate-900">{typeof v === 'object' ? 'JSON' : String(v)}</span>
                                         </div>
                                       ))
-                                    ) : <div className="text-rose-400 italic py-4 text-center">Deleted</div>}
+                                    ) : <div className="text-rose-400 py-4 text-center">Deleted</div>}
                                   </div>
                                 </div>
                               </div>

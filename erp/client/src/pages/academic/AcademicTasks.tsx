@@ -110,7 +110,7 @@ export default function AcademicTasks() {
     { 
       accessorKey: 'title', 
       header: 'Directive Node',
-      cell: ({ row }) => <span className="font-bold text-slate-900 italic tracking-tight uppercase text-xs">{row.original.title}</span>
+      cell: ({ row }) => <span className="font-bold text-slate-900 tracking-tight uppercase text-xs">{row.original.title}</span>
     },
     { 
       id: 'assignee', 
@@ -119,7 +119,7 @@ export default function AcademicTasks() {
         const emp = row.original.assignee;
         return emp ? 
           <span className="text-slate-600 font-bold text-[10px] uppercase tracking-wider">{emp.name}</span> : 
-          <span className="text-slate-400 italic text-[10px]">ID: {row.original.assignedTo}</span>;
+          <span className="text-slate-400 text-[10px]">ID: {row.original.assignedTo}</span>;
       }
     },
     { 
@@ -184,7 +184,7 @@ export default function AcademicTasks() {
             <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/20">
               <CheckSquare className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Operations Bureau</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase ">Operations Bureau</h1>
           </div>
           <p className="text-slate-500 font-medium ml-15">Deploy institutional directives and monitor execution compliance across units.</p>
         </div>

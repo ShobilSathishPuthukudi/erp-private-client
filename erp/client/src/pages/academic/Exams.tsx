@@ -33,7 +33,14 @@ export default function Exams() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm();
+  const watchAllFields = watch();
+
+  const isFormValid = 
+    !!watchAllFields.name?.trim() &&
+    !!watchAllFields.programId &&
+    !!watchAllFields.sessionId &&
+    !!watchAllFields.date;
 
   const fetchData = async () => {
     try {
@@ -150,23 +157,28 @@ export default function Exams() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Schedule institutional assessments and manage academic transcript entry protocols.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <ClipboardCheck className="w-3.5 h-3.5 text-rose-500" />
-              Assessment Grid Control
-           </div>
-        </div>
+        {exams.length > 0 && (
+           <button 
+              onClick={() => { reset(); setIsModalOpen(true); }}
+              className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
+           >
+              <ClipboardCheck className="w-4 h-4" />
+              Schedule New Exam
+           </button>
+        )}
       </div>
 
-      <div className="max-w-md">
-        <DashCard 
-          title="Schedule Institutional Assessment"
-          description="Initiate new exam schedules across configured cohorts."
-          onClick={() => { reset(); setIsModalOpen(true); }}
-          icon={ClipboardCheck}
-          actionLabel="Schedule New Exam"
-        />
-      </div>
+      {exams.length === 0 && !isLoading && (
+        <div className="max-w-md">
+          <DashCard 
+            title="Schedule Institutional Assessment"
+            description="Initiate new exam schedules across configured cohorts."
+            onClick={() => { reset(); setIsModalOpen(true); }}
+            icon={ClipboardCheck}
+            actionLabel="Schedule New Exam"
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable 
@@ -262,8 +274,8 @@ export default function Exams() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+              disabled={isSubmitting || !isFormValid}
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Scheduling...' : 'Execute Schedule'}
             </button>

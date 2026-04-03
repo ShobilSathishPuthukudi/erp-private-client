@@ -11,18 +11,22 @@ import {
   ShieldCheck, 
   Zap,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface Department {
   id: number;
   name: string;
+  type?: string;
 }
 
 export default function AddEmployee() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm();
 
   const watchedName = watch('name');
@@ -82,7 +86,7 @@ export default function AddEmployee() {
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-300">Personnel Recruitment</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight mb-2">Register <span className="text-blue-400 italic">Institutional</span> Staff</h1>
+            <h1 className="text-4xl font-black tracking-tight mb-2">Register <span className="text-blue-400 ">Institutional</span> Staff</h1>
             <p className="text-slate-400 font-medium text-sm max-w-md">
               Initiate workforce expansion by registering personnel. Onboarding for non-HR departments requires jurisdictional sanctioning.
             </p>
@@ -158,11 +162,18 @@ export default function AddEmployee() {
                 <Lock className="w-4 h-4" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 {...register('password', { required: 'Passcode is required', minLength: { value: 6, message: 'Minimum 6 characters' } })}
-                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium"
+                className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 transition-all"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {errors.password && <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1">{errors.password.message as string}</p>}
           </div>
@@ -186,7 +197,9 @@ export default function AddEmployee() {
                 className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium appearance-none"
               >
                 <option value="">-- Targeted Department --</option>
-                {departments.map((dept) => (
+                {departments
+                  .filter(d => !['university', 'center'].includes(d.type?.toLowerCase() || ''))
+                  .map((dept) => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
                 ))}
               </select>
@@ -215,29 +228,24 @@ export default function AddEmployee() {
 
 
           <div className="space-y-1">
-            <label className="text-[11px] font-black text-slate-500 uppercase ml-1">Ecclesiastical Role</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 transition-colors">
+            <label className="text-[11px] font-black text-slate-500 uppercase ml-1">Institutional Staff Role</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-blue-500 transition-colors">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <select
-                {...register('role')}
+                {...register('role', { required: 'Institutional role is required' })}
                 className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium appearance-none"
               >
-                {roles.length > 0 ? (
-                  roles.map(r => (
-                    <option key={r.id} value={r.name}>{r.name}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="employee">Standard Employee</option>
-                    <option value="dept-admin">Department Administrator</option>
-                    <option value="academic">Academic Auditor</option>
-                    <option value="sales">Sales Executive</option>
-                  </>
-                )}
+                <option value="">-- Targeted Role --</option>
+                {roles.map((role: any) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name} {role.isAdminEligible ? '(Admin Eligible)' : ''}
+                  </option>
+                ))}
               </select>
             </div>
+            {errors.role && <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1">{errors.role.message as string}</p>}
           </div>
         </div>
 

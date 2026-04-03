@@ -151,7 +151,7 @@ export default function TargetManager() {
               {formData.rules.map((rule, idx) => (
                 <div key={idx} className="flex gap-4 items-center bg-slate-50 p-4 rounded-xl">
                    <div className="flex-1 space-y-1">
-                      <p className="text-[9px] font-bold text-slate-400 lowercase italic">at achievement %</p>
+                      <p className="text-[9px] font-bold text-slate-400 lowercase ">at achievement %</p>
                       <input 
                         type="number"
                         className="w-full bg-white border-transparent rounded-lg px-3 py-2 text-xs"
@@ -164,7 +164,7 @@ export default function TargetManager() {
                       />
                    </div>
                    <div className="flex-1 space-y-1">
-                      <p className="text-[9px] font-bold text-slate-400 lowercase italic">reward amount (₹)</p>
+                      <p className="text-[9px] font-bold text-slate-400 lowercase ">reward amount (₹)</p>
                       <input 
                         type="number"
                         className="w-full bg-white border-transparent rounded-lg px-3 py-2 text-xs"

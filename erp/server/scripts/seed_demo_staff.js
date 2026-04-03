@@ -6,10 +6,10 @@ async function seed() {
   const hashedPassword = await bcrypt.hash('password123', 10);
   
   const demoStaff = [
-    { uid: 'SALES-DEMO-001', name: 'Rahul Varma', email: 'rahul@ams.co', role: 'sales', password: hashedPassword },
-    { uid: 'SALES-DEMO-002', name: 'Priya Sharma', email: 'priya@ams.co', role: 'sales', password: hashedPassword },
-    { uid: 'EMP-DEMO-001', name: 'Arjun Das', email: 'arjun@ams.co', role: 'employee', password: hashedPassword },
-    { uid: 'EMP-DEMO-002', name: 'Ananya Iyer', email: 'ananya@ams.co', role: 'employee', password: hashedPassword },
+    { uid: 'SALES-DEMO-001', name: 'Rahul Varma', email: 'rahul@erp.com', role: 'sales', password: hashedPassword },
+    { uid: 'SALES-DEMO-002', name: 'Priya Sharma', email: 'priya@erp.com', role: 'sales', password: hashedPassword },
+    { uid: 'EMP-DEMO-001', name: 'Arjun Das', email: 'arjun@erp.com', role: 'employee', password: hashedPassword },
+    { uid: 'EMP-DEMO-002', name: 'Ananya Iyer', email: 'ananya@erp.com', role: 'employee', password: hashedPassword },
   ];
 
   for (const staff of demoStaff) {

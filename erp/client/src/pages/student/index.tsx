@@ -153,14 +153,14 @@ export default function StudentPortal() {
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 flex flex-col justify-between">
              <div>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Instructional Notice</h3>
-                {status === 'DRAFT' && <p className="text-sm font-bold text-slate-700 leading-relaxed italic">Your admission manifold is currently being finalized by the center. Please check back for submission alerts.</p>}
-                {status === 'PENDING_REVIEW' && <p className="text-sm font-bold text-slate-700 leading-relaxed italic">Your profile is currently undergoing sub-departmental eligibility verification. No action required.</p>}
+                {status === 'DRAFT' && <p className="text-sm font-bold text-slate-700 leading-relaxed ">Your admission manifold is currently being finalized by the center. Please check back for submission alerts.</p>}
+                {status === 'PENDING_REVIEW' && <p className="text-sm font-bold text-slate-700 leading-relaxed ">Your profile is currently undergoing sub-departmental eligibility verification. No action required.</p>}
                 {status === 'OPS_APPROVED' && <p className="text-sm font-black text-blue-600 leading-relaxed">Verification Successful! Please proceed to the financial ledger to settle outstanding dues for final activation.</p>}
                 {status === 'ENROLLED' && <p className="text-sm font-black text-emerald-600 leading-relaxed">Account Fully Activated. Welcome to the institutional framework!</p>}
              </div>
              
              <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-300 uppercase italic">IITS RPS Governance v4.0</span>
+                <span className="text-[10px] font-black text-slate-300 uppercase ">IITS RPS Governance v4.0</span>
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
              </div>
           </div>

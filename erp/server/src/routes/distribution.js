@@ -39,7 +39,7 @@ router.post('/configs', async (req, res) => {
 });
 
 // Finance: Get Distribution Dashboard Data
-router.get('/dashboard', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+router.get('/dashboard', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   try {
     const programs = await Program.findAll({
       include: [
@@ -64,7 +64,7 @@ router.get('/dashboard', verifyToken, roleGuard(['finance', 'org-admin', 'system
 });
 
 // Finance: Aging Report
-router.get('/reports/aging', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+router.get('/reports/aging', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   try {
     const today = new Date();
     const centers = await Department.findAll({
@@ -112,7 +112,7 @@ router.get('/reports/aging', verifyToken, roleGuard(['finance', 'org-admin', 'sy
 });
 
 // Finance: University Payment Report & Cash Flow (90-day)
-router.get('/reports/university/:id', verifyToken, roleGuard(['finance', 'org-admin', 'system-admin']), async (req, res) => {
+router.get('/reports/university/:id', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   try {
     const university = await Department.findOne({ where: { id: req.params.id, type: 'university' } });
     if (!university) return res.status(404).json({ error: 'University not found' });

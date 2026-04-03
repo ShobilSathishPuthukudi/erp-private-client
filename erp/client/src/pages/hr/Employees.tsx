@@ -3,9 +3,11 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, X, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { toSentenceCase } from '@/lib/utils';
 
 interface Employee {
   uid: string;
@@ -21,6 +23,7 @@ interface Employee {
 interface Department {
   id: number;
   name: string;
+  type?: string;
 }
 
 interface Vacancy {
@@ -39,9 +42,22 @@ export default function Employees() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [roles, setRoles] = useState<any[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      status: 'active',
+      deptId: '',
+      vacancyId: '',
+      reportingManagerUid: '',
+      role: ''
+    }
+  });
 
   const fetchInitialData = async () => {
     try {
@@ -50,7 +66,7 @@ export default function Employees() {
         api.get('/hr/employees'),
         api.get('/departments'),
         api.get('/hr/vacancies'),
-        api.get('/org-admin/roles')
+        api.get('/hr/roles')
       ]);
       setEmployees(empRes.data);
       setAllEmployees(empRes.data);
@@ -73,14 +89,18 @@ export default function Employees() {
     if (selectedVacancyId) {
       const v = vacancies.find(v => v.id === parseInt(selectedVacancyId));
       if (v) {
-        reset((prev) => ({ ...prev, deptId: v.departmentId }));
+        reset((prev: any) => ({ 
+          ...prev, 
+          deptId: String(v.departmentId),
+          vacancyId: String(v.id)
+        }));
       }
     }
   }, [selectedVacancyId, vacancies, reset]);
 
   const openCreateModal = () => {
     setEditingEmployee(null);
-    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '', role: 'employee' });
+    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '', role: '' });
     setIsModalOpen(true);
   };
 
@@ -93,7 +113,7 @@ export default function Employees() {
       status: employee.status,
       deptId: employee.deptId || '',
       reportingManagerUid: employee.reportingManagerUid || '',
-      role: employee.role || 'employee'
+      role: employee.role || ''
     });
     setIsModalOpen(true);
   };
@@ -123,45 +143,49 @@ export default function Employees() {
     }
   };
 
-  const handleDelete = async (uid: string) => {
-    if (!window.confirm('Are you sure you want to delete this employee?')) return;
+  const handleDelete = (emp: Employee) => {
+    setEmployeeToDelete(emp);
+  };
+
+  const confirmDelete = async () => {
+    if (!employeeToDelete) return;
     try {
-      await api.delete(`/hr/employees/${uid}`);
-      toast.success('Employee deleted');
+      await api.delete(`/hr/employees/${employeeToDelete.uid}`);
+      toast.success('Personnel record purged successfully');
+      setEmployeeToDelete(null);
       const res = await api.get('/hr/employees');
       setEmployees(res.data);
     } catch (error) {
-      toast.error('Failed to delete employee');
+      toast.error('Failed to eliminate personnel record');
     }
   };
 
   const columns: ColumnDef<Employee>[] = [
-    { accessorKey: 'uid', header: 'Emp ID' },
-    { accessorKey: 'name', header: 'Full Name' },
-    { accessorKey: 'email', header: 'Email Address' },
+    { accessorKey: 'name', header: 'Full name' },
+    { accessorKey: 'email', header: 'Email address' },
     { 
       id: 'department',
-      header: 'Org Structure',
+      header: 'Org structure',
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-semibold text-slate-700">{row.original.department?.name || 'Unassigned'}</span>
-          <span className="text-[10px] text-slate-400 font-bold uppercase">{(row.original as any).subDepartment || 'General'}</span>
+          <span className="text-[10px] text-slate-400 font-bold">{toSentenceCase((row.original as any).subDepartment || 'General')}</span>
         </div>
       )
     },
     { 
       id: 'manager',
-      header: 'Reporting Manager',
+      header: 'Reporting manager',
       cell: ({ row }) => {
-        return (row.original as any).manager?.name || <span className="text-slate-400 italic">None</span>;
+        return (row.original as any).manager?.name || <span className="text-slate-400 ">None</span>;
       }
     },
     {
       accessorKey: 'role',
-      header: 'Functional Role',
+      header: 'Functional role',
       cell: ({ row }) => (
-        <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-          {row.original.role || 'Employee'}
+        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+          {toSentenceCase(row.original.role || 'Employee')}
         </span>
       )
     },
@@ -175,7 +199,7 @@ export default function Employees() {
         if (status === 'suspended') color = 'bg-red-100 text-red-700';
         return (
           <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>
-            {status.toUpperCase()}
+            {toSentenceCase(status)}
           </span>
         );
       }
@@ -190,7 +214,7 @@ export default function Employees() {
             <button onClick={() => openEditModal(emp)} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(emp.uid)} className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors">
+            <button onClick={() => handleDelete(emp)} className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -201,19 +225,20 @@ export default function Employees() {
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Personnel Directory</h1>
-          <p className="text-slate-500">Manage institutional staff details and assignments</p>
-        </div>
-        <button 
-          onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Register Staff</span>
-        </button>
-      </div>
+      <PageHeader 
+        title="Personnel Directory"
+        description="Manage institutional staff details and assignments"
+        icon={Users}
+        action={
+          <button 
+            onClick={openCreateModal}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Register Staff</span>
+          </button>
+        }
+      />
 
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
         <DataTable 
@@ -229,118 +254,205 @@ export default function Employees() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingEmployee ? "Edit Employee details" : "Register new Employee"}
+        hideHeader
+        maxWidth="4xl"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-            <input
-              {...register('name', { required: 'Name is required' })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="John Smith"
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message as string}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-            <input
-              type="email"
-              {...register('email', { required: 'Email is required' })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder="j.smith@erp.com"
-
-            />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message as string}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Department assignment {selectedVacancyId && <span className="text-blue-600 font-bold">(Allocated via Vacancy)</span>}
-            </label>
-            <select
-              {...register('deptId')}
-              disabled={!!selectedVacancyId}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-slate-50 disabled:opacity-70 cursor-not-allowed"
-            >
-              <option value="">-- No Department Assigned --</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {!editingEmployee && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Select Vacancy (Required)</label>
-              <select
-                {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
-              >
-                <option value="">-- Select Open Vacancy --</option>
-                {vacancies.filter(v => v.status === 'OPEN').map((v) => (
-                  <option key={v.id} value={v.id}>{v.title}</option>
-                ))}
-              </select>
-              {errors.vacancyId && <p className="text-red-500 text-xs mt-1">{errors.vacancyId.message as string}</p>}
+        <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+              <Users className="w-6 h-6 text-white" />
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Reporting Manager</label>
-            <select
-              {...register('reportingManagerUid')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
-            >
-              <option value="">-- No Direct Manager --</option>
-              {allEmployees.filter(e => e.uid !== (editingEmployee as any)?.uid).map((e) => (
-                <option key={e.uid} value={e.uid}>{e.name} ({e.uid})</option>
-              ))}
-            </select>
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
+                Human Resources
+              </p>
+              <h2 className="text-xl font-bold tracking-tight">
+                {editingEmployee ? "Edit Personnel Details" : "Register New Employee"}
+              </h2>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(false)}
+            className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-all hover:scale-110 active:scale-90 text-white/60 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
+          <div className="p-8 space-y-6 bg-white overflow-y-auto max-h-[calc(100vh-240px)]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Full Name</label>
+                <input
+                  {...register('name', { required: 'Name is required' })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
+                  placeholder="John Smith"
+                />
+                {errors.name && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.name.message as string}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Email Address</label>
+                <input
+                  type="email"
+                  {...register('email', { required: 'Email is required' })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
+                  placeholder="j.smith@erp.com"
+                />
+                {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.email.message as string}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Department assignment {selectedVacancyId && <span className="text-blue-600 font-bold">(Allocated via Vacancy)</span>}
+                </label>
+                <select
+                  {...register('deptId', { required: 'Department is required' })}
+                  disabled={!!selectedVacancyId}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white disabled:opacity-70 disabled:cursor-not-allowed text-slate-900"
+                >
+                  <option value="">-- No Department Assigned --</option>
+                  {departments
+                    .filter(d => !['university', 'center', 'study-center'].includes(d.type?.toLowerCase() || ''))
+                    .map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                {errors.deptId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.deptId.message as string}</p>}
+              </div>
+
+              {!editingEmployee && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Vacancy (Required)</label>
+                  <select
+                    {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
+                  >
+                    <option value="">-- Select Open Vacancy --</option>
+                    {vacancies.filter(v => v.status === 'OPEN').map((v) => (
+                      <option key={v.id} value={v.id}>{v.title}</option>
+                    ))}
+                  </select>
+                  {errors.vacancyId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.vacancyId.message as string}</p>}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Reporting Manager</label>
+                <select
+                  {...register('reportingManagerUid', { required: 'Reporting manager is required' })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
+                >
+                  <option value="">-- No Direct Manager --</option>
+                  {allEmployees
+                    .filter(e => e.uid !== (editingEmployee as any)?.uid)
+                    .filter(e => {
+                      const role = e.role?.toLowerCase() || '';
+                      // Universal Leadership Recognition: Include all formal Admin, CEO, and Pillar Head roles
+                      return ['admin', 'ceo', 'manager', 'head', 'lead', 'ops', 'finance', 'hr', 'sales'].some(keyword => role.includes(keyword));
+                    })
+                    .map((e) => (
+                    <option key={e.uid} value={e.uid}>{e.name} ({toSentenceCase(e.role || '')})</option>
+                  ))}
+                </select>
+                {errors.reportingManagerUid && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.reportingManagerUid.message as string}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Functional Role</label>
+                <select
+                  {...register('role', { required: 'Functional role is required' })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
+                >
+                  <option value="">-- Select Functional Role --</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.name}>{toSentenceCase(r.name)}</option>
+                  ))}
+                </select>
+                {errors.role && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.role.message as string}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Password {editingEmployee && <span className="text-slate-400 font-normal normal-case ">(Leave blank to keep current)</span>}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  {...register('password', { required: !editingEmployee ? 'Password is required for new hires' : false })}
+                  autoComplete="new-password"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium pr-12 text-slate-900"
+                  placeholder={editingEmployee ? "Enter new password" : "Required password"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 transition-all"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.password.message as string}</p>}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Functional Role</label>
-            <select
-              {...register('role')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
-            >
-              {roles.map((r) => (
-                <option key={r.id} value={r.name}>{r.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Password {editingEmployee && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}
-            </label>
-            <input
-              type="password"
-              {...register('password')}
-              autoComplete="new-password"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-              placeholder={editingEmployee ? "Enter new password" : "Required password"}
-            />
-          </div>
-
-
-          <div className="pt-4 flex justify-end space-x-3 border-t border-slate-100 mt-6">
+          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
-              Cancel
+              Discard
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Processing...' : (editingEmployee ? 'Save Updates' : 'Register')}
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal 
+        isOpen={!!employeeToDelete} 
+        onClose={() => setEmployeeToDelete(null)} 
+        title="Personnel termination protocol"
+        maxWidth="md"
+      >
+        <div className="p-6 text-center space-y-6">
+          <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto ring-8 ring-rose-50/50">
+            <Trash2 className="w-10 h-10 text-rose-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Confirm</h3>
+            <p className="text-slate-500 font-medium px-4 text-sm leading-relaxed">
+              Are you sure you want to eliminate the personnel record for <span className="text-rose-600 font-bold">{employeeToDelete?.name}</span>? This action is permanent and will be logged in the audit trail.
+            </p>
+          </div>
+          <div className="flex gap-4 pt-4">
+            <button 
+              onClick={() => setEmployeeToDelete(null)}
+              className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={confirmDelete}
+              className="flex-1 px-6 py-3 bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

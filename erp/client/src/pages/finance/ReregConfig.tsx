@@ -50,7 +50,7 @@ export default function ReregConfig() {
     <div className="space-y-6">
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 italic tracking-tight">
+           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
               <Settings className="w-7 h-7 text-blue-600" />
               Re-Registration Configuration
            </h2>

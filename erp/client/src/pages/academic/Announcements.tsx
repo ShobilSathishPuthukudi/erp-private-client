@@ -20,6 +20,7 @@ export default function CenterAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [formData, setFormData] = useState({ 
     title: '', 
     message: '', 
@@ -114,7 +115,11 @@ export default function CenterAnnouncements() {
           className="min-h-[280px]"
         />
         {announcements.map(ann => (
-          <div key={ann.id} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all relative group">
+          <div 
+            key={ann.id} 
+            onClick={() => setSelectedAnnouncement(ann)}
+            className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all relative group cursor-pointer"
+          >
             <button 
                 onClick={() => deleteAnnouncement(ann.id)}
                 className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
@@ -131,7 +136,7 @@ export default function CenterAnnouncements() {
                 </span>
             </div>
             <h3 className="font-black text-slate-900 uppercase tracking-tighter mb-2">{ann.title}</h3>
-            <p className="text-slate-600 text-sm font-medium mb-4 line-clamp-3 italic">{ann.message}</p>
+            <p className="text-slate-600 text-sm font-medium mb-4 line-clamp-3 ">{ann.message}</p>
             
             <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
                 <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-0.5 rounded-md">
@@ -254,6 +259,83 @@ export default function CenterAnnouncements() {
             </div>
          </form>
         </div>
+      </Modal>
+
+      {/* Announcement Detail View Modal */}
+      <Modal isOpen={!!selectedAnnouncement} onClose={() => setSelectedAnnouncement(null)} hideHeader={true}>
+        {selectedAnnouncement && (
+          <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+            <div className={`p-8 ${selectedAnnouncement.priority === 'urgent' ? 'bg-red-600' : 'bg-slate-900'} text-white relative overflow-hidden`}>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                            <Megaphone className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Live Directive</span>
+                    </div>
+                    <h2 className="text-3xl font-black tracking-tight leading-none uppercase">{selectedAnnouncement.title}</h2>
+                </div>
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAnnouncement(null);
+                  }}
+                  className="absolute top-6 right-6 p-2.5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white z-50 group/close"
+                >
+                  <X className="w-5 h-5 group-hover/close:scale-110 transition-transform" />
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-10 space-y-10 min-h-0 custom-scrollbar">
+                <div className="flex flex-wrap gap-4 pt-2">
+                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Issue Date</span>
+                            <span className="text-[11px] font-black text-slate-900">{new Date(selectedAnnouncement.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <Filter className="w-4 h-4 text-slate-400" />
+                        <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Scope</span>
+                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">
+                                {selectedAnnouncement.university?.name || selectedAnnouncement.program?.name || 'Global Broadcast'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">Message Content</h3>
+                    <p className="text-lg font-medium text-slate-700 leading-relaxed max-w-2xl">
+                        {selectedAnnouncement.message}
+                    </p>
+                </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t border-slate-200 shrink-0 flex justify-between items-center">
+                <button 
+                    onClick={() => {
+                        deleteAnnouncement(selectedAnnouncement.id);
+                        setSelectedAnnouncement(null);
+                    }}
+                    className="px-6 py-3 bg-white text-red-600 border border-red-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-2"
+                >
+                    <Trash2 className="w-4 h-4" />
+                    Revoke Directive
+                </button>
+                <button 
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10"
+                >
+                    Dismiss
+                </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

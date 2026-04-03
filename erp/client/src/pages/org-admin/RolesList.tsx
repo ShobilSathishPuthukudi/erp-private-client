@@ -8,23 +8,35 @@ import {
   Power,
   Info,
   Filter,
-  ShieldCheck
+  ShieldCheck,
+  Lock,
+  Download,
+  LayoutGrid,
+  List
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Modal } from '@/components/shared/Modal';
 import RoleCreate from './RoleCreate';
+import RoleDetails from './RoleDetails';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { toSentenceCase } from '@/lib/utils';
 
 export default function RolesList() {
   const navigate = useNavigate();
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policy, setPolicy] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [viewRole, setViewRole] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     fetchRoles();
@@ -61,11 +73,75 @@ export default function RolesList() {
 
       const newStatus = role.status === 'active' ? 'inactive' : 'active';
       await api.put(`/org-admin/roles/${role.id}`, { status: newStatus });
-      toast.success(`${role.name} status updated`);
+      toast.success(`${toSentenceCase(role.name)} status updated`);
       fetchRoles();
     } catch (error) {
       toast.error('Failed to update role status');
     }
+  };
+
+  const handleAuditRole = async (roleId: number, isAudited: boolean) => {
+    try {
+      await api.put(`/org-admin/roles/${roleId}/audit`, { isAudited });
+      toast.success(isAudited ? 'Role successfully verified' : 'Role verification revoked');
+      fetchRoles();
+      // Update viewRole if it matches the audited role
+      if (viewRole && viewRole.id === roleId) {
+        setViewRole({ ...viewRole, isAudited });
+      }
+    } catch (error) {
+      toast.error('Failed to update audit status');
+    }
+  };
+
+  const handleViewDetails = (role: any) => {
+    setViewRole(role);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleExportExcel = () => {
+    const data = roles.map(r => ({
+      ID: r.id,
+      'Role Name': toSentenceCase(r.name),
+      'Functional Scope': r.description || 'No description',
+      'Logic Class': r.isCustom ? 'Custom' : 'Pre-defined',
+      'Audit Status': r.isAudited ? 'Verified' : 'Pending',
+      'Admin Eligibility': r.isAdminEligible ? 'Yes' : 'No'
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Institutional Roles");
+    XLSX.writeFile(wb, "Institutional_Role_Registry.xlsx");
+    toast.success('Excel manifest generated');
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const tableData = roles.map(r => [
+      r.id,
+      toSentenceCase(r.name),
+      r.isCustom ? 'Custom' : 'Pre-defined',
+      r.isAudited ? 'Verified' : 'Pending'
+    ]);
+
+    doc.setFontSize(18);
+    doc.text('Institutional Role Registry', 14, 22);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['ID', 'Identity Name', 'Logic Class', 'Audit Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42] },
+      styles: { fontSize: 8 }
+    });
+
+    doc.save("Institutional_Role_Registry.pdf");
+    toast.success('PDF Registry generated');
   };
 
   const filteredRoles = roles.filter(role => {
@@ -78,6 +154,7 @@ export default function RolesList() {
     return matchesSearch;
   });
 
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32">
       <div className="flex justify-between items-center">
@@ -86,71 +163,130 @@ export default function RolesList() {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Roles</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional roles</h1>
             <p className="text-slate-500 mt-1">Manage standard and custom roles for the institutional hierarchy.</p>
           </div>
         </div>
-        <button 
-          onClick={() => {
-            setSelectedRole(null);
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
-        >
-          <Plus className="w-5 h-5" />
-          Create New Role
-        </button>
+        <div className="flex gap-3">
+          <div className="relative group/export">
+            <button 
+              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+              title="Download/Export Role Registry"
+            >
+              <Download className="w-5 h-5 group-hover:scale-125 transition-transform" />
+            </button>
+            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50 transition-all duration-200">
+              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <button 
+                  onClick={handleExportExcel}
+                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
+                >
+                  Excel (.xlsx) Manifest
+                </button>
+                <button 
+                  onClick={handleExportPDF}
+                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  PDF (.pdf) Document
+                </button>
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setSelectedRole(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20 group cursor-pointer"
+          >
+            <Plus className="w-5 h-5" />
+            Create new role
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="relative flex-1 max-w-md w-full group/search">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/search:text-blue-600 group-focus-within/search:text-blue-600 group-focus-within/search:left-[calc(1rem-2.5%)] group-focus-within/search:opacity-100" />
           <input 
             type="text" 
             placeholder="Search roles by identifier or description..." 
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none shadow-sm"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none shadow-sm transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-blue-50/20 hover:border-blue-100 hover:shadow-md hover:-translate-y-0.5 focus:ring-0 focus:border-blue-600 focus:w-[105%] focus:-ml-[2.5%] focus:shadow-2xl focus:shadow-blue-500/10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm gap-1">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 tracking-wider">
             <Filter className="w-3.5 h-3.5" />
             <span>Type</span>
           </div>
           <select 
-            className="bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-0 text-slate-700"
+            className="bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-0 text-slate-700 cursor-pointer mr-2"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
-            <option value="All">All Roles</option>
+            <option value="All">All roles</option>
             <option value="Default">Default</option>
             <option value="Custom">Custom</option>
           </select>
+
+          <div className="w-px h-6 bg-slate-100 mx-2" />
+
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-xl transition-all ${
+              viewMode === 'grid' 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+            title="Grid View"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-xl transition-all ${
+              viewMode === 'list' 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+            title="List View"
+          >
+            <List className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          Array.from({ length: 6 }).map((_, i) => (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-64 bg-slate-100 animate-pulse rounded-3xl" />
-          ))
-        ) : filteredRoles.length === 0 ? (
-          <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-400">
-            <Shield className="w-12 h-12 mb-4 opacity-20" />
-            <p className="font-bold text-sm tracking-tight">No institutional roles found matching your search</p>
-          </div>
-        ) : (
-          filteredRoles.map((role) => (
-            <div key={role.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all hover:translate-y-[-4px]">
-              <div className={`h-2 ${
-                role.status === 'active' ? 'bg-blue-600' : 'bg-slate-300'
+          ))}
+        </div>
+      ) : filteredRoles.length === 0 ? (
+        <div className="py-24 flex flex-col items-center justify-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-400">
+          <Shield className="w-12 h-12 mb-4 opacity-20" />
+          <p className="font-bold text-sm tracking-tight">No institutional roles found matching your search</p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRoles.map((role) => (
+            <div 
+              key={role.id} 
+              onClick={() => handleViewDetails(role)}
+              className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all hover:translate-y-[-4px] cursor-pointer"
+            >
+              <div className={`h-1.5 transition-all duration-300 ${
+                role.status === 'active' 
+                  ? 'bg-blue-400 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-700' 
+                  : 'bg-slate-400 group-hover:bg-slate-600'
               }`}></div>
               <div className="p-6 space-y-6">
                 <div className="flex justify-between items-start gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                       <h3 className="text-lg font-bold text-slate-900 truncate" title={role.name}>{role.name}</h3>
+                       <h3 className="text-lg font-bold text-slate-900 truncate" title={toSentenceCase(role.name)}>{toSentenceCase(role.name)}</h3>
                        {!role.isCustom && (
                          <span className="bg-blue-50 text-blue-600 text-[8px] font-bold px-1.5 py-0.5 rounded border border-blue-100">System</span>
                        )}
@@ -161,8 +297,8 @@ export default function RolesList() {
                   </div>
                   <div className={`flex-shrink-0 p-3 rounded-2xl border transition-all duration-300 ${
                     role.status === 'active' 
-                      ? 'bg-blue-50 text-blue-600 border-blue-100 group-hover:bg-blue-600 group-hover:text-white' 
-                      : 'bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-slate-900 group-hover:text-white'
+                      ? 'bg-blue-50 text-blue-400 border-blue-100 group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-700 group-hover:text-white group-hover:shadow-md group-hover:shadow-blue-500/20' 
+                      : 'bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-gradient-to-br group-hover:from-slate-800 group-hover:to-slate-950 group-hover:text-white'
                   }`}>
                     <Shield className="w-6 h-6" />
                   </div>
@@ -173,41 +309,151 @@ export default function RolesList() {
                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                       role.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                     }`}>
-                      {role.status.charAt(0).toUpperCase() + role.status.slice(1)}
+                      {toSentenceCase(role.status)}
                     </span>
                     <span className="text-[10px] text-slate-400 font-bold tracking-wider">
-                       {role.isCustom ? 'Custom identity' : 'Standard logic'}
+                       {role.isCustom ? 'Custom identity' : 'Pre-defined logic'}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!role.isCustom) return;
                       setSelectedRole(role);
                       setIsModalOpen(true);
                     }}
-                    className="flex-1 py-2.5 bg-slate-50 text-slate-600 font-bold text-xs rounded-xl border border-slate-100 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                    disabled={!role.isCustom}
+                    className={`flex-1 py-2.5 font-bold text-xs rounded-xl border transition-all flex items-center justify-center gap-2 ${
+                      role.isCustom 
+                        ? 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200' 
+                        : 'bg-slate-50 text-slate-400 border-slate-100 cursor-not-allowed opacity-80'
+                    }`}
                   >
-                    <Edit2 className="w-3.5 h-3.5" /> Configure
+                    {role.isCustom ? <Edit2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                    {role.isCustom ? 'Configure' : 'Locked'}
                   </button>
                   <button 
-                    onClick={() => handleToggleStatus(role)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!role.isCustom) return;
+                      handleToggleStatus(role);
+                    }}
+                    disabled={!role.isCustom}
                     className={`p-2.5 rounded-xl border transition-all active:scale-[0.95] ${
-                      role.status === 'active' 
-                        ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100' 
-                        : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                      !role.isCustom
+                        ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed opacity-50'
+                        : role.status === 'active' 
+                          ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100' 
+                          : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
                     }`}
-                    title={role.status === 'active' ? 'Deactivate Role' : 'Activate Role'}
+                    title={!role.isCustom ? 'System roles must remain active' : (role.status === 'active' ? 'Deactivate Role' : 'Activate Role')}
                   >
                     <Power className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-200">
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity Name</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metadata Snippet</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Governance Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logic Type</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredRoles.map((role) => (
+                  <tr 
+                    key={role.id} 
+                    onClick={() => handleViewDetails(role)}
+                    className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg border transition-all duration-300 ${
+                          role.status === 'active' 
+                            ? 'bg-blue-50 text-blue-400 border-blue-100 group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-700 group-hover:text-white group-hover:shadow-sm group-hover:shadow-blue-500/10' 
+                            : 'bg-slate-50 text-slate-200 border-slate-100 group-hover:bg-gradient-to-br group-hover:from-slate-800 group-hover:to-slate-950 group-hover:text-white'
+                        }`}>
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{toSentenceCase(role.name)}</p>
+                          {!role.isCustom && <p className="text-[9px] font-black text-blue-500 uppercase tracking-tighter">System Protected</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-xs text-slate-500 font-medium truncate max-w-md">
+                        {role.description || "No description provided."}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                        role.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {toSentenceCase(role.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] text-slate-400 font-bold tracking-wider">
+                        {role.isCustom ? 'Custom' : 'Pre-defined'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => {
+                            if (!role.isCustom) return;
+                            setSelectedRole(role);
+                            setIsModalOpen(true);
+                          }}
+                          disabled={!role.isCustom}
+                          className={`p-2 rounded-lg border transition-all ${
+                            role.isCustom 
+                              ? 'text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100' 
+                              : 'text-slate-200 border-slate-50 cursor-not-allowed'
+                          }`}
+                          title="Configure"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (!role.isCustom) return;
+                            handleToggleStatus(role);
+                          }}
+                          disabled={!role.isCustom}
+                          className={`p-2 rounded-lg border transition-all ${
+                            !role.isCustom
+                              ? 'text-slate-200 border-slate-50 cursor-not-allowed'
+                              : role.status === 'active' 
+                                ? 'text-rose-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100' 
+                                : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100'
+                          }`}
+                          title="Toggle Status"
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-slate-900 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
         <ShieldCheck className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 text-white/5 rotate-12" />
@@ -227,13 +473,13 @@ export default function RolesList() {
         <div className="flex gap-4 relative z-10">
            <button 
              onClick={() => setIsPolicyModalOpen(true)}
-             className="px-6 py-4 bg-white/5 text-white font-bold rounded-2xl border border-white/10 hover:bg-white/10 transition-all"
+             className="px-6 py-4 bg-white/10 text-white font-bold rounded-2xl border border-white/10 hover:bg-white/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
            >
              Audit Policy
            </button>
            <button 
              onClick={() => navigate('/dashboard/org-admin/permissions/matrix')}
-             className="px-8 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-600/20 hover:bg-blue-500 transition-all"
+             className="px-8 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/15 hover:bg-blue-700 hover:scale-[1.02] hover:shadow-blue-700/30 active:scale-[0.98] transition-all cursor-pointer"
            >
              Global Access Grid
            </button>
@@ -276,7 +522,7 @@ export default function RolesList() {
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button 
               onClick={() => setIsPolicyModalOpen(false)}
-              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm"
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm cursor-pointer"
             >
               Acknowledge Policy
             </button>
@@ -304,6 +550,26 @@ export default function RolesList() {
             setSelectedRole(null);
             fetchRoles();
           }}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setViewRole(null);
+        }}
+        maxWidth="2xl"
+        hideHeader={true}
+        isTransparent={true}
+      >
+        <RoleDetails 
+          role={viewRole}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setViewRole(null);
+          }}
+          onAudit={handleAuditRole}
         />
       </Modal>
     </div>

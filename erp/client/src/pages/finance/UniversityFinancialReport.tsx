@@ -41,8 +41,8 @@ export default function UniversityFinancialReport() {
             <BarChart2 className="w-64 h-64" />
          </div>
          <div className="relative z-10">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 italic">Institutional Cash Flow Intelligence</h2>
-            <p className="text-slate-400 font-medium italic">Forensic 90-day projections and University-partner distribution analytics.</p>
+            <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 ">Institutional Cash Flow Intelligence</h2>
+            <p className="text-slate-400 font-medium ">Forensic 90-day projections and University-partner distribution analytics.</p>
          </div>
 
          <div className="relative z-10 bg-white/5 border border-white/10 p-2 rounded-2xl backdrop-blur-xl">
@@ -93,7 +93,7 @@ export default function UniversityFinancialReport() {
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                        <div className="h-full bg-emerald-500 w-[85%]" />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 mt-2 italic">Low Risk / High Collection Performance</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-2 ">Low Risk / High Collection Performance</p>
                  </div>
               </div>
            </div>
@@ -115,7 +115,7 @@ function MetricCard({ icon, label, value, color }: any) {
             {icon}
          </div>
          <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">{label}</p>
-         <p className="text-2xl font-black tracking-tighter italic">{value}</p>
+         <p className="text-2xl font-black tracking-tighter ">{value}</p>
       </div>
    );
 }
@@ -124,7 +124,7 @@ function ProjectionBucket({ label, amount, growth }: any) {
    return (
       <div className="space-y-2">
          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-         <p className="text-xl font-black text-slate-900 tracking-tighter italic">₹{amount.toLocaleString()}</p>
+         <p className="text-xl font-black text-slate-900 tracking-tighter ">₹{amount.toLocaleString()}</p>
          <p className={clsx("text-[9px] font-black uppercase", growth.startsWith('+') ? 'text-emerald-500' : 'text-rose-500')}>
             {growth} Expected
          </p>

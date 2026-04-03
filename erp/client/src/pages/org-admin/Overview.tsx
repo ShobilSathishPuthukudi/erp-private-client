@@ -25,6 +25,7 @@ import {
   Bar,
   Cell
 } from 'recharts';
+import { toSentenceCase } from '@/lib/utils';
 
 interface Stats {
   totalDepartments: number;
@@ -34,8 +35,10 @@ interface Stats {
   centerNames: string[];
   totalStudents: number;
   pendingApprovals: number;
-  systemHealth: 'Healthy' | 'Degraded' | 'Down';
-  lastCheck: string;
+  growthData: ChartPoint[];
+  auditIntensity: AuditPoint[];
+  actionQueue: any[];
+  demographics: Record<string, number>;
 }
 
 interface ChartPoint {
@@ -66,8 +69,10 @@ export default function Overview() {
     centerNames: [],
     totalStudents: 0,
     pendingApprovals: 0,
-    systemHealth: 'Healthy',
-    lastCheck: new Date().toLocaleTimeString()
+    growthData: [],
+    auditIntensity: [],
+    actionQueue: [],
+    demographics: {}
   });
 
   const getRoleBranding = () => {
@@ -80,9 +85,6 @@ export default function Overview() {
   };
 
   const branding = getRoleBranding();
-
-  const [growthData, setGrowthData] = useState<ChartPoint[]>([]);
-  const [auditData, setAuditData] = useState<AuditPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -98,30 +100,11 @@ export default function Overview() {
           centerNames: data.centerNames || [],
           totalStudents: data.totalStudents,
           pendingApprovals: data.pendingTasks,
-          systemHealth: data.systemHealth?.memoryUsage > 500 ? 'Degraded' : 'Healthy',
-          lastCheck: new Date().toLocaleTimeString()
+          growthData: data.growthData || [],
+          auditIntensity: data.auditIntensity || [],
+          actionQueue: data.actionQueue || [],
+          demographics: data.demographics || {}
         });
-
-        // Mock Growth Data
-        setGrowthData([
-          { name: 'Oct', students: 450, employees: 80 },
-          { name: 'Nov', students: 520, employees: 85 },
-          { name: 'Dec', students: 610, employees: 92 },
-          { name: 'Jan', students: 780, employees: 98 },
-          { name: 'Feb', students: 890, employees: 105 },
-          { name: 'Mar', students: data.totalStudents || 950, employees: data.totalEmployees || 110 },
-        ]);
-
-        // Mock Audit Data
-        setAuditData([
-          { day: 'Mon', actions: 124 },
-          { day: 'Tue', actions: 156 },
-          { day: 'Wed', actions: 98 },
-          { day: 'Thu', actions: 210 },
-          { day: 'Fri', actions: 185 },
-          { day: 'Sat', actions: 45 },
-          { day: 'Sun', actions: 32 },
-        ]);
 
       } catch (error) {
         console.error("Failed to fetch dashboard stats", error);
@@ -197,12 +180,11 @@ export default function Overview() {
             {getGreeting()}, {branding.title}
           </h1>
           <p className="text-lg text-slate-500 mt-2 font-medium">
-            System telemetry and institutional performance overview for {formattedDate}.
+            Institutional performance and telemetry overview for {formattedDate}.
           </p>
         </div>
       </div>
 
-      {/* Metric Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <MetricCard 
           title="Total Departments Active" 
@@ -219,16 +201,16 @@ export default function Overview() {
           details={
             <div className="space-y-6">
               <div className="space-y-3">
-                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Workforce Enrollment</h4>
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Workforce Registry</h4>
                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2">
                     {stats.employeeNames.length > 0 ? (
                       stats.employeeNames.map((emp, i) => (
                         <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-100 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs uppercase">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
                               {emp.name.charAt(0)}
                             </div>
-                            <span className="text-xs font-bold text-slate-700">{emp.name}</span>
+                            <span className="text-xs font-bold text-slate-700">{toSentenceCase(emp.name)}</span>
                           </div>
                           <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50 px-2 py-0.5 rounded-md">
                             {emp.role}
@@ -236,17 +218,8 @@ export default function Overview() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-4">No active personnel records found.</p>
+                      <p className="text-xs text-slate-400 text-center py-4">No personnel records found.</p>
                     )}
-                 </div>
-              </div>
-              <div className="pt-4 border-t border-slate-50">
-                 <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Operational Status</span>
-                    <span className="text-[10px] font-black text-emerald-600 uppercase">85% Active</span>
-                 </div>
-                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 w-[85%]"></div>
                  </div>
               </div>
             </div>
@@ -260,7 +233,7 @@ export default function Overview() {
           details={
             <div className="space-y-6">
               <div className="space-y-3">
-                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Designated Satellite Campuses</h4>
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Regional Centers</h4>
                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2">
                     {stats.centerNames.length > 0 ? (
                       stats.centerNames.map((center, i) => (
@@ -268,15 +241,14 @@ export default function Overview() {
                            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
                              <MapPin className="w-4 h-4" />
                            </div>
-                           <span className="text-xs font-bold text-slate-700">{center}</span>
+                           <span className="text-xs font-bold text-slate-700">{toSentenceCase(center)}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-4">No center enrollment detected.</p>
+                      <p className="text-xs text-slate-400 text-center py-4">No center enrollment detected.</p>
                     )}
                  </div>
               </div>
-              <p className="text-[10px] text-slate-400 font-bold italic">Regional distribution across {stats.totalStudyCenters} active zones.</p>
             </div>
           }
         />
@@ -289,25 +261,24 @@ export default function Overview() {
             <div className="space-y-6">
               <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
                 <div className="p-2 bg-white rounded-xl shadow-sm"><Activity className="w-5 h-5 text-emerald-600" /></div>
-                <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">Dynamic harvest from central academic registry (Academic Year 2025-26)</p>
+                <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">Live student telemetry across {Object.keys(stats.demographics).length} program categories.</p>
               </div>
               <div className="space-y-4">
-                 {[
-                   { label: 'Undergraduate', value: '65%', color: 'bg-emerald-500' },
-                   { label: 'Postgraduate', value: '25%', color: 'bg-blue-500' },
-                   { label: 'Doctoral/PHD', value: '10%', color: 'bg-indigo-500' }
-                 ].map((item, i) => (
+                 {Object.entries(stats.demographics).map(([label, value], i) => (
                    <div key={i} className="flex items-center justify-between p-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors rounded-lg">
-                     <span className="text-xs font-bold text-slate-500 uppercase">{item.label}</span>
-                     <span className="text-xs font-black text-slate-900 px-2 py-1 bg-white rounded-md shadow-sm border border-slate-100">{item.value}</span>
+                     <span className="text-xs font-bold text-slate-500 uppercase">{label}</span>
+                     <span className="text-xs font-black text-slate-900 px-2 py-1 bg-white rounded-md shadow-sm border border-slate-100">{value} student{value !== 1 ? 's' : ''}</span>
                    </div>
                  ))}
+                 {Object.keys(stats.demographics).length === 0 && (
+                    <p className="text-xs text-slate-400 text-center py-4">No demographic data available.</p>
+                 )}
               </div>
             </div>
           }
         />
         <MetricCard 
-          title="Pending Approvals Count" 
+          title="Pending Approvals" 
           value={stats.pendingApprovals} 
           icon={Clock} 
           color={{ bg: 'bg-rose-50', text: 'text-rose-600' }}
@@ -315,66 +286,24 @@ export default function Overview() {
             <div className="space-y-4">
               <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mb-4">Critical Action Queue</h4>
               <div className="space-y-2">
-                 {[
-                   { task: 'New Faculty Onboarding (Dept-ID: 42)', urgency: 'High' },
-                   { task: 'Departmental Budget Realignment', urgency: 'Critical' },
-                   { task: 'Study Center Token Renewal', urgency: 'Normal' }
-                 ].map((task, i) => (
+                 {stats.actionQueue.length > 0 ? stats.actionQueue.map((task, i) => (
                    <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-rose-200 transition-all cursor-default group">
                      <div className="flex items-center gap-3">
-                       <div className={`w-2 h-2 rounded-full ${task.urgency === 'Critical' ? 'bg-rose-500' : task.urgency === 'High' ? 'bg-amber-500' : 'bg-slate-300'}`}></div>
-                       <span className="text-xs font-bold text-slate-700">{task.task}</span>
+                       <div className={`w-2 h-2 rounded-full ${task.priority === 'urgent' || task.priority === 'high' ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
+                       <span className="text-xs font-bold text-slate-700">{task.title}</span>
                      </div>
-                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Review Task</span>
+                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{task.priority}</span>
                    </div>
-                 ))}
+                 )) : (
+                    <p className="text-xs text-slate-400 text-center py-4">Action queue is clear.</p>
+                 )}
               </div>
-            </div>
-          }
-        />
-        
-        {/* System Health Card */}
-        <MetricCard 
-          title="System Health Status" 
-          value={stats.systemHealth} 
-          icon={Activity} 
-          color={{ bg: 'bg-slate-50', text: 'text-slate-600' }}
-          details={
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Memory Usage</span>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl font-black text-slate-900">412</span>
-                    <span className="text-xs font-bold text-slate-500 mb-1">MB</span>
-                  </div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">CPU Intensity</span>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl font-black text-slate-900">12</span>
-                    <span className="text-xs font-bold text-slate-500 mb-1">%</span>
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 bg-white border border-slate-100 rounded-3xl space-y-3 shadow-inner">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Uptime Stability</span>
-                  <span className="text-xs font-black text-emerald-600">99.98%</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[99.98%]"></div>
-                </div>
-              </div>
-              <p className="text-[10px] text-slate-400 font-bold italic text-center">Telemetry refreshed every 60 seconds from core infra.</p>
             </div>
           }
         />
       </div>
 
-      {/* Visual Analytics Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Growth Chart */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
           <div className="flex justify-between items-center px-2">
             <div>
@@ -394,7 +323,7 @@ export default function Overview() {
           </div>
           <div className="h-[300px] w-full pt-4">
              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={growthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                <LineChart data={stats.growthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
                     dataKey="name" 
@@ -437,7 +366,6 @@ export default function Overview() {
           </div>
         </div>
 
-        {/* Audit Activity Chart */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
           <div className="flex justify-between items-center px-2">
             <div>
@@ -450,7 +378,7 @@ export default function Overview() {
           </div>
           <div className="h-[300px] w-full pt-4">
              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={auditData}>
+                <BarChart data={stats.auditIntensity}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
                     dataKey="day" 
@@ -475,7 +403,7 @@ export default function Overview() {
                     }} 
                   />
                   <Bar dataKey="actions" radius={[10, 10, 0, 0]}>
-                    {auditData.map((entry, index) => (
+                    {stats.auditIntensity.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.actions > 150 ? '#2563eb' : '#94a3b8'} />
                     ))}
                   </Bar>
@@ -485,7 +413,6 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Info Section */}
       <div className="bg-slate-900 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden">
         <Activity className="absolute -right-4 -bottom-4 w-48 h-48 text-white/5 rotate-6" />
         <div className="max-w-2xl relative z-10">
@@ -506,7 +433,6 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Metric Detail Modal */}
       <Modal 
         isOpen={!!selectedMetric} 
         onClose={() => setSelectedMetric(null)}
@@ -539,7 +465,7 @@ export default function Overview() {
           <div className="pt-6 border-t border-slate-100 flex justify-end">
             <button 
               onClick={() => setSelectedMetric(null)}
-              className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
+              className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-colors shadow-lg cursor-pointer"
             >
               Close Insight
             </button>

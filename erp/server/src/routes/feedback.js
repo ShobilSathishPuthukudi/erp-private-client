@@ -7,7 +7,7 @@ const router = express.Router();
 const { Survey, SurveyResponse, User } = models;
 
 const isAdmin = (req, res, next) => {
-  if (['org-admin', 'system-admin', 'academic', 'hr'].includes(req.user.role)) {
+  if (['Organization Admin', 'Operations Admin', 'HR Admin'].includes(req.user.role)) {
     return next();
   }
   res.status(403).json({ error: 'Access denied' });

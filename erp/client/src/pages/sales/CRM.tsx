@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Plus, Phone, Mail, LayoutGrid, List as ListIcon, Clock, CheckCircle2, UserCircle2, Users, Edit2, X, ShieldCheck, Check, GitMerge } from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@/components/shared/Modal';
+import { toSentenceCase } from '@/lib/utils';
 
 type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'SHORTLISTED' | 'PROPOSED' | 'CONVERTED' | 'LOST';
 
@@ -56,6 +58,20 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
       if (group) setActiveTab(group.statuses[0]);
     }
   }, [propCategory]);
+
+  useEffect(() => {
+    if (isEditModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open-blur');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('modal-open-blur');
+    };
+  }, [isEditModalOpen]);
 
   const fetchLeads = async () => {
     try {
@@ -295,7 +311,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                       : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
                   }`}
                 >
-                  <span className="text-[10px] font-black uppercase tracking-widest">{col.title}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{toSentenceCase(col.title)}</span>
                   <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${activeTab === col.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
                     {count}
                   </span>
@@ -313,8 +329,8 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                 
                 <div className="flex justify-between items-start mb-4 relative z-10">
                   <div>
-                    <h4 className="font-black text-slate-900 uppercase text-lg italic tracking-tight">{lead.name}</h4>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {lead.id}</span>
+                    <h4 className="font-black text-slate-900 text-lg tracking-tight">{toSentenceCase(lead.name)}</h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Id: {lead.id}</span>
                   </div>
                   <div className="relative">
                     <select 
@@ -391,7 +407,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
         <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-xl shadow-slate-100/50 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-[0.2em] border-b border-slate-800">
+              <thead className="bg-slate-900 text-white text-[10px] font-black tracking-[0.2em] border-b border-slate-800">
                 <tr>
                   <th className="px-8 py-5">Entity Information</th>
                   <th className="px-8 py-5">Communication Channels</th>
@@ -404,8 +420,8 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                 {leads.map(lead => (
                   <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-8 py-5">
-                      <div className="font-black text-slate-900 uppercase italic tracking-tight">{lead.name}</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest leading-none">ID: LEAD-{lead.id}</div>
+                      <div className="font-black text-slate-900 tracking-tight">{toSentenceCase(lead.name)}</div>
+                      <div className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest leading-none">Id: LEAD-{lead.id}</div>
                     </td>
                     <td className="px-8 py-5">
                       <div className="text-slate-700 font-bold">{lead.phone}</div>
@@ -541,7 +557,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
          <form onSubmit={onConvertSubmit} className="space-y-6 p-2">
             <div className="p-5 bg-blue-50 border border-blue-100 rounded-3xl">
                <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Converting Prospect</p>
-               <h4 className="text-xl font-black text-blue-900 italic tracking-tight uppercase leading-none">{selectedLead?.name}</h4>
+               <h4 className="text-xl font-black text-blue-900 tracking-tight uppercase leading-none">{selectedLead?.name}</h4>
             </div>
 
             <div className="space-y-2">
@@ -655,14 +671,14 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
       </Modal>
 
       {/* Edit Programs Modal */}
-      {isEditModalOpen && (
+      {isEditModalOpen && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[3rem] w-full max-w-xl overflow-hidden shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-300">
             <div className="bg-blue-600 px-10 py-8 text-white relative">
                <button onClick={() => setIsEditModalOpen(false)} className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors">
                   <X className="w-6 h-6" />
                </button>
-               <h3 className="text-3xl font-black uppercase tracking-tighter italic">Re-Synchronize Mapping</h3>
+               <h3 className="text-3xl font-black uppercase tracking-tighter ">Re-Synchronize Mapping</h3>
                <p className="text-blue-100 text-sm font-bold uppercase tracking-widest mt-1 opacity-70">Center Protocol Revision</p>
             </div>
 
@@ -671,7 +687,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                   <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
                      <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <h4 className="text-xl font-black text-blue-900 italic tracking-tight uppercase leading-none">{selectedLead?.name}</h4>
+                  <h4 className="text-xl font-black text-blue-900 tracking-tight uppercase leading-none">{selectedLead?.name}</h4>
                </div>
 
                <div className="space-y-3">
@@ -728,7 +744,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                         );
                      })}
                      {editData.programIds.length === 0 && (
-                        <span className="text-[10px] font-bold text-slate-300 uppercase italic">No programs mapped for this center.</span>
+                        <span className="text-[10px] font-bold text-slate-300 uppercase ">No programs mapped for this center.</span>
                      )}
                   </div>
                </div>
@@ -744,7 +760,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
             </form>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

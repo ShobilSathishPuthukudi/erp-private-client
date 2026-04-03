@@ -7,7 +7,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Calendar, BookOpen, Users, ShieldCheck, History, Timer, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+
 
 interface Session {
   id: number;
@@ -33,25 +33,43 @@ interface Program {
   intakeCapacity: number;
 }
 
+interface Center {
+  id: number;
+  name: string;
+  auditStatus: string;
+}
+
 export default function Sessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Session | null>(null);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm();
-  const selectedProgramId = watch('programId');
+  const watchAllFields = watch();
+  const selectedProgramId = watchAllFields.programId;
+
+  const isFormValid = 
+    !!watchAllFields.name?.trim() &&
+    !!watchAllFields.programId &&
+    !!watchAllFields.centerId &&
+    !!watchAllFields.startDate &&
+    !!watchAllFields.endDate &&
+    !!watchAllFields.maxCapacity;
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [sessRes, progRes] = await Promise.all([
+      const [sessRes, progRes, centRes] = await Promise.all([
         api.get('/academic/sessions'),
-        api.get('/academic/programs')
+        api.get('/academic/programs'),
+        api.get('/academic/centers')
       ]);
       setSessions(sessRes.data);
       setPrograms(progRes.data);
+      setCenters(centRes.data);
     } catch (error) {
       toast.error('Failed to access session topology');
     } finally {
@@ -75,7 +93,7 @@ export default function Sessions() {
 
   const openCreateModal = () => {
     setEditingItem(null);
-    reset({ name: '', programId: '', startDate: '', endDate: '', maxCapacity: 50 });
+    reset({ name: '', programId: '', centerId: '', startDate: '', endDate: '', maxCapacity: 50 });
     setIsModalOpen(true);
   };
 
@@ -149,50 +167,25 @@ export default function Sessions() {
     },
     { 
       id: 'status', 
-      header: 'Workflow Status',
+      header: 'Status',
       cell: ({ row }) => {
-        const s = row.original.approvalStatus;
+        const isActive = row.original.enrolledCount > 0;
         return (
           <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
-            s === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 
-            s === 'PENDING_APPROVAL' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-            'bg-slate-100 text-slate-600 border border-slate-200'
+            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 border border-slate-200'
           }`}>
-            {s === 'APPROVED' ? <CheckCircle2 className="w-3 h-3" /> : (s === 'PENDING_APPROVAL' ? <Timer className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />)}
-            {s.replace('_', ' ')}
+            {isActive ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+            {isActive ? 'ACTIVE' : 'DRAFT'}
           </span>
         );
       }
     },
-    { 
-      accessorKey: 'financeStatus', 
-      header: 'Finance Clearance',
-      cell: ({ row }) => {
-        const s = row.original.financeStatus;
-        return (
-          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
-            s === 'approved' ? 'bg-emerald-100 text-emerald-700' : 
-            s === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-            'bg-red-50 text-red-700'
-          }`}>
-            {s === 'approved' ? <CheckCircle2 className="w-3 h-3" /> : (s === 'pending' ? <Timer className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />)}
-            {s}
-          </span>
-        );
-      }
-    },
+
     {
       id: 'actions',
-      header: 'Navigation',
+      header: 'Action',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-            <Link 
-                to={`/dashboard/academic/exams/${row.original.id}/marks`}
-                className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white"
-                title="Marks Entry"
-            >
-                <BookOpen className="w-4 h-4" />
-            </Link>
             <button 
                 onClick={() => {
                     setEditingItem(row.original);
@@ -200,26 +193,10 @@ export default function Sessions() {
                     setIsModalOpen(true);
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white"
+                title="Edit Configuration"
             >
                 <Edit2 className="w-4 h-4" />
             </button>
-            {row.original.approvalStatus === 'PENDING_APPROVAL' && (
-              <button 
-                onClick={async () => {
-                  try {
-                    await api.put(`/academic/sessions/${row.original.id}/approve`, { status: 'APPROVED' });
-                    toast.success('Batch approved and activated');
-                    fetchData();
-                  } catch (e: any) {
-                    toast.error(e.response?.data?.error || 'Approval failed');
-                  }
-                }}
-                className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-all active:scale-95 shadow-sm border border-emerald-100 bg-white"
-                title="Approve Batch"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-              </button>
-            )}
         </div>
       )
     }
@@ -237,23 +214,28 @@ export default function Sessions() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Govern academic batches, temporal windows, and intake capacity safeguards.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-              Batch Matrix Control
-           </div>
-        </div>
+        {sessions.length > 0 && (
+           <button 
+              onClick={openCreateModal}
+              className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
+           >
+              <Calendar className="w-4 h-4" />
+              Deploy New Batch
+           </button>
+        )}
       </div>
 
-      <div className="max-w-md">
-        <DashCard 
-          title="Initialize Academic Session"
-          description="Deploy new academic batches and set temporal constraints for intake."
-          onClick={openCreateModal}
-          icon={Calendar}
-          actionLabel="Deploy New Batch"
-        />
-      </div>
+      {sessions.length === 0 && !isLoading && (
+        <div className="max-w-md">
+          <DashCard 
+            title="Initialize Academic Session"
+            description="Deploy new academic batches and set temporal constraints for intake."
+            onClick={openCreateModal}
+            icon={Calendar}
+            actionLabel="Deploy New Batch"
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable 
@@ -321,6 +303,22 @@ export default function Sessions() {
                 </div>
                 </div>
 
+                <div className="col-span-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Contextual Study Center</label>
+                <div className="relative group">
+                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <select
+                    {...register('centerId', { required: true })}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                    >
+                    <option value="">-- Operational Accreditation Check Required --</option>
+                    {centers.filter(c => c.auditStatus === 'approved').map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                    </select>
+                </div>
+                </div>
+
                 <div>
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (Start)</label>
                 <input
@@ -335,7 +333,9 @@ export default function Sessions() {
                 <input
                     type="date"
                     {...register('endDate', { required: true })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    disabled={!watchAllFields.startDate}
+                    min={watchAllFields.startDate ? new Date(new Date(watchAllFields.startDate).getTime() + 86400000).toISOString().split('T')[0] : undefined}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 </div>
 
@@ -374,8 +374,8 @@ export default function Sessions() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+              disabled={isSubmitting || !isFormValid}
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Serialize Changes' : 'Execute Generation')}
             </button>

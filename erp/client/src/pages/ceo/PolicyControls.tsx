@@ -25,7 +25,7 @@ export default function PolicyControls() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { user } = useAuthStore();
-  const isReadOnly = user?.role === 'ceo';
+  const isReadOnly = user?.role === 'CEO';
 
   useEffect(() => {
     fetchPolicies();

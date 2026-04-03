@@ -75,7 +75,7 @@ export default function FinanceMainDashboard() {
             Finance Control Engine
             <span className="bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-xs tracking-widest border border-emerald-200">LIVE</span>
           </h1>
-          <p className="text-slate-500 font-medium mt-2 italic flex items-center gap-2">
+          <p className="text-slate-500 font-medium mt-2 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" /> Authorized access only. Institutional gatekeeping protocols active.
           </p>
         </div>

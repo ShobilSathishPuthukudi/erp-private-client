@@ -126,32 +126,6 @@ export default function SalesAchievement() {
         );
       })}
 
-      {achievements.length === 0 && (
-        <div className="col-span-full">
-          <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-200 group">
-            <div className="absolute -top-24 -right-24 p-12 opacity-10 group-hover:opacity-20 transition-opacity duration-1000">
-                <TrendingUp className="w-96 h-96 text-blue-500" />
-            </div>
-            <div className="relative z-10 max-w-2xl text-left">
-                <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-blue-400/20">
-                   <Target className="w-3.5 h-3.5" />
-                   Strategic Engine Active
-                </div>
-                <h2 className="text-4xl font-black uppercase tracking-tighter mb-4 italic leading-none">Global Referral Anchor</h2>
-                <p className="text-slate-400 font-medium mb-10 leading-relaxed italic text-lg pr-4">Finance has not synchronized specific revenue milestones yet. In the interim, use your primary referral anchor to scale the institutional network.</p>
-                
-                <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-[2rem] p-3 pl-8 hover:border-blue-500/50 transition-colors group">
-                    <code className="flex-1 font-mono text-blue-400 font-bold truncate text-sm">
-                        REFERRAL_CODE_SYNC_REQUIRED
-                    </code>
-                    <div className="bg-white/10 text-white/50 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">
-                        Pending Sync
-                    </div>
-                </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

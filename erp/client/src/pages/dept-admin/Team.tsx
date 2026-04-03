@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
+import { toSentenceCase } from '@/lib/utils';
 
 interface TeamMember {
   uid: string;
@@ -33,13 +34,13 @@ export default function Team() {
   }, []);
 
   const columns: ColumnDef<TeamMember>[] = [
-    { accessorKey: 'uid', header: 'Emp ID' },
+    { accessorKey: 'uid', header: 'Emp id' },
     { 
       accessorKey: 'name', 
-      header: 'Staff Name',
+      header: 'Staff name',
       cell: ({ row }) => <span className="font-semibold text-slate-800">{row.original.name}</span>
     },
-    { accessorKey: 'email', header: 'Email Address' },
+    { accessorKey: 'email', header: 'Email address' },
     { 
       accessorKey: 'status', 
       header: 'Status',
@@ -50,14 +51,14 @@ export default function Team() {
         if (status === 'suspended') color = 'bg-red-100 text-red-700';
         return (
           <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>
-            {status.toUpperCase()}
+            {toSentenceCase(status)}
           </span>
         );
       }
     },
     {
       id: 'joined',
-      header: 'Joined Date',
+      header: 'Joined date',
       cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString()
     }
   ];

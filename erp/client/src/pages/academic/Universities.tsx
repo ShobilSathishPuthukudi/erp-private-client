@@ -5,7 +5,7 @@ import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Edit2, Trash2, Building2, Globe, ShieldCheck, FileText, Upload, CheckCircle2, ShieldAlert, X } from 'lucide-react';
+import { Edit2, Trash2, Building2, Globe, ShieldCheck, FileText, ShieldAlert, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
@@ -14,7 +14,7 @@ interface University {
   id: number;
   name: string;
   shortName?: string;
-  status: 'active' | 'inactive';
+  status: 'proposed' | 'draft' | 'staged' | 'active' | 'inactive';
   accreditation?: string;
   websiteUrl?: string;
   affiliationDoc?: string;
@@ -27,7 +27,7 @@ export default function Universities() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<University | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<University | null>(null);
 
   const { user } = useAuthStore();
   const isOps = user?.role?.toLowerCase() === 'operations';
@@ -35,17 +35,14 @@ export default function Universities() {
   const [requestReason, setRequestReason] = useState('');
   const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm();
   const watchAllFields = watch();
-  const affiliationDocPath = watchAllFields.affiliationDoc;
 
   const isFormValid = 
     !!watchAllFields.name?.trim() &&
     !!watchAllFields.shortName?.trim() &&
     !!watchAllFields.accreditation?.trim() &&
-    !!watchAllFields.websiteUrl?.trim() &&
-    !!watchAllFields.status &&
-    !!watchAllFields.affiliationDoc;
+    !!watchAllFields.websiteUrl?.trim();
 
   const fetchData = async () => {
     try {
@@ -63,30 +60,11 @@ export default function Universities() {
     fetchData();
   }, []);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    const formData = new FormData();
-    formData.append('document', file);
-
-    try {
-      setUploading(true);
-      const res = await api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setValue('affiliationDoc', res.data.filePath);
-      toast.success('Affiliation document uploaded to S3');
-    } catch (error) {
-      toast.error('File upload failed');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const openCreateModal = () => {
     setEditingItem(null);
-    reset({ name: '', shortName: '', status: 'active', accreditation: '', websiteUrl: '', affiliationDoc: '' });
+    reset({ name: '', shortName: '', accreditation: '', websiteUrl: '', affiliationDoc: '' });
     setIsModalOpen(true);
   };
 
@@ -95,10 +73,9 @@ export default function Universities() {
     reset({ 
       name: item.name, 
       shortName: item.shortName || '',
-      status: item.status, 
       accreditation: item.accreditation || '', 
-      websiteUrl: item.websiteUrl || '', 
-      affiliationDoc: item.affiliationDoc || '' 
+      websiteUrl: item.websiteUrl || '',
+      affiliationDoc: item.affiliationDoc || ''
     });
     setIsModalOpen(true);
   };
@@ -148,17 +125,24 @@ export default function Universities() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (item: University) => {
+    setDeletingItem(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deletingItem) return;
+    
     if (isOps) {
-        setPendingAction({ type: 'DELETE', id });
+        setPendingAction({ type: 'DELETE', id: deletingItem.id });
         setIsRequestModalOpen(true);
+        setDeletingItem(null);
         return;
     }
 
-    if (!window.confirm('Eradicate this university infrastructure permanentally? This cascades down its program topology recursively.')) return;
     try {
-      await api.delete(`/academic/universities/${id}`);
+      await api.delete(`/academic/universities/${deletingItem.id}`);
       toast.success('University topology terminated.');
+      setDeletingItem(null);
       fetchData();
     } catch (error) {
       toast.error('Deletion protocol was preempted by the system constraints.');
@@ -209,10 +193,17 @@ export default function Universities() {
       accessorKey: 'status', 
       header: 'Status',
       cell: ({ row }) => {
-        const active = row.original.status === 'active';
+        const s = row.original.status;
+        let color = 'bg-slate-200 text-slate-600';
+        if (s === 'active') color = 'bg-emerald-100 text-emerald-700';
+        if (s === 'proposed') color = 'bg-amber-100 text-amber-700';
+        if (s === 'draft') color = 'bg-blue-100 text-blue-700';
+        if (s === 'staged') color = 'bg-purple-100 text-purple-700';
+        if (s === 'inactive') color = 'bg-rose-100 text-rose-700';
+        
         return (
-          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
-            {row.original.status}
+          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${color}`}>
+            {s}
           </span>
         );
       }
@@ -227,7 +218,7 @@ export default function Universities() {
             <button onClick={() => openEditModal(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white">
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
+            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -248,23 +239,28 @@ export default function Universities() {
           </div>
           <p className="text-slate-500 font-medium ml-15">IITS RPS Accredited Institution Registry & Compliance Ledger</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-              Institutional Core Registry
-           </div>
-        </div>
+        {universities.length > 0 && (
+          <button 
+            onClick={openCreateModal}
+            className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
+          >
+            <Building2 className="w-4 h-4" />
+            Add University
+          </button>
+        )}
       </div>
 
-      <div className="max-w-md">
-        <DashCard 
-          title="Initialize Internal University Topology"
-          description="Register and configure a new accredited institution within the global ERP ledger."
-          onClick={openCreateModal}
-          icon={Building2}
-          actionLabel="Onboard Institution"
-        />
-      </div>
+      {universities.length === 0 && !isLoading && (
+        <div className="max-w-md">
+          <DashCard 
+            title="Initialize Internal University Topology"
+            description="Register and configure a new accredited institution within the global ERP ledger."
+            onClick={openCreateModal}
+            icon={Building2}
+            actionLabel="Onboard Institution"
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable 
@@ -275,6 +271,47 @@ export default function Universities() {
           searchPlaceholder="Locate by institutional syntax..." 
         />
       </div>
+
+      <Modal
+        isOpen={!!deletingItem}
+        onClose={() => setDeletingItem(null)}
+        title={deletingItem?.status === 'proposed' ? "Confirm Deletion" : "Governance Restriction"}
+        maxWidth="md"
+      >
+        <div className="space-y-6">
+          <div className={`p-4 rounded-2xl border flex gap-4 ${deletingItem?.status === 'proposed' ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'}`}>
+            <ShieldAlert className={`w-6 h-6 mt-1 shrink-0 ${deletingItem?.status === 'proposed' ? 'text-rose-600' : 'text-amber-600'}`} />
+            <div>
+              <h4 className={`text-sm font-black uppercase tracking-tight ${deletingItem?.status === 'proposed' ? 'text-rose-900' : 'text-amber-900'}`}>
+                {deletingItem?.status === 'proposed' ? 'Permanent Deletion Protocol' : 'Institutional Deletion Guardrail'}
+              </h4>
+              <p className={`text-xs mt-1 leading-relaxed font-medium ${deletingItem?.status === 'proposed' ? 'text-rose-700' : 'text-amber-700'}`}>
+                {deletingItem?.status === 'proposed' 
+                  ? `You are about to eradicate "${deletingItem?.name}" from the institutional registry. This action is irreversible and will cascade down all associated program topology.`
+                  : `Compliance Violation: Persistent university records cannot be terminated. The university "${deletingItem?.name}" is currently in the ${deletingItem?.status.toUpperCase()} state. Only records in the PROPOSED state can be safely eradicated from the registry to ensure data integrity.`
+                }
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 uppercase">
+            <button
+              onClick={() => setDeletingItem(null)}
+              className="px-6 py-2 text-slate-500 font-black text-[10px] tracking-widest"
+            >
+              Cancel
+            </button>
+            {deletingItem?.status === 'proposed' && (
+              <button
+                onClick={executeDelete}
+                className="px-8 py-2 bg-rose-600 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
@@ -352,47 +389,9 @@ export default function Universities() {
                 </div>
                 </div>
 
-                <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Affiliation Compliance Document</label>
-                <div className="relative">
-                    <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="doc-upload"
-                    />
-                    <label 
-                    htmlFor="doc-upload"
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
-                        affiliationDocPath 
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
-                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-400'
-                    }`}
-                    >
-                    <div className="flex items-center gap-3">
-                        {affiliationDocPath ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-                        <span className="font-bold text-sm">
-                        {uploading ? 'Transmitting to S3...' : (affiliationDocPath ? 'Affiliation Vaulted' : 'Upload Affiliation PDF')}
-                        </span>
-                    </div>
-                    {affiliationDocPath && (
-                        <span className="text-[10px] font-mono opacity-60">S-3 SECURED</span>
-                    )}
-                    </label>
-                </div>
-                </div>
 
-                <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Operational State</label>
-                <select
-                    {...register('status')}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-                >
-                    <option value="active">Active Infrastructure</option>
-                    <option value="inactive">Sunsetted / Archive</option>
-                </select>
-                </div>
+
+
             </div>
           </div>
 
@@ -406,7 +405,7 @@ export default function Universities() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || uploading || !isFormValid}
+              disabled={isSubmitting || !isFormValid}
               className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Update Node' : 'Initialize Node')}

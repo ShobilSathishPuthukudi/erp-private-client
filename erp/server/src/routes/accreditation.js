@@ -8,7 +8,7 @@ const { AccreditationRequest, Department, Program, User } = models;
 
 const isSubDeptAdmin = (req, res, next) => {
   // Logic to check if user is admin of the relevant sub-dept or Org Admin
-  if (!['org-admin', 'system-admin', 'academic', 'hr'].includes(req.user.role)) {
+  if (!['Organization Admin', 'Operations Admin', 'HR Admin'].includes(req.user.role)) {
      // For simplicity in this phase, we allow academic/org-admin
   }
   next();

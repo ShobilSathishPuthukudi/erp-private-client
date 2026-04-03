@@ -9,7 +9,7 @@ const router = express.Router();
 const { Program, ProgramFee } = models;
 
 const isFinance = (req, res, next) => {
-  if (!['finance', 'org-admin', 'system-admin'].includes(req.user.role)) {
+  if (!['Finance Admin', 'Organization Admin', 'Organization Admin'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Finance privileges required' });
   }
   next();

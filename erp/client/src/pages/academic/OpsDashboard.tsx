@@ -239,7 +239,7 @@ export default function OpsDashboard() {
                       </div>
                     </div>
                   ))) : (
-                    <p className="text-sm text-slate-400 font-medium italic">No recent academic actions logged.</p>
+                    <p className="text-sm text-slate-400 font-medium ">No recent academic actions logged.</p>
                   )}
               </div>
            </div>

@@ -13,7 +13,7 @@ export const applyExecutiveScope = async (req, res, next) => {
     const { role, uid } = req.user;
 
     // Unrestricted roles
-    if (role === 'org-admin' || role === 'system-admin') {
+    if (role === 'Organization Admin' || role === 'Organization Admin') {
       req.visibility = { restricted: false, filter: {} };
       return next();
     }

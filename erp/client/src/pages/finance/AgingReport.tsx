@@ -38,7 +38,7 @@ export default function AgingReport() {
               <Clock className="w-8 h-8 text-rose-600" />
               Fee Aging & Outstanding Telemetry
            </h2>
-           <p className="text-slate-500 mt-1 font-medium italic">Monitor center-wise payment delays across forensic 30/60/90+ day cycles.</p>
+           <p className="text-slate-500 mt-1 font-medium ">Monitor center-wise payment delays across forensic 30/60/90+ day cycles.</p>
         </div>
         <div className="flex gap-4">
            <div className="bg-slate-50 p-2 rounded-2xl border border-slate-100 flex items-center gap-3 px-4">
@@ -86,7 +86,7 @@ export default function AgingReport() {
                      <td className="p-6 text-center text-slate-600">₹{row.buckets.current.toLocaleString()}</td>
                      <td className={clsx("p-6 text-center", row.buckets.d30 > 0 ? "text-amber-600 bg-amber-50/30" : "text-slate-300")}>₹{row.buckets.d30.toLocaleString()}</td>
                      <td className={clsx("p-6 text-center", row.buckets.d60 > 0 ? "text-orange-600 bg-orange-50/30" : "text-slate-300")}>₹{row.buckets.d60.toLocaleString()}</td>
-                     <td className={clsx("p-6 text-center italic font-black", row.buckets.d90 > 0 ? "text-rose-600 bg-rose-50/30" : "text-slate-300")}>
+                     <td className={clsx("p-6 text-center font-black", row.buckets.d90 > 0 ? "text-rose-600 bg-rose-50/30" : "text-slate-300")}>
                         ₹{row.buckets.d90.toLocaleString()}
                      </td>
                      <td className="p-6 text-right font-black text-slate-900 text-[13px] tracking-tighter">

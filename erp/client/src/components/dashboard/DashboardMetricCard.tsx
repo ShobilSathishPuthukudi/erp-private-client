@@ -29,7 +29,7 @@ export default function DashboardMetricCard({ label, value, trend, status, onCli
        <div className="flex justify-between items-start mb-6">
           <div>
              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{label}</p>
-             <h3 className="text-3xl font-black text-slate-900 tracking-tighter italic">{value}</h3>
+             <h3 className="text-3xl font-black text-slate-900 tracking-tighter ">{value}</h3>
           </div>
           <div className={clsx("px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1", colors[status])}>
              {status === 'red' && <AlertCircle className="w-3 h-3" />}
@@ -53,7 +53,7 @@ export default function DashboardMetricCard({ label, value, trend, status, onCli
                />
              ))}
           </div>
-          <div className={clsx("flex items-center gap-1 text-[10px] font-black italic", isUp ? "text-emerald-500" : "text-rose-500")}>
+          <div className={clsx("flex items-center gap-1 text-[10px] font-black ", isUp ? "text-emerald-500" : "text-rose-500")}>
              {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
              {Math.abs(Math.round(((trend[trend.length-1] - trend[0]) / trend[0]) * 100))}%
           </div>

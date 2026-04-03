@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Megaphone, MessageSquare, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Announcement {
   id: number;
@@ -66,19 +67,20 @@ export default function Announcements() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-           <h1 className="text-2xl font-bold text-slate-900">Global Announcements</h1>
-           <p className="text-slate-500">Push real-time company-wide broadcasts and urgent notices.</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center shadow-sm"
-        >
-          <Megaphone className="w-4 h-4 mr-2" />
-          Broadcast Notice
-        </button>
-      </div>
+      <PageHeader 
+        title="Global Announcements"
+        description="Push real-time company-wide broadcasts and urgent notices."
+        icon={Megaphone}
+        action={
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center shadow-sm whitespace-nowrap"
+          >
+            <Megaphone className="w-4 h-4 mr-2" />
+            Broadcast Notice
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="flex justify-center items-center h-64 border border-dashed rounded-lg border-slate-200 bg-white">
@@ -141,7 +143,7 @@ export default function Announcements() {
           </div>
           
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Priority Level</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Priority Level *</label>
             <select
               className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})}
@@ -152,9 +154,10 @@ export default function Announcements() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Expiry Timestamp (Optional)</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Expiry Timestamp *</label>
             <input 
               type="datetime-local" 
+              required
               className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.expiryDate} onChange={e => setFormData({...formData, expiryDate: e.target.value})} 
             />

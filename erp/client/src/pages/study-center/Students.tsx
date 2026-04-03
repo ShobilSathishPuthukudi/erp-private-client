@@ -56,7 +56,7 @@ export default function Students() {
     { 
       id: 'program', 
       header: 'Program',
-      cell: ({ row }) => row.original.program?.name || <span className="text-slate-400 italic">Unknown</span>
+      cell: ({ row }) => row.original.program?.name || <span className="text-slate-400 ">Unknown</span>
     },
     { 
       accessorKey: 'status', 

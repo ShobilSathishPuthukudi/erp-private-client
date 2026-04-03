@@ -3,14 +3,15 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ShieldCheck, CheckCircle2, XCircle, FileText, UserCircle2, Landmark, Search } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, FileText, UserCircle2, Landmark, Search, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 
 interface Student {
   id: number;
   name: string;
   enrollStatus: string;
-  subDept?: string;
+  subDepartment?: { name: string };
   program?: { name: string };
   university?: { name: string };
   marks?: any;
@@ -19,6 +20,9 @@ interface Student {
 }
 
 export default function PendingReviews() {
+  const user = useAuthStore((state) => state.user);
+  const isReadOnly = ['operations', 'academic'].includes(user?.role?.toLowerCase() || '');
+
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -112,11 +116,11 @@ export default function PendingReviews() {
       )
     },
     { 
-      accessorKey: 'subDept', 
-      header: 'Vertical',
+      accessorKey: 'enrollStatus', 
+      header: 'Status',
       cell: ({ row }) => (
-        <span className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-widest">
-          {row.original.subDept || 'General'}
+        <span className="bg-amber-50 border border-amber-200 text-amber-700 text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-widest whitespace-nowrap">
+          {row.original.enrollStatus?.replace(/_/g, ' ') || 'PENDING REVIEW'}
         </span>
       )
     },
@@ -135,10 +139,10 @@ export default function PendingReviews() {
       cell: ({ row }) => (
         <button 
           onClick={() => openReviewModal(row.original)}
-          className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+          className={`flex items-center gap-2 ${isReadOnly ? 'bg-white border border-slate-200 text-slate-600' : 'bg-slate-900 text-white'} px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-800 hover:text-white transition-all active:scale-95 shadow-lg shadow-slate-900/10`}
         >
-          <Search className="w-3.5 h-3.5" />
-          <span>Conduct Review</span>
+          {isReadOnly ? <Eye className="w-3.5 h-3.5 text-blue-600" /> : <Search className="w-3.5 h-3.5" />}
+          <span>{isReadOnly ? 'View Details' : 'Conduct Review'}</span>
         </button>
       )
     }
@@ -186,16 +190,16 @@ export default function PendingReviews() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
-                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">10th Marks</p>
-                        <p className="text-lg font-black text-white">{selectedStudent?.marks?.tenth || 'N/A'}%</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">{selectedStudent?.marks?.lastExam || 'Qualification'}</p>
+                        <p className="text-lg font-black text-white">{selectedStudent?.marks?.lastExamScore || 'N/A'}%</p>
                     </div>
                     <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
-                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">12th Marks</p>
-                        <p className="text-lg font-black text-white">{selectedStudent?.marks?.twelfth || 'N/A'}%</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Academic Result</p>
+                        <p className="text-lg font-black text-white">{selectedStudent?.marks?.lastExamScore ? 'PASSED' : 'N/A'}</p>
                     </div>
                     <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
-                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Vertical</p>
-                        <p className="text-lg font-black text-white">{selectedStudent?.subDept || 'N/A'}</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Assigned Unit</p>
+                        <p className="text-lg font-black text-white">{selectedStudent?.subDepartment?.name || 'GEN-ADMIN'}</p>
                     </div>
                     <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                         <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Status</p>
@@ -212,76 +216,101 @@ export default function PendingReviews() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-slate-900 uppercase tracking-tight">Institutional Dossier</p>
-                        <p className="text-[10px] text-slate-500 font-medium">
-                            {selectedStudent?.documents?.length ? `${selectedStudent.documents.length} verified PDF attachments.` : 'No documents uploaded.'}
+                        <p className="text-[10px] text-slate-500 font-medium tracking-tighter">
+                            {((selectedStudent?.documents?.length || 0) + (selectedStudent?.marks?.marksProof ? 1 : 0))} verified PDF attachments.
                         </p>
                     </div>
                 </div>
                 <div className="flex flex-col gap-2">
+                    {selectedStudent?.marks?.marksProof && (
+                        <a 
+                            href={selectedStudent.marks.marksProof.startsWith('http') ? selectedStudent.marks.marksProof : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${selectedStudent.marks.marksProof}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-100 transition-all active:scale-95 shadow-sm flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <FileText className="w-3 h-3" />
+                            ACADEMIC CERTIFICATE
+                        </a>
+                    )}
                     {selectedStudent?.documents?.map((doc, idx) => (
                         <a 
                             key={idx}
-                            href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${doc.path}`}
+                            href={doc.path.startsWith('http') ? doc.path : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${doc.path}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm flex items-center gap-2 whitespace-nowrap"
+                            className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm flex items-center gap-2 whitespace-nowrap uppercase italic"
                         >
                             <FileText className="w-3 h-3 text-blue-500" />
                             {doc.name}
                         </a>
-                    )) || (
+                    )) || (!selectedStudent?.marks?.marksProof && (
                         <button disabled className="bg-slate-200 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold cursor-not-allowed">
                             None
                         </button>
-                    )}
+                    ))}
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <div>
-                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Academic Rejection Category</label>
-                    <select 
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+
+            {!isReadOnly && (
+                <div className="space-y-4">
+                    <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Academic Rejection Category</label>
+                        <select 
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                        >
+                            <option value="">-- No Rejection Selected --</option>
+                            <option value="Insufficient marks">Insufficient Aggregate Marks</option>
+                            <option value="Missing documents">Missing Institutional Credentials</option>
+                            <option value="Program mismatch">Incompatible Program Selection</option>
+                            <option value="Other">Operational Deviation (Specify below)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Appraisal Remarks</label>
+                        <textarea 
+                            value={remarks}
+                            onChange={(e) => setRemarks(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                            rows={3}
+                            placeholder="Criteria synthesis or rejection context..."
+                        />
+                    </div>
+                </div>
+            )}
+
+            {!isReadOnly ? (
+                <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row gap-3">
+                    <button 
+                        onClick={handleReject}
+                        disabled={!rejectionReason}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-red-600 font-black hover:bg-red-50 rounded-xl transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest border border-red-100"
                     >
-                        <option value="">-- No Rejection Selected --</option>
-                        <option value="Insufficient marks">Insufficient Aggregate Marks</option>
-                        <option value="Missing documents">Missing Institutional Credentials</option>
-                        <option value="Program mismatch">Incompatible Program Selection</option>
-                        <option value="Other">Operational Deviation (Specify below)</option>
-                    </select>
+                        <XCircle className="w-4 h-4" />
+                        Issue Rejection
+                    </button>
+                    <button 
+                        onClick={handleApprove}
+                        className="flex-[2] flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 text-xs uppercase tracking-widest"
+                    >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve Eligibility
+                    </button>
                 </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Appraisal Remarks</label>
-                    <textarea 
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-                        rows={3}
-                        placeholder="Criteria synthesis or rejection context..."
-                    />
+            ) : (
+                <div className="pt-6 border-t border-slate-100 flex justify-end">
+                    <button 
+                        onClick={() => setIsReviewModalOpen(false)}
+                        className="px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-black hover:bg-slate-200 transition-all active:scale-95 text-xs uppercase tracking-widest"
+                    >
+                        Close View
+                    </button>
                 </div>
-            </div>
-
-            <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row gap-3">
-                <button 
-                    onClick={handleReject}
-                    disabled={!rejectionReason}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-red-600 font-black hover:bg-red-50 rounded-xl transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest border border-red-100"
-                >
-                    <XCircle className="w-4 h-4" />
-                    Issue Rejection
-                </button>
-                <button 
-                    onClick={handleApprove}
-                    className="flex-[2] flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 text-xs uppercase tracking-widest"
-                >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve Eligibility
-                </button>
-            </div>
+            )}
         </div>
       </Modal>
     </div>
