@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   PieChart,
   ChevronDown,
-  Hexagon
+  Hexagon,
+  Server
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import './Sidebar.css';
@@ -41,12 +42,17 @@ type MenuLink = MenuItem | MenuGroup;
 const menus: Record<string, MenuLink[]> = {
   'Organization Admin': [
     {
-      name: 'Dashboard',
-      icon: Home,
+      name: 'Overview',
+      path: '/dashboard/org-admin/overview',
+      icon: Home
+    },
+    {
+      name: 'Alerts',
+      icon: Bell,
       isGroup: true,
       items: [
-        { name: 'Overview', path: '/dashboard/org-admin/overview' },
-        { name: 'Alerts', path: '/dashboard/org-admin/alerts' },
+        { name: 'Escalated Tasks', path: '/dashboard/org-admin/alerts/escalated' },
+        { name: 'Institutional Alerts', path: '/dashboard/org-admin/alerts/institutional' },
       ]
     },
     {
@@ -54,7 +60,18 @@ const menus: Record<string, MenuLink[]> = {
       icon: Database,
       isGroup: true,
       items: [
-        { name: 'All Departments', path: '/dashboard/org-admin/departments' },
+        { name: 'Core Departments', path: '/dashboard/org-admin/departments' },
+        { name: 'Sub-Departments', path: '/dashboard/org-admin/sub-departments' },
+      ]
+    },
+    {
+      name: 'Data Architecture',
+      icon: Server,
+      isGroup: true,
+      items: [
+        { name: 'Table Registry', path: '/dashboard/org-admin/database/tables' },
+        { name: 'Institutional Hierarchy', path: '/dashboard/org-admin/hierarchy' },
+        { name: 'Role Hierarchy', path: '/dashboard/org-admin/roles/hierarchy' },
       ]
     },
     {
@@ -86,7 +103,7 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
-      name: 'Org Settings',
+      name: 'Settings',
       icon: Settings,
       isGroup: true,
       items: [
@@ -652,10 +669,10 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     
     // Executive Mappings
     if (r === 'ceo') return 'ceo';
-    if (r.includes('organization admin') || r.includes('org-admin') || r === 'system-admin' || r === 'admin') return 'Organization Admin';
+    if (r.includes('organization admin') || r === 'admin') return 'Organization Admin';
     
     // Specialized Mappings
-    if (r === 'center' || r === 'study-center') return 'study-center';
+    if (r === 'study-center') return 'study-center';
     if (r === 'student') return 'student';
     if (r === 'employee') return 'employee';
     

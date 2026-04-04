@@ -24,7 +24,7 @@ import toast from 'react-hot-toast';
 import { Modal } from '../../components/shared/Modal';
 import DepartmentCreate from './DepartmentCreate';
 
-export default function DepartmentsList() {
+export default function SubDepartmentsList() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
@@ -142,19 +142,14 @@ export default function DepartmentsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
 
-  const filteredDepts = departments.filter(dept => {
-    const excludedTypes = ['branch', 'university', 'center', 'study-center'];
-    if (excludedTypes.includes((dept.type || '').toLowerCase())) return false;
-
-    const matchesSearch = (dept.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const corePillars = ['HR Department', 'Finance Department', 'Sales Department', 'Academic Operations Department'];
-    const isInCore = corePillars.includes(dept.name);
-    if (!isInCore) return false;
+  const filteredSubDepts = departments.filter(dept => {
+    const subs = ['BVoc Department', 'Online Department', 'Skill Department', 'Open School Department'];
+    const isSub = subs.includes(dept.name);
+    if (!isSub) return false;
 
     const matchesStatus = filterStatus === 'All' || dept.status.toLowerCase() === filterStatus.toLowerCase();
-    
+    const matchesSearch = dept.name.toLowerCase().includes(searchTerm.toLowerCase()) || (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesStatus && matchesSearch;
   });
 
@@ -174,8 +169,8 @@ export default function DepartmentsList() {
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Departments</h1>
-            <p className="text-slate-500 mt-1">Manage core institutional pillars and functional administration.</p>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Sub-Departments</h1>
+            <p className="text-slate-500 mt-1">Manage technical pillars and sub-departmental administrators under Academic Operations.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -237,7 +232,7 @@ export default function DepartmentsList() {
       >
         <DepartmentCreate 
           initialData={selectedDept}
-          context={selectedDept?.type === 'branch' ? 'branch' : 'department'}
+          context={selectedDept?.type === 'branch' ? 'branch' : 'sub-department'}
           defaultType={selectedDept?.type || 'Custom'}
           onClose={() => {
             setIsModalOpen(false);
@@ -277,7 +272,6 @@ export default function DepartmentsList() {
               <option value="inactive">Inactive</option>
             </select>
             <div className="w-px h-6 bg-slate-100 mx-2" />
-
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-xl transition-all ${
@@ -308,13 +302,13 @@ export default function DepartmentsList() {
              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
              <p className="text-xs font-bold text-slate-400 tracking-wider mt-4">Hydrating institutional data...</p>
           </div>
-        ) : filteredDepts.length === 0 ? (
+        ) : filteredSubDepts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed text-slate-400">
             No departments found matching your search.
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDepts.map((dept) => (
+            {filteredSubDepts.map((dept) => (
               <div 
                 key={dept.id} 
                 onClick={() => {
@@ -435,7 +429,7 @@ export default function DepartmentsList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredDepts.map((dept) => (
+                  {filteredSubDepts.map((dept) => (
                     <tr 
                       key={dept.id} 
                       onClick={() => {

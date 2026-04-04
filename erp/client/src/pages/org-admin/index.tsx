@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import DepartmentsList from './DepartmentsList';
+import SubDepartmentsList from './SubDepartmentsList';
 import CEOPanelsList from './CEOPanelsList';
 import Overview from './Overview';
 import Alerts from './Alerts';
@@ -18,16 +19,24 @@ import SystemHealth from './SystemHealth';
 import DataManagement from './DataManagement';
 import CronMonitoring from './CronMonitoring';
 import SurveyCreator from './SurveyCreator';
+import DatabaseTables from './DatabaseTables';
+import HierarchyView from './HierarchyView';
+import RoleHierarchyView from './RoleHierarchyView';
 
 export default function OrgAdminDashboard() {
   return (
     <Routes>
       <Route path="/" element={<Overview />} />
       <Route path="overview" element={<Overview />} />
-      <Route path="alerts" element={<Alerts />} />
+      <Route path="hierarchy" element={<HierarchyView />} />
+      <Route path="roles/hierarchy" element={<RoleHierarchyView />} />
+      <Route path="alerts/escalated" element={<Alerts type="Escalated" />} />
+      <Route path="alerts/institutional" element={<Alerts type="System" />} />
+      <Route path="alerts" element={<Navigate to="alerts/escalated" replace />} />
       
       {/* Department Routes */}
       <Route path="departments" element={<DepartmentsList />} />
+      <Route path="sub-departments" element={<SubDepartmentsList />} />
       
       {/* CEO Panel Routes */}
       <Route path="ceo-panels" element={<CEOPanelsList />} />
@@ -54,6 +63,7 @@ export default function OrgAdminDashboard() {
       <Route path="data" element={<DataManagement />} />
       <Route path="cron" element={<CronMonitoring />} />
       <Route path="surveys" element={<SurveyCreator />} />
+      <Route path="database/tables" element={<DatabaseTables />} />
     </Routes>
   );
 }
