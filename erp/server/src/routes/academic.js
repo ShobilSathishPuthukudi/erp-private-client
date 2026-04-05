@@ -234,6 +234,80 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
   }
 });
 
+router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
+  try {
+    const { filter: visibilityFilter } = req.visibility;
+    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
+    const sid = getSubDeptId(req.user);
+
+    // 1. Center Verification Stats
+    const centersRaw = await Department.findAll({
+      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+      where: { 
+        type: { [Op.in]: ['center', 'study-center'] },
+        ...visibilityFilter
+      },
+      group: ['status'],
+      raw: true
+    });
+
+    // 2. Student Verification Stats
+    const studentsRaw = await Student.findAll({
+      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+      where: { 
+        status: { [Op.ne]: 'DRAFT' },
+        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
+        ...visibilityFilter
+      },
+      group: ['status'],
+      raw: true
+    });
+
+    // 3. Recent Transitions (Traceability)
+    const recentActivity = await Student.findAll({
+      attributes: ['name', 'status', 'reviewedBy', 'reviewedAt', 'reviewStage'],
+      include: [{ 
+        model: Department, 
+        as: 'center', 
+        attributes: ['name'],
+        required: false 
+      }],
+      where: { 
+        status: { [Op.ne]: 'DRAFT' },
+        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
+        ...visibilityFilter
+      },
+      order: [['updatedAt', 'DESC']],
+      limit: 10,
+      raw: true,
+      nest: true
+    });
+
+    // 4. Recent Center Onboarding (Traceability)
+    const recentCenters = await Department.findAll({
+      attributes: ['name', 'status', 'auditStatus', 'centerStatus', 'updatedAt'],
+      where: { 
+        type: { [Op.in]: ['center', 'study-center'] },
+        status: { [Op.ne]: 'inactive' }
+      },
+      order: [['updatedAt', 'DESC']],
+      limit: 10,
+      raw: true
+    });
+
+    res.json({
+      centers: centersRaw,
+      students: studentsRaw,
+      recentActivity: recentActivity || [],
+      recentCenters: recentCenters || []
+    });
+  } catch (error) {
+    console.error('[ACADEMIC] Onboarding Stats Error:', error);
+    res.status(500).json({ error: 'Failed to fetch onboarding telemetry' });
+  }
+});
+
 // ==========================================
 // UNIVERSITIES (Departments with type='university')
 // ==========================================

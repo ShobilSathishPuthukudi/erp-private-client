@@ -20,6 +20,7 @@ interface DataTableProps<TData, TValue> {
   exportFileName?: string;
   emptyMessage?: string;
   emptyDescription?: string;
+  onRowClick?: (data: TData) => void;
 }
 
 export function DataTable<TData, TValue>({ 
@@ -30,7 +31,8 @@ export function DataTable<TData, TValue>({
   isLoading,
   exportFileName,
   emptyMessage = "No results found.",
-  emptyDescription = "Try adjusting your search criteria."
+  emptyDescription = "Try adjusting your search criteria.",
+  onRowClick
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -146,7 +148,11 @@ export function DataTable<TData, TValue>({
                 ))
               ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                  <tr 
+                    key={row.id} 
+                    onClick={() => onRowClick?.(row.original)}
+                    className={`hover:bg-slate-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-4 text-slate-600">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
