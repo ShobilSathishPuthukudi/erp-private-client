@@ -1,4 +1,4 @@
-import { models } from './erp/server/src/models/index.js';
+import { models } from './server/src/models/index.js';
 const { Invoice, Student, Payment } = models;
 
 async function test() {
