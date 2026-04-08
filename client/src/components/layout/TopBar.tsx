@@ -81,8 +81,8 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
                 </div>
                 <div className="profile-labels active-labels hidden sm:flex text-left">
                     <span className="user-title leading-tight">{user?.name || 'User'}</span>
-                    <span className="user-rank leading-tight truncate max-w-[120px]" title={user?.departmentName || user?.role}>
-                      {user?.departmentName || (user?.role === 'Organization Admin' ? 'Organization Admin' : (user?.role ? user.role.replace('-', ' ') : 'Dashboard'))}
+                    <span className="user-rank leading-tight truncate max-w-[120px]" title={user?.role === 'Organization Admin' ? 'Organization Admin' : (user?.departmentName || user?.role)}>
+                      {user?.role === 'Organization Admin' ? 'Organization Admin' : (user?.departmentName || (user?.role ? user.role.replace('-', ' ') : 'Dashboard'))}
                     </span>
                 </div>
                 <ChevronDown size={14} className={`dropdown-arrow ${showUserMenu ? 'flip' : ''}`} />
@@ -108,9 +108,9 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
                         </div>
                         <h5>{user?.name || 'User'}</h5>
                         <p>{user?.email || 'user@example.com'}</p>
-                        {user?.departmentName && (
+                        {(user?.role || user?.departmentName) && (
                           <div className="mt-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase inline-block">
-                            {user.departmentName}
+                            {user?.role === 'Organization Admin' ? 'Organization Admin' : (user?.departmentName || user?.role?.replace('-', ' '))}
                           </div>
                         )}
                     </div>

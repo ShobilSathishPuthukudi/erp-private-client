@@ -43,8 +43,10 @@ export default function NotificationCenter() {
 
       setNotifications(merged);
       
-      const unreadAnnouncements = urgentAnnouncements.filter((a: any) => !a.isRead).length;
-      setUnreadCount((notifRes.data.unreadCount || 0) + unreadAnnouncements);
+      const storedTimestamp = parseInt(localStorage.getItem(`notifs_cleared_${user?.uid || 'guest'}`) || '0');
+      const visuallyUnreadCount = merged.filter((n: any) => !n.isRead && new Date(n.timestamp || n.createdAt).getTime() >= storedTimestamp).length;
+      
+      setUnreadCount(visuallyUnreadCount);
     } catch (error) {
       console.error('Fetch notification center error:', error);
     }
@@ -100,6 +102,12 @@ export default function NotificationCenter() {
   const markAllRead = async () => {
     try {
       await api.patch('/notifications/read-all');
+      
+      const unreadAnns = notifications.filter(n => n.isAnnouncement && !n.isRead);
+      if (unreadAnns.length > 0) {
+        await Promise.all(unreadAnns.map(n => api.post(`/announcements/${n.realId}/read`)));
+      }
+
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -110,6 +118,12 @@ export default function NotificationCenter() {
   const handleClearAll = async () => {
     try {
       await api.patch('/notifications/read-all');
+      
+      const unreadAnns = notifications.filter(n => n.isAnnouncement && !n.isRead);
+      if (unreadAnns.length > 0) {
+        await Promise.all(unreadAnns.map(n => api.post(`/announcements/${n.realId}/read`)));
+      }
+
       const now = Date.now();
       localStorage.setItem(`notifs_cleared_${user?.uid || 'guest'}`, now.toString());
       setClearTimestamp(now);

@@ -215,13 +215,14 @@ export default function Overview() {
     year: 'numeric'
   });
 
-  const MetricCard = ({ title, value, icon: Icon, color, link, details, primaryAction }: any) => {
+  const MetricCard = ({ title, value, icon: Icon, color, link, details, primaryAction, index = 0 }: any) => {
     const isLink = !!link;
     
     const CardContent = (
       <div 
         onClick={() => !isLink && setSelectedMetric({ title, value, icon: Icon, details, primaryAction })}
-        className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden ${isLink ? 'hover:border-blue-200 hover:scale-[1.01]' : 'hover:border-emerald-200'}`}
+        style={{ animationFillMode: 'both', animationDelay: `${index * 75}ms` }}
+        className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 ${isLink ? 'hover:border-blue-200 hover:scale-[1.01]' : 'hover:border-emerald-200'}`}
       >
         <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
           <Icon className="w-40 h-40" />
@@ -276,6 +277,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard 
+          index={1}
           title="Total Departments" 
           value={stats.totalDepartments} 
           icon={Layout} 
@@ -304,6 +306,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={2}
           title="Total Sub Departments" 
           value={stats.totalSubDepts} 
           icon={Layers} 
@@ -334,6 +337,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={3}
           title="Total Roles" 
           value={stats.totalRoles} 
           icon={ShieldCheck} 
@@ -364,6 +368,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={4}
           title="Total Employees" 
           value={stats.totalEmployees} 
           icon={Users} 
@@ -396,6 +401,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={5}
           title="Total Study Centers" 
           value={stats.totalStudyCenters} 
           icon={MapPin} 
@@ -423,6 +429,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={6}
           title="Total Students Enrolled" 
           value={stats.totalStudents} 
           icon={GraduationCap} 
@@ -455,6 +462,7 @@ export default function Overview() {
           }
         />
         <MetricCard 
+          index={7}
           title="Pending Approvals" 
           value={stats.pendingApprovals} 
           icon={Clock} 
