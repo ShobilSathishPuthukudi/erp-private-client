@@ -94,65 +94,65 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="group bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all hover:border-blue-400/30 overflow-hidden relative">
+          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 text-blue-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Users className="w-40 h-40" />
               </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 transition-transform group-hover:scale-110">
-                        <Users className="w-6 h-6" />
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 transition-transform group-hover:scale-110 shadow-sm">
+                        <Users className="w-7 h-7" />
                     </div>
                     <div>
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Enrolled Students</h3>
-                      <p className="text-sm text-slate-500 font-medium">Successfully onboarded</p>
+                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">Enrolled Students</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Successfully onboarded</p>
                     </div>
                 </div>
                 <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900">{isLoading ? '...' : stats.totalStudents}</span>
-                   <span className="text-emerald-500 text-xs font-bold leading-none">+ Active</span>
+                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.totalStudents}</span>
+                   <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Live Active</span>
                 </div>
               </div>
           </div>
 
-          <div className="group bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all hover:border-amber-400/30 overflow-hidden relative">
+          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 text-amber-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Clock className="w-40 h-40" />
               </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 bg-amber-50 rounded-2xl text-amber-600 transition-transform group-hover:scale-110">
-                        <Clock className="w-6 h-6" />
+                    <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 transition-transform group-hover:scale-110 shadow-sm">
+                        <Clock className="w-7 h-7" />
                     </div>
                     <div>
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">In Review</h3>
-                      <p className="text-sm text-slate-500 font-medium">Pending clearance</p>
+                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">In Review</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Pending clearance</p>
                     </div>
                 </div>
                 <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900">{isLoading ? '...' : stats.pendingAdmissions}</span>
-                   <span className="text-amber-500 text-xs font-bold leading-none">Pipeline</span>
+                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.pendingAdmissions}</span>
+                   <span className="text-amber-500 text-[10px] font-black uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Pipeline</span>
                 </div>
               </div>
           </div>
 
-          <div className="group bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all hover:border-emerald-400/30 overflow-hidden relative">
+          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 text-emerald-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Layout className="w-40 h-40" />
               </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 transition-transform group-hover:scale-110">
-                        <Layout className="w-6 h-6" />
+                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 border border-emerald-100 transition-transform group-hover:scale-110 shadow-sm">
+                        <Layout className="w-7 h-7" />
                     </div>
                     <div>
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Sanctioned Progs</h3>
-                      <p className="text-sm text-slate-500 font-medium">Frameworks assigned</p>
+                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">Sanctioned Progs</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Frameworks assigned</p>
                     </div>
                 </div>
                 <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900">{isLoading ? '...' : stats.activePrograms}</span>
-                   <span className="text-emerald-500 text-xs font-bold leading-none">Authorized</span>
+                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.activePrograms}</span>
+                   <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Authorized</span>
                 </div>
               </div>
           </div>

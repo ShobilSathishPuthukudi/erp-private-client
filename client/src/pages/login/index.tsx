@@ -311,7 +311,7 @@ export default function LoginPage() {
                         openCEOSelector();
                         return;
                       }
-                      if (demo.role === 'Partner Center') {
+                      if (demo.role.includes('Partner Center')) {
                         openCenterSelector();
                         return;
                       }
@@ -507,8 +507,8 @@ export default function LoginPage() {
             <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Staff Nodes</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an institutional employee to assume identity</p>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Newly Registered Staff</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an institutional employee node to assume identity</p>
                 </div>
                 <button onClick={() => setShowStaffSelector(false)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900">
                   <X className="w-5 h-5" />

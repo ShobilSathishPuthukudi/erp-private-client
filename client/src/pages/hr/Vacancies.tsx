@@ -37,9 +37,10 @@ export default function Vacancies() {
       ]);
       setVacancies(vacRes.data);
       // Safety Filter: Ensure non-functional units are excluded even if backend returns them
-      const filteredDepts = (deptRes.data || []).filter((d: any) => 
-        !['university', 'partner-center', 'branch'].includes(d.type?.toLowerCase())
-      );
+      const filteredDepts = (deptRes.data || []).filter((d: any) => {
+        const type = d.type?.toLowerCase() || '';
+        return ['departments', 'department', 'sub-departments', 'sub-department'].includes(type);
+      });
       setDepartments(filteredDepts);
     } catch (error) {
       toast.error('Failed to fetch vacancies');
@@ -166,7 +167,7 @@ export default function Vacancies() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white"
                 >
                   <option value="">Select Department</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.name} ({toSentenceCase(d.type || 'Department')})</option>)}
                 </select>
               </div>
               <div className="space-y-2">

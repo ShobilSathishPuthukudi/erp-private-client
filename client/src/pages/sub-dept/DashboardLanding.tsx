@@ -141,37 +141,39 @@ export default function DashboardLanding() {
           <Link 
             key={idx} 
             to={kpi.path}
-            className="group relative bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all overflow-hidden"
+            className="group relative bg-white rounded-[2rem] p-7 border border-slate-100 shadow-xl shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
           >
             {/* Hover Insight Overlay */}
             <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm p-8 flex flex-col justify-center translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-20">
-              <p className="text-white font-black uppercase tracking-widest text-[10px] mb-2 text-blue-400 ">Analytical Insight</p>
-              <p className="text-slate-200 text-sm font-medium leading-relaxed">
+              <p className="text-blue-400 font-black uppercase tracking-widest text-[10px] mb-2">Unit Intelligence</p>
+              <p className="text-slate-100 text-sm font-medium leading-relaxed">
                 {kpi.details}
               </p>
               <div className="mt-6 flex items-center gap-2 text-white font-black text-[10px] uppercase tracking-tighter">
-                Enter Module <ArrowRight className="w-3 h-3" />
+                Access Module <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </div>
 
-            <div className={`absolute top-0 right-0 w-32 h-32 ${kpi.color} opacity-[0.03] rounded-full translate-x-12 -translate-y-12 group-hover:scale-110 transition-transform`} />
+            <div className={`absolute -right-6 -bottom-6 text-slate-900 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+               <kpi.icon className="w-40 h-40" />
+            </div>
             
             <div className="relative z-10 flex flex-col h-full">
-              <div className={`${kpi.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
-                <kpi.icon className="w-6 h-6" />
+              <div className={`${kpi.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
+                <kpi.icon className="w-7 h-7" />
               </div>
               
               <div className="flex-1">
-                <p className="text-5xl font-black text-slate-900 tracking-tighter mb-1 group-hover:text-blue-600 transition-colors">
-                  {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
-                </p>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 group-hover:text-slate-600 transition-colors">
+                <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.15em] mb-1">
                   {kpi.label}
+                </p>
+                <p className="text-4xl font-black text-slate-900 tracking-tighter mb-4 group-hover:text-blue-600 transition-colors">
+                  {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-50 flex items-center justify-between mt-auto">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">{kpi.trend}</span>
+              <div className="pt-5 border-t border-slate-50 flex items-center justify-between mt-auto">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">{kpi.trend}</span>
                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
               </div>
             </div>

@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Employees from './Employees';
+import Admins from './Admins';
 import Vacancies from './Vacancies';
 import Performance from './Performance';
 import HRTasks from './Tasks';
@@ -102,7 +103,7 @@ function DashboardLanding() {
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 group hover:border-rose-200 transition-all relative overflow-hidden">
+          <div key={i} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
             <div className="absolute -right-6 -bottom-6 text-slate-900 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
               <kpi.icon className="w-40 h-40" />
             </div>
@@ -111,10 +112,10 @@ function DashboardLanding() {
               <div className={`w-14 h-14 rounded-2xl ${kpi.color} flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
                 <kpi.icon className="w-7 h-7" />
               </div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-              <h3 className="text-4xl font-black text-slate-900 mb-2">{kpi.value}</h3>
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
-                  <TrendingUp className="w-3 h-3 text-emerald-500" />
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{kpi.label}</p>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2">{(kpi.value ?? 0).toLocaleString()}</h3>
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest mt-4">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                   {kpi.trend}
               </div>
             </div>
@@ -198,6 +199,7 @@ export default function HRDashboard() {
       <Route path="/" element={<DashboardLanding />} />
       <Route path="vacancies" element={<Vacancies />} />
       <Route path="employees" element={<Employees />} />
+      <Route path="admins" element={<Admins />} />
       <Route path="performance" element={<Performance />} />
       <Route path="tasks" element={<HRTasks />} />
       <Route path="leaves" element={<Leaves />} />

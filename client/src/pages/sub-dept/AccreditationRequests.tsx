@@ -16,6 +16,9 @@ interface AccreditationRequest {
   type: string;
   status: string;
   center?: { name: string };
+  assignedUniversityId?: number;
+  assignedSubDeptId?: number;
+  remarks?: string;
 }
 
 interface Program {
@@ -25,31 +28,31 @@ interface Program {
 
 export default function AccreditationRequests() {
   const { unit } = useParams();
+  const [activeTab, setActiveTab] = useState<'pending'|'finance_pending'|'approved'>('pending');
   const [requests, setRequests] = useState<AccreditationRequest[]>([]);
-  const [programs, setPrograms] = useState<Program[]>([]);
+  const [entities, setEntities] = useState<{universities: {id:number, name:string}[], subDepts: {id:number, name:string}[]}>({ universities: [], subDepts: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<AccreditationRequest | null>(null);
-  const [selectedProgramId, setSelectedProgramId] = useState<string>('');
+  
+  const [assignedUniversityId, setAssignedUniversityId] = useState<string>('');
+  const [assignedSubDeptId, setAssignedSubDeptId] = useState<string>('');
   const [remarks, setRemarks] = useState('');
 
   const user = useAuthStore(state => state.user);
   const isReadOnly = useMemo(() => {
-    return user?.role?.toLowerCase()?.includes('organization admin');
-  }, [user]);
+    return user?.role?.toLowerCase()?.includes('organization admin') || activeTab !== 'pending';
+  }, [user, activeTab]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
-      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
-
-      const [reqRes, progRes] = await Promise.all([
-        api.get('/sub-dept/accreditation-requests', { params: { unit } }),
-        api.get('/sub-dept/programs', { params: { subDeptId } })
+      const [reqRes, entRes] = await Promise.all([
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: activeTab } }),
+        api.get('/sub-dept/accreditation-ops/entities')
       ]);
       setRequests(reqRes.data);
-      setPrograms(progRes.data);
+      setEntities(entRes.data);
     } catch (error) {
       toast.error('Failed to load accreditation data');
     } finally {
@@ -59,24 +62,27 @@ export default function AccreditationRequests() {
 
   useEffect(() => {
     fetchData();
-  }, [unit]);
+  }, [unit, activeTab]);
 
   const openApproveModal = (request: AccreditationRequest) => {
     setSelectedRequest(request);
-    setRemarks('');
-    setSelectedProgramId('');
+    setRemarks(request.remarks || '');
+    setAssignedUniversityId(request.assignedUniversityId?.toString() || '');
+    setAssignedSubDeptId(request.assignedSubDeptId?.toString() || '');
     setIsModalOpen(true);
   };
 
   const handleApprove = async () => {
     if (isReadOnly) return;
-    if (!selectedProgramId) return toast.error('Please select a program to link');
+    if (!assignedUniversityId) return toast.error('Please assign a Target University');
+    if (!assignedSubDeptId) return toast.error('Please assign a Type (Sub-Department)');
     try {
       await api.put(`/sub-dept/accreditation-requests/${selectedRequest?.id}/approve`, {
-        programId: parseInt(selectedProgramId),
+        assignedUniversityId: parseInt(assignedUniversityId),
+        assignedSubDeptId: parseInt(assignedSubDeptId),
         remarks
       });
-      toast.success('Institutional accreditation approved');
+      toast.success('Course officially authorized and transferred to Finance review pipeline');
       setIsModalOpen(false);
       fetchData();
     } catch (error: any) {
@@ -87,7 +93,7 @@ export default function AccreditationRequests() {
   const columns: ColumnDef<AccreditationRequest>[] = [
     { accessorKey: 'id', header: 'REQ-ID', cell: ({ row }) => <span className="font-mono text-xs">#ACC-{row.original.id}</span> },
     { accessorKey: 'center.name', header: 'Center Name', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.center?.name}</span> },
-    { accessorKey: 'courseName', header: 'Requested Course', cell: ({ row }) => <span className="text-slate-700">{row.original.courseName}</span> },
+    { accessorKey: 'courseName', header: 'Requested Program', cell: ({ row }) => <span className="text-slate-700 font-bold">{row.original.courseName}</span> },
     { accessorKey: 'universityName', header: 'Target University', cell: ({ row }) => <span className="text-slate-600">{row.original.universityName}</span> },
     {
       id: 'actions',
@@ -95,10 +101,10 @@ export default function AccreditationRequests() {
       cell: ({ row }) => (
         <button 
           onClick={() => openApproveModal(row.original)}
-          className={`flex items-center gap-2 ${isReadOnly ? 'bg-white border border-slate-200 text-slate-600' : 'bg-slate-900 text-white'} px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 hover:text-white transition-all shadow-sm`}
+          className={`flex items-center gap-2 ${isReadOnly ? 'bg-white border border-slate-200 text-slate-600' : 'bg-slate-900 text-white cursor-pointer'} px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 hover:text-white transition-all shadow-sm`}
         >
           {isReadOnly ? <Eye className="w-3 h-3 text-blue-600" /> : <ShieldCheck className="w-3 h-3" />}
-          <span>{isReadOnly ? 'Audit Details' : 'Audit Review'}</span>
+          <span>{isReadOnly ? 'View Details' : 'Audit Review'}</span>
         </button>
       )
     }
@@ -106,10 +112,21 @@ export default function AccreditationRequests() {
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
+      <div className="flex flex-col gap-6 shrink-0">
         <div>
            <h1 className="text-2xl font-bold text-slate-900">Accreditation Audit Queue</h1>
-           <p className="text-slate-500 text-sm">Review center interest requests for specialized course tie-ups and academic linking.</p>
+           <p className="text-slate-500 text-sm">Review center interest requests, assign architectural routing, and transfer to Finance.</p>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit">
+            <button onClick={() => setActiveTab('pending')} className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                Request Pending
+            </button>
+            <button onClick={() => setActiveTab('finance_pending')} className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'finance_pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                Finance Pending
+            </button>
+            <button onClick={() => setActiveTab('approved')} className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'approved' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                Approved
+            </button>
         </div>
       </div>
 
@@ -135,16 +152,32 @@ export default function AccreditationRequests() {
                 <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter flex items-center gap-2">
                         <LinkIcon className="w-3 h-3" />
-                        Link to Academic Program
+                        Assign University
                     </label>
                     <select 
-                        value={selectedProgramId}
+                        value={assignedUniversityId}
                         disabled={isReadOnly}
-                        onChange={(e) => setSelectedProgramId(e.target.value)}
-                        className={`w-full px-4 py-2 border border-slate-200 rounded-xl outline-none transition-all text-sm ${isReadOnly ? 'bg-slate-50 cursor-not-allowed opacity-70' : 'focus:ring-2 focus:ring-blue-500'}`}
+                        onChange={(e) => setAssignedUniversityId(e.target.value)}
+                        className={`w-full px-4 py-2 border border-slate-200 rounded-xl outline-none transition-all text-sm mb-4 ${isReadOnly ? 'bg-slate-50 cursor-not-allowed opacity-70' : 'focus:ring-2 focus:ring-blue-500 cursor-pointer'}`}
                     >
-                        <option value="">Select compatible program...</option>
-                        {programs.map(p => (
+                        <option value="">Select Target University...</option>
+                        {entities.universities.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+
+                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter flex items-center gap-2">
+                        <LinkIcon className="w-3 h-3" />
+                        Assign Type (Sub-Department)
+                    </label>
+                    <select 
+                        value={assignedSubDeptId}
+                        disabled={isReadOnly}
+                        onChange={(e) => setAssignedSubDeptId(e.target.value)}
+                        className={`w-full px-4 py-2 border border-slate-200 rounded-xl outline-none transition-all text-sm ${isReadOnly ? 'bg-slate-50 cursor-not-allowed opacity-70' : 'focus:ring-2 focus:ring-blue-500 cursor-pointer'}`}
+                    >
+                        <option value="">Select Operating Unit...</option>
+                        {entities.subDepts.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                     </select>
@@ -177,7 +210,7 @@ export default function AccreditationRequests() {
                             className="px-8 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-shadow shadow-lg shadow-slate-200 flex items-center gap-2"
                         >
                             <CheckCircle className="w-4 h-4" />
-                            Approve & Link
+                            Authorize & Transfer to Finance
                         </button>
                     </>
                 ) : (

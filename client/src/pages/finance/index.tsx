@@ -5,6 +5,8 @@ import FeeConfig from './FeeConfig';
 // import AdmissionQueue from './AdmissionQueue'; // Temporarily removed if missing
 import FinanceMainDashboard from './FinanceMainDashboard';
 import InstitutionalApprovals from './InstitutionalApprovals';
+import AccreditationQueue from './AccreditationQueue';
+import AdmissionSessionsQueue from './AdmissionSessionsQueue';
 import StudentFinancials from './StudentFinancials';
 import TargetManager from './TargetManager';
 import ReregManager from './ReregManager';
@@ -29,6 +31,8 @@ export default function FinanceDashboard() {
       <Route path="fee-config" element={<FeeConfig />} />
       {/* <Route path="admissions" element={<AdmissionQueue />} /> */}
       <Route path="approvals" element={<InstitutionalApprovals />} />
+      <Route path="accreditation-queue" element={<AccreditationQueue />} />
+      <Route path="sessions-queue" element={<AdmissionSessionsQueue />} />
       <Route path="center-verification" element={<CenterVerification />} />
       <Route path="performance" element={<TargetManager />} />
       <Route path="rereg" element={<ReregManager />} />

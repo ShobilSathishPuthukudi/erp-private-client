@@ -71,8 +71,9 @@ export const isAcademicOrAdmin = (req, res, next) => {
 
   const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
   const roleMatch = normalizedRoles.includes(userRole.toLowerCase());
+  const isSalesStaff = deptName.toLowerCase().includes('sales & crm admin') || deptName.toLowerCase().includes('sales department');
 
-  if (roleMatch || (userRole.toLowerCase() === 'employee' && deptName.toLowerCase().includes('sales & crm admin'))) {
+  if (roleMatch || (userRole.toLowerCase() === 'employee' && isSalesStaff)) {
     return next();
   }
   return res.status(403).json({ error: `Forbidden: Institutional access denied for: ${userRole}` });
@@ -95,8 +96,9 @@ export const isOpsOrAdmin = (req, res, next) => {
 
   const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
   const roleMatch = normalizedRoles.includes(userRole.toLowerCase());
+  const isSalesStaff = deptName.toLowerCase().includes('sales & crm admin') || deptName.toLowerCase().includes('sales department');
 
-  if (roleMatch || (userRole.toLowerCase() === 'employee' && deptName.toLowerCase().includes('sales & crm admin'))) {
+  if (roleMatch || (userRole.toLowerCase() === 'employee' && isSalesStaff)) {
     return next();
   }
   return res.status(403).json({ error: `Forbidden: Operations access denied for: ${userRole}` });

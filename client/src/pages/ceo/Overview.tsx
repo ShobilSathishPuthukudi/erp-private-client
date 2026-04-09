@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart } from 'lucide-react';
+import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart, FileText, Target } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 
@@ -46,7 +46,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedBrief, setSelectedBrief] = useState<{ type: string; title: string; dId?: number } | null>(null);
+  const [selectedBrief, setSelectedBrief] = useState<{ type: string; title: string; dId?: number; value?: string | number; icon?: any; inlineDetails?: React.ReactNode } | null>(null);
   const [briefData, setBriefData] = useState<any>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const hour = new Date().getHours();
@@ -103,29 +103,170 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
     return 'red';
   };
 
+  const checkScope = (scopes: string[]) => {
+    if (!metrics?.visibilityScope || metrics.visibilityScope.length === 0) return true;
+    const normalizedVisScope = metrics.visibilityScope.map(v => v.toLowerCase());
+    if (normalizedVisScope.includes('all')) return true;
+    return scopes.some(scope => 
+      normalizedVisScope.some(vs => vs.includes(scope.toLowerCase()))
+    );
+  };
+
   const KPIStore = [
-    { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate' },
-    { type: 'programs', title: 'Total Programs', value: metrics?.totalPrograms || 0, icon: BookOpen, target: 50, suffix: '', color: 'slate' },
-    { type: 'students', title: 'Enrolled Students', value: metrics?.totalStudents || 0, icon: Users, target: 1000, suffix: '', color: getStatusColor(metrics?.totalStudents || 0, 1000) },
-    { type: 'revenue', title: 'Fees Collected (MTD)', value: metrics?.revenueMTD || 0, icon: IndianRupee, target: 500000, suffix: '₹', color: getStatusColor(metrics?.revenueMTD || 0, 500000) },
-    { type: 'revenue', title: 'Fees Collected (YTD)', value: metrics?.revenueYTD || 0, icon: IndianRupee, target: 5000000, suffix: '₹', color: getStatusColor(metrics?.revenueYTD || 0, 5000000) },
-    { type: 'revenue', title: 'Total Fund Acquired', value: metrics?.totalFundAcquired || 0, icon: IndianRupee, target: 10000000, suffix: '₹', color: 'indigo' },
-    { type: 'centers', title: 'Active Study Centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20) },
-  ];
+    { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+          <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
+            Total number of active university branches currently established under the institutional umbrella.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'programs', title: 'Total Programs', value: metrics?.totalPrograms || 0, icon: BookOpen, target: 50, suffix: '', color: 'slate', scopes: ['academic', 'university', 'program'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+          <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
+            Cumulative number of academic programs actively offering enrollments across all institutional branches.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'students', title: 'Enrolled Students', value: metrics?.totalStudents || 0, icon: Users, target: 1000, suffix: '', color: getStatusColor(metrics?.totalStudents || 0, 1000), scopes: ['academic', 'student', 'university', 'admission'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+          <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
+            Live headcount of verified, tuition-cleared students actively enrolled in academic applications.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'revenue', title: 'Fees Collected (MTD)', value: metrics?.revenueMTD || 0, icon: IndianRupee, target: 500000, suffix: '₹', color: getStatusColor(metrics?.revenueMTD || 0, 500000), scopes: ['finance', 'account'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+          <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
+            Aggregated sum of verified institutional fees collected entirely within the current month-to-date calculation cycle.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'revenue', title: 'Fees Collected (YTD)', value: metrics?.revenueYTD || 0, icon: IndianRupee, target: 5000000, suffix: '₹', color: getStatusColor(metrics?.revenueYTD || 0, 5000000), scopes: ['finance', 'account'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+          <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
+            Overall verified institutional revenue pooled across all branches since the commencement of the current fiscal year.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'revenue', title: 'Total Fund Acquired', value: metrics?.totalFundAcquired || 0, icon: IndianRupee, target: 10000000, suffix: '₹', color: 'indigo', scopes: ['finance'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+          <p className="text-[11px] text-indigo-800 font-bold leading-relaxed uppercase tracking-wide">
+            Cumulative financial capital assembled including long-term investments, systemic assets, and net inflow.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'centers', title: 'Active Study Centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20), scopes: ['operations', 'regional', 'academic'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+          <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
+            Real-time count of geographically distributed learning hubs actively running under institutional mandates.
+          </p>
+        </div>
+      </div>
+    )},
+  ].filter(card => card.scopes.includes('all') || checkScope(card.scopes));
 
   const PerformanceStore = [
-    { title: 'Productivity Score', value: metrics?.productivityScore || 0, icon: Activity, target: 90, suffix: '%', color: (metrics?.productivityScore || 0) >= 85 ? 'emerald' : 'amber' },
-    { title: 'Task Completion', value: metrics?.taskCompletionRate || 0, icon: CheckCircle2, target: 95, suffix: '%', color: (metrics?.taskCompletionRate || 0) >= 90 ? 'emerald' : 'amber' },
-    { title: 'Avg Completion', value: metrics?.avgTaskTime || 0, icon: Clock, target: 24, suffix: 'h', color: (metrics?.avgTaskTime || 0) <= 24 ? 'emerald' : 'amber' },
-    { title: 'Admission Cycle', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 7 ? 'emerald' : 'amber' },
-  ];
+    { type: 'perf_prod', title: 'Productivity Score', value: metrics?.productivityScore || 0, icon: Activity, target: 90, suffix: '%', color: (metrics?.productivityScore || 0) >= 85 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+          <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
+            Composite index reflecting cross-functional efficiency, task resolution speed, and outcome conversion.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Weight</span>
+            <span className="text-xl font-black text-slate-900">Task SLA (60%)</span>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Weight</span>
+            <span className="text-xl font-black text-slate-900">Time Eff. (40%)</span>
+          </div>
+        </div>
+      </div>
+    )},
+    { type: 'perf_task', title: 'Task Completion', value: metrics?.taskCompletionRate || 0, icon: CheckCircle2, target: 95, suffix: '%', color: (metrics?.taskCompletionRate || 0) >= 90 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+          <p className="text-[11px] text-blue-800 font-bold leading-relaxed uppercase tracking-wide">
+            Percentage of assigned tasks and workflows completed successfully without administrative override.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'perf_avg', title: 'Avg Completion', value: metrics?.avgTaskTime || 0, icon: Clock, target: 24, suffix: 'h', color: (metrics?.avgTaskTime || 0) <= 24 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+          <p className="text-[11px] text-indigo-800 font-bold leading-relaxed uppercase tracking-wide">
+            Average time taken from task assignment to resolution across all departments.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'perf_cycle', title: 'Admission Cycle', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 7 ? 'emerald' : 'amber', scopes: ['academic', 'sales', 'student', 'admission'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+          <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
+            Average duration to fully convert an incoming lead into a verified enrolled student.
+          </p>
+        </div>
+      </div>
+    )},
+  ].filter(card => checkScope(card.scopes));
 
   const RiskStore = [
-    { title: 'High-Value Pending', value: metrics?.highValuePending || 0, icon: Wallet, target: 0, suffix: '', color: (metrics?.highValuePending || 0) > 0 ? 'red' : 'emerald' },
-    { title: 'Security Reveals', value: metrics?.revealRequests || 0, icon: ShieldAlert, target: 0, suffix: '', color: (metrics?.revealRequests || 0) > 0 ? 'red' : 'emerald' },
-    { title: 'Audit Exceptions', value: metrics?.auditExceptions || 0, icon: AlertTriangle, target: 0, suffix: '', color: (metrics?.auditExceptions || 0) > 10 ? 'red' : 'amber' },
-    { title: 'Aged Escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber' },
-  ];
+    { type: 'risk_highval', title: 'High-Value Pending', value: metrics?.highValuePending || 0, icon: Wallet, target: 0, suffix: '', color: (metrics?.highValuePending || 0) > 0 ? 'red' : 'emerald', scopes: ['finance', 'account'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
+          <p className="text-[11px] text-rose-800 font-bold leading-relaxed uppercase tracking-wide">
+            Number of uncollected invoices or pending transactions exceeding the ₹50,000 threshold.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'risk_security', title: 'Security Reveals', value: metrics?.revealRequests || 0, icon: ShieldAlert, target: 0, suffix: '', color: (metrics?.revealRequests || 0) > 0 ? 'red' : 'emerald', scopes: ['security'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+          <p className="text-[11px] text-amber-800 font-bold leading-relaxed uppercase tracking-wide">
+            Critical audit log events where sensitive credentials or configuration secrets were revealed.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'risk_audit', title: 'Audit Exceptions', value: metrics?.auditExceptions || 0, icon: AlertTriangle, target: 0, suffix: '', color: (metrics?.auditExceptions || 0) > 10 ? 'red' : 'amber', scopes: ['security'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
+          <p className="text-[11px] text-red-800 font-bold leading-relaxed uppercase tracking-wide">
+            Anomalous administrative behaviors, deleted records, or unauthorized modification attempts.
+          </p>
+        </div>
+      </div>
+    )},
+    { type: 'risk_aged', title: 'Aged Escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+      <div className="space-y-4 py-4">
+        <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex gap-3">
+          <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-bold text-amber-900 mb-1">Escalation Threshold Exceeded</h4>
+            <p className="text-xs text-amber-700/80 leading-relaxed font-medium">Tasks that have remained uncompleted past their designated deadline and standard grace period. Requires immediate executive override.</p>
+          </div>
+        </div>
+      </div>
+    )},
+  ].filter(card => checkScope(card.scopes));
 
   if (loading || !metrics) {
     return (
@@ -183,14 +324,16 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           {KPIStore.map((kpi, idx) => (
             <div 
               key={idx} 
-              onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title })}
-              className="bg-white p-7 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+              onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })}
+              className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
             >
-              <div className={`absolute top-0 right-0 w-24 h-24 bg-${kpi.color}-50 rounded-bl-[80px] -z-0 transition-transform group-hover:scale-110`}></div>
+              <div className={`absolute -right-6 -bottom-6 text-${kpi.color === 'slate' ? 'slate' : kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                <kpi.icon className="w-40 h-40" />
+              </div>
               
               <div className="relative z-10">
-                <div className={`w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 text-${kpi.color}-600 group-hover:bg-slate-900 group-hover:text-white transition-all`}>
-                  <kpi.icon className="w-6 h-6" />
+                <div className={`w-14 h-14 rounded-2xl bg-${kpi.color === 'slate' ? 'slate' : kpi.color}-50 flex items-center justify-center mb-6 text-${kpi.color === 'slate' ? 'slate' : kpi.color}-600 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm`}>
+                  <kpi.icon className="w-7 h-7" />
                 </div>
                 
                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{kpi.title}</p>
@@ -203,7 +346,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                     {kpi.color === 'emerald' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
                     {kpi.color === 'amber' && <Minus className="w-4 h-4 text-amber-500" />}
                     {kpi.color === 'red' && <TrendingDown className="w-4 h-4 text-red-500" />}
-                    <span className={`text-[10px] font-black uppercase tracking-wider text-${kpi.color}-600`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider text-${kpi.color === 'slate' ? 'slate' : kpi.color}-600`}>
                       {kpi.color === 'slate' ? 'Global Stat' : (kpi.color === 'emerald' ? 'On Track' : kpi.color === 'amber' ? 'Off Target' : 'Critical')}
                     </span>
                   </div>
@@ -215,10 +358,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
 
         {/* Executive Performance & Productivity Section */}
-        <div className="mt-12 pt-12 border-t border-slate-100/50">
+        {PerformanceStore.length > 0 && (
+          <div className="mt-12 pt-12 border-t border-slate-100/50">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Executive Performance Suite</h3>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Employee Performance Suite</h3>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-Functional Efficiency & Cycle Monitoring</p>
               </div>
               <button 
@@ -230,19 +374,22 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
             </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {PerformanceStore.map((kpi, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-lg shadow-slate-200/20 relative overflow-hidden group">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl bg-${kpi.color}-50 flex items-center justify-center text-${kpi.color}-600 group-hover:bg-slate-900 group-hover:text-white transition-all`}>
-                      <kpi.icon className="w-6 h-6" />
+                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-all">
+                  <div className={`absolute -right-6 -bottom-6 text-${kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                    <kpi.icon className="w-40 h-40" />
+                  </div>
+                  <div className="relative z-10 flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-2xl bg-${kpi.color}-50 flex items-center justify-center text-${kpi.color}-600 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm`}>
+                      <kpi.icon className="w-7 h-7" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{kpi.title}</p>
-                      <h4 className="text-2xl font-black text-slate-900">{kpi.value}{kpi.suffix}</h4>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{kpi.title}</p>
+                      <h4 className="text-3xl font-black text-slate-900 tracking-tight">{kpi.value}{kpi.suffix}</h4>
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-                    <span className="text-[9px] font-bold text-slate-300 uppercase">Target: {kpi.target}{kpi.suffix}</span>
-                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-${kpi.color}-100 text-${kpi.color}-700`}>
+                  <div className="relative z-10 mt-6 pt-6 border-t border-slate-50 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Target: {kpi.target}{kpi.suffix}</span>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-${kpi.color}-50 text-${kpi.color}-700 border border-${kpi.color}-100`}>
                       {kpi.color === 'emerald' ? 'Elite' : 'Attention'}
                     </div>
                   </div>
@@ -250,9 +397,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               ))}
            </div>
         </div>
+        )}
 
         {/* Systemic Risks & Compliance Section */}
-        <div className="mt-12 pt-12 border-t border-slate-100/50">
+        {RiskStore.length > 0 && (
+          <div className="mt-12 pt-12 border-t border-slate-100/50">
            <div className="flex items-center justify-between mb-8">
              <div>
                <h3 className="text-xl font-black text-slate-900 tracking-tight">Systemic Risk & Compliance</h3>
@@ -264,19 +413,22 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {RiskStore.map((kpi, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-lg shadow-slate-200/20 relative overflow-hidden group">
-                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl bg-${kpi.color === 'red' ? 'rose' : kpi.color}-50 flex items-center justify-center text-${kpi.color === 'red' ? 'rose' : kpi.color}-600`}>
-                      <kpi.icon className="w-6 h-6" />
+                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-all">
+                   <div className={`absolute -right-6 -bottom-6 text-${kpi.color === 'red' ? 'rose' : kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                      <kpi.icon className="w-40 h-40" />
+                   </div>
+                   <div className="relative z-10 flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-2xl bg-${kpi.color === 'red' ? 'rose' : kpi.color}-50 flex items-center justify-center text-${kpi.color === 'red' ? 'rose' : kpi.color}-600 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm`}>
+                      <kpi.icon className="w-7 h-7" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{kpi.title}</p>
-                      <h4 className="text-2xl font-black text-slate-900">{kpi.value}{kpi.suffix}</h4>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{kpi.title}</p>
+                      <h4 className="text-3xl font-black text-slate-900 tracking-tight">{kpi.value}{kpi.suffix}</h4>
                     </div>
                   </div>
-                  <div className={`mt-4 pt-4 border-t border-slate-50 flex items-center justify-between`}>
-                    <span className="text-[9px] font-bold text-slate-300 uppercase">Alert Threshold: {kpi.target}</span>
-                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${kpi.color === 'red' ? 'bg-rose-100 text-rose-700 animate-pulse' : `bg-${kpi.color}-100 text-${kpi.color}-700`}`}>
+                  <div className={`relative z-10 mt-6 pt-6 border-t border-slate-50 flex items-center justify-between`}>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Alert Threshold: {kpi.target}</span>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${kpi.color === 'red' ? 'bg-rose-50 text-rose-700 animate-pulse border border-rose-100' : `bg-${kpi.color}-50 text-${kpi.color}-700 border border-${kpi.color}-100`}`}>
                       {kpi.color === 'red' ? 'Escalated' : (kpi.color === 'amber' ? 'Guarded' : 'Secured')}
                     </div>
                   </div>
@@ -284,6 +436,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               ))}
            </div>
         </div>
+        )}
 
         {/* [NEW] Sales Intelligence Section - Strictly for Sales Scope */}
         {metrics.salesIntelligence && (
@@ -517,30 +670,34 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                       </div>
                     )}
 
-                    {(selectedBrief.type === 'universities' || selectedBrief.type === 'centers') && Array.isArray(briefData) && (
+                    {(selectedBrief.type === 'universities' || selectedBrief.type === 'centers' || selectedBrief.type === 'programs') && Array.isArray(briefData) && briefData.length > 0 && (
                       <div className="space-y-3">
                          <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Institutional Portfolios</h5>
                          {briefData.map((dept: any) => (
                            <div key={dept.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all group">
                               <div className="flex items-center gap-3">
                                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all">
-                                   <Building2 className="w-5 h-5" />
+                                   {selectedBrief.type === 'programs' ? <BookOpen className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
                                  </div>
                                  <div>
                                    <div className="text-sm font-black text-slate-900">{dept.name}</div>
-                                   <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{dept.type}</div>
+                                   <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{selectedBrief.type === 'programs' ? dept.university?.name : dept.type}</div>
                                  </div>
                               </div>
                               <div className="text-right">
-                                 <div className="text-[10px] font-black text-slate-900 uppercase tracking-wider">{dept.admin?.name || 'Unassigned'}</div>
-                                 <div className="text-[9px] font-bold text-slate-400 uppercase">Administrator</div>
+                                 {selectedBrief.type !== 'programs' && (
+                                   <>
+                                     <div className="text-[10px] font-black text-slate-900 uppercase tracking-wider">{dept.admin?.name || 'Unassigned'}</div>
+                                     <div className="text-[9px] font-bold text-slate-400 uppercase">Administrator</div>
+                                   </>
+                                 )}
                               </div>
                            </div>
                          ))}
                       </div>
                     )}
 
-                    {selectedBrief.type === 'students' && Array.isArray(briefData) && (
+                    {selectedBrief.type === 'students' && Array.isArray(briefData) && briefData.length > 0 && (
                       <div className="space-y-3">
                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Latest Accessions</h5>
                         {briefData.map((student: any) => (
@@ -563,7 +720,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                       </div>
                     )}
 
-                    {selectedBrief.type === 'revenue' && Array.isArray(briefData) && (
+                    {selectedBrief.type === 'revenue' && Array.isArray(briefData) && briefData.length > 0 && (
                       <div className="space-y-3">
                          <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Recent Verified Collections</h5>
                          {briefData.map((inv: any, idx: number) => (
@@ -586,13 +743,63 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                       </div>
                     )}
 
-                    {!briefData || (Array.isArray(briefData) && briefData.length === 0) ? (
-                      <div className="py-20 text-center space-y-4">
-                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto border border-dashed border-slate-200">
-                           <Zap className="w-8 h-8 text-slate-200" />
-                         </div>
-                         <p className="text-sm font-bold text-slate-400">No telemetry data available for this partition.</p>
+                    {selectedBrief.type === 'risk_aged' && Array.isArray(briefData) && briefData.length > 0 && (
+                      <div className="space-y-3">
+                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Critical Overdue Tasks</h5>
+                         {briefData.map((task: any) => (
+                           <div key={task.id} className="flex flex-col p-4 bg-rose-50/50 rounded-2xl border border-rose-100 hover:bg-rose-50 transition-all group gap-3">
+                              <div className="flex justify-between items-start">
+                                <div className="flex gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-500">
+                                    <FileText className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                     <div className="text-sm font-black text-slate-900 line-clamp-1">{task.title}</div>
+                                     <div className="text-[10px] font-bold text-rose-600 mt-1">
+                                       Deadline: {format(new Date(task.deadline), 'MMM dd, yyyy h:mm a')}
+                                     </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-6 mt-1 ml-13 pt-3 border-t border-rose-100/50">
+                                <div>
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Assigned By</div>
+                                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                                    {task.assigner?.name || 'System Auto-Assigned'}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Assigned To</div>
+                                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <Target className="w-3.5 h-3.5 text-rose-400" />
+                                    {task.assignee?.name || 'Unassigned'}
+                                  </div>
+                                </div>
+                                <div className="ml-auto text-right">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Created On</div>
+                                  <div className="text-xs font-bold text-slate-600">
+                                    {format(new Date(task.createdAt), 'MMM dd, yyyy')}
+                                  </div>
+                                </div>
+                              </div>
+                           </div>
+                         ))}
                       </div>
+                    )}
+
+                    {!briefData || (Array.isArray(briefData) && briefData.length === 0) ? (
+                      selectedBrief.inlineDetails ? (
+                        selectedBrief.inlineDetails
+                      ) : (
+                        <div className="py-20 text-center space-y-4">
+                           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto border border-dashed border-slate-200">
+                             <Zap className="w-8 h-8 text-slate-200" />
+                           </div>
+                           <p className="text-sm font-bold text-slate-400">No telemetry data available for this partition.</p>
+                        </div>
+                      )
                     ) : null}
                   </div>
                 )}

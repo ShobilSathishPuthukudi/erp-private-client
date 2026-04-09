@@ -24,7 +24,7 @@ const AccreditationRequest = sequelize.define('accreditation_request', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    type: DataTypes.ENUM('pending', 'finance_pending', 'approved', 'rejected'),
     defaultValue: 'pending',
   },
   remarks: {
@@ -32,6 +32,14 @@ const AccreditationRequest = sequelize.define('accreditation_request', {
     allowNull: true,
   },
   linkedProgramId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  assignedUniversityId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  assignedSubDeptId: {
     type: DataTypes.INTEGER,
     allowNull: true,
   }

@@ -21,6 +21,8 @@ const COLLECTION_ROLES = [
   'Employee',
   'student',
   'Partner Center',
+  'Sales & CRM Admin',
+  'Sales',
   'HR Admin',
   'hr',
   'Operations Admin',
@@ -72,8 +74,14 @@ router.use((req, res, next) => {
 router.get('/stats', verifyToken, isHR, applyExecutiveScope, async (req, res) => {
   try {
     const { filter: visibilityFilter } = req.visibility;
+    const workforceFilter = {
+      status: 'active',
+      vacancyId: { [Op.not]: null }, // Use Op.not for cleaner NULL check
+      ...visibilityFilter
+    };
+
     const [employeeCount, vacancyCount, pendingLeaves, activeTasks] = await Promise.all([
-      User.count({ where: { status: 'active', role: 'employee', ...visibilityFilter } }),
+      User.count({ where: workforceFilter }),
       Vacancy.count({ where: { status: 'OPEN', ...visibilityFilter } }),
       Leave.count({ 
         where: { status: { [Op.like]: 'pending%' } },
@@ -85,13 +93,16 @@ router.get('/stats', verifyToken, isHR, applyExecutiveScope, async (req, res) =>
       })
     ]);
     
-    res.json({
-      totalEmployees: employeeCount || 0,
-      activeEmployees: employeeCount || 0,
-      pendingLeaves: pendingLeaves || 0,
-      avgPerformance: 0,
-      activeTasks: activeTasks || 0
-    });
+    // Explicitly cast to Number to avoid UI rendering issues with strings or nested objects
+    const data = {
+      employeeCount: Number(employeeCount) || 0,
+      vacancyCount: Number(vacancyCount) || 0,
+      pendingLeaves: Number(pendingLeaves) || 0,
+      activeTasks: Number(activeTasks) || 0
+    };
+
+    console.log('[HR-STATS-DEBUG]:', data);
+    res.json(data);
   } catch (error) {
     console.error("HR API ERROR:", error);
     res.status(500).json({ message: "Internal server error", module: "HR" });
@@ -150,8 +161,8 @@ router.get('/employees', verifyToken, isHR, applyExecutiveScope, async (req, res
       where: visibilityFilter, 
       attributes: { exclude: ['password'] },
       include: [
-        { model: Department, as: 'department', attributes: ['name'] },
-        { model: User, as: 'manager', attributes: ['name', 'uid'] }
+        { model: Department, as: 'department', attributes: ['name'], required: false },
+        { model: User, as: 'manager', attributes: ['name', 'uid'], required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -680,6 +691,82 @@ router.put('/leaves/:id/step1-approve', verifyToken, async (req, res) => {
 });
 
 // --- Institutional Presence & Engagement (Attendance) ---
+
+router.get('/attendance/registry', verifyToken, isHR, async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
+
+    const { Attendance, User, Leave, Department } = models;
+
+    // 1. Fetch all workforce users (mirroring Employees.tsx logic)
+    const users = await User.findAll({
+      attributes: ['uid', 'name', 'role', 'vacancyId'],
+      include: [{ model: Department, as: 'department', attributes: ['name'] }],
+      order: [['name', 'ASC']]
+    });
+
+    // 2. Fetch existing attendance for this date
+    const attendanceRecords = await Attendance.findAll({
+      where: { date }
+    });
+
+    // 3. Fetch approved leaves for this date
+    const leaves = await Leave.findAll({
+      where: {
+        status: 'approved',
+        fromDate: { [Op.lte]: date },
+        toDate: { [Op.gte]: date }
+      }
+    });
+
+    // 4. Map data for frontend consumption
+    const attendanceMap = {};
+    attendanceRecords.forEach(r => {
+      attendanceMap[r.userId] = { status: r.status, remarks: r.remarks };
+    });
+
+    const leaveMap = {};
+    leaves.forEach(l => {
+      leaveMap[l.employeeId] = true;
+    });
+
+    res.json({
+      users,
+      attendance: attendanceMap,
+      leaves: leaveMap
+    });
+  } catch (error) {
+    console.error('[HR-ATTENDANCE-REGISTRY-ERROR]:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance registry' });
+  }
+});
+
+router.post('/attendance/mark', verifyToken, isHR, async (req, res) => {
+  try {
+    const { userId, date, status, remarks } = req.body;
+    if (!userId || !date || !status) {
+      return res.status(400).json({ error: 'Missing required fields: userId, date, status' });
+    }
+
+    const { Attendance } = models;
+
+    // Atomic Upsert
+    const [record, created] = await Attendance.findOrCreate({
+      where: { userId, date },
+      defaults: { status, remarks }
+    });
+
+    if (!created) {
+      await record.update({ status, remarks });
+    }
+
+    res.json({ message: 'Attendance status updated', attendance: record });
+  } catch (error) {
+    console.error('[HR-ATTENDANCE-MARK-ERROR]:', error);
+    res.status(500).json({ error: 'Attendance update protocol failure' });
+  }
+});
 
 router.post('/attendance/clock-in', verifyToken, async (req, res) => {
   try {

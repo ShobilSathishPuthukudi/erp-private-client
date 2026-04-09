@@ -6,6 +6,31 @@ import bcrypt from 'bcryptjs';
 const router = express.Router();
 const { User, Department, Lead, Program, Notification } = models;
 
+// DB Check
+router.get('/dev-user-check', async (req, res) => {
+  try {
+    const users = await User.findAll({ attributes: ['uid', 'name', 'role', 'status'] });
+    res.json(users);
+  } catch(e) { res.json({ error: e.message }); }
+});
+
+router.get('/dev-hr-employees', async (req, res) => {
+  try {
+    const employees = await User.findAll({
+      where: {}, 
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: Department, as: 'department', attributes: ['name'], required: false },
+        { model: User, as: 'manager', attributes: ['name', 'uid'], required: false }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET BDE Info for Public Form via Referral Code
 router.get('/bde-info/:code', async (req, res) => {
   try {
@@ -120,7 +145,7 @@ router.post('/register-center', async (req, res) => {
     const center = await Department.create({
       name,
       shortName: name.substring(0, 5).toUpperCase(),
-      type: 'partner-center',
+      type: 'partner centers',
       status: 'inactive',
       auditStatus: 'pending', // Key for Ops Audit
       bdeId,

@@ -7,13 +7,6 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 
-interface AdmissionSession {
-  id: number;
-  name: string;
-  program: { name: string };
-  subDept: { name: string };
-  financeStatus: string;
-}
 
 interface StudentApproval {
   id: number;
@@ -37,8 +30,7 @@ interface CredentialAudit {
 }
 
 export default function InstitutionalApprovals() {
-  const [activeTab, setActiveTab] = useState<'sessions' | 'enrollment' | 'enrolled' | 'credential_audit'>('enrollment');
-  const [sessions, setSessions] = useState<AdmissionSession[]>([]);
+  const [activeTab, setActiveTab] = useState<'enrollment' | 'enrolled' | 'credential_audit'>('enrollment');
   const [students, setStudents] = useState<StudentApproval[]>([]);
   const [credentialRequests, setCredentialRequests] = useState<CredentialAudit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,10 +44,7 @@ export default function InstitutionalApprovals() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      if (activeTab === 'sessions') {
-        const res = await api.get('/finance/admission-sessions');
-        setSessions(res.data);
-      } else if (activeTab === 'enrolled') {
+      if (activeTab === 'enrolled') {
         const res = await api.get('/finance/approvals/students', { params: { type: 'approved' } });
         setStudents(res.data);
       } else if (activeTab === 'credential_audit') {
@@ -82,9 +71,7 @@ export default function InstitutionalApprovals() {
       let endpoint = '';
       let method: 'put' | 'post' = 'put';
 
-      if (activeTab === 'sessions') {
-        endpoint = `/finance/admission-sessions/${selectedItem?.id}/approve`;
-      } else if (activeTab === 'enrollment' && actionType === 'approve') {
+      if (activeTab === 'enrollment' && actionType === 'approve') {
         endpoint = `/finance/approvals/students/${selectedItem?.id}/finalize`;
         method = 'post';
       }
@@ -103,33 +90,6 @@ export default function InstitutionalApprovals() {
     }
   };
 
-
-  const sColumns: ColumnDef<AdmissionSession>[] = [
-    { accessorKey: 'name', header: 'Session Title', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.name}</span> },
-    { accessorKey: 'subDept.name', header: 'Sub-Department' },
-    { accessorKey: 'program.name', header: 'Academic Program' },
-    { 
-        accessorKey: 'financeStatus', 
-        header: 'Finance Guardrail',
-        cell: ({ row }) => (
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                row.original.financeStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
-                row.original.financeStatus === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'
-            }`}>
-                {row.original.financeStatus}
-            </span>
-        )
-    },
-    {
-        id: 'actions',
-        cell: ({ row }) => row.original.financeStatus === 'pending' && (
-          <div className="flex gap-2">
-              <button onClick={() => { setSelectedItem(row.original); setActionType('approve'); setIsModalOpen(true); }} className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-slate-800">Verify & Open</button>
-              <button onClick={() => { setSelectedItem(row.original); setActionType('reject'); setIsModalOpen(true); }} className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-red-100">Reject</button>
-          </div>
-        )
-      }
-  ];
 
   const stuColumns: ColumnDef<StudentApproval>[] = [
     { accessorKey: 'name', header: 'Student Identity', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.name}</span> },
@@ -227,6 +187,7 @@ export default function InstitutionalApprovals() {
     }
   ];
 
+
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex flex-col gap-6 shrink-0">
@@ -236,34 +197,21 @@ export default function InstitutionalApprovals() {
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit">
             <button 
-                onClick={() => setActiveTab('sessions')}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'sessions' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Admission Sessions
-            </button>
-            <button 
                 onClick={() => setActiveTab('enrollment')}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrollment' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrollment' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
                 Enrollment
             </button>
             <button 
                 onClick={() => setActiveTab('enrolled')}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrolled' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrolled' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
                 Enrolled Students
-            </button>
-            <button 
-                onClick={() => setActiveTab('credential_audit')}
-                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'credential_audit' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Credential Audits
             </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
-        {activeTab === 'sessions' && <DataTable columns={sColumns} data={sessions} isLoading={isLoading} searchKey="name" />}
         {activeTab === 'credential_audit' && <DataTable columns={credColumns} data={credentialRequests} isLoading={isLoading} searchKey="remarks" />}
         {(activeTab === 'enrollment' || activeTab === 'enrolled') && <DataTable columns={stuColumns} data={students} isLoading={isLoading} searchKey="name" />}
       </div>
@@ -339,7 +287,7 @@ export default function InstitutionalApprovals() {
             <div className="flex justify-end gap-3 uppercase">
                 <button 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-2 text-slate-500 font-black text-[10px] hover:bg-slate-50 rounded-xl"
+                    className="px-6 py-2 text-slate-500 font-black text-[10px] hover:bg-slate-50 rounded-xl cursor-pointer"
                 >
                     Cancel
                 </button>
@@ -348,7 +296,7 @@ export default function InstitutionalApprovals() {
                     onClick={handleAction}
                     className={`px-10 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${
                         remarks.length >= 15 
-                        ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 hover:-translate-y-0.5' 
+                        ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 hover:-translate-y-0.5 cursor-pointer' 
                         : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                     }`}
                 >

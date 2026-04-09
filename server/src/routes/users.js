@@ -10,6 +10,8 @@ const COLLECTION_ROLES = [
   'student',
   'Partner Center',
   'study-center',
+  'Sales & CRM Admin',
+  'Sales',
   'HR Admin',
   'Finance Admin',
   'Operations Admin',

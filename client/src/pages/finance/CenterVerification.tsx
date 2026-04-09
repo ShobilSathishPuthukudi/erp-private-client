@@ -112,7 +112,6 @@ export default function CenterVerification() {
               <div className="bg-slate-900 border border-white/10 p-3 rounded-lg mt-1 space-y-1">
                 <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Credentials Provisioned:</p>
                 <p className="text-xs font-mono text-emerald-400">ID: {res.data.credentials.loginId}</p>
-                <p className="text-xs font-mono text-amber-400">PWD: {res.data.credentials.password}</p>
               </div>
               <button 
                 onClick={() => toast.dismiss(t.id)}

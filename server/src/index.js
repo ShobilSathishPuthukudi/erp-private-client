@@ -207,6 +207,21 @@ const cleanupDuplicateIndexes = async () => {
       console.log('Adding missing totalCredits column to programs...');
       await sequelize.query('ALTER TABLE programs ADD COLUMN totalCredits INT DEFAULT 0').catch(err => console.error(err.message));
     }
+
+    // 5. Ensure Survey Model schema reconciliation
+    const [surveyCols] = await sequelize.query('SHOW COLUMNS FROM surveys').catch(() => [[]]);
+    const surveyColNames = (surveyCols || []).map(c => c.Field);
+
+    if (surveyColNames.length > 0) {
+      if (!surveyColNames.includes('expiryDate')) {
+        console.log('Adding missing expiryDate column to surveys...');
+        await sequelize.query('ALTER TABLE surveys ADD COLUMN expiryDate DATETIME NULL').catch(err => console.error(err.message));
+      }
+      if (!surveyColNames.includes('createdBy')) {
+        console.log('Adding missing createdBy column to surveys...');
+        await sequelize.query('ALTER TABLE surveys ADD COLUMN createdBy VARCHAR(255) NULL').catch(err => console.error(err.message));
+      }
+    }
   } catch (err) {
     console.warn('Index cleanup skipped:', err.message);
   }

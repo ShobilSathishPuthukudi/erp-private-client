@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import sequelize from '../config/db.js';
 
 const Department = sequelize.define('department', {
@@ -108,6 +108,14 @@ const Department = sequelize.define('department', {
   address: {
     type: DataTypes.TEXT,
     allowNull: true,
+  }
+}, {
+  defaultScope: {
+    where: {
+      name: {
+        [Op.notIn]: ['Alpha Partner center']
+      }
+    }
   }
 });
 

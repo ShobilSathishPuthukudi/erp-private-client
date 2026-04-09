@@ -29,6 +29,10 @@ const Survey = sequelize.define('survey', {
   createdBy: {
     type: DataTypes.STRING, 
     allowNull: false,
+  },
+  expiryDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
   }
 });
 

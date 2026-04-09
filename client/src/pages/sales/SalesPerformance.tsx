@@ -74,10 +74,10 @@ export default function SalesPerformance() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={<Building className="w-5 h-5 shadow-sm" />} label="Centers Referred" value={performance?.centerCount || 0} color="blue" />
-        <StatCard icon={<Users className="w-5 h-5 shadow-sm" />} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" />
-        <StatCard icon={<DollarSign className="w-5 h-5 shadow-sm" />} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" />
-        <StatCard icon={<TrendingUp className="w-5 h-5 shadow-sm" />} label="Efficiency Rate" value={`${performance?.centerCount > 0 ? ((performance.studentCount / performance.centerCount) * 5).toFixed(1) : 0}%`} color="amber" />
+        <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" />
+        <StatCard icon={Users} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" />
+        <StatCard icon={DollarSign} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" />
+        <StatCard icon={TrendingUp} label="Efficiency Rate" value={`${performance?.centerCount > 0 ? ((performance.studentCount / performance.centerCount) * 5).toFixed(1) : 0}%`} color="amber" />
       </div>
 
       {!isAdmin && (user?.role?.toLowerCase().trim() === 'employee' || user?.role?.toLowerCase().trim() === 'bde') && (
@@ -165,20 +165,31 @@ export default function SalesPerformance() {
 }
 
 
-function StatCard({ icon, label, value, color }: any) {
+function StatCard({ icon: Icon, label, value, color }: any) {
     const colors: any = {
-        blue: 'bg-blue-50 text-blue-600',
-        indigo: 'bg-indigo-50 text-indigo-600',
-        emerald: 'bg-emerald-50 text-emerald-600',
-        amber: 'bg-amber-50 text-amber-600'
+        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+        indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+        emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+        amber: 'bg-amber-50 text-amber-600 border-amber-100'
+    };
+    const textColors: any = {
+        blue: 'text-blue-600',
+        indigo: 'text-indigo-600',
+        emerald: 'text-emerald-600',
+        amber: 'text-amber-600'
     };
     return (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className={`w-10 h-10 ${colors[color]} rounded-2xl flex items-center justify-center mb-4`}>
-                {icon}
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-7 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                <Icon className="w-40 h-40" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-            <p className="text-2xl font-black text-slate-900 tracking-tighter">{value}</p>
+            <div className="relative z-10">
+                <div className={`w-14 h-14 ${colors[color]} border rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-7 h-7" />
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{label}</p>
+                <p className="text-3xl font-black text-slate-900 tracking-tight">{value}</p>
+            </div>
         </div>
     );
 }

@@ -190,6 +190,8 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Security Audit', path: '/dashboard/finance/audit/security' },
         { name: 'Institutional Audit', path: '/dashboard/finance/approvals' },
+        { name: 'Accreditation Audits', path: '/dashboard/finance/accreditation-queue' },
+        { name: 'Admission Sessions', path: '/dashboard/finance/sessions-queue' },
         { name: 'Center Verification', path: '/dashboard/finance/center-verification' },
       ]
     },
@@ -224,6 +226,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Workforce Planning', path: '/dashboard/hr/vacancies' },
         { name: 'Registration', path: '/dashboard/hr/employees' },
+        { name: 'Administrators', path: '/dashboard/hr/admins' },
         { name: 'Performance Audit', path: '/dashboard/hr/performance' },
         { name: 'Attendance', path: '/dashboard/hr/attendance' },
         { name: 'Leave Approval', path: '/dashboard/hr/leaves' },

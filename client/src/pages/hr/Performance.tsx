@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Target, AlertCircle, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import { Target, AlertCircle, CheckCircle2, Clock, TrendingUp, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { toSentenceCase } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { toSentenceCase } from '@/lib/utils';
 interface PerformanceMetric {
   uid: string;
   name: string;
+  role?: string;
   metrics: {
     taskCompletionRate: string;
     delayCount: number;
@@ -20,19 +21,37 @@ interface PerformanceMetric {
 export default function Performance() {
   const [data, setData] = useState<PerformanceMetric[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'employees' | 'admins'>('employees');
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const employeesRes = await api.get('/hr/employees');
-      const employees = employeesRes.data;
+      
+      // Filter irrelevant core entity roles from structural HR assessment
+      const validStaff = employeesRes.data.filter((e: any) => {
+        const r = e.role?.toLowerCase() || '';
+        return !['ceo', 'partner center', 'student'].includes(r);
+      });
 
-      const metricsPromises = employees.map((emp: any) => 
-        api.get(`/hr/performance/employee/${emp.uid}`).then(res => ({
-          ...res.data,
-          uid: emp.uid, // Map uid for DataTable consistency
-          name: emp.name
-        }))
+      const metricsPromises = validStaff.map((emp: any) => 
+        api.get(`/hr/performance/employee/${emp.uid}`)
+          .then(res => ({
+            ...res.data,
+            metrics: {
+              ...res.data.metrics,
+              delayCount: res.data.metrics.delayCount || 0 // Provide fallback
+            },
+            uid: emp.uid,
+            name: emp.name,
+            role: emp.role
+          }))
+          .catch(err => ({
+            uid: emp.uid,
+            name: emp.name,
+            role: emp.role,
+            metrics: { taskCompletionRate: '0', delayCount: 0, totalTasks: 0 }
+          }))
       );
 
       const metrics = await Promise.all(metricsPromises);
@@ -98,6 +117,12 @@ export default function Performance() {
     }
   ];
 
+  const displayData = data.filter(d => 
+    activeTab === 'employees'
+      ? !d.role?.toLowerCase().includes('admin')
+      : d.role?.toLowerCase().includes('admin')
+  );
+
   return (
     <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
@@ -109,20 +134,46 @@ export default function Performance() {
              <AlertCircle className="w-5 h-5" />
              <div className="text-[10px] md:text-xs">
                 <p className="font-bold whitespace-nowrap">Goal: 85% Completion min.</p>
-                <p className="font-medium opacity-80">Monitoring {data.length} staff</p>
+                <p className="font-medium opacity-80">Monitoring {displayData.length} {activeTab}</p>
              </div>
           </div>
         }
       />
 
-      <div className="flex-1 bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
-        <DataTable 
-          columns={columns} 
-          data={data} 
-          isLoading={isLoading} 
-          searchKey="name"
-          searchPlaceholder="Audit staff performance..."
-        />
+      <div className="flex-1 bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden flex flex-col min-h-0">
+        <div className="p-4 border-b border-slate-100 shrink-0 bg-white flex justify-end">
+           <div className="inline-flex bg-slate-50 p-1 rounded-xl shadow-inner border border-slate-200/50">
+             <button 
+               onClick={() => setActiveTab('employees')}
+               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                 activeTab === 'employees' 
+                   ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
+                   : 'text-slate-400 hover:text-slate-600'
+               }`}
+             >
+               Employees
+             </button>
+             <button 
+               onClick={() => setActiveTab('admins')}
+               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                 activeTab === 'admins' 
+                   ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
+                   : 'text-slate-400 hover:text-slate-600'
+               }`}
+             >
+               Administrators
+             </button>
+           </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <DataTable 
+            columns={columns} 
+            data={displayData} 
+            isLoading={isLoading} 
+            searchKey="name"
+            searchPlaceholder={`Audit ${activeTab} performance...`}
+          />
+        </div>
       </div>
     </div>
   );

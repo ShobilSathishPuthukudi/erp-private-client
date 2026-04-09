@@ -598,7 +598,7 @@ router.get('/approvals/centers', verifyToken, isFinanceOrAdmin, async (req, res)
 
     const centers = await Department.findAll({
       where: { 
-        type: 'partner-center', 
+        type: { [Op.in]: ['partner center', 'partner centers', 'partner-center'] },
         auditStatus 
       },
       attributes: ['id', 'name', 'shortName', 'type', 'auditStatus', 'centerStatus', 'description', 'metadata', 'bdeId', 'createdAt', 'financeRemarks'],
@@ -623,7 +623,7 @@ router.put('/centers/:id/verify-audit', verifyToken, isFinanceOrAdmin, async (re
     }
 
     const center = await Department.findByPk(id);
-    if (!center || center.type !== 'partner-center') {
+    if (!center || !['partner center', 'partner centers', 'partner-center'].includes(center.type)) {
       return res.status(404).json({ error: 'Study center not located in registry' });
     }
 
@@ -1165,6 +1165,79 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
     res.json({ message: `Finance verification ${status} successfully`, student });
   } catch (error) {
     res.status(500).json({ error: 'Fee verification protocol failed' });
+  }
+});
+
+
+// --- Accreditation Pipeline ---
+router.get('/accreditation-requests', verifyToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const AccreditationRequest = sequelize.models.accreditation_request;
+    const Department = sequelize.models.department;
+    
+    const requestsRaw = await AccreditationRequest.findAll({
+      where: { status: status || 'finance_pending' },
+      include: [
+        { model: Department, as: 'center', attributes: ['name'] }
+      ]
+    });
+
+    const requests = await Promise.all(requestsRaw.map(async (r) => {
+      const u = r.assignedUniversityId ? await Department.findByPk(r.assignedUniversityId) : null;
+      const s = r.assignedSubDeptId ? await Department.findByPk(r.assignedSubDeptId) : null;
+      return { ...r.toJSON(), assignedUniversityName: u?.name, assignedSubDeptName: s?.name };
+    }));
+    
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch accreditation queue' });
+  }
+});
+
+router.put('/accreditation-requests/:id/approve', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { remarks } = req.body;
+    
+    const AccreditationRequest = sequelize.models.accreditation_request;
+    const Department = sequelize.models.department;
+    const Program = sequelize.models.program;
+    const ProgramOffering = sequelize.models.program_offering;
+
+    const request = await AccreditationRequest.findByPk(id);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    // Step 1: Approve Request
+    await request.update({ status: 'approved', remarks });
+
+    // Step 2: Auto-Generate Official Program
+    const subDept = await Department.findByPk(request.assignedSubDeptId);
+    
+    const newProgram = await Program.create({
+      name: request.courseName,
+      status: 'active',
+      universityId: request.assignedUniversityId,
+      subDeptId: request.assignedSubDeptId,
+      type: subDept ? subDept.name : 'Internal',
+      duration: 12,
+      maxLeaves: 0
+    });
+
+    await request.update({ linkedProgramId: newProgram.id });
+
+    // Step 3: Link Program to specific center
+    await ProgramOffering.create({
+      centerId: request.centerId,
+      programId: newProgram.id,
+      status: 'open',
+      accreditationRequestId: request.id
+    });
+
+    res.json({ message: 'Program formally finalized and injected into execution architecture' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Finalization protocol failed' });
   }
 });
 

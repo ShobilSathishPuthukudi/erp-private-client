@@ -649,18 +649,39 @@ router.get('/employee/performance', verifyToken, requireRole('employee'), async 
     
     const completionRate = total > 0 ? (completed / total) * 100 : 0;
 
-    // --- GAP-12 Institutional Context for Sales ---
+    // --- Institutional Context for Sales (GAP-12) ---
     let institutionalStats = {};
-    const isSales = req.user.departmentName?.toLowerCase().includes('Sales & CRM Admin');
+    const userRole = req.user.role?.toLowerCase() || '';
+
+    // Robust check for Sales affiliation
+    const userWithDept = await User.unscoped().findByPk(req.user.uid, {
+      include: [{ model: Department, as: 'department', attributes: ['name'] }]
+    });
+    const deptName = userWithDept?.department?.name?.toLowerCase() || '';
+    const isSales = userRole.includes('sales') || deptName.includes('sales');
 
     if (isSales) {
-      const [uniCount, progCount] = await Promise.all([
+      // Calculate Managed Leads (Partner Centers count)
+      const validBdeIds = [req.user.uid];
+      if (userWithDept?.referralCode) validBdeIds.push(userWithDept.referralCode);
+      const aliasUsers = await User.findAll({ where: { referralCode: req.user.uid }, attributes: ['uid'] });
+      aliasUsers.forEach(u => validBdeIds.push(u.uid));
+
+      const [uniCount, progCount, leadsCount] = await Promise.all([
         Department.count({ where: { type: 'universities' } }),
-        Program.count({})
+        Program.count({}),
+        Department.count({ 
+          where: { 
+            bdeId: { [Op.in]: validBdeIds },
+            type: { [Op.in]: ['partner-center', 'partner centers'] }
+          } 
+        })
       ]);
+
       institutionalStats = { 
         universityCount: uniCount, 
-        programCount: progCount 
+        programCount: progCount,
+        leadsCount: leadsCount
       };
     }
 

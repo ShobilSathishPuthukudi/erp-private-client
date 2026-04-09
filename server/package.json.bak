@@ -1,0 +1,4 @@
+cp server/package.json server/package.json.bak
+jq '.scripts.clean_ceos = "node ../tmp/delete_ceos.js"' server/package.json > server/package.json.tmp && mv server/package.json.tmp server/package.json
+npm run clean_ceos --prefix server
+mv server/package.json.bak server/package.json

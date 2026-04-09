@@ -24,14 +24,13 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
   });
 
   const [departments] = useState<string[]>([
-    'Administration',
-    'Operations',
-    'Finance',
-    'Human Resources',
-    'Marketing',
-    'Sales & CRM',
-    'Academic Operations Department',
-    'Employee Performance'
+    'Academic & Enrollment',
+    'Finance & Accounting',
+    'Operations & Regional',
+    'HR & Marketing',
+    'Sales intelligence',
+    'Security telemetry',
+    'Global(All)'
   ]);
 
   const [loading, setLoading] = useState(false);
@@ -53,12 +52,22 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
   }, []);
 
   const toggleScope = (dept: string) => {
-    setFormData(prev => ({
-      ...prev,
-      visibilityScope: prev.visibilityScope.includes(dept) 
+    setFormData(prev => {
+      if (dept === 'Global(All)' && !prev.visibilityScope.includes('Global(All)')) {
+        return { ...prev, visibilityScope: ['Global(All)'] };
+      }
+      
+      const isAlreadySelected = prev.visibilityScope.includes(dept);
+      let newScope = isAlreadySelected
         ? prev.visibilityScope.filter((d: string) => d !== dept) 
-        : [...prev.visibilityScope, dept]
-    }));
+        : [...prev.visibilityScope, dept];
+
+      if (dept !== 'Global(All)' && prev.visibilityScope.includes('Global(All)')) {
+        newScope = [dept];
+      }
+
+      return { ...prev, visibilityScope: newScope };
+    });
   };
 
   return (
@@ -225,7 +234,7 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
                 <div className="flex gap-3">
                   <button 
                     type="button" 
-                    onClick={() => setFormData({ ...formData, visibilityScope: departments })}
+                    onClick={() => setFormData({ ...formData, visibilityScope: ['Global(All)'] })}
                     className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 transition-colors"
                   >
                     Select All

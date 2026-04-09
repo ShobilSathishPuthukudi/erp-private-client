@@ -24,9 +24,17 @@ const getSubDeptId = (user) => {
 router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { status } = req.query; // pending | approved | rejected
+    
+    let queryAuditStatus = status || 'pending';
+    if (status === 'finance_pending') {
+      queryAuditStatus = 'PENDING_FINANCE';
+    } else if (status === 'approved') {
+      queryAuditStatus = 'approved';
+    }
+
     const whereClause = { 
       type: { [Op.in]: ['partner-center', 'partner centers'] }, 
-      auditStatus: status || 'pending' 
+      auditStatus: queryAuditStatus 
     };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit

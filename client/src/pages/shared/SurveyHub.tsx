@@ -8,6 +8,7 @@ interface Survey {
   title: string;
   description: string;
   questions: any[];
+  expiryDate?: string;
 }
 
 export default function SurveyHub() {
@@ -32,8 +33,20 @@ export default function SurveyHub() {
     }
   };
 
+  const isExpired = (date?: string) => {
+    if (!date) return false;
+    return new Date(date) < new Date();
+  };
+
   const handleSubmit = async () => {
     if (!activeSurvey) return;
+
+    if (isExpired(activeSurvey.expiryDate)) {
+      toast.error('This survey has expired and can no longer be submitted.');
+      setActiveSurvey(null);
+      fetchSurveys();
+      return;
+    }
 
     // Validate all questions answered
     const unanswered = activeSurvey.questions.filter(q => !answers[q.id]);
@@ -53,7 +66,7 @@ export default function SurveyHub() {
       setAnswers({});
       fetchSurveys();
     } catch (error) {
-      toast.error('Failed to submit feedback');
+      toast.error(error.response?.data?.error || 'Failed to submit feedback');
     } finally {
       setSubmitting(false);
     }
@@ -74,24 +87,34 @@ export default function SurveyHub() {
           </div>
 
           <div className="grid gap-4">
-            {surveys.length > 0 ? surveys.map(s => (
-              <div 
-                key={s.id}
-                onClick={() => setActiveSurvey(s)}
-                className="group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                     <HelpCircle className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+            {surveys.length > 0 ? surveys.map(s => {
+              const expired = isExpired(s.expiryDate);
+              return (
+                <div 
+                  key={s.id}
+                  onClick={() => !expired && setActiveSurvey(s)}
+                  className={`group bg-white p-6 rounded-2xl border transition-all flex items-center justify-between ${expired ? 'opacity-60 grayscale cursor-not-allowed border-slate-200' : 'cursor-pointer hover:shadow-md hover:border-blue-400 border-slate-200 shadow-sm'}`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${expired ? 'bg-slate-100' : 'bg-slate-50 group-hover:bg-blue-50'}`}>
+                       <HelpCircle className={`w-6 h-6 ${expired ? 'text-slate-300' : 'text-slate-400 group-hover:text-blue-500'}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900">{s.title}</h3>
+                      <div className="flex items-center gap-3">
+                         <p className="text-xs text-slate-500">{s.questions.length} Questions • Mandatory</p>
+                         {s.expiryDate && (
+                           <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${expired ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'}`}>
+                             {expired ? 'Expired' : `Expires: ${new Date(s.expiryDate).toLocaleDateString()}`}
+                           </span>
+                         )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{s.title}</h3>
-                    <p className="text-sm text-slate-500">{s.questions.length} Questions • Mandatory</p>
-                  </div>
+                  {!expired && <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />}
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />
-              </div>
-            )) : (
+              );
+            }) : (
               <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-slate-200 text-center">
                  <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="w-6 h-6" />
@@ -112,7 +135,14 @@ export default function SurveyHub() {
               Exit
             </button>
             <h2 className="text-2xl font-bold">{activeSurvey.title}</h2>
-            <p className="text-slate-400 text-sm mt-1">Please provide honest feedback to help us improve.</p>
+            <div className="flex items-center gap-3 mt-1">
+               <p className="text-slate-400 text-sm">Please provide honest feedback to help us improve.</p>
+               {activeSurvey.expiryDate && (
+                 <span className="text-[10px] font-black uppercase text-amber-400 bg-white/10 px-2 py-0.5 rounded-full">
+                   Closing: {new Date(activeSurvey.expiryDate).toLocaleString()}
+                 </span>
+               )}
+            </div>
           </div>
 
           <div className="p-8 space-y-10">

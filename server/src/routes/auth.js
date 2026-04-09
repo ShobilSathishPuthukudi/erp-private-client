@@ -289,13 +289,20 @@ router.get('/demo-centers', async (req, res) => {
       attributes: ['uid', 'name', 'email', 'devPassword'],
       order: [['name', 'ASC']]
     });
+    const seenNames = new Set();
+    const formatted = [];
     
-    const formatted = centers.map(c => ({
-      uid: c.uid,
-      name: c.name,
-      email: c.email,
-      password: c.devPassword || 'password123'
-    }));
+    for (const c of centers) {
+      if (!seenNames.has(c.name)) {
+        seenNames.add(c.name);
+        formatted.push({
+          uid: c.uid,
+          name: c.name,
+          email: c.email,
+          password: c.devPassword || 'password123'
+        });
+      }
+    }
 
     res.json(formatted);
   } catch (error) {
@@ -350,33 +357,44 @@ router.get('/demo-ceos', async (req, res) => {
 
 router.get('/demo-staff', async (req, res) => {
   try {
-    const staff = await User.findAll({
+    const staff = await User.unscoped().findAll({
       where: { 
-        role: 'employee',
+        role: { [Op.notIn]: ['student', 'Organization Admin', 'CEO', 'ceo', 'admin'] },
         status: 'active'
       },
       attributes: ['uid', 'name', 'email', 'role', 'devPassword'],
       include: [{ 
         model: Department, 
+        as: 'department',
         attributes: ['name'] 
       }],
-      limit: 30,
-      order: [['name', 'ASC']]
+      limit: 100,
+      order: [['createdAt', 'DESC']]
     });
 
-    const formatted = staff.map(s => ({
+    // Strategy: Exclude anyone clearly identified as an administrator
+    const filtered = staff.filter(s => {
+      const r = s.role.toLowerCase();
+      const n = s.name.toLowerCase();
+      // Exclude Department-level Admins, CEOs, and Centers
+      return !r.includes('admin') && !r.includes('administrator') && 
+             !r.includes('ceo') && !r.includes('center') &&
+             !n.includes('alpha partner center');
+    }).slice(0, 30);
+
+    const formatted = filtered.map(s => ({
       uid: s.uid,
       name: s.name,
       email: s.email,
       role: s.role,
-      department: s.Department?.name || 'Institutional Unit',
-      password: s.devPassword || (s.name === 'Shobil Sathish' ? 'shobilsathish' : 'password123')
+      department: s.department?.name || 'Institutional Unit',
+      password: s.devPassword || 'password123'
     }));
     
     res.json(formatted);
   } catch (error) {
     console.error('Demo Staff Fetch Error:', error);
-    res.status(500).json({ error: 'Failed to fetch institutional staff roster' });
+    res.status(500).json({ error: 'Failed to fetch institutional staff roster', details: error.message });
   }
 });
 

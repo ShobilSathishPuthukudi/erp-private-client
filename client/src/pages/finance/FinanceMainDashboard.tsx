@@ -193,23 +193,30 @@ function StatCard({ title, value, icon: Icon, color, trend, isAlert }: any) {
   };
 
   return (
-    <div className={`p-8 bg-white border border-slate-200 rounded-[32px] shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4 ring-offset-[#f8fafc]' : ''}`}>
+    <div className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4 ring-offset-[#f8fafc]' : ''}`}>
       <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
         <Icon className="w-40 h-40" />
       </div>
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-6">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 ${colors[color]}`}>
-            <Icon className="w-6 h-6" />
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${colors[color]}`}>
+            <Icon className="w-7 h-7" />
           </div>
           {isAlert && <span className="animate-ping absolute top-0 right-0 mt-6 mr-6 h-3 w-3 rounded-full bg-rose-500 opacity-75"></span>}
         </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-        <h4 className="text-3xl font-black text-slate-900 tracking-tighter">{value}</h4>
-        <p className={`text-[10px] font-bold mt-4 ${color === 'rose' || isAlert ? 'text-rose-600' : 'text-slate-400'}`}>
-          {trend}
-        </p>
+        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{title}</p>
+        <h4 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h4>
+        <div className="mt-6 flex items-center justify-between">
+            <p className={`text-[10px] font-black uppercase tracking-widest ${color === 'rose' || isAlert ? 'text-rose-600' : 'text-slate-400'}`}>
+                {trend}
+            </p>
+            {isAlert && (
+                <div className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-widest border border-rose-100">
+                    Priority
+                </div>
+            )}
+        </div>
       </div>
     </div>
   );

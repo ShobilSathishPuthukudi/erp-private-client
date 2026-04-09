@@ -37,7 +37,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
         attributes: ['id', 'name'] 
       });
       deptIds = allDepts.map(d => d.id);
-      names = allDepts.map(d => d.name);
+      names = [...allDepts.map(d => d.name), 'Global(All)', 'all'];
     }
     const now = new Date();
     const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
@@ -97,6 +97,8 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     };
     const activeCenters = await Department.count({ where: centerWhere });
     
+    const isFinance = names.some(n => n?.toLowerCase().includes('finance') || n?.toLowerCase().includes('account'));
+
     // Revenue Calcs
     const allInvoices = await Invoice.findAll({ 
       attributes: ['total', 'createdAt'],
@@ -105,7 +107,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
         model: Student,
         as: 'student',
         required: true,
-        where: whereStudent
+        where: isFinance ? {} : whereStudent
       }]
     });
     
@@ -187,7 +189,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
         total: { [Op.gt]: 50000 },
         createdAt: { [Op.lt]: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000) }
       },
-      include: restricted ? [{
+      include: (restricted && !isFinance) ? [{
         model: Student,
         as: 'student',
         required: true,
@@ -251,7 +253,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       revealRequests,
       enrollmentTrend,
       revenueTrend,
-      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales & crm admin')) ? {
+      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales & crm admin') || n?.toLowerCase().includes('sales intelligence')) ? {
         totalLeads: await Lead.count({ 
           where: restricted ? {
             [Op.or]: [
@@ -288,8 +290,9 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
           attributes: ['createdAt', 'updatedAt']
         })).reduce((sum, l) => sum + (new Date(l.updatedAt) - new Date(l.createdAt)), 0) / 100 / (1000 * 60 * 60 * 24)) || 5
       } : null,
-      departmentalBreakdown: await Promise.all(names.map(async (name, index) => {
-        const dId = deptIds[index];
+      departmentalBreakdown: await Promise.all((await Department.findAll({ attributes: ['id', 'name'], where: { id: { [Op.in]: deptIds } } })).map(async (dept) => {
+        const dId = dept.id;
+        const name = dept.name;
         const students = await Student.count({ 
           where: { [Op.or]: [{ deptId: dId }, { subDepartmentId: dId }] } 
         });
@@ -745,6 +748,8 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
 
   try {
     let data = [];
+    const isFinance = names.some(n => n?.toLowerCase().includes('finance') || n?.toLowerCase().includes('account'));
+    
     const whereStudent = restricted ? {
       [Op.or]: [
         { deptId: { [Op.in]: deptIds } },
@@ -809,7 +814,7 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
             model: Student, 
             as: 'student', 
             attributes: ['name'],
-            where: whereStudent 
+            where: isFinance ? {} : whereStudent 
           }],
           order: [['createdAt', 'DESC']],
           limit: 10
@@ -852,6 +857,41 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
           revenue: revenueSum, 
           overdue: overdueT 
         };
+        break;
+
+      case 'risk_aged':
+        const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
+        const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
+        const now = new Date();
+        const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+
+        const whereUserObj = restricted ? {
+          [Op.or]: [
+            { deptId: { [Op.in]: deptIds } },
+            { subDepartmentId: { [Op.in]: deptIds } }
+          ]
+        } : {};
+
+        data = await Task.findAll({
+          where: { 
+            status: { [Op.ne]: 'completed' },
+            deadline: { [Op.lt]: gracePeriodThreshold }
+          },
+          attributes: ['id', 'title', 'deadline', 'createdAt'],
+          include: [{
+            model: User,
+            as: 'assignee',
+            required: restricted ? true : false,
+            where: restricted ? whereUserObj : undefined,
+            attributes: ['name']
+          }, {
+            model: User,
+            as: 'assigner',
+            attributes: ['name']
+          }],
+          order: [['deadline', 'ASC']],
+          limit: 10
+        });
         break;
 
       default:

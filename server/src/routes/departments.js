@@ -43,8 +43,8 @@ router.get('/', verifyToken, isDeptManagedAdmin, async (req, res) => {
     const departments = await Department.findAll({
       where, 
       include: [
-        { model: User, as: 'admin', attributes: ['name', 'email', 'uid'] },
-        { model: Department, as: 'parent', attributes: ['id', 'name'] }
+        { model: User, as: 'admin', attributes: ['name', 'email', 'uid'], required: false },
+        { model: Department, as: 'parent', attributes: ['id', 'name'], required: false }
       ],
       order: [['createdAt', 'DESC']]
     });

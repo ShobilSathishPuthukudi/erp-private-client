@@ -68,11 +68,22 @@ export default function Employees() {
         api.get('/hr/vacancies'),
         api.get('/hr/roles')
       ]);
-      setEmployees(empRes.data);
-      setAllEmployees(empRes.data);
+      // Filter strictly for HR-registered personnel (those possessing a vacancyId)
+      // This structural discriminator naturally excludes external entities like Partner Centers, Students, and Universities
+      const hrPersonnel = empRes.data.filter((e: any) => e.vacancyId !== null && e.vacancyId !== undefined);
+      
+      setEmployees(hrPersonnel);
+      // allEmployees is used for Reporting Manager selection: include structural admins as possible managers
+      setAllEmployees(empRes.data.filter((e: any) => {
+        const r = e.role?.toLowerCase() || '';
+        return !['student', 'partner center', 'ceo'].includes(r);
+      }));
       setDepartments(deptRes.data);
       setVacancies(vacRes.data);
-      setRoles(roleRes.data);
+      setRoles(roleRes.data.filter((r: any) => {
+        const name = r.name?.toLowerCase() || '';
+        return !['student', 'partner center', 'ceo'].includes(name);
+      }));
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
@@ -135,9 +146,13 @@ export default function Employees() {
       }
       setIsModalOpen(false);
       
-      // Refresh list
+      // Refresh list with structural filters applied
       const res = await api.get('/hr/employees');
-      setEmployees(res.data);
+      setEmployees(res.data.filter((e: any) => e.vacancyId !== null && e.vacancyId !== undefined));
+      setAllEmployees(res.data.filter((e: any) => {
+        const r = e.role?.toLowerCase() || '';
+        return !['student', 'partner center', 'ceo'].includes(r);
+      }));
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Operation failed');
     }
@@ -153,8 +168,13 @@ export default function Employees() {
       await api.delete(`/hr/employees/${employeeToDelete.uid}`);
       toast.success('Personnel record purged successfully');
       setEmployeeToDelete(null);
+      // Refresh list with structural filters applied
       const res = await api.get('/hr/employees');
-      setEmployees(res.data);
+      setEmployees(res.data.filter((e: any) => e.vacancyId !== null && e.vacancyId !== undefined));
+      setAllEmployees(res.data.filter((e: any) => {
+        const r = e.role?.toLowerCase() || '';
+        return !['student', 'partner center', 'ceo'].includes(r);
+      }));
     } catch (error) {
       toast.error('Failed to eliminate personnel record');
     }
@@ -316,7 +336,10 @@ export default function Employees() {
                 >
                   <option value="">-- No Department Assigned --</option>
                   {departments
-                    .filter(d => !['university', 'partner-center', 'branch'].includes(d.type?.toLowerCase() || ''))
+                    .filter(d => {
+                      const type = d.type?.toLowerCase() || '';
+                      return ['departments', 'department', 'sub-departments', 'sub-department'].includes(type);
+                    })
                     .map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -353,8 +376,7 @@ export default function Employees() {
                     .filter(e => e.uid !== (editingEmployee as any)?.uid)
                     .filter(e => {
                       const role = e.role?.toLowerCase() || '';
-                      // Universal Leadership Recognition: Include all formal Admin, CEO, and Pillar Head roles
-                      return ['admin', 'ceo', 'manager', 'head', 'lead', 'ops', 'finance', 'hr', 'sales'].some(keyword => role.includes(keyword));
+                      return role.includes('admin');
                     })
                     .map((e) => (
                     <option key={e.uid} value={e.uid}>{e.name} ({toSentenceCase(e.role || '')})</option>

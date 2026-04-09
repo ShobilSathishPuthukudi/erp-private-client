@@ -47,11 +47,34 @@ export const applyExecutiveScope = async (req, res, next) => {
 
     const allDepts = await Department.findAll({ attributes: ['id', 'name', 'parentId'] });
     
-    // 1. Resolve Primary Scope (Fuzzy)
+    // 1. Resolve Primary Scope (Mapped Tokenization for new UX suites & Legacy primitives)
     const primaryDepts = allDepts.filter(d => {
       const dName = d.name.toLowerCase();
       return scopeStrings.some(s => {
-        const sClean = s.toLowerCase().replace(/ department| admin| portal/g, '').trim();
+        const sLower = s.toLowerCase();
+        
+        // Map the new UX suites down to raw primitive structural tokens
+        if (sLower.includes('academic') || sLower.includes('enrollment')) {
+          return dName.includes('academic');
+        }
+        if (sLower.includes('finance') || sLower.includes('account')) {
+          return dName.includes('finance');
+        }
+        if (sLower.includes('operation') || sLower.includes('regional')) {
+          return dName.includes('operation');
+        }
+        if (sLower.includes('hr') || sLower.includes('human resource') || sLower.includes('marketing')) {
+          return dName.includes('hr') || dName.includes('marketing') || dName.includes('human resource');
+        }
+        if (sLower.includes('sales')) {
+          return dName.includes('sales');
+        }
+        if (sLower.includes('security')) {
+          return dName.includes('security');
+        }
+
+        // Fallback for primitive unmapped legacy tokens (e.g. "Administration")
+        const sClean = sLower.replace(/ department| admin| portal/g, '').trim();
         return dName.includes(sClean);
       });
     });
@@ -78,11 +101,16 @@ export const applyExecutiveScope = async (req, res, next) => {
     
     console.log(`[VISIBILITY-SEC] User: ${uid} | Resolved Scope: ${names.length} entities | IDs: ${deptIds}`);
 
+    const isGlobal = scopeStrings.includes('all') || scopeStrings.some(s => {
+      const clean = s.toLowerCase().replace(/ scope$/i, '').trim();
+      return clean === 'global overseer' || clean === 'global(all)';
+    });
+
     req.visibility = {
-      restricted: true,
+      restricted: !isGlobal,
       deptIds,
-      names,
-      filter: {
+      names: [...new Set([...names, ...scopeStrings])],
+      filter: isGlobal ? {} : {
         [Op.or]: [
           { deptId: { [Op.in]: deptIds } },           // For User, Student, Task, etc.
           { departmentId: { [Op.in]: deptIds } },     // For Vacancy

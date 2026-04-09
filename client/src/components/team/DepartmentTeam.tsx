@@ -300,15 +300,6 @@ export default function Team() {
                <Download className="w-5 h-5" />
              </button>
           </div>
-          {canManage && (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 group"
-            >
-              <UserPlus className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-              Enroll Personnel
-            </button>
-          )}
         </div>
       </div>
 

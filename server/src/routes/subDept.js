@@ -349,6 +349,21 @@ router.post('/students/:id/reject', verifyToken, isSubDeptAdmin, async (req, res
 });
 
 // --- Accreditation Interest Requests ---
+
+router.get('/accreditation-ops/entities', verifyToken, isSubDeptAdmin, async (req, res) => {
+  try {
+    const universities = await Department.findAll({ 
+      where: { type: 'universities', status: { [Op.in]: ['active', 'staged'] } }, 
+      attributes: ['id', 'name'] 
+    });
+    const subDepts = await Department.findAll({ 
+      where: { type: { [Op.in]: ['sub-departments', 'sub-department'] }, status: { [Op.in]: ['active', 'staged'] } }, 
+      attributes: ['id', 'name'] 
+    });
+    res.json({ universities, subDepts });
+  } catch (error) { res.status(500).json({ error: 'Failed to fetch routing entities' }); }
+});
+
 router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     console.log("Accreditation Request Audit - USER:", {
@@ -357,15 +372,16 @@ router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, r
       deptId: req.user.deptId
     });
 
-    const { unit } = req.query;
+    const { unit, status } = req.query;
     const roleNormalized = req.user.role?.toLowerCase().trim();
-    const targetType = unit || (['Organization Admin', 'Operations Admin'].includes(roleNormalized) ? null : roleNormalized);
+    const isGlobalOps = ['organization admin', 'operations admin', 'operations administrator', 'academic operations admin', 'academic operations department'].includes(roleNormalized);
+    const targetType = unit || (isGlobalOps ? null : roleNormalized);
     
-    console.log("Accreditation Request Filter:", { unit, targetType, role: req.user.role });
+    console.log("Accreditation Request Filter:", { unit, status, targetType, role: req.user.role });
 
     const requests = await AccreditationRequest.findAll({
       where: { 
-          status: 'pending',
+          status: status || 'pending',
           type: targetType ? targetType : { [Op.ne]: null }
       },
       include: [
@@ -387,25 +403,20 @@ router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, r
 router.put('/accreditation-requests/:id/approve', verifyToken, isSubDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { programId, remarks } = req.body; 
+    const { assignedUniversityId, assignedSubDeptId, remarks } = req.body; 
     
     const request = await AccreditationRequest.findByPk(id);
     if (!request) return res.status(404).json({ error: 'Accreditation request not found' });
 
-    // 1. Link the program and approve the request
+    // Step 1: Assign administrative routing blocks and transfer to finance governance.
     await request.update({ 
-      status: 'approved', 
-      linkedProgramId: programId,
+      status: 'finance_pending', 
+      assignedUniversityId,
+      assignedSubDeptId,
       remarks 
     });
 
-    // 2. Create the offering authorization for the center
-    await ProgramOffering.findOrCreate({
-      where: { centerId: request.centerId, programId },
-      defaults: { status: 'open', accreditationRequestId: request.id }
-    });
-
-    res.json({ message: 'Institutional accreditation approved and program linked', request });
+    res.json({ message: 'Request formally authorized and transferred to Finance Queue', request });
   } catch (error) {
     console.error('Accreditation approval error:', error);
     res.status(500).json({ error: 'Accreditation approval protocol failed' });

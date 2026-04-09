@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import sequelize from '../config/db.js';
 
 const User = sequelize.define('user', {
@@ -86,7 +86,14 @@ const User = sequelize.define('user', {
     defaultValue: 20,
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  defaultScope: {
+    where: {
+      name: {
+        [Op.notIn]: ['Alpha Partner center']
+      }
+    }
+  }
 });
 
 export default User;

@@ -22,6 +22,26 @@ import CEOPanelCreate from './CEOPanelCreate';
 import { api } from '@/lib/api';
 
 export default function CEOPanelsList() {
+  const formatScopes = (scopes: any) => {
+    const raw = Array.isArray(scopes) ? scopes : (scopes || '').split(',');
+    const map: Record<string, string> = {
+      'Administration': 'Global(All)',
+      'Operations': 'Operations & Regional',
+      'Finance': 'Finance & Accounting',
+      'Human Resources': 'HR & Marketing',
+      'Marketing': 'HR & Marketing',
+      'Sales & CRM': 'Sales intelligence',
+      'Academic Operations Department': 'Academic & Enrollment',
+      'Employee Performance': 'HR & Marketing'
+    };
+    const parsed = [...new Set(raw.filter(Boolean).map((s: string) => map[s.trim()] || s.trim()))];
+    
+    if (parsed.includes('Global(All)')) {
+      return ['Global(All)'];
+    }
+    return parsed;
+  };
+
   const [panels, setPanels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -104,7 +124,7 @@ export default function CEOPanelsList() {
       'Panel Name': p.name,
       'Executive User': p.ceoUser?.name || 'Unassigned',
       Status: p.status,
-      Visibility: Array.isArray(p.visibilityScope) ? p.visibilityScope.join(', ') : p.visibilityScope
+      Visibility: formatScopes(p.visibilityScope).join(', ')
     }));
     
     const ws = XLSX.utils.json_to_sheet(data);
@@ -121,7 +141,7 @@ export default function CEOPanelsList() {
       p.name,
       p.ceoUser?.name || 'Unassigned',
       p.status,
-      Array.isArray(p.visibilityScope) ? p.visibilityScope.join(', ') : p.visibilityScope
+      formatScopes(p.visibilityScope).join(', ')
     ]);
 
     doc.setFontSize(18);
@@ -314,7 +334,7 @@ export default function CEOPanelsList() {
                   <div className="space-y-2">
                     <p className="text-[10px] text-slate-400 font-bold tracking-wider px-1">Visibility scope</p>
                     <div className="flex flex-wrap gap-2">
-                      {(Array.isArray(panel.visibilityScope) ? panel.visibilityScope : (panel.visibilityScope || '').split(',')).map((s: string) => (
+                      {formatScopes(panel.visibilityScope).map((s: string) => (
                         <span key={s} className="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-1 rounded-lg font-bold border border-slate-200/50">
                           {s}
                         </span>
@@ -414,7 +434,7 @@ export default function CEOPanelsList() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
-                          {(Array.isArray(panel.visibilityScope) ? panel.visibilityScope : (panel.visibilityScope || '').split(',')).slice(0, 3).map((s: string) => (
+                          {formatScopes(panel.visibilityScope).slice(0, 3).map((s: string) => (
                             <span key={s} className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded font-bold">
                               {s}
                             </span>
