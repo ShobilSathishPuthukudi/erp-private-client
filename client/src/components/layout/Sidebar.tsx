@@ -706,7 +706,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     if (r.includes('operations') || r.includes('academic')) return 'operations';
     
     // Unit Mappings
-    if (r.includes('openschool')) return 'openschool';
+    if (r.includes('open school') || r.includes('openschool')) return 'openschool';
     if (r.includes('online')) return 'online';
     if (r.includes('skill')) return 'skill';
     if (r.includes('bvoc')) return 'bvoc';

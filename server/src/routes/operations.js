@@ -65,7 +65,7 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
 router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, infrastructureDetails, programIds } = req.body;
+    const { status, reason, infrastructureDetails, programIds, password } = req.body;
 
     const center = await Department.findByPk(id);
     if (!center || !['partner-center', 'partner centers'].includes(center.type)) {
@@ -82,6 +82,18 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
       infrastructureDetails: infrastructureDetails || center.infrastructureDetails,
       status: 'inactive', // Remains inactive until Finance Approval
     });
+
+    // Update Center Admin credentials if password provisioned
+    if (status === 'approved' && password && center.adminId) {
+      const adminUser = await User.findOne({ where: { uid: center.adminId } });
+      if (adminUser) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await adminUser.update({ 
+          password: hashedPassword, 
+          devPassword: password 
+        });
+      }
+    }
 
     if (status === 'approved' && center.bdeId) {
         await Notification.create({

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Phone, Globe, ShieldCheck, FileText, Loader2, ArrowRight, Eye, EyeOff, X, GraduationCap, Building2, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, Globe, ShieldCheck, FileText, Loader2, ArrowRight, X, GraduationCap, Building2, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -22,8 +22,6 @@ export default function CenterRegistration() {
     phone: '',
     website: 'https://www.google.com',
     description: '',
-    password: '',
-    confirmPassword: '',
     infrastructure: {
       labCapacity: '',
       classroomCount: '',
@@ -34,15 +32,34 @@ export default function CenterRegistration() {
     }
   });
 
-  const [passwordMatch, setPasswordMatch] = useState(true);
-  const [passwordLengthError, setPasswordLengthError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    setPasswordMatch(formData.password === formData.confirmPassword || !formData.confirmPassword);
-    if (formData.password.length >= 6) setPasswordLengthError(false);
-  }, [formData.password, formData.confirmPassword]);
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    switch (name) {
+      case 'name':
+        if (!value.trim()) error = 'Name is required';
+        else if (value.length < 3) error = 'Name must be at least 3 characters';
+        else if (value.length > 30) error = 'Name must not exceed 30 characters';
+        break;
+      case 'email':
+        if (!value.trim()) error = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
+        break;
+      case 'phone':
+        if (!value.trim()) error = 'Phone is required';
+        else if (value.length > 13) error = 'Phone must not exceed 13 characters';
+        break;
+      case 'website':
+        if (value && value.length > 30) error = 'Website must not exceed 30 characters';
+        break;
+      case 'description':
+        if (value && value.length > 50) error = 'Description must not exceed 50 characters';
+        break;
+    }
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return error;
+  };
 
   useEffect(() => {
     fetchBdeInfo();
@@ -101,16 +118,21 @@ export default function CenterRegistration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Final validation pass
+    const nameErr = validateField('name', formData.name);
+    const emailErr = validateField('email', formData.email);
+    const phoneErr = validateField('phone', formData.phone);
+    const webErr = validateField('website', formData.website);
+    const descErr = validateField('description', formData.description);
+
+    if (nameErr || emailErr || phoneErr || webErr || descErr) {
+        toast.error('Please correct the validation errors before proceeding');
+        return;
+    }
+
     if (formData.interest.programIds.length === 0) {
       toast.error('Select at least one program to initialize partnership');
-      return;
-    }
-    if (!passwordMatch) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    if (formData.password.length < 6) {
-      setPasswordLengthError(true);
       return;
     }
 
@@ -221,14 +243,19 @@ export default function CenterRegistration() {
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input 
+                    id="center-name"
                     type="text" 
                     required
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:border-blue-600 focus:ring-0 transition-all"
+                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all ${errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="Acme Institute"
                     value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, name: e.target.value});
+                        validateField('name', e.target.value);
+                    }}
                   />
                 </div>
+                {errors.name && <p id="name-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.name}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -236,14 +263,19 @@ export default function CenterRegistration() {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input 
+                    id="primary-email"
                     type="email" 
                     required
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:border-blue-600 focus:ring-0 transition-all"
+                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all ${errors.email ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="center@example.com"
                     value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, email: e.target.value});
+                        validateField('email', e.target.value);
+                    }}
                   />
                 </div>
+                {errors.email && <p id="email-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.email}</p>}
               </div>
             </div>
 
@@ -253,14 +285,19 @@ export default function CenterRegistration() {
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input 
+                    id="contact-phone"
                     type="tel" 
                     required
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:border-blue-600 focus:ring-0 transition-all font-mono"
+                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all font-mono ${errors.phone ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="+91-XXXXX-XXXXX"
                     value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, phone: e.target.value});
+                        validateField('phone', e.target.value);
+                    }}
                   />
                 </div>
+                {errors.phone && <p id="phone-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.phone}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -268,74 +305,19 @@ export default function CenterRegistration() {
                 <div className="relative">
                   <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input 
+                    id="institutional-website"
                     type="url" 
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:border-blue-600 focus:ring-0 transition-all"
+                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all ${errors.website ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="https://acme-edu.org"
                     value={formData.website}
-                    onChange={e => setFormData({...formData, website: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, website: e.target.value});
+                        validateField('website', e.target.value);
+                    }}
                   />
                 </div>
+                {errors.website && <p id="website-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.website}</p>}
               </div>
-            </div>
-
-            {/* Credential Block */}
-            <div className="p-5 bg-blue-50/30 rounded-[1.5rem] border border-blue-100/50 space-y-4">
-              <div className="flex items-center gap-3 mb-1">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em]">Security Credentials</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Create Password</label>
-                  <div className="relative">
-                    <input 
-                      type={showPassword ? "text" : "password"}
-                      required
-                      className={`w-full bg-white border-2 rounded-xl pl-4 pr-11 py-2.5 text-sm font-bold focus:ring-0 transition-all shadow-sm ${!passwordMatch ? 'border-red-200 focus:border-red-500' : 'border-white focus:border-blue-600'}`}
-                      placeholder="••••••"
-                      value={formData.password}
-                      onChange={e => setFormData({...formData, password: e.target.value})}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {passwordLengthError ? (
-                    <p className="text-[8px] font-black text-red-500 pl-1 uppercase tracking-wider animate-pulse">Password must be at least 6 characters</p>
-                  ) : (
-                    <p className="text-[8px] font-medium text-slate-400 pl-1 uppercase tracking-wider">Minimum 6 characters required</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Confirm Password</label>
-                  <div className="relative">
-                    <input 
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      className={`w-full bg-white border-2 rounded-xl pl-4 pr-11 py-2.5 text-sm font-bold focus:ring-0 transition-all shadow-sm ${!passwordMatch ? 'border-red-200 focus:border-red-500' : 'border-white focus:border-blue-600'}`}
-                      placeholder="••••••"
-                      value={formData.confirmPassword}
-                      onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              {!passwordMatch && (
-                <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1 animate-pulse">Credentials do not match</p>
-              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -419,23 +401,28 @@ export default function CenterRegistration() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Institutional Description</label>
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Institutional Description (Optional)</label>
               <div className="relative">
                 <FileText className="absolute left-4 top-3 w-3.5 h-3.5 text-slate-300" />
                 <textarea 
+                  id="institutional-description"
                   rows={2}
-                  required
-                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl pl-11 pr-4 py-2 text-sm font-medium focus:bg-white focus:border-blue-600 focus:ring-0 transition-all resize-none"
-                  placeholder="Tell us about your center and existing operations..."
+                  className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2 text-sm font-medium focus:bg-white focus:ring-0 transition-all resize-none ${errors.description ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
+                  placeholder="Tell us about your center and existing operations... (Optional)"
                   value={formData.description}
-                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  onChange={e => {
+                      setFormData({...formData, description: e.target.value});
+                      validateField('description', e.target.value);
+                  }}
                 />
               </div>
+              {errors.description && <p className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.description}</p>}
             </div>
 
             <button 
+              id="submit-registration"
               type="submit" 
-              disabled={submitting || !passwordMatch}
+              disabled={submitting || Object.values(errors).some(err => !!err)}
               className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
             >
               {submitting ? (

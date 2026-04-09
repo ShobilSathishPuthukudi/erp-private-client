@@ -105,6 +105,13 @@ export default function DashboardLanding() {
     },
   ];
 
+  const colors: Record<string, { bg: string, text: string }> = {
+    'bg-amber-500': { bg: 'bg-amber-50', text: 'text-amber-600' },
+    'bg-blue-500': { bg: 'bg-blue-50', text: 'text-blue-600' },
+    'bg-indigo-600': { bg: 'bg-indigo-50', text: 'text-indigo-600' },
+    'bg-emerald-500': { bg: 'bg-emerald-50', text: 'text-emerald-600' }
+  };
+
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Syncing Jurisdictional Hub...</div>;
 
   return (
@@ -137,48 +144,45 @@ export default function DashboardLanding() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpis.map((kpi, idx) => (
-          <Link 
-            key={idx} 
-            to={kpi.path}
-            className="group relative bg-white rounded-[2rem] p-7 border border-slate-100 shadow-xl shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
-          >
-            {/* Hover Insight Overlay */}
-            <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm p-8 flex flex-col justify-center translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-20">
-              <p className="text-blue-400 font-black uppercase tracking-widest text-[10px] mb-2">Unit Intelligence</p>
-              <p className="text-slate-100 text-sm font-medium leading-relaxed">
-                {kpi.details}
-              </p>
-              <div className="mt-6 flex items-center gap-2 text-white font-black text-[10px] uppercase tracking-tighter">
-                Access Module <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
-
-            <div className={`absolute -right-6 -bottom-6 text-slate-900 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
-               <kpi.icon className="w-40 h-40" />
-            </div>
-            
-            <div className="relative z-10 flex flex-col h-full">
-              <div className={`${kpi.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
-                <kpi.icon className="w-7 h-7" />
-              </div>
-              
-              <div className="flex-1">
-                <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.15em] mb-1">
-                  {kpi.label}
-                </p>
-                <p className="text-4xl font-black text-slate-900 tracking-tighter mb-4 group-hover:text-blue-600 transition-colors">
-                  {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
-                </p>
+        {kpis.map((kpi, idx) => {
+          const color = colors[kpi.color] || { bg: 'bg-slate-50', text: 'text-slate-600' };
+          return (
+            <Link 
+              key={idx} 
+              to={kpi.path}
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 hover:border-blue-200 hover:scale-[1.01]"
+            >
+              <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                <kpi.icon className="w-40 h-40" />
               </div>
 
-              <div className="pt-5 border-t border-slate-50 flex items-center justify-between mt-auto">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">{kpi.trend}</span>
-                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start mb-6">
+                  <div className={`p-3 rounded-xl ${color.bg} shadow-inner`}>
+                    <kpi.icon className={`w-6 h-6 ${color.text}`} />
+                  </div>
+                  <div className="text-slate-200 group-hover:text-slate-400 transition-all group-hover:translate-x-1 opacity-0 group-hover:opacity-100">
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-0.5">
+                    {kpi.label}
+                  </h3>
+                  <p className="text-3xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">
+                    {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
+                  </p>
+                </div>
+
+                <div className="pt-5 border-t border-slate-50 flex items-center justify-between mt-6">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">{kpi.trend}</span>
+                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">View Details</span>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Analytics Visualization Section */}

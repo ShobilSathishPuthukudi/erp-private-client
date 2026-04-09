@@ -35,18 +35,20 @@ router.get('/dev-hr-employees', async (req, res) => {
 router.get('/bde-info/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    const bde = await User.findOne({
+    const bde = await User.unscoped().findOne({
       where: { 
         [Op.or]: [
           { referralCode: code },
           { uid: code }
         ],
-        role: { [Op.in]: ['Sales & CRM Admin', 'employee'] } // Inclusive institutional role
+        role: { [Op.in]: ['Sales & CRM Admin', 'Employee', 'employee'] } // Inclusive institutional role
       },
       attributes: ['uid', 'name', 'referralCode', 'role'],
       include: [{
         model: Department,
-        attributes: ['name']
+        as: 'department',
+        attributes: ['name'],
+        required: false
       }]
     });
 
@@ -118,21 +120,23 @@ router.post('/register-center', async (req, res) => {
   const { sequelize } = await import('../models/index.js');
   const t = await sequelize.transaction();
   try {
-    const { name, email, phone, website, code, password, infrastructure, description, interest } = req.body;
+    const { name, email, phone, website, code, infrastructure, description, interest } = req.body;
 
-    if (!name || !phone || !code || !email || !password || !interest?.universityId || !interest?.programIds || interest?.programIds.length === 0) {
-      return res.status(400).json({ error: 'All fields (Name, Email, Password, Phone, University, and Program) are strictly mandatory.' });
+    if (!name || !phone || !code || !email || !interest?.universityId || !interest?.programIds || interest?.programIds.length === 0) {
+      return res.status(400).json({ error: 'All fields (Name, Email, Phone, University, and Program) are strictly mandatory.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const placeholderPassword = 'provision_pending';
+    const hashedPassword = await bcrypt.hash(placeholderPassword, 10);
 
     // 1. Verify BDE via Referral Code or UID
-    const bde = await User.findOne({ 
+    const bde = await User.unscoped().findOne({ 
       where: { 
         [Op.or]: [
           { referralCode: code },
           { uid: code }
-        ]
+        ],
+        role: { [Op.in]: ['Sales & CRM Admin', 'Employee', 'employee'] }
       } 
     });
     if (!bde) {
@@ -166,7 +170,7 @@ router.post('/register-center', async (req, res) => {
       uid: centerUid,
       email: email,
       password: hashedPassword,
-      devPassword: password, // Preserve for quick-login dev panel
+      devPassword: placeholderPassword, // Preserve for quick-login dev panel
       name: name, // Center Legal Name as initial user name
       role: 'Partner Center',
       deptId: center.id,

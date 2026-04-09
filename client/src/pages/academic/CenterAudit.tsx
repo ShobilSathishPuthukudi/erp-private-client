@@ -59,6 +59,7 @@ export default function CenterAudit() {
   const [selectedCenter, setSelectedCenter] = useState<Center | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [provisioningPassword, setProvisioningPassword] = useState('');
   const [selectedPrograms, setSelectedPrograms] = useState<number[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
 
@@ -101,6 +102,10 @@ export default function CenterAudit() {
       toast.error('Audit remarks are mandatory for protocol clearance');
       return;
     }
+    if (status === 'approved' && !provisioningPassword.trim()) {
+      toast.error('Official security credentials must be provisioned for activation');
+      return;
+    }
     if (status === 'approved' && !selectedPrograms.length) {
       toast.error('Select at least one academic program to authorize center');
       return;
@@ -111,12 +116,14 @@ export default function CenterAudit() {
       await api.put(`/operations/centers/${selectedCenter?.id}/audit`, {
         status,
         reason: rejectionReason,
+        password: provisioningPassword,
         programIds: selectedPrograms
       });
       toast.success(status === 'approved' ? 'Verified by Operations. Moving to Finance for clearance.' : 'Center rejected successfully');
       setIsReviewModalOpen(false);
       setSelectedCenter(null);
       setRejectionReason('');
+      setProvisioningPassword('');
       setTriedSubmit(false);
       setSelectedPrograms([]);
       fetchCenters();
@@ -184,6 +191,7 @@ export default function CenterAudit() {
                 setSelectedCenter(row.original);
                 setIsReviewModalOpen(true);
                 setRejectionReason('');
+                setProvisioningPassword('');
                 
                 // Support both legacy single ID and new array-based selection
                 const requestedIds = row.original.metadata?.primaryInterest?.programIds || [];
@@ -376,6 +384,31 @@ export default function CenterAudit() {
                     className={`w-full bg-slate-50 border rounded-xl p-4 text-sm font-bold outline-none transition-all min-h-[100px] text-slate-900 ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : (triedSubmit && !rejectionReason.trim() ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 shadow-sm')}`}
                 />
             </div>
+
+            {activeTab === 'pending' && !isReadOnly && (
+              <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4 shadow-sm">
+                <div className="flex items-center gap-3 mb-1">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em]">Security Provisioning</h3>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1 flex items-center gap-2">
+                    Official Admin Password
+                    <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full lowercase">required for activation</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      className={`w-full bg-white border-2 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-0 transition-all shadow-sm ${triedSubmit && !provisioningPassword.trim() ? 'border-rose-400 bg-rose-50/30' : 'border-white focus:border-blue-600'}`}
+                      placeholder="Provision official password..."
+                      value={provisioningPassword}
+                      onChange={e => setProvisioningPassword(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-[8px] font-medium text-slate-400 pl-1 uppercase tracking-wider italic">This password will be required for the center's first login.</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Fixed Footer Buttons */}
