@@ -18,6 +18,7 @@ import {
   Globe
 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 export default function OpsDashboard() {
   const [stats, setStats] = useState<any>({
@@ -33,10 +34,19 @@ export default function OpsDashboard() {
 
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
 
   const handleLogClick = (log: any) => {
     setSelectedLog(log);
     setIsModalOpen(true);
+  };
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
   };
 
   useEffect(() => {
@@ -52,9 +62,29 @@ export default function OpsDashboard() {
   }, []);
 
   const kpis = [
-    { label: 'Total Managed Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', isPositive: true },
-    { label: 'Institutional Approval %', value: `${stats.approvalRate}%`, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+2.4%', isPositive: true },
-    { label: 'Rejection Velocity', value: `${stats.rejectionRate}%`, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '+0.8%', isPositive: false },
+    { label: 'Total Managed Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', isPositive: true, type: 'totalStudents' },
+    { label: 'Institutional Approval %', value: `${stats.approvalRate}%`, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+2.4%', isPositive: true, type: 'students' },
+    { label: 'Rejection Velocity', value: `${stats.rejectionRate}%`, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '+0.8%', isPositive: false, type: 'students' },
+    { 
+      label: 'Total Active Centers', 
+      value: stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.centerCount || 0), 0) || 0, 
+      icon: School, 
+      color: 'text-amber-600', 
+      bg: 'bg-amber-50', 
+      trend: '+4%', 
+      isPositive: true, 
+      type: 'centers' 
+    },
+    { 
+      label: 'Total Active Programs', 
+      value: stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.programCount || 0), 0) || 0, 
+      icon: BookOpen, 
+      color: 'text-indigo-600', 
+      bg: 'bg-indigo-50', 
+      trend: '+1.5%', 
+      isPositive: true, 
+      type: 'programs' 
+    },
   ];
 
   return (
@@ -68,8 +98,12 @@ export default function OpsDashboard() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden">
+        {kpis.map((kpi: any, i) => (
+          <div 
+            key={i} 
+            onClick={() => openDrillDown(kpi.type, kpi.label)}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
             <div className={`absolute -right-6 -bottom-6 ${kpi.color} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
               <kpi.icon className="w-40 h-40" />
             </div>
@@ -227,6 +261,13 @@ export default function OpsDashboard() {
         </div>
       </div>
 
+      {/* Forensic Drill-Down Modal */}
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
       {/* Log Detail Modal */}
       <Modal
         isOpen={isModalOpen}
