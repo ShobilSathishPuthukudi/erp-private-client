@@ -18,6 +18,7 @@ import {
   Globe
 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 export default function OpsDashboard() {
   const [stats, setStats] = useState<any>({
@@ -31,13 +32,24 @@ export default function OpsDashboard() {
     totalBatches: 0
   });
 
+  const [activeUnit, setActiveUnit] = useState('all');
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
 
   const handleLogClick = (log: any) => {
     setSelectedLog(log);
     setIsModalOpen(true);
   };
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -51,25 +63,91 @@ export default function OpsDashboard() {
     fetchStats();
   }, []);
 
+  const units = ['all', ...(stats.unitBreakdown?.map((u: any) => u.name) || [])];
+
+  const filteredStats = useMemo(() => {
+    if (activeUnit === 'all') return stats;
+    const unit = stats.unitBreakdown?.find((u: any) => u.name === activeUnit);
+    if (!unit) return stats;
+    return {
+      ...stats,
+      totalStudents: unit.studentCount,
+      // For specific units, we'll keep the dashboard's global rates for now 
+      // as the breakdown doesn't provide per-unit rates.
+      activeCenters: unit.centerCount,
+      activePrograms: unit.programCount
+    };
+  }, [stats, activeUnit]);
+
   const kpis = [
-    { label: 'Total Managed Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', isPositive: true },
-    { label: 'Institutional Approval %', value: `${stats.approvalRate}%`, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+2.4%', isPositive: true },
-    { label: 'Rejection Velocity', value: `${stats.rejectionRate}%`, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '+0.8%', isPositive: false },
+    { 
+      label: activeUnit === 'all' ? 'Total Managed Students' : `${activeUnit} Students`, 
+      value: filteredStats.totalStudents, 
+      icon: Users, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50', 
+      trend: '+12%', 
+      isPositive: true, 
+      type: 'totalStudents' 
+    },
+    { label: 'Institutional Approval %', value: `${stats.approvalRate}%`, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+2.4%', isPositive: true, type: 'students' },
+    { label: 'Rejection Velocity', value: `${stats.rejectionRate}%`, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '+0.8%', isPositive: false, type: 'students' },
+    { 
+      label: activeUnit === 'all' ? 'Total Active Centers' : `${activeUnit} Centers`, 
+      value: activeUnit === 'all' 
+        ? (stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.centerCount || 0), 0) || 0)
+        : filteredStats.activeCenters, 
+      icon: School, 
+      color: 'text-amber-600', 
+      bg: 'bg-amber-50', 
+      trend: '+4%', 
+      isPositive: true, 
+      type: 'centers' 
+    },
+    { 
+      label: activeUnit === 'all' ? 'Total Active Programs' : `${activeUnit} Programs`, 
+      value: activeUnit === 'all'
+        ? (stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.programCount || 0), 0) || 0)
+        : filteredStats.activePrograms, 
+      icon: BookOpen, 
+      color: 'text-indigo-600', 
+      bg: 'bg-indigo-50', 
+      trend: '+1.5%', 
+      isPositive: true, 
+      type: 'programs' 
+    },
   ];
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Academic Overview</h1>
           <p className="text-slate-500 font-medium">Real-time institutional operations analytics & flow tracking.</p>
+        </div>
+
+        {/* Dynamic Unit Switcher */}
+        <div className="flex bg-white/50 backdrop-blur-sm p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm w-fit">
+            {units.map((unit) => (
+              <button
+                key={unit}
+                onClick={() => setActiveUnit(unit)}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeUnit === unit ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                {unit === 'all' ? 'All Systems' : unit}
+              </button>
+            ))}
         </div>
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden">
+          <div 
+            key={i} 
+            onClick={() => openDrillDown(kpi.type, kpi.label)}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
             <div className={`absolute -right-6 -bottom-6 ${kpi.color} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
               <kpi.icon className="w-40 h-40" />
             </div>
@@ -91,55 +169,6 @@ export default function OpsDashboard() {
         ))}
       </div>
 
-      {/* Sub-Department Pulse */}
-      <div className="space-y-4">
-         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-500" />
-            Sub-Department Pulse
-         </h2>
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.unitBreakdown?.map((unit: any) => (
-               <div key={unit.id} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/30 hover:shadow-xl transition-all group relative overflow-hidden">
-                  <div className="absolute -right-4 -bottom-4 text-indigo-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
-                    <Layers className="w-32 h-32" />
-                  </div>
-                  
-                  <div className="relative z-10">
-                     <h4 className="text-[11px] font-black text-slate-900 mb-6 uppercase tracking-[0.15em] border-b border-slate-50 pb-3">{unit.name}</h4>
-                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                <Users className="w-4 h-4 text-blue-500" />
-                              </div>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Students</span>
-                           </div>
-                           <span className="text-sm font-black text-slate-900 tracking-tight">{unit.studentCount}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                <BookOpen className="w-4 h-4 text-emerald-500" />
-                              </div>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Programs</span>
-                           </div>
-                           <span className="text-sm font-black text-slate-900 tracking-tight">{unit.programCount}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                                <School className="w-4 h-4 text-amber-500" />
-                              </div>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Centers</span>
-                           </div>
-                           <span className="text-sm font-black text-slate-900 tracking-tight">{unit.centerCount}</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            ))}
-         </div>
-      </div>
 
       {/* Main Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -315,6 +344,14 @@ export default function OpsDashboard() {
           </div>
         )}
       </Modal>
+
+      {/* Forensic Drill-Down Modal */}
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
       {/* Governance & Configuration Panel */}
       <div className="bg-slate-900 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden">
         <Activity className="absolute -right-4 -bottom-4 w-48 h-48 text-white/5 rotate-6" />

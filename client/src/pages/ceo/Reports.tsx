@@ -32,7 +32,7 @@ export default function Reports() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
-      doc.text('IITS RPS INSTITUTION', margin, 25);
+      doc.text('RPS INSTITUTION', margin, 25);
       
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -95,7 +95,7 @@ export default function Reports() {
       // Footer
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
-      doc.text('This document is property of IITS RPS. Distribution to unauthorized personnel is strictly prohibited.', pageWidth / 2, 285, { align: 'center' });
+      doc.text('This document is property of RPS. Distribution to unauthorized personnel is strictly prohibited.', pageWidth / 2, 285, { align: 'center' });
 
       doc.save(`Executive_Report_${format(selectedMonth, 'MMMM_yyyy')}.pdf`);
       toast.success('Executive Report generated successfully');

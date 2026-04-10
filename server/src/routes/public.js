@@ -150,7 +150,7 @@ router.post('/register-center', async (req, res) => {
       name,
       shortName: name.substring(0, 5).toUpperCase(),
       type: 'partner centers',
-      status: 'inactive',
+      status: 'proposed',
       auditStatus: 'pending', // Key for Ops Audit
       bdeId,
       metadata: {

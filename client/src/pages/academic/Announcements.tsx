@@ -27,8 +27,8 @@ export default function CenterAnnouncements() {
     message: '', 
     priority: 'normal', 
     expiryDate: '',
-    programId: '',
-    centerId: ''
+    programId: 'global',
+    centerId: 'all'
   });
 
   const [centers, setCenters] = useState<any[]>([]);
@@ -39,7 +39,7 @@ export default function CenterAnnouncements() {
       setIsLoading(true);
       const [annRes, centerRes, progRes] = await Promise.all([
         api.get('/announcements/ops'),
-        api.get('/academic/centers'),
+        api.get('/academic/centers?status=active'),
         api.get('/academic/programs')
       ]);
       setAnnouncements(annRes.data);
@@ -61,19 +61,20 @@ export default function CenterAnnouncements() {
     formData.message.trim() !== '' &&
     formData.priority !== '' &&
     formData.expiryDate !== '' &&
-    (formData.programId !== '' || formData.centerId !== '');
+    formData.programId !== '' &&
+    formData.centerId !== '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.post('/announcements/ops', {
         ...formData,
-        programId: formData.programId || null,
-        centerId: formData.centerId || null
+        programId: formData.programId === 'global' ? null : parseInt(formData.programId as string, 10),
+        centerId: formData.centerId === 'all' ? null : parseInt(formData.centerId as string, 10)
       });
       toast.success('Center directive broadcasted');
       setIsModalOpen(false);
-      setFormData({ title: '', message: '', priority: 'normal', expiryDate: '', programId: '', centerId: '' });
+      setFormData({ title: '', message: '', priority: 'normal', expiryDate: '', programId: 'global', centerId: 'all' });
       fetchData();
     } catch (error) {
       toast.error('Broadcasting failure');
@@ -97,23 +98,28 @@ export default function CenterAnnouncements() {
            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Center Broadcasting</h1>
            <p className="text-slate-500 text-sm font-medium">Issue targeted directives directly to Study Center dashboards.</p>
         </div>
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-           <div className="px-4 py-2 bg-white rounded-xl shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border border-slate-200">
-              <Megaphone className="w-3.5 h-3.5 text-indigo-500" />
-              Live Broadcast Engine
-           </div>
-        </div>
+        <button 
+           onClick={() => setIsModalOpen(true)}
+           className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
+        >
+           <Megaphone className="w-4 h-4" />
+           New Broadcast Directive
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <DashCard 
-          title="Issue Center Directive"
-          description="Broadcast high-priority operational instructions to regional study center dashboards."
-          onClick={() => setIsModalOpen(true)}
-          icon={Megaphone}
-          actionLabel="Open Broadcast HUD"
-          className="min-h-[280px]"
-        />
+        {announcements.length === 0 && (
+          <div className="col-span-full">
+            <DashCard 
+              title="Issue Center Directive"
+              description="Broadcast high-priority operational instructions to regional study center dashboards."
+              onClick={() => setIsModalOpen(true)}
+              icon={Megaphone}
+              actionLabel="Open Broadcast HUD"
+              className="min-h-[320px]"
+            />
+          </div>
+        )}
         {announcements.map(ann => (
           <div 
             key={ann.id} 
@@ -210,10 +216,11 @@ export default function CenterAnnouncements() {
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Target: Study Center</label>
                         <select 
+                            required
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900 font-mono"
                             value={formData.centerId} onChange={e => setFormData({...formData, centerId: e.target.value})}
                         >
-                            <option value="">Global Broadcast (All Centers)</option>
+                            <option value="all">Global Broadcast (All Centers)</option>
                             {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
@@ -224,7 +231,7 @@ export default function CenterAnnouncements() {
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
                             value={formData.programId} onChange={e => setFormData({...formData, programId: e.target.value})}
                         >
-                            <option value="">Select Program</option>
+                            <option value="global">Global (All Programs)</option>
                             {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
@@ -299,9 +306,18 @@ export default function CenterAnnouncements() {
                     <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
                         <Filter className="w-4 h-4 text-slate-400" />
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Scope</span>
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Center</span>
                             <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">
-                                {selectedAnnouncement.center?.name || selectedAnnouncement.program?.name || 'Global Broadcast'}
+                                {selectedAnnouncement.center?.name || 'Global Broadcast (All Centers)'}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <Megaphone className="w-4 h-4 text-slate-400" />
+                        <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Program Filter</span>
+                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">
+                                {selectedAnnouncement.program?.name || 'All Programs'}
                             </span>
                         </div>
                     </div>

@@ -48,7 +48,7 @@ export default function Transcript() {
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text('IITS RPS ERP - OFFICIAL ACADEMIC RECORD', 105, 28, { align: 'center' });
+        doc.text('RPS ERP - OFFICIAL ACADEMIC RECORD', 105, 28, { align: 'center' });
         
         // Student Info
         doc.setFontSize(12);
@@ -77,7 +77,7 @@ export default function Transcript() {
         });
 
         const finalY = (doc as any).lastAutoTable.finalY + 20;
-        doc.text('This is a computer-generated document verified via the IITS RPS ERP system.', 20, finalY);
+        doc.text('This is a computer-generated document verified via the RPS ERP system.', 20, finalY);
         doc.save(`${user?.uid}_Transcript.pdf`);
         toast.success('Official transcript generated successfully');
     } catch (error) {

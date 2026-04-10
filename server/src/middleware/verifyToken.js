@@ -62,7 +62,9 @@ export const isAcademicOrAdmin = (req, res, next) => {
     'Organization Admin', 
     'Finance Admin', 
     'Operations Admin', 
+    'Operations Administrator',
     'Academic Operations Admin',
+    'Academic Operations Administrator',
     'Academic Operations',
     'Sales & CRM Admin'
   ];
@@ -86,7 +88,9 @@ export const isOpsOrAdmin = (req, res, next) => {
     'Skill Department Admin', 
     'BVoc Department Admin', 
     'Operations Admin', 
+    'Operations Administrator',
     'Academic Operations Admin',
+    'Academic Operations Administrator',
     'Academic Operations',
     'Organization Admin', 
     'Sales & CRM Admin'
@@ -106,4 +110,4 @@ export const isOpsOrAdmin = (req, res, next) => {
 
 export const isSubDeptAdmin = roleGuard(['BVoc Department Admin', 'Skill Department Admin', 'Open School Admin', 'Online Department Admin']);
 export const isSystemAdmin = roleGuard(['Organization Admin']);
-export const isArchitectureAdmin = roleGuard(['Operations Admin', 'Academic Operations Admin', 'Academic Operations', 'Organization Admin']);
+export const isArchitectureAdmin = roleGuard(['Operations Admin', 'Operations Administrator', 'Academic Operations Admin', 'Academic Operations Administrator', 'Academic Operations', 'Organization Admin']);

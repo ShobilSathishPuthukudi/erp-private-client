@@ -156,7 +156,7 @@ export default function ProfilePage() {
             </div>
             <p className="hero-subtext mt-2">
                <Briefcase size={16} className="mr-2 text-blue-400 inline" />
-               Administrator at IITS Enterprise System
+               Administrator at Enterprise System
             </p>
             <div className="hero-stats-row mt-4 flex gap-6">
                <div className="stat-pill flex flex-col">

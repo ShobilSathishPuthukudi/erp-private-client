@@ -193,16 +193,16 @@ export default function Universities() {
       accessorKey: 'status', 
       header: 'Status',
       cell: ({ row }) => {
-        const s = row.original.status;
-        let color = 'bg-slate-200 text-slate-600';
-        if (s === 'active') color = 'bg-emerald-100 text-emerald-700';
-        if (s === 'proposed') color = 'bg-amber-100 text-amber-700';
-        if (s === 'draft') color = 'bg-blue-100 text-blue-700';
-        if (s === 'staged') color = 'bg-purple-100 text-purple-700';
-        if (s === 'inactive') color = 'bg-rose-100 text-rose-700';
+        const s = row.original.status?.toLowerCase();
+        let color = 'bg-slate-100 text-slate-600 border-slate-200';
+        if (s === 'active') color = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (s === 'proposed') color = 'bg-amber-50 text-amber-700 border-amber-200';
+        if (s === 'draft') color = 'bg-blue-50 text-blue-700 border-blue-200';
+        if (s === 'staged') color = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        if (s === 'inactive') color = 'bg-rose-50 text-rose-700 border-rose-200';
         
         return (
-          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${color}`}>
+          <span className={`px-2.5 py-1 text-[10px] rounded-full font-black uppercase tracking-wider border ${color}`}>
             {s}
           </span>
         );
@@ -235,9 +235,9 @@ export default function Universities() {
             <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
               <Building2 className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">University Architecture</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">University Architecture</h1>
           </div>
-          <p className="text-slate-500 font-medium ml-15">IITS RPS Accredited Institution Registry & Compliance Ledger</p>
+          <p className="text-slate-500 font-medium ml-15 text-sm">RPS Accredited Institution Registry & Compliance Ledger</p>
         </div>
         {universities.length > 0 && (
           <button 
@@ -248,6 +248,21 @@ export default function Universities() {
             Add University
           </button>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {[
+          { status: 'Proposed', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial institutional proposal awaiting review.' },
+          { status: 'Draft', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Working config; technical parameters being defined.' },
+          { status: 'Staged', color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Framework defined; awaiting center/program mapping.' },
+          { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational institution in central ledger.' },
+          { status: 'Inactive', color: 'border-rose-200 bg-rose-50 text-rose-700', desc: 'Deactivated endpoint; retained for forensic compliance.' }
+        ].map((item, i) => (
+          <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
+            <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
+            <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
+          </div>
+        ))}
       </div>
 
       {universities.length === 0 && !isLoading && (

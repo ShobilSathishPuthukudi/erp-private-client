@@ -63,7 +63,7 @@ export default function Payments() {
       // Branding Header
       doc.setFontSize(22);
       doc.setTextColor(15, 23, 42);
-      doc.text('IITS RPS Educational Institution', 20, 20);
+      doc.text('RPS Educational Institution', 20, 20);
       
       // Document Identifier
       doc.setFontSize(14);

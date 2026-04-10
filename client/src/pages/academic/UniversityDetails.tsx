@@ -153,11 +153,24 @@ export default function UniversityDetails() {
                   <h2 className="text-4xl font-black text-slate-900 tracking-tighter">{university.name}</h2>
                 </div>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8 text-[10px] font-black uppercase tracking-[0.1em]">
-                  <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">{university.shortName || 'UNIV-ID'}</span>
-                  <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100 flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {university.status || 'ACTIVE'}
-                  </span>
+                  <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg border border-slate-100">{university.shortName || 'UNIV-ID'}</span>
+                  {(() => {
+                    const s = university.status?.toLowerCase();
+                    const config = {
+                      proposed: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', dot: 'bg-amber-500' },
+                      draft: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100', dot: 'bg-blue-500' },
+                      staged: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100', dot: 'bg-indigo-500' },
+                      active: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', dot: 'bg-emerald-500' },
+                      inactive: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100', dot: 'bg-rose-500' }
+                    }[s] || { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100', dot: 'bg-slate-500' };
+
+                    return (
+                      <span className={`px-3 py-1 ${config.bg} ${config.text} rounded-lg border ${config.border} flex items-center gap-1.5`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${config.dot} animate-pulse`} />
+                        {university.status || 'PROPOSED'}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-3">

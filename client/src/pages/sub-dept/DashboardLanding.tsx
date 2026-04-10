@@ -20,6 +20,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 const COLORS = ['#3b82f6', '#10b981', '#6366f1', '#f43f5e', '#f59e0b'];
 
@@ -41,6 +42,15 @@ export default function DashboardLanding() {
   });
   const [centers, setCenters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
 
   const fetchStats = async () => {
     try {
@@ -74,6 +84,7 @@ export default function DashboardLanding() {
       color: 'bg-amber-500', 
       trend: 'Admission Execution',
       path: '../validation',
+      type: 'pendingAdmissions',
       details: 'High-priority appraisal queue for staff & student academic eligibility.'
     },
     { 
@@ -83,6 +94,7 @@ export default function DashboardLanding() {
       color: 'bg-blue-500', 
       trend: 'Academic Quality',
       path: '../programs',
+      type: 'students',
       details: 'Institutional quality benchmark based on validated student records.'
     },
     { 
@@ -92,6 +104,7 @@ export default function DashboardLanding() {
       color: 'bg-indigo-600', 
       trend: 'Live Batches',
       path: '../sessions',
+      type: 'students',
       details: 'Active and upcoming academic batches across jurisdictional centers.'
     },
     { 
@@ -101,6 +114,7 @@ export default function DashboardLanding() {
       color: 'bg-emerald-500', 
       trend: 'Unit Growth',
       path: '../students',
+      type: 'students',
       details: 'Total centralized student registry for the current academic unit.'
     },
   ];
@@ -147,9 +161,9 @@ export default function DashboardLanding() {
         {kpis.map((kpi, idx) => {
           const color = colors[kpi.color] || { bg: 'bg-slate-50', text: 'text-slate-600' };
           return (
-            <Link 
+            <div 
               key={idx} 
-              to={kpi.path}
+              onClick={() => openDrillDown(kpi.type || 'students', kpi.label)}
               className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 hover:border-blue-200 hover:scale-[1.01]"
             >
               <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
@@ -180,7 +194,7 @@ export default function DashboardLanding() {
                   <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">View Details</span>
                 </div>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
@@ -273,6 +287,12 @@ export default function DashboardLanding() {
           </div>
         </div>
       </div>
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
     </div>
   );
 }

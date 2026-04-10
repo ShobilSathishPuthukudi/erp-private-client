@@ -98,7 +98,7 @@ export default function Admins() {
           isLoading={isLoading} 
           searchKey="name" 
           searchPlaceholder="Search administrators by name..." 
-          exportFileName="IITS_Administrators_Registry"
+          exportFileName="Administrators_Registry"
         />
       </div>
     </div>

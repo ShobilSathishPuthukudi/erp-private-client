@@ -40,7 +40,7 @@ export default function ReferralForm() {
               <CheckCircle className="w-10 h-10" />
            </div>
            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4">Interest Certified</h2>
-           <p className="text-slate-500 font-medium mb-8">Thank you for your interest in partnering with IITS RPS. Our regional development team will reach out within 24 operational hours.</p>
+           <p className="text-slate-500 font-medium mb-8">Thank you for your interest in partnering with RPS. Our regional development team will reach out within 24 operational hours.</p>
            <button 
                 onClick={() => window.location.reload()}
                 className="text-blue-600 font-black text-xs uppercase tracking-widest hover:underline"
@@ -134,7 +134,7 @@ export default function ReferralForm() {
                         {loading ? 'Certifying Inquiry...' : 'Synchronize Interest'}
                     </button>
                     <p className="text-center text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-6">
-                        Secured by IITS institutional encryption
+                        Secured by institutional encryption
                     </p>
                 </div>
             </form>

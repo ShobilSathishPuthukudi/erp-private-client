@@ -13,6 +13,7 @@ import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import EmployeeCards from './EmployeeCards';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
@@ -38,6 +39,16 @@ function DashboardLanding() {
     activeTasks: 0
   });
 
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -51,10 +62,10 @@ function DashboardLanding() {
   }, []);
 
   const kpis = [
-    { label: 'Staff Strength', value: stats.employeeCount, icon: Users, color: 'bg-rose-500', trend: 'Centralized Workforce' },
-    { label: 'Open Vacancies', value: stats.vacancyCount, icon: UserPlus, color: 'bg-blue-600', trend: 'Talent Acquisition' },
-    { label: 'Pending Leaves', value: stats.pendingLeaves, icon: Calendar, color: 'bg-amber-500', trend: 'Action Required' },
-    { label: 'Active Directives', value: stats.activeTasks, icon: FileText, color: 'bg-emerald-500', trend: 'execution Monitoring' },
+    { label: 'Staff Strength', value: stats.employeeCount, icon: Users, color: 'bg-rose-500', trend: 'Centralized Workforce', type: 'hr_staff' },
+    { label: 'Open Vacancies', value: stats.vacancyCount, icon: UserPlus, color: 'bg-blue-600', trend: 'Talent Acquisition', type: 'hr_vacancies' },
+    { label: 'Pending Leaves', value: stats.pendingLeaves, icon: Calendar, color: 'bg-amber-500', trend: 'Action Required', type: 'hr_leaves' },
+    { label: 'Active Directives', value: stats.activeTasks, icon: FileText, color: 'bg-emerald-500', trend: 'Execution Monitoring', type: 'tasks' },
   ];
 
   const quickLinks = [
@@ -103,7 +114,11 @@ function DashboardLanding() {
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div 
+            key={i} 
+            onClick={() => openDrillDown(kpi.type, kpi.label)}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
             <div className="absolute -right-6 -bottom-6 text-slate-900 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
               <kpi.icon className="w-40 h-40" />
             </div>
@@ -189,6 +204,13 @@ function DashboardLanding() {
             </div>
         </div>
       </div>
+
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
     </div>
   );
 }

@@ -11,7 +11,9 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Building,
+  UserPlus
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { api } from '@/lib/api';
@@ -41,7 +43,11 @@ interface Stats {
   totalStudyCenters: number;
   centerNames: string[];
   totalStudents: number;
-  pendingApprovals: number;
+  pendingOverdueTasks: number;
+  pendingCenterCount: number;
+  pendingCenters: any[];
+  pendingStudentCount: number;
+  pendingStudents: any[];
   growthData: ChartPoint[];
   centerGrowth: CenterPoint[];
   actionQueue: any[];
@@ -84,7 +90,11 @@ export default function Overview() {
     totalStudyCenters: 0,
     centerNames: [],
     totalStudents: 0,
-    pendingApprovals: 0,
+    pendingOverdueTasks: 0,
+    pendingCenterCount: 0,
+    pendingCenters: [],
+    pendingStudentCount: 0,
+    pendingStudents: [],
     growthData: [],
     centerGrowth: [],
     actionQueue: [],
@@ -181,7 +191,11 @@ export default function Overview() {
           totalStudyCenters: data.studyCenters,
           centerNames: data.centerNames || [],
           totalStudents: data.totalStudents,
-          pendingApprovals: data.pendingTasks,
+          pendingOverdueTasks: data.pendingOverdueTasks,
+          pendingCenterCount: data.pendingCenterCount,
+          pendingCenters: data.pendingCenters || [],
+          pendingStudentCount: data.pendingStudentCount,
+          pendingStudents: data.pendingStudents || [],
           growthData: data.growthData || [],
           centerGrowth: data.centerGrowth || [],
           actionQueue: data.actionQueue || [],
@@ -463,8 +477,8 @@ export default function Overview() {
         />
         <MetricCard 
           index={7}
-          title="Pending Approvals" 
-          value={stats.pendingApprovals} 
+          title="Overdue Tasks" 
+          value={stats.pendingOverdueTasks} 
           icon={Clock} 
           color={{ bg: 'bg-rose-50', text: 'text-rose-600' }}
           details={
@@ -500,6 +514,62 @@ export default function Overview() {
                     </div>
                  )) : (
                     <p className="text-xs text-slate-400 text-center py-4">Action queue is clear.</p>
+                 )}
+              </div>
+            </div>
+          }
+        />
+        <MetricCard 
+          index={8}
+          title="Pending Center Approvals" 
+          value={stats.pendingCenterCount} 
+          icon={Building} 
+          color={{ bg: 'bg-amber-50', text: 'text-amber-600' }}
+          details={
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-4">Pending Partners</h4>
+              <div className="space-y-2">
+                 {stats.pendingCenters && stats.pendingCenters.length > 0 ? stats.pendingCenters.map((center, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-amber-200 transition-all">
+                      <span className="text-xs font-bold text-slate-700">{center.name}</span>
+                      <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border ${
+                        center.auditStatus?.includes('FINANCE') 
+                          ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                          : 'bg-amber-50 text-amber-600 border-amber-100'
+                      }`}>
+                        {center.auditStatus?.includes('FINANCE') ? 'Finance Pending' : 'Request Pending'}
+                      </span>
+                    </div>
+                 )) : (
+                    <p className="text-xs text-slate-400 text-center py-4">No center approvals pending.</p>
+                 )}
+              </div>
+            </div>
+          }
+        />
+        <MetricCard 
+          index={9}
+          title="Pending Student Approvals" 
+          value={stats.pendingStudentCount} 
+          icon={UserPlus} 
+          color={{ bg: 'bg-indigo-50', text: 'text-indigo-600' }}
+          details={
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">Pending Enrollment</h4>
+              <div className="space-y-2">
+                 {stats.pendingStudents && stats.pendingStudents.length > 0 ? stats.pendingStudents.map((student, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 transition-all">
+                      <span className="text-xs font-bold text-slate-700">{student.name}</span>
+                      <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border ${
+                        student.status?.includes('FINANCE') 
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                          : 'bg-indigo-50 text-indigo-600 border-indigo-100'
+                      }`}>
+                        {student.status?.includes('FINANCE') ? 'Finance Pending' : 'Review Pending'}
+                      </span>
+                    </div>
+                 )) : (
+                    <p className="text-xs text-slate-400 text-center py-4">No student approvals pending.</p>
                  )}
               </div>
             </div>

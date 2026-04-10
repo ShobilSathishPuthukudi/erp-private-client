@@ -10,10 +10,10 @@ const { Department, Student, Program, Subject, Module, User, Payment, CenterSubD
 const getSubDeptId = (user) => {
   if (!user) return null;
   const unitStr = (user.subDepartment || user.role || '').toLowerCase();
-  if (unitStr.includes('Open School Admin')) return 8;
-  if (unitStr.includes('Online Department Admin')) return 9;
-  if (unitStr.includes('Skill Department Admin')) return 10;
-  if (unitStr.includes('BVoc Department Admin')) return 11;
+  if (unitStr.includes('open school')) return 8;
+  if (unitStr.includes('online department')) return 9;
+  if (unitStr.includes('skill department')) return 10;
+  if (unitStr.includes('bvoc department')) return 11;
   return null;
 };
 
@@ -37,22 +37,37 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
       auditStatus: queryAuditStatus 
     };
     
-    // Isolation: Sub-Dept Admin only sees centers mapped to their unit
-    if (['SUB_DEPT_ADMIN', 'Openschool', 'Online', 'Skill', 'Bvoc', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role)) {
-      const subDeptId = getSubDeptId(req.user);
-
+    // Isolation: Sub-Dept Admin only sees centers mapped to their unit or seeking affiliation
+    const subDeptId = getSubDeptId(req.user);
+    if (subDeptId) {
+      // 1. Existing mappings (Approved centers already operational in the unit)
       const mappedCenterIds = await CenterProgram.findAll({
         where: { subDeptId: subDeptId, isActive: true },
         attributes: ['centerId']
       }).then(res => [...new Set(res.map(c => c.centerId))]);
       
-      whereClause.id = { [Op.in]: mappedCenterIds };
+      // 2. Interest-based discovery (Proposed centers seeking entry into this unit)
+      const unitPrograms = await Program.findAll({ where: { subDeptId }, attributes: ['id'] });
+      const unitProgIds = unitPrograms.map(p => p.id);
+
+      whereClause[Op.or] = [
+        { id: { [Op.in]: mappedCenterIds } },
+        sequelize.literal(`(
+          EXISTS(
+            SELECT 1 FROM departments d2 
+            WHERE d2.id = department.id 
+            AND d2.auditStatus = 'pending' 
+            AND d2.type IN ('partner-center', 'partner centers') 
+            AND JSON_OVERLAPS(d2.metadata->'$.primaryInterest.programIds', CAST('[${unitProgIds.join(',') || 0}]' AS JSON))
+          )
+        )`)
+      ];
     }
 
     const centers = await Department.findAll({
       where: whereClause,
       include: [
-        { model: User, as: 'referringBDE', attributes: ['name', 'uid'] }
+        { model: User, as: 'referringBDE', attributes: ['name', 'uid'], required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -80,7 +95,7 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
       auditStatus: nextAuditStatus,
       rejectionReason: status === 'rejected' ? reason : null,
       infrastructureDetails: infrastructureDetails || center.infrastructureDetails,
-      status: 'inactive', // Remains inactive until Finance Approval
+      status: status === 'approved' ? 'draft' : 'inactive', // Transition to Draft upon Ops clearance
     });
 
     // Update Center Admin credentials if password provisioned
@@ -229,6 +244,15 @@ router.put('/programs/:id/syllabus', verifyToken, isOpsOrAdmin, async (req, res)
     if (!program) return res.status(404).json({ error: 'Program not found' });
 
     await program.update({ syllabusDoc });
+
+    // Transition logic: Staging program if credits fulfill requirement
+    if (program.status === 'draft' && program.totalCredits > 0) {
+      await program.update({ status: 'staged' });
+      if (program.universityId) {
+        await Department.update({ status: 'staged' }, { where: { id: program.universityId, type: 'universities' } });
+      }
+    }
+
     res.json({ message: 'Syllabus PDF manifest updated', program });
   } catch (error) {
     res.status(500).json({ error: 'Failed to link syllabus document' });
@@ -286,7 +310,12 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
           CenterProgram.count({ 
             where: { subDeptId: id },
             distinct: true,
-            col: 'centerId'
+            col: 'centerId',
+            include: [{
+              model: Department,
+              as: 'center',
+              where: { status: 'active', auditStatus: 'approved' }
+            }]
           })
         ]);
 
@@ -369,6 +398,10 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
       attributes: [
         'id', 'name', 'status', 'shortName',
         [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'studentCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.status = 'REJECTED' ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'rejectedCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY) ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'velocity'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.attemptCount > 1 ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'reAttemptCount'],
+        [sequelize.literal(`(SELECT AVG(TIMESTAMPDIFF(HOUR, students.createdAt, students.reviewedAt)) FROM students WHERE students.centerId = department.id AND students.reviewedAt IS NOT NULL ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'avgReviewTime'],
         [sequelize.literal(`(SELECT COUNT(*) FROM center_programs WHERE center_programs.centerId = department.id AND center_programs.isActive = true ${sid ? `AND center_programs.subDeptId = ${sid}` : ''})`), 'activePrograms']
       ]
     });

@@ -292,13 +292,13 @@ export default function Programs() {
       accessorKey: 'status', 
       header: 'Status',
       cell: ({ row }) => {
-        const s = row.original.status;
-        let color = 'bg-slate-100 text-slate-700';
-        if (s === 'active') color = 'bg-emerald-100 text-emerald-700';
-        if (s === 'draft') color = 'bg-amber-100 text-amber-700';
-        if (s === 'staged') color = 'bg-blue-100 text-blue-700';
+        const s = row.original.status?.toLowerCase();
+        let color = 'bg-slate-50 text-slate-600 border-slate-200';
+        if (s === 'active') color = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (s === 'draft') color = 'bg-blue-50 text-blue-700 border-blue-200';
+        if (s === 'staged') color = 'bg-indigo-50 text-indigo-700 border-indigo-200';
         return (
-          <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${color}`}>
+          <span className={`px-2.5 py-1 text-[10px] rounded-full font-black uppercase tracking-wider border ${color}`}>
             {s}
           </span>
         );
@@ -345,6 +345,19 @@ export default function Programs() {
             Add Program
           </button>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { status: 'Draft', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial curriculum design; technical and academic parameters being mapped.' },
+          { status: 'Staged', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Internal departmental review; awaiting finalized board approval.' },
+          { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational program; verified for student enrollment and center mapping.' }
+        ].map((item, i) => (
+          <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
+            <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
+            <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
+          </div>
+        ))}
       </div>
 
       {programs.length === 0 && !isLoading && (

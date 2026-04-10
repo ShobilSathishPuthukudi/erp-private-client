@@ -178,8 +178,23 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
         order: [['name', 'ASC']]
       }),
       Student.count(),
-      Task.count({ where: { status: { [Op.in]: ['pending', 'overdue'] } } })
+      Task.count({ where: { status: 'overdue' } })
     ]);
+
+    const pendingCenters = await Department.findAll({
+      where: {
+        type: { [Op.in]: ['partner centers', 'partner-center'] },
+        auditStatus: { [Op.in]: ['pending', 'PENDING_FINANCE'] }
+      },
+      attributes: ['name', 'auditStatus']
+    });
+
+    const pendingStudents = await Student.findAll({
+      where: {
+        status: { [Op.in]: ['PENDING_REVIEW', 'FINANCE_PENDING'] }
+      },
+      attributes: ['name', 'status']
+    });
 
     // 1. Institutional Growth (Last 6 Months)
     const growthData = [];
@@ -224,7 +239,7 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
 
     // 3. Action Queue (Real Tasks)
     const actionQueue = await Task.findAll({
-      where: { status: { [Op.in]: ['pending', 'overdue'] } },
+      where: { status: 'overdue' },
       include: [
         { model: User, as: 'assignee', attributes: ['name'] },
         { model: User, as: 'assigner', attributes: ['name'] }
@@ -269,7 +284,11 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       studyCenters: centers.length,
       centerNames: centers.map(c => c.name),
       totalStudents,
-      pendingTasks,
+      pendingOverdueTasks: pendingTasks, // Renamed export map for frontend
+      pendingCenterCount: pendingCenters.length,
+      pendingCenters,
+      pendingStudentCount: pendingStudents.length,
+      pendingStudents,
       growthData,
       centerGrowth,
       actionQueue,

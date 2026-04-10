@@ -91,7 +91,7 @@ export default function Students() {
         isLoading={isLoading} 
         searchKey="name" 
         searchPlaceholder="Locate by student legal string..." 
-        exportFileName="IITS_Student_Registry_RO"
+        exportFileName="Student_Registry_RO"
       />
     </div>
   );

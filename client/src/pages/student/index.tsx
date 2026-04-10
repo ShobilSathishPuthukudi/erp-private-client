@@ -160,7 +160,7 @@ export default function StudentPortal() {
              </div>
              
              <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-300 uppercase ">IITS RPS Governance v4.0</span>
+                <span className="text-[10px] font-black text-slate-300 uppercase ">RPS Governance v4.0</span>
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
              </div>
           </div>

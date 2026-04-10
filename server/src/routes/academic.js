@@ -354,7 +354,7 @@ router.post('/universities', verifyToken, isArchitectureAdmin, validate(universi
       shortName,
       type: 'universities',
       adminId: req.user.uid,
-      status: status || 'draft',
+      status: status || 'proposed',
       accreditation,
       websiteUrl,
       affiliationDoc
@@ -418,8 +418,10 @@ router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asyn
     const isIsolated = rolesWithIsolation.includes(req.user.role);
     const sid = getSubDeptId(req.user);
 
+    const { status } = req.query;
     const whereClause = { 
       type: { [Op.in]: ['partner centers'] },
+      ...(status ? { status } : {}),
       ...visibilityFilter
     };
     
@@ -530,9 +532,9 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
        module: 'Academic'
     });
     
-    // Trigger University Status: Staged (Standardized Transition)
+    // Trigger University Status: Draft (Standardized Transition)
     if (universityId) {
-       await Department.update({ status: 'staged' }, { where: { id: universityId, type: 'universities' } });
+       await Department.update({ status: 'draft' }, { where: { id: universityId, type: 'universities' } });
     }
 
     // Auto-provision initial fee structures
@@ -585,10 +587,10 @@ router.post('/centers/:id/map-programs', verifyToken, isAcademicOrAdmin, async (
       await mapping.update({ feeSchemaId, subDeptId, isActive: true });
     }
 
-    // Trigger University & Program Status: Staged (Selection Trigger)
+    // Trigger University & Program Status: Active (Selection Trigger)
     if (program.universityId) {
-        await Department.update({ status: 'staged' }, { where: { id: program.universityId, type: 'universities' } });
-        await Program.update({ status: 'staged' }, { where: { id: program.id } });
+        await Department.update({ status: 'active' }, { where: { id: program.universityId, type: 'universities' } });
+        await Program.update({ status: 'active' }, { where: { id: program.id } });
     }
 
     res.status(201).json(mapping);
@@ -662,6 +664,14 @@ router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) =
       tenure: updateData.tenure !== undefined ? updateData.tenure : p.tenure,
       totalCredits: updateData.totalCredits !== undefined ? updateData.totalCredits : p.totalCredits
     });
+
+    // If syllabus mapped and credits > 0, transition to STAGED
+    if (p.status === 'draft' && p.syllabusDoc && p.totalCredits > 0) {
+      await p.update({ status: 'staged' });
+      if (p.universityId) {
+        await Department.update({ status: 'staged' }, { where: { id: p.universityId, type: 'universities' } });
+      }
+    }
 
     // Synchronize fee structures on update in case payment structures were toggled
     await autoSeedFees(p, req.user.uid);

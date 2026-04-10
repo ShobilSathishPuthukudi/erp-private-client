@@ -47,7 +47,7 @@ export default function Invoices() {
     // Duplicate Document Identifier logic mirroring the core generator to reprint old tickets locally
     doc.setFontSize(22);
     doc.setTextColor(15, 23, 42); 
-    doc.text('IITS RPS Educational Institution', 20, 20);
+    doc.text('RPS Educational Institution', 20, 20);
     
     doc.setFontSize(14);
     doc.setTextColor(71, 85, 105); 

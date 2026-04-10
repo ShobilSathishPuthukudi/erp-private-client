@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { Building, Users, DollarSign, TrendingUp, Copy, Search, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 interface Referral {
   id: number;
@@ -18,6 +19,15 @@ export default function SalesPerformance() {
   const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const isAdmin = ['Organization Admin', 'finance', 'ceo', 'sales & crm admin'].includes(user?.role?.toLowerCase().trim() || '');
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
 
   const fetchData = async () => {
     try {
@@ -74,11 +84,18 @@ export default function SalesPerformance() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" />
-        <StatCard icon={Users} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" />
-        <StatCard icon={DollarSign} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" />
+        <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" onClick={() => openDrillDown('centers', 'Centers Referred')} />
+        <StatCard icon={Users} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" onClick={() => openDrillDown('students', 'Total Admissions')} />
+        <StatCard icon={DollarSign} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" onClick={() => openDrillDown('revenue', 'Yield Revenue')} />
         <StatCard icon={TrendingUp} label="Efficiency Rate" value={`${performance?.centerCount > 0 ? ((performance.studentCount / performance.centerCount) * 5).toFixed(1) : 0}%`} color="amber" />
       </div>
+
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
 
       {!isAdmin && (user?.role?.toLowerCase().trim() === 'employee' || user?.role?.toLowerCase().trim() === 'bde') && (
         <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-200 group">
@@ -165,7 +182,7 @@ export default function SalesPerformance() {
 }
 
 
-function StatCard({ icon: Icon, label, value, color }: any) {
+function StatCard({ icon: Icon, label, value, color, onClick }: any) {
     const colors: any = {
         blue: 'bg-blue-50 text-blue-600 border-blue-100',
         indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
@@ -179,7 +196,10 @@ function StatCard({ icon: Icon, label, value, color }: any) {
         amber: 'text-amber-600'
     };
     return (
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-7 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+        <div 
+          onClick={onClick}
+          className={`bg-white border border-slate-100 rounded-[2rem] p-7 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''}`}
+        >
             <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                 <Icon className="w-40 h-40" />
             </div>

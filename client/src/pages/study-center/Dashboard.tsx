@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import AnnouncementBoard from '@/components/shared/AnnouncementBoard';
 import { Modal } from '@/components/shared/Modal';
 import AdmissionWizard from './AdmissionWizard';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 export default function Dashboard() {
   const user = useAuthStore(state => state.user);
@@ -25,6 +26,15 @@ export default function Dashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -94,7 +104,10 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div 
+            onClick={() => openDrillDown('totalStudents', 'Enrolled Students')}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
               <div className="absolute -right-6 -bottom-6 text-blue-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Users className="w-40 h-40" />
               </div>
@@ -115,7 +128,10 @@ export default function Dashboard() {
               </div>
           </div>
 
-          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div 
+            onClick={() => openDrillDown('pendingAdmissions', 'Students in Review')}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
               <div className="absolute -right-6 -bottom-6 text-amber-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Clock className="w-40 h-40" />
               </div>
@@ -136,7 +152,10 @@ export default function Dashboard() {
               </div>
           </div>
 
-          <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div 
+            onClick={() => openDrillDown('programs', 'Sanctioned Programs')}
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
               <div className="absolute -right-6 -bottom-6 text-emerald-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Layout className="w-40 h-40" />
               </div>
@@ -196,6 +215,13 @@ export default function Dashboard() {
           }} 
         />
       </Modal>
+
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
     </div>
   );
 }

@@ -267,7 +267,7 @@ export default function Employees() {
           isLoading={isLoading} 
           searchKey="name" 
           searchPlaceholder="Search personnel by name..." 
-          exportFileName="IITS_Personnel_Directory"
+          exportFileName="Personnel_Directory"
         />
       </div>
 

@@ -72,17 +72,16 @@ export default function Programs() {
       accessorKey: 'status',
       header: 'Enrollment State',
       cell: ({ row }) => {
-        const program = row.original;
-        const isOpen = program.status === 'open';
-        const isActive = program.status === 'active';
+        const s = row.original.status?.toLowerCase();
+        let color = 'bg-slate-50 text-slate-600 border-slate-200';
+        if (s === 'active' || s === 'open') color = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (s === 'draft') color = 'bg-blue-50 text-blue-700 border-blue-200';
+        if (s === 'staged') color = 'bg-indigo-50 text-indigo-700 border-indigo-200';
         
         return (
           <div className="flex items-center gap-3">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                isOpen ? 'bg-green-100 text-green-700' : 
-                isActive ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-            }`}>
-              {program.status}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${color}`}>
+              {s}
             </span>
           </div>
         );

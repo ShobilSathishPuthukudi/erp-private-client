@@ -86,7 +86,7 @@ export default function ServerError() {
 
       {/* Aesthetic Micro-details */}
       <div className="absolute bottom-8 left-8 text-slate-900 font-mono text-[10px] tracking-widest hidden md:block">
-        IITS INSTITUTIONAL CORE // GOVERNANCE_RECOVERY_PROTOCOL
+        INSTITUTIONAL CORE // GOVERNANCE_RECOVERY_PROTOCOL
       </div>
     </div>
   );

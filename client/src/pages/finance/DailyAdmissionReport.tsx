@@ -27,7 +27,7 @@ export default function DailyAdmissionReport() {
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(20);
-    doc.text('IITS RPS - DAILY ADMISSION REPORT', 20, 20);
+    doc.text('RPS - DAILY ADMISSION REPORT', 20, 20);
     doc.setFontSize(10);
     doc.text(`DATE: ${report.date}`, 20, 30);
     
@@ -37,7 +37,7 @@ export default function DailyAdmissionReport() {
       body: report.details.map((d: any) => [d.name, d.center.name, d.department.name, d.program?.name || 'N/A']),
     });
     
-    doc.save(`IITS_Admission_Report_${report.date}.pdf`);
+    doc.save(`Admission_Report_${report.date}.pdf`);
   };
 
   if (loading) return <div className="p-12 text-center text-slate-300 font-black animate-pulse uppercase">Syncing Admission Stream...</div>;

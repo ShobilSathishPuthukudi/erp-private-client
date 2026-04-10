@@ -11,6 +11,7 @@ import {
   Zap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 interface FinanceStats {
   revenue: number;
@@ -29,6 +30,15 @@ export default function FinanceMainDashboard() {
     recentActions: []
   });
   const [loading, setLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -94,6 +104,7 @@ export default function FinanceMainDashboard() {
           icon={DollarSign} 
           color="emerald" 
           trend="+12% vs last batch"
+          onClick={() => openDrillDown('revenue', 'Total Institutional Revenue')}
         />
         <StatCard 
           title="Pending Approvals" 
@@ -102,6 +113,7 @@ export default function FinanceMainDashboard() {
           color="blue" 
           trend="Action Required"
           isAlert={stats.pendingApprovals > 0}
+          onClick={() => openDrillDown('students', 'Pending Academic Approvals')}
         />
         <StatCard 
           title="Outstanding Receivables" 
@@ -109,6 +121,7 @@ export default function FinanceMainDashboard() {
           icon={Clock} 
           color="amber" 
           trend="Awaiting Settlement"
+          onClick={() => openDrillDown('pendingFees', 'Outstanding Receivables')}
         />
         <StatCard 
           title="Risk Exposure Nodes" 
@@ -117,6 +130,7 @@ export default function FinanceMainDashboard() {
           color="rose" 
           trend="Critical Validation"
           isAlert={stats.riskAlerts > 0}
+          onClick={() => openDrillDown('risk_alerts', 'Institutional Risk Nodes')}
         />
       </div>
 
@@ -173,11 +187,18 @@ export default function FinanceMainDashboard() {
             </div>
          </div>
       </div>
+
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
     </div>
   );
 }
 
-function StatCard({ title, value, icon: Icon, color, trend, isAlert }: any) {
+function StatCard({ title, value, icon: Icon, color, trend, isAlert, onClick }: any) {
   const colors: any = {
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
@@ -193,7 +214,10 @@ function StatCard({ title, value, icon: Icon, color, trend, isAlert }: any) {
   };
 
   return (
-    <div className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4 ring-offset-[#f8fafc]' : ''}`}>
+    <div 
+      onClick={onClick}
+      className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 cursor-pointer hover:scale-[1.02] active:scale-95 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4 ring-offset-[#f8fafc]' : ''}`}
+    >
       <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
         <Icon className="w-40 h-40" />
       </div>

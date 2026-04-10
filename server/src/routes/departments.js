@@ -121,6 +121,10 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
     if (status) finalStatus = status.toLowerCase();
     else if (activateNow !== undefined) finalStatus = activateNow ? 'active' : 'inactive';
 
+    if (type === 'universities' && finalStatus !== 'active' && finalStatus !== 'inactive') {
+      finalStatus = 'proposed';
+    }
+
     const newDept = await Department.create({
       name, 
       shortName: finalShortName,

@@ -67,15 +67,15 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       });
     }
 
-    // Double-Layer Verification for Partner Centers
+    // Double-Layer Verification for Partner Centers (Governance Lifecycle)
     if (user.role?.toLowerCase()?.includes('partner center')) {
       const dept = await Department.findByPk(user.deptId);
-      if (!dept || dept.status !== 'active' || dept.auditStatus !== 'approved') {
-        const auditDetail = !dept ? 'Institutional record not found' : `Status: ${dept.status}, Audit: ${dept.auditStatus}`;
-        console.warn(`[SECURITY] Blocked login attempt for unverified center ${user.uid} (${auditDetail})`);
+      if (!dept || dept.status !== 'active') {
+        const currentStage = dept?.status?.toUpperCase() || 'UNKNOWN';
+        console.warn(`[SECURITY] Blocked login for center ${user.uid} in stage ${currentStage}`);
         
         return res.status(403).json({ 
-          error: 'Institutional Access Denied: Your partner center is currently awaiting administrative ratification or financial clearance. Access is restricted until the audit process is completed.' 
+          error: `Institutional Access Denied: Your partner center is currently in the [${currentStage}] governance stage. Access is restricted until Finance grants final [ACTIVE] ratification.` 
         });
       }
     }
@@ -286,6 +286,18 @@ router.get('/demo-centers', async (req, res) => {
         role: { [Op.in]: ['Partner Center'] },
         status: 'active'
       },
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          where: {
+            status: 'active',
+            auditStatus: 'approved'
+          },
+          attributes: ['id', 'status', 'auditStatus'],
+          required: true
+        }
+      ],
       attributes: ['uid', 'name', 'email', 'devPassword'],
       order: [['name', 'ASC']]
     });

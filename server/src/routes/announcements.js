@@ -55,9 +55,9 @@ router.get('/ops', verifyToken, async (req, res) => {
         const announcements = await Announcement.findAll({
             where: { targetChannel: 'centers_only' },
             include: [
-                { model: Program, as: 'program', attributes: ['name'] },
-                { model: Department, as: 'university', attributes: ['name'] },
-                { model: Department, as: 'center', attributes: ['name'] }
+                { model: Program, as: 'program', attributes: ['name'], required: false },
+                { model: Department, as: 'university', attributes: ['name'], required: false },
+                { model: Department, as: 'center', attributes: ['name'], required: false }
             ],
             order: [['createdAt', 'DESC']]
         });
@@ -70,9 +70,17 @@ router.get('/ops', verifyToken, async (req, res) => {
 // Ops: Post center announcement
 router.post('/ops', verifyToken, async (req, res) => {
     try {
+        if (req.body.centerId) {
+            const center = await Department.findByPk(req.body.centerId);
+            if (!center || center.status !== 'active') {
+                return res.status(400).json({ error: 'Institutional Guardrail: Operational directives can only be issued to centers in the [ACTIVE] governance stage.' });
+            }
+        }
+
         const announcement = await Announcement.create({
             ...req.body,
             authorId: req.user.uid,
+            universityId: req.user.deptId || null, // Capture issuing department for categorization
             targetChannel: 'centers_only'
         });
 

@@ -109,11 +109,20 @@ export default function ProgramDetails() {
             <div className="relative z-10">
                 <div className="flex flex-wrap items-center gap-3 mb-6">
                     <span className="px-4 py-1 bg-slate-900 text-white rounded-lg font-black text-[10px] uppercase tracking-widest">{program.type || 'DEGREE'}</span>
-                    <span className={`px-4 py-1 rounded-lg font-black text-[10px] uppercase tracking-widest border ${
-                        program.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                    }`}>
-                        {program.status || 'STAGED'}
-                    </span>
+                    {(() => {
+                        const s = program.status?.toLowerCase();
+                        const config = {
+                          draft: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
+                          staged: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' },
+                          active: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' }
+                        }[s] || { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' };
+
+                        return (
+                          <span className={`px-4 py-1 rounded-lg font-black text-[10px] uppercase tracking-widest border ${config.bg} ${config.text} ${config.border}`}>
+                            {program.status || 'DRAFT'}
+                          </span>
+                        );
+                    })()}
                 </div>
 
                 <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4 leading-none">{program.name}</h2>

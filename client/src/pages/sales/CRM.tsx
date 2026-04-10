@@ -582,7 +582,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
                <input 
                   type="text"
                   required
-                  placeholder="IITS-MUM"
+                  placeholder="RPS-MUM"
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-sm focus:border-blue-600 focus:bg-white focus:ring-0 transition-all font-bold placeholder:text-slate-300 uppercase"
                   value={conversionData.shortName}
                   onChange={e => setConversionData({...conversionData, shortName: e.target.value.toUpperCase()})}

@@ -63,7 +63,7 @@ export default function Preferences() {
                     <Smartphone className="w-4 h-4 text-slate-400" />
                     <p className="text-sm font-bold text-slate-800">Push Notifications</p>
                   </div>
-                  <p className="text-[11px] text-slate-500">Receive real-time alerts on your mobile device (IITS App).</p>
+                  <p className="text-[11px] text-slate-500">Receive real-time alerts on your mobile device (RPS App).</p>
                 </div>
                 <button 
                   onClick={() => toggle('pushNotifications')}
@@ -122,7 +122,7 @@ export default function Preferences() {
               <Settings className="w-8 h-8 mb-4 opacity-50" />
               <h3 className="font-bold text-lg">Identity Guard</h3>
               <p className="text-slate-400 text-xs mt-1 leading-relaxed">
-                Your institutional digital identity is managed by the IITS Security Layer. Multi-Factor Authentication (MFA) is enabled by default for all Admin and Faculty roles.
+                Your institutional digital identity is managed by the Institutional Security Layer. Multi-Factor Authentication (MFA) is enabled by default for all Admin and Faculty roles.
               </p>
               <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
                 <span className="text-[10px] uppercase font-bold text-green-500">Secure Link</span>

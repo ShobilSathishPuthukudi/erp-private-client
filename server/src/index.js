@@ -46,6 +46,7 @@ import metricRoutes from './routes/dashboardMetrics.js';
 import orgAdminRoutes from './routes/orgAdmin.js';
 import operationsRoutes from './routes/operations.js';
 import publicRoutes from './routes/public.js';
+import drillDownRoutes from './routes/dashboardDrillDown.js';
 import { initCronJobs } from './jobs/cronJobs.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -108,6 +109,7 @@ app.use('/api/credentials', credentialRoutes);
 app.use('/api/distribution', distributionRoutes);
 app.use('/api/emi', emiRoutes);
 app.use('/api/dashboard', metricRoutes);
+app.use('/api/dashboard-drilldown', drillDownRoutes);
 app.use('/api/org-admin', orgAdminRoutes);
 app.use('/api/operations', operationsRoutes);
 app.use('/api/public', publicRoutes);
