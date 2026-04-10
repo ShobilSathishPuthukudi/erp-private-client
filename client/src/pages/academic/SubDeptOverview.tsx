@@ -9,6 +9,7 @@ import {
   Search
 } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 import type { ColumnDef } from '@tanstack/react-table';
 
 interface SubDeptStats {
@@ -25,6 +26,15 @@ export default function SubDeptOverview() {
   const [data, setData] = useState<SubDeptStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalStats, setGlobalStats] = useState<any>(null);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+    isOpen: false,
+    type: '',
+    title: ''
+  });
+
+  const openDrillDown = (type: string, title: string) => {
+    setDrillDown({ isOpen: true, type, title });
+  };
 
 
 
@@ -141,7 +151,10 @@ export default function SubDeptOverview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
+        <div 
+          onClick={() => openDrillDown('totalStudents', 'Total Unit Students')}
+          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+        >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Unit Students</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalStudents || 0}</h3>
           <p className="text-xs font-bold text-slate-500 mt-2 flex items-center gap-1">
@@ -149,12 +162,18 @@ export default function SubDeptOverview() {
             Across 4 Jurisdictions
           </p>
         </div>
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
+        <div 
+          onClick={() => openDrillDown('students', 'Global Approval History')}
+          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+        >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Global Approval Rate</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.approvalRate || 0}%</h3>
           <p className="text-xs font-bold text-slate-500 mt-2">Quality Compliance Index</p>
         </div>
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
+        <div 
+          onClick={() => openDrillDown('programs', 'Active Program Matrix')}
+          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+        >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Active Batches</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalBatches || 0}</h3>
           <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-tight">Across all centers</p>
@@ -190,6 +209,13 @@ export default function SubDeptOverview() {
             </p>
          </div>
       </div>
+
+      <DrillDownModal 
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+      />
     </div>
   );
 }
