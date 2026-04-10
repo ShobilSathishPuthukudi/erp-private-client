@@ -4,7 +4,7 @@ import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
-const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task } = models;
+const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession } = models;
 
 /**
  * Institutional Dashboard Drill-Down API
@@ -74,6 +74,21 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
             where: normalizedRole.includes('department') ? { universityId: deptId } : {},
             include: [{ model: Department, as: 'university', attributes: ['name'] }],
             limit: 200
+          });
+        }
+        break;
+
+      case 'batches':
+      case 'activeBatches':
+        {
+          details = await AdmissionSession.findAll({
+            where: queryScope,
+            include: [
+              { model: Program, attributes: ['name', 'shortName'] },
+              { model: Department, as: 'center', attributes: ['name'] }
+            ],
+            limit: 300,
+            order: [['createdAt', 'DESC']]
           });
         }
         break;

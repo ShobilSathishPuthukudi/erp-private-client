@@ -12,7 +12,8 @@ import {
   Clock, 
   AlertCircle,
   FileText,
-  UserCheck
+  UserCheck,
+  Layers
 } from 'lucide-react';
 import { toSentenceCase } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -69,6 +70,7 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
     if (type.includes('task')) return FileText;
     if (type.includes('staff')) return UserCheck;
     if (type.includes('leave')) return Clock;
+    if (type.includes('batch')) return Layers;
     return AlertCircle;
   };
 

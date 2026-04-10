@@ -171,7 +171,7 @@ export default function SubDeptOverview() {
           <p className="text-xs font-bold text-slate-500 mt-2">Quality Compliance Index</p>
         </div>
         <div 
-          onClick={() => openDrillDown('programs', 'Active Program Matrix')}
+          onClick={() => openDrillDown('batches', 'Active Batch Matrix')}
           className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
         >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Active Batches</p>
