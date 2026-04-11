@@ -87,8 +87,8 @@ router.get('/universities', async (req, res) => {
   try {
     const universities = await Department.findAll({
       where: { 
-        type: 'university', 
-        status: { [Op.not]: 'inactive' } // Inclusively list all operational and staged nodes
+        type: 'universities', 
+        status: { [Op.in]: ['active', 'staged'] } // Inclusively list all operational and staged nodes
       },
       attributes: ['id', 'name']
     });
@@ -105,7 +105,7 @@ router.get('/programs/:universityId', async (req, res) => {
     const programs = await Program.findAll({
       where: { 
         universityId, 
-        status: { [Op.not]: 'inactive' } // Inclusively list all operational and staged nodes
+        status: { [Op.in]: ['active', 'staged'] } // Inclusively list all operational and staged nodes
       },
       attributes: ['id', 'name', 'type', 'subDeptId']
     });
@@ -195,7 +195,7 @@ router.post('/register-center', async (req, res) => {
     // 5. Trigger Institutional State Transitions: Stage the university and selected program
     await Department.update(
       { status: 'staged' }, 
-      { where: { id: interest.universityId, type: 'university' }, transaction: t }
+      { where: { id: interest.universityId, type: 'universities' }, transaction: t }
     );
     
     await Program.update(

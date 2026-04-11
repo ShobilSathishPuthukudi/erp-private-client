@@ -287,9 +287,27 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
       })
     ]);
 
+    // Global Institutional Totals (Metric Globalization)
+    const [totalActiveCenters, totalActivePrograms] = await Promise.all([
+      Department.count({ 
+        where: { 
+          type: { [Op.in]: ['partner-center', 'partner centers'] }, 
+          status: 'active', 
+          auditStatus: 'approved' 
+        } 
+      }),
+      Program.count({ 
+        where: { 
+          status: { [Op.in]: ['active', 'staged'] } 
+        } 
+      })
+    ]);
+    
     const stats = {
       totalStudents,
       pendingReviews,
+      totalActiveCenters,
+      totalActivePrograms,
       approvalRate: totalStudents > 0 ? (((totalStudents - rejections) / totalStudents) * 100).toFixed(1) : 0,
       statusDistribution: statusData.map(s => ({ name: s.status, value: parseInt(s.count) }))
     };
@@ -304,9 +322,9 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
         const key = subDeptKeys[index];
         const name = subDeptNames[index];
         
-        const [studentCount, programCount, centerCount] = await Promise.all([
+        const [studentCount, batchCount, centerCount, programCount] = await Promise.all([
           Student.count({ where: { subDepartmentId: id } }),
-          Program.count({ where: { subDeptId: id } }),
+          AdmissionSession.count({ where: { subDeptId: id } }),
           CenterProgram.count({ 
             where: { subDeptId: id },
             distinct: true,
@@ -316,15 +334,17 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
               as: 'center',
               where: { status: 'active', auditStatus: 'approved' }
             }]
-          })
+          }),
+          Program.count({ where: { subDeptId: id } })
         ]);
 
         return {
           id,
           name,
           studentCount,
-          programCount,
-          centerCount
+          batchCount,
+          centerCount,
+          programCount
         };
       }));
       stats.unitBreakdown = breakdown;
@@ -435,6 +455,45 @@ router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
   } catch (error) {
     console.error('Pipeline error:', error);
     res.status(500).json({ error: 'Pipeline visualizer failed' });
+  }
+});
+
+router.get('/pipeline/details', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const { reviewStage, enrollStatus, subDepartmentId } = req.query;
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
+    const adminSubDeptId = getSubDeptId(req.user);
+
+    const whereClause = {};
+    if (reviewStage) whereClause.reviewStage = reviewStage;
+    if (enrollStatus) whereClause.enrollStatus = enrollStatus;
+    
+    // Authorization & Filter Logic
+    if (isSubDeptAdmin) {
+      whereClause.subDepartmentId = adminSubDeptId;
+    } else if (subDepartmentId && subDepartmentId !== 'all') {
+      whereClause.subDepartmentId = subDepartmentId;
+    }
+
+    const students = await Student.findAll({
+      where: whereClause,
+      attributes: ['id', 'name', 'email', 'status', 'reviewStage', 'enrollStatus'],
+      include: [
+        {
+          model: Program,
+          attributes: ['name', 'shortName'],
+          include: [
+             { model: Department, as: 'university', attributes: ['name', 'shortName'] }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(students);
+  } catch (error) {
+    console.error('[PIPELINE_DETAILS_ERROR]:', error);
+    res.status(500).json({ error: 'Failed to synchronize pipeline drill-down' });
   }
 });
 

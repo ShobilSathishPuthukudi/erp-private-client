@@ -4,7 +4,7 @@ import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router();
-const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession } = models;
+const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession, Invoice } = models;
 
 /**
  * Institutional Dashboard Drill-Down API
@@ -164,6 +164,37 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
             include: [{ model: User, as: 'assignee', attributes: ['name'] }],
             limit: 200
           });
+        }
+        break;
+      
+      case 'risk_alerts':
+      case 'riskExposureNodes':
+        {
+          // Forensic Logic: Find students approved by Ops but lacking a paid invoice record.
+          // This matches the "Unpaid activations pending" KPI in the Finance Dashboard.
+          const riskData = await Student.findAll({
+            where: { 
+                ...queryScope,
+                status: { [Op.in]: ['FINANCE_PENDING', 'PAYMENT_VERIFIED'] } 
+            },
+            include: [
+              { model: Department, as: 'center', attributes: ['name'] },
+              { model: Program, attributes: ['name', 'shortName'] },
+              { 
+                model: Invoice, 
+                as: 'invoice', 
+                where: { status: 'paid' }, 
+                required: false 
+              }
+            ],
+            limit: 500,
+            order: [['createdAt', 'DESC']]
+          });
+
+          // Filter for students who EITHER don't have an invoice OR have one that isn't paid.
+          // Since the include above only fetches PAID invoices, any student without a linked
+          // 'invoice' object here is a risk exposure node.
+          details = riskData.filter(student => !student.invoice);
         }
         break;
 

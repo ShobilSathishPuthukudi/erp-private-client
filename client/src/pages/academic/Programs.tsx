@@ -95,10 +95,10 @@ export default function Programs() {
 
   const watchAllFields = watch();
   const selectedStructures = watchAllFields.paymentStructure;
-  const isCustomSelected = !!(selectedStructures && (
+  const isTenureRequired = !!(selectedStructures && (
     Array.isArray(selectedStructures) 
-    ? (selectedStructures as any).some((s: any) => s?.toLowerCase() === 'custom')
-    : (selectedStructures as any).toString().toLowerCase().includes('custom')
+    ? (selectedStructures as any).some((s: any) => ['custom', 'monthly'].includes(s?.toLowerCase()))
+    : ['custom', 'monthly'].some(v => (selectedStructures as any).toString().toLowerCase().includes(v))
   ));
 
   const isFormValid = 
@@ -347,40 +347,42 @@ export default function Programs() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { status: 'Draft', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial curriculum design; technical and academic parameters being mapped.' },
-          { status: 'Staged', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Internal departmental review; awaiting finalized board approval.' },
-          { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational program; verified for student enrollment and center mapping.' }
-        ].map((item, i) => (
-          <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
-            <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
-            <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {programs.length === 0 && !isLoading && (
-        <div className="max-w-md">
+      {!isLoading && programs.length === 0 ? (
+        <div className="max-w-xl mx-auto py-20">
           <DashCard 
             title="Initialize Academic Pipeline"
-            description="Design and deploy new academic curricula and multi-university program structures."
+            description="Design and deploy new academic curricula and multi-university program structures to start your institutional operations."
             onClick={openCreateModal}
             icon={Library}
-            actionLabel="Add Program"
+            actionLabel="Initialize Program Node"
           />
         </div>
-      )}
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { status: 'Draft', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial curriculum design; technical and academic parameters being mapped.' },
+              { status: 'Staged', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Internal departmental review; awaiting finalized board approval.' },
+              { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational program; verified for student enrollment and center mapping.' }
+            ].map((item, i) => (
+              <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
+                <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
+                <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
+              </div>
+            ))}
+          </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <DataTable 
-          columns={columns} 
-          data={programs} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Locate by program syntax..." 
-        />
-      </div>
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+            <DataTable 
+              columns={columns} 
+              data={programs} 
+              isLoading={isLoading} 
+              searchKey="name" 
+              searchPlaceholder="Locate by program syntax..." 
+            />
+          </div>
+        </>
+      )}
 
       <Modal
         isOpen={!!deletingItem}
@@ -589,17 +591,17 @@ export default function Programs() {
                 </div>
                 </div>
 
-                {isCustomSelected && (
+                {isTenureRequired && (
                 <div className="col-span-2">
                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 text-blue-600">
-                    EMI Tenure (Custom Installments)
+                    Billing Tenure (Installments / Months)
                     </label>
                     <div className="relative group">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 group-focus-within:text-blue-600 transition-colors" />
                     <input
                         type="number"
                         {...register('tenure', { 
-                        required: isCustomSelected, 
+                        required: isTenureRequired, 
                         valueAsNumber: true,
                         min: 1 
                         })}
@@ -607,7 +609,7 @@ export default function Programs() {
                         placeholder="Enter tenure in months..."
                     />
                     </div>
-                    <p className="mt-1.5 text-[9px] text-blue-400 font-bold uppercase ml-1 tracking-tight">Specify total payment cycles for this framework.</p>
+                    <p className="mt-1.5 text-[9px] text-blue-400 font-bold uppercase ml-1 tracking-tight">Specify total payment cycles for this framework. For Monthly plans, this defaults to the program trajectory.</p>
                 </div>
                 )}
 

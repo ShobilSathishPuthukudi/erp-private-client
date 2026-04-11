@@ -18,7 +18,8 @@ import {
   PieChart,
   ChevronDown,
   Hexagon,
-  Server
+  Server,
+  Megaphone
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import './Sidebar.css';
@@ -145,19 +146,19 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
+      name: 'Communications',
+      icon: Megaphone,
+      isGroup: true,
+      items: [
+        { name: 'Institutional Directives', path: '/dashboard/ceo/announcements' },
+      ]
+    },
+    {
       name: 'Operations',
       icon: TrendingUp,
       isGroup: true,
       items: [
         { name: 'Payout Approvals', path: '/dashboard/ceo/payouts' },
-      ]
-    },
-    {
-      name: 'Infrastructure',
-      icon: Activity,
-      isGroup: true,
-      items: [
-        { name: 'System Health', path: '/dashboard/org-admin/system-health' },
       ]
     }
   ],
@@ -318,8 +319,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Internal Marks', path: '/dashboard/academic/internal-marks' },
-        { name: 'Session Management', path: '/dashboard/academic/sessions' },
-        { name: 'Exams & Results', path: '/dashboard/academic/exams' },
       ]
     },
     {
@@ -405,8 +404,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Internal Marks', path: '/dashboard/academic/internal-marks' },
-        { name: 'Session Management', path: '/dashboard/academic/sessions' },
-        { name: 'Exams & Results', path: '/dashboard/academic/exams' },
       ]
     },
     {
@@ -590,6 +587,8 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Internal Marks', path: '/dashboard/partner-center/internal-marks' },
         { name: 'Re-Registration', path: '/dashboard/partner-center/rereg' },
         { name: 'Announcements', path: '/dashboard/partner-center/announcements' },
+        { name: 'Session Management', path: '/dashboard/partner-center/sessions' },
+        { name: 'Exams & Results', path: '/dashboard/partner-center/exams' },
       ]
     }
   ],

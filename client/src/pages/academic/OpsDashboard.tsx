@@ -67,7 +67,7 @@ export default function OpsDashboard() {
     { label: 'Rejection Velocity', value: `${stats.rejectionRate}%`, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: '+0.8%', isPositive: false, type: 'students' },
     { 
       label: 'Total Active Centers', 
-      value: stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.centerCount || 0), 0) || 0, 
+      value: stats.totalActiveCenters || 0, 
       icon: School, 
       color: 'text-amber-600', 
       bg: 'bg-amber-50', 
@@ -77,7 +77,7 @@ export default function OpsDashboard() {
     },
     { 
       label: 'Total Active Programs', 
-      value: stats.unitBreakdown?.reduce((acc: number, u: any) => acc + (u.programCount || 0), 0) || 0, 
+      value: stats.totalActivePrograms || 0, 
       icon: BookOpen, 
       color: 'text-indigo-600', 
       bg: 'bg-indigo-50', 

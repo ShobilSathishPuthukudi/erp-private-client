@@ -32,8 +32,8 @@ const Leave = sequelize.define('leave', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('pending_step1', 'pending_step2', 'approved', 'rejected_step1', 'rejected_step2'),
-    defaultValue: 'pending_step1',
+    type: DataTypes.ENUM('pending admin', 'pending hr', 'approved', 'rejected'),
+    defaultValue: 'pending admin',
   },
   reason: {
     type: DataTypes.TEXT,

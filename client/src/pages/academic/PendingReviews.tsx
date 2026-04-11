@@ -52,7 +52,7 @@ export default function PendingReviews() {
     try {
       setIsLoading(true);
       const statusMap = {
-        'pending': 'PENDING_REVIEW,FINANCE_PENDING',
+        'pending': 'PENDING_REVIEW',
         'finance': 'FINANCE_PENDING',
         'approved': 'ENROLLED'
       };

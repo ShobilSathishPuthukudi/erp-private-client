@@ -92,7 +92,7 @@ export default function CredentialAudit() {
   ];
 
   return (
-    <div className="space-y-8 p-10 bg-[#f8fafc] min-h-screen">
+    <div className="space-y-8 p-10 min-h-screen">
       <div className="bg-white p-10 rounded-[48px] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
          <div className="absolute top-0 right-0 p-10">
             <ShieldAlert className="w-40 h-40 text-slate-50 -rotate-12 group-hover:rotate-0 transition-transform duration-700" />

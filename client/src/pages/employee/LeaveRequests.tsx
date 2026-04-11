@@ -115,7 +115,9 @@ export default function LeaveRequests() {
         
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
-            {s === 'pending_step1' ? 'pending approval' : (s === 'pending_step2' ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'forwarded to hr') : s.replace('_', ' '))}
+            {['pending_step1', 'pending admin'].includes(s) ? 'pending admin' : 
+             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'pending hr') : 
+             s.replace('_', ' '))}
           </span>
         );
       }
@@ -125,7 +127,7 @@ export default function LeaveRequests() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          {row.original.status === 'pending_step1' && (
+          {['pending_step1', 'pending admin'].includes(row.original.status) && (
             <button 
               onClick={() => handleDelete(row.original.id)}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

@@ -7,6 +7,9 @@ import Programs from './ProgramOfferings';
 import Announcements from './Announcements';
 import InternalMarks from './InternalMarks';
 import Dashboard from './Dashboard';
+import Sessions from '../academic/Sessions';
+import Exams from '../academic/Exams';
+import MarksEntry from '../academic/MarksEntry';
 
 export default function StudyCenterDashboard() {
   return (
@@ -19,6 +22,9 @@ export default function StudyCenterDashboard() {
       <Route path="rereg" element={<ReregPortal />} />
       <Route path="accreditation" element={<AccreditationInterest />} />
       <Route path="announcements" element={<Announcements />} />
+      <Route path="sessions" element={<Sessions />} />
+      <Route path="exams" element={<Exams />} />
+      <Route path="exams/:id/marks" element={<MarksEntry />} />
     </Routes>
   );
 }

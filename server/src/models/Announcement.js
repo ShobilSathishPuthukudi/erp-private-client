@@ -24,7 +24,7 @@ const Announcement = sequelize.define('announcement', {
     allowNull: true,
   },
   targetChannel: {
-    type: DataTypes.ENUM('all_employees', 'centers_only'),
+    type: DataTypes.ENUM('all_employees', 'centers_only', 'hr_directives'),
     allowNull: false,
     defaultValue: 'all_employees',
   },

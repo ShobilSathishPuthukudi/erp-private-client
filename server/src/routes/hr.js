@@ -84,7 +84,7 @@ router.get('/stats', verifyToken, isHR, applyExecutiveScope, async (req, res) =>
       User.count({ where: workforceFilter }),
       Vacancy.count({ where: { status: 'OPEN', ...visibilityFilter } }),
       Leave.count({ 
-        where: { status: { [Op.like]: 'pending%' } },
+        where: { status: 'pending hr' },
         include: [{ model: User, as: 'employee', where: visibilityFilter, required: true }]
       }),
       Task.count({ 
@@ -489,7 +489,7 @@ router.get('/leaves', verifyToken, isHR, applyExecutiveScope, async (req, res) =
     try {
         const { filter: visibilityFilter } = req.visibility;
         const leaves = await Leave.findAll({
-            where: {},
+            where: { status: { [Op.ne]: 'pending admin' } },
             include: [{ 
               model: User, 
               as: 'employee', 
@@ -591,7 +591,7 @@ router.put('/leaves/:id/approve', verifyToken, isHR, async (req, res) => {
         });
 
         if (!leave) return res.status(404).json({ error: 'Leave request not found' });
-        if (leave.status !== 'pending_step2') {
+        if (leave.status !== 'pending hr') {
             return res.status(400).json({ error: `Cannot Step-2 approve in current status: ${leave.status}` });
         }
 
@@ -648,6 +648,38 @@ router.put('/leaves/:id/approve', verifyToken, isHR, async (req, res) => {
     }
 });
 
+router.put('/leaves/:id/reject', verifyToken, isHR, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { remarks } = req.body;
+        
+        const leave = await Leave.findByPk(id, { include: [{ model: User, as: 'employee' }] });
+        if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+        
+        if (leave.status !== 'pending hr') {
+            return res.status(400).json({ error: `Cannot reject in current status: ${leave.status}` });
+        }
+
+        await leave.update({
+            status: 'rejected',
+            step2By: req.user.uid,
+            reason: remarks ? `${leave.reason || ''} [HR Reject: ${remarks}]` : leave.reason
+        });
+
+        await createNotification(req.io, {
+            targetUid: leave.employeeId,
+            title: 'Leave Rejected',
+            message: `Your leave request for ${leave.type} was rejected by HR.`,
+            type: 'error',
+            link: '/dashboard/employee/leaves'
+        });
+
+        res.json({ message: 'Leave request rejected by HR', leave });
+    } catch (error) {
+        res.status(500).json({ error: 'Leave rejection protocol failure' });
+    }
+});
+
 // Step 1: Institutional Leave Validation (Dept Admin / Manager)
 router.put('/leaves/:id/step1-approve', verifyToken, async (req, res) => {
     try {
@@ -665,12 +697,12 @@ router.put('/leaves/:id/step1-approve', verifyToken, async (req, res) => {
             return res.status(403).json({ error: 'Governance Violation: Only Department Admin or Reporting Manager can perform Step-1 validation.' });
         }
 
-        if (leave.status !== 'pending_step1') {
+        if (leave.status !== 'pending admin') {
             return res.status(400).json({ error: `Protocol Conflict: Cannot Step-1 approve in current status: ${leave.status}` });
         }
 
         await leave.update({
-            status: 'pending_step2',
+            status: 'pending hr',
             step1By: req.user.uid,
             reason: remarks ? `${leave.reason || ''} [Step1 Audit: ${remarks}]` : leave.reason
         });
@@ -850,71 +882,5 @@ router.post('/referrals/submit', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/leaves/:id/reject', verifyToken, isHR, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const leave = await Leave.findByPk(id);
-
-        if (!leave) return res.status(404).json({ error: 'Leave request not found' });
-        if (leave.status !== 'pending_step2') {
-            return res.status(400).json({ error: `Cannot Step-2 reject in current status: ${leave.status}` });
-        }
-
-        await leave.update({
-            status: 'rejected_step2',
-            step2By: req.user.uid
-        });
-
-        // NOTIFICATIONS
-        if (req.io || true) {
-            // 1. Notify Employee
-            await createNotification(req.io, {
-                targetUid: leave.employeeId,
-                title: 'Leave Rejected',
-                message: `Your leave request for ${leave.type} has been rejected by HR Oversight.`,
-                type: 'error',
-                link: '/dashboard/employee/leaves'
-            });
-
-            // 2. Notify Dept Admin / Head 
-            // We need employee info for dept lookup if step1By is missing
-            const leaveWithDetails = await Leave.findByPk(id, {
-                include: [{ model: User, as: 'employee' }]
-            });
-            const targetAdminUid = leave.step1By || (await User.findOne({ 
-                include: [{ model: Department, as: 'department', where: { id: leaveWithDetails?.employee?.deptId } }] 
-            }))?.department?.adminId;
-
-            if (targetAdminUid && targetAdminUid !== req.user.uid) {
-                const targetAdmin = await User.findByPk(targetAdminUid);
-                const role = targetAdmin?.role?.toLowerCase()?.trim();
-                
-                // HR department doesn't need to be notified of their own rejection actions
-                if (role !== 'hr admin') {
-                    let adminLink = '/dashboard/team/leaves'; 
-                    
-                    if (role === 'Sales & CRM Admin') adminLink = '/dashboard/sales/leaves';
-                    else if (role === 'Finance Admin') adminLink = '/dashboard/finance/leaves';
-                    else if (role === 'Operations Admin') adminLink = '/dashboard/operations/leaves';
-                    else if (role === 'Academic Admin') adminLink = '/dashboard/academic/leaves';
-                    else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) adminLink = `/dashboard/subdept/${role}/leaves`;
-
-                    await createNotification(req.io, {
-                        targetUid: targetAdminUid,
-                        title: 'Team Leave Rejected',
-                        message: `Leave request for ${leaveWithDetails?.employee?.name || 'team member'} was REJECTED by HR Oversight.`,
-                        type: 'warning',
-                        link: adminLink
-                    });
-                }
-            }
-        }
-
-        res.json({ message: 'Leave request rejected by HR', leave });
-    } catch (error) {
-        console.error("HR LEAVE REJECT ERROR:", error);
-        res.status(500).json({ message: "Internal server error", module: "HR" });
-    }
-});
 
 export default router;

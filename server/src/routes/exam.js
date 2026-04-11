@@ -6,9 +6,19 @@ const router = express.Router();
 const { Exam, Mark, Result, Student, Program, Department } = models;
 
 const isSubDeptOrAcademic = (req, res, next) => {
-  const allowed = ['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Operations Admin', 'Organization Admin'];
-  if (!allowed.includes(req.user.role)) {
-    return res.status(403).json({ error: 'Access denied: Academic or Sub-Dept privileges required' });
+  const role = req.user.role?.toLowerCase() || '';
+  const allowed = [
+    'open school admin', 
+    'online department admin', 
+    'skill department admin', 
+    'bvoc department admin', 
+    'operations admin', 
+    'organization admin',
+    'partner centers',
+    'partner center'
+  ];
+  if (!allowed.includes(role)) {
+    return res.status(403).json({ error: 'Access denied: Academic or Center privileges required' });
   }
   next();
 };
@@ -27,9 +37,32 @@ const calculateGrade = (total) => {
 router.get('/', verifyToken, isSubDeptOrAcademic, async (req, res) => {
   try {
     const where = {};
-    if (!['Operations Admin', 'Organization Admin'].includes(req.user.role)) {
+    const role = req.user.role?.toLowerCase() || '';
+
+    if (!['operations admin', 'organization admin'].includes(role)) {
+        if (['partner center', 'partner centers'].includes(role)) {
+            const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+            if (center) {
+                // Filter exams by the centerId of their associated session
+                const exams = await Exam.findAll({
+                    include: [
+                        { model: Program, attributes: ['name', 'type'] },
+                        { 
+                            model: models.AdmissionSession, 
+                            as: 'session', 
+                            where: { centerId: center.id },
+                            required: true 
+                        }
+                    ],
+                    order: [['createdAt', 'DESC']]
+                });
+                return res.json(exams);
+            }
+            return res.json([]);
+        }
         where.subDeptId = req.user.deptId;
     }
+
     const exams = await Exam.findAll({
       include: [{ model: Program, where, attributes: ['name', 'type'] }],
       order: [['createdAt', 'DESC']]

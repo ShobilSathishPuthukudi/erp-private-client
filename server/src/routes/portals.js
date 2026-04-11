@@ -711,7 +711,7 @@ router.get('/employee/my-centers', verifyToken, requireRole('employee'), async (
     const centers = await Department.findAll({
       where: { 
         bdeId: { [Op.in]: validBdeIds },
-        type: { [Op.in]: ['partner-center'] }
+        type: { [Op.in]: ['partner-center', 'partner centers'] }
       },
       order: [['createdAt', 'DESC']]
     });
@@ -749,7 +749,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
     const { type, fromDate, toDate, reason } = req.body;
     
     // Resolve Department Head to determine workflow (Shortcut Rule: Head is Admin -> Skip Step 1)
-    let initialStatus = 'pending_step1';
+    let initialStatus = 'pending admin';
     try {
       const employee = await User.findOne({ where: { uid: req.user.uid } });
       if (employee?.deptId) {
@@ -766,7 +766,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
 
         const headRole = head?.role?.toLowerCase();
         if (headRole === 'Organization Admin' || headRole === 'admin') {
-          initialStatus = 'pending_step2';
+          initialStatus = 'pending hr';
         }
       }
     } catch (err) {
@@ -793,14 +793,14 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
         await createNotification(req.io, {
           targetUid: hr.uid,
           title: 'New Leave Request (HR)',
-          message: `${employeeName} submitted a ${type} request${initialStatus === 'pending_step2' ? ' (Admin Shortcut)' : ''}.`,
+          message: `${employeeName} submitted a ${type} request${initialStatus === 'pending hr' ? ' (Admin Shortcut)' : ''}.`,
           type: 'info',
           link: '/dashboard/hr/leaves'
         });
       }
 
       // 2. Notify Department Head (Only if they didn't already skip Step-1)
-      if (initialStatus === 'pending_step1') {
+      if (initialStatus === 'pending admin') {
         const dept = await Department.findByPk(employee?.deptId);
         
         if (dept?.adminId) {
@@ -826,7 +826,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
       }
 
       // 3. Notify Employee (If it's an auto-forward case)
-      if (initialStatus === 'pending_step2') {
+      if (initialStatus === 'pending hr') {
         await createNotification(req.io, {
           targetUid: req.user.uid,
           title: 'Institutional Forwarding',
@@ -856,8 +856,8 @@ router.delete('/employee/leaves/:id', verifyToken, requireRole('employee'), asyn
 
     if (!leave) return res.status(404).json({ error: 'Leave request not found or unauthorized' });
     
-    if (leave.status !== 'pending_step1') {
-      return res.status(400).json({ error: 'Only pending (Step-1) requests can be deleted' });
+    if (leave.status !== 'pending admin') {
+      return res.status(400).json({ error: 'Only pending requests can be deleted' });
     }
 
     await leave.destroy();

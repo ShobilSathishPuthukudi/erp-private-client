@@ -71,7 +71,7 @@ export default function Leaves() {
       };
 
       await api.post('/dept-admin/leaves/test-create', payload);
-      toast.success('Test leave created in pending_step1 status');
+      toast.success('Test leave created in pending admin status');
       fetchLeaves();
     } catch (error: any) {
       toast.error('Failed to simulate test leave');
@@ -119,7 +119,8 @@ export default function Leaves() {
         
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
-            {s.replace('_', ' ')}
+            {['pending_step1', 'pending admin'].includes(s) ? 'pending admin' : 
+             (['pending_step2', 'pending hr'].includes(s) ? 'pending hr' : s.replace('_', ' '))}
           </span>
         );
       }
@@ -129,7 +130,7 @@ export default function Leaves() {
       header: 'Dept Action (Step 1)',
       cell: ({ row }) => {
         const leave = row.original;
-        if (leave.status !== 'pending_step1') {
+        if (!['pending_step1', 'pending admin'].includes(leave.status)) {
           return <span className="text-xs text-slate-400 ">No action required</span>;
         }
 

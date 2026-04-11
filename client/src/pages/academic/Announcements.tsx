@@ -19,7 +19,7 @@ interface Announcement {
 
 export default function CenterAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [formData, setFormData] = useState({ 
@@ -98,61 +98,66 @@ export default function CenterAnnouncements() {
            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Center Broadcasting</h1>
            <p className="text-slate-500 text-sm font-medium">Issue targeted directives directly to Study Center dashboards.</p>
         </div>
-        <button 
-           onClick={() => setIsModalOpen(true)}
-           className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
-        >
-           <Megaphone className="w-4 h-4" />
-           New Broadcast Directive
-        </button>
+        {!isLoading && announcements.length > 0 && (
+          <button 
+             onClick={() => setIsModalOpen(true)}
+             className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
+          >
+             <Megaphone className="w-4 h-4" />
+             New Broadcast Directive
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {announcements.length === 0 && (
-          <div className="col-span-full">
-            <DashCard 
-              title="Issue Center Directive"
-              description="Broadcast high-priority operational instructions to regional study center dashboards."
-              onClick={() => setIsModalOpen(true)}
-              icon={Megaphone}
-              actionLabel="Open Broadcast HUD"
-              className="min-h-[320px]"
-            />
-          </div>
-        )}
-        {announcements.map(ann => (
-          <div 
-            key={ann.id} 
-            onClick={() => setSelectedAnnouncement(ann)}
-            className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all relative group cursor-pointer"
-          >
-            <button 
-                onClick={() => deleteAnnouncement(ann.id)}
-                className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+      {!isLoading && announcements.length === 0 ? (
+        <div className="max-w-xl mx-auto py-20">
+          <DashCard 
+            title="Issue Center Directive"
+            description="Broadcast high-priority operational instructions to regional study center dashboards. Launch the HUD to define scope and delivery protocols."
+            onClick={() => setIsModalOpen(true)}
+            icon={Megaphone}
+            actionLabel="Open Broadcast HUD"
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {announcements.map(ann => (
+            <div 
+              key={ann.id} 
+              onClick={() => setSelectedAnnouncement(ann)}
+              className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all relative group cursor-pointer"
             >
-                <Trash2 className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2 mb-4">
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${ann.priority === 'urgent' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                    {ann.priority}
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(ann.createdAt).toLocaleDateString()}
-                </span>
+              <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteAnnouncement(ann.id);
+                  }}
+                  className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                  <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-2 mb-4">
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${ann.priority === 'urgent' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                      {ann.priority}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(ann.createdAt).toLocaleDateString()}
+                  </span>
+              </div>
+              <h3 className="font-black text-slate-900 uppercase tracking-tighter mb-2">{ann.title}</h3>
+              <p className="text-slate-600 text-sm font-medium mb-4 line-clamp-3 ">{ann.message}</p>
+              
+              <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                  <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-0.5 rounded-md">
+                      <Filter className="w-3 h-3" />
+                      Scope: {ann.center?.name || ann.program?.name || 'All Centers'}
+                  </div>
+              </div>
             </div>
-            <h3 className="font-black text-slate-900 uppercase tracking-tighter mb-2">{ann.title}</h3>
-            <p className="text-slate-600 text-sm font-medium mb-4 line-clamp-3 ">{ann.message}</p>
-            
-            <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
-                <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase bg-slate-50 px-2 py-0.5 rounded-md">
-                    <Filter className="w-3 h-3" />
-                    Scope: {ann.center?.name || ann.program?.name || 'All Centers'}
-                </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">

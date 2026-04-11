@@ -7,8 +7,15 @@ import {
   Search,
   ArrowRight,
   UserCircle2,
-  Layers
+  Layers,
+  ShieldCheck,
+  Activity,
+  X,
+  FileText,
+  Building2,
+  Compass
 } from 'lucide-react';
+import { Modal } from '@/components/shared/Modal';
 
 const unitMap: { [key: number]: string } = {
   1: 'OpenSchool',
@@ -28,6 +35,12 @@ export default function PipelineTracking() {
   const [pipeline, setPipeline] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<number | 'all'>('all');
+  
+  // Drill-down state
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [selectedDetails, setSelectedDetails] = useState<any[]>([]);
+  const [activeStageLabel, setActiveStageLabel] = useState('');
 
   useEffect(() => {
     const fetchPipeline = async () => {
@@ -42,6 +55,25 @@ export default function PipelineTracking() {
     };
     fetchPipeline();
   }, []);
+
+  const handleDrillDown = async (item: any, stageLabel: string) => {
+    setActiveStageLabel(stageLabel);
+    setIsDetailsOpen(true);
+    setDetailsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (item.reviewStage) params.append('reviewStage', item.reviewStage);
+      if (item.enrollStatus) params.append('enrollStatus', item.enrollStatus);
+      if (item.subDepartmentId) params.append('subDepartmentId', item.subDepartmentId.toString());
+      
+      const res = await api.get(`/operations/pipeline/details?${params.toString()}`);
+      setSelectedDetails(res.data);
+    } catch (error) {
+      console.error('Drill-down telemetry failure:', error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const stages = [
     { id: 'SUB_DEPT', label: 'Unit Pending', icon: Clock, color: 'bg-amber-500' },
@@ -107,7 +139,11 @@ export default function PipelineTracking() {
                           const unitName = unitMap[item.subDepartmentId] || 'Cross-Dept';
                           const cardColor = unitColors[unitName] || 'text-slate-600 bg-slate-50';
                           return (
-                            <div key={i} className="p-5 bg-white rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all group cursor-pointer border-l-4 border-l-slate-900">
+                            <div 
+                                key={i} 
+                                onClick={() => handleDrillDown(item, stage.label)}
+                                className="p-5 bg-white rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all group cursor-pointer border-l-4 border-l-slate-900"
+                            >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${cardColor}`}>
                                         {unitName}
@@ -142,6 +178,77 @@ export default function PipelineTracking() {
           );
         })}
       </div>
+
+      <Modal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title={`Institutional Node Details — ${activeStageLabel}`}
+        maxWidth="3xl"
+      >
+        <div className="space-y-6">
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg shadow-slate-200">
+                        <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Pipeline Telemetry</h3>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Active Student Manifest for current gateway stage.</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-2xl font-black text-slate-900 leading-none">{selectedDetails.length}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Nodes Analyzed</p>
+                </div>
+            </div>
+
+            <div className="max-h-[500px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                {detailsLoading ? (
+                    [1, 2, 3].map(i => (
+                        <div key={i} className="h-20 w-full bg-slate-50 rounded-2xl animate-pulse" />
+                    ))
+                ) : selectedDetails.length > 0 ? (
+                    selectedDetails.map((student, idx) => (
+                        <div key={idx} className="p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-indigo-50 transition-colors">
+                                    <UserCircle2 className="w-7 h-7 text-slate-300 group-hover:text-indigo-400" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="font-black text-slate-900 tracking-tight leading-none">{student.name}</h4>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {student.id}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                                            <Compass className="w-3 h-3 text-slate-400" />
+                                            {student.program?.shortName || student.program?.name}
+                                        </div>
+                                        <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                                            <Building2 className="w-3 h-3 text-slate-400" />
+                                            {student.program?.university?.shortName || student.program?.university?.name}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                                    {student.status.replace(/_/g, ' ')}
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-all group-hover:translate-x-1" />
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="py-20 flex flex-col items-center justify-center opacity-30 grayscale">
+                        <FileText className="w-12 h-12 text-slate-300 mb-4" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">No node metadata salvaged</p>
+                    </div>
+                )}
+            </div>
+        </div>
+      </Modal>
     </div>
   );
 }

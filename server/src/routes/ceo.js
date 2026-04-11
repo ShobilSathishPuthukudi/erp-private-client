@@ -134,7 +134,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
 
     const pendingLeaves = await Leave.count({
       where: { 
-        status: { [Op.in]: ['pending_step1', 'pending_step2'] }
+        status: { [Op.in]: ['pending admin', 'pending hr'] }
       },
       include: [{
         model: User,
@@ -164,7 +164,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     });
     
     const avgTaskTime = completedTasksData.length > 0 
-      ? Math.round(completedTasksData.reduce((sum, t) => sum + (new Date(t.updatedAt) - new Date(t.createdAt)), 0) / completedTasksData.length / (1000 * 60 * 60))
+      ? Math.round(completedTasksData.reduce((sum, t) => sum + (new Date(t.completedAt) - new Date(t.createdAt)), 0) / completedTasksData.length / (1000 * 60 * 60))
       : 0;
 
     // Admission-to-Enrollment Cycle Time (Simulated via Lead -> Student email match)
@@ -179,8 +179,10 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     const avgCycleTime = cycleTimes.length > 0 ? Math.round(cycleTimes.reduce((sum, t) => sum + t, 0) / cycleTimes.length / (1000 * 60 * 60 * 24)) : 0;
 
     // Productivity Score (Balanced index)
-    const timeEfficiency = avgTaskTime > 0 ? Math.min(100, Math.max(0, (72 - avgTaskTime) / 72 * 100)) : 100;
-    const productivityScore = Math.round((taskCompletionRate * 0.6) + (timeEfficiency * 0.4));
+    const timeEfficiency = avgTaskTime > 0 ? Math.min(100, Math.max(0, (72 - avgTaskTime) / 72 * 100)) : (totalTasksAll > 0 ? 0 : 100);
+    const baseScore = Math.round((taskCompletionRate * 0.6) + (timeEfficiency * 0.4));
+    const escalationPenalty = Math.min(40, overdueTasks * 10); // Penalize heavily for overdue escalations
+    const productivityScore = Math.max(0, baseScore - escalationPenalty);
 
     // 3. Advanced Risk Metrics
     const highValuePending = await Invoice.count({
@@ -234,6 +236,59 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       revenueTrend.push({ name: monthName, revenue: monthRev });
     }
 
+    // 3. Institutional Growth (Last 6 Months) - Scoped
+    const growthData = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const monthName = d.toLocaleString('default', { month: 'short' });
+      
+      const [studentCount, staffCount] = await Promise.all([
+        Student.count({ where: { ...whereStudent, createdAt: { [Op.lte]: monthEnd } } }),
+        User.count({ where: { ...whereUser, role: { [Op.ne]: 'student' }, createdAt: { [Op.lte]: monthEnd } } })
+      ]);
+      
+      growthData.push({ name: monthName, students: studentCount, employees: staffCount });
+    }
+
+    // 4. Center Growth (Last 7 Days) - Scoped
+    const centerGrowth = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      const dayName = d.toLocaleString('default', { weekday: 'short' });
+      
+      const leads = await Department.count({
+        where: { 
+          type: { [Op.in]: ['partner centers', 'partner-center'] },
+          createdAt: { [Op.lte]: endOfDay },
+          ...(restricted ? { 
+            [Op.or]: [
+              { id: { [Op.in]: deptIds } },
+              { parentId: { [Op.in]: deptIds } }
+            ]
+          } : {})
+        }
+      });
+
+      const approved = await Department.count({
+        where: { 
+          type: { [Op.in]: ['partner centers', 'partner-center'] },
+          status: 'active',
+          createdAt: { [Op.lte]: endOfDay },
+          ...(restricted ? { 
+            [Op.or]: [
+              { id: { [Op.in]: deptIds } },
+              { parentId: { [Op.in]: deptIds } }
+            ]
+          } : {})
+        }
+      });
+      centerGrowth.push({ day: dayName, leads, approved });
+    }
+
     res.json({
       totalStudents,
       totalUniversities,
@@ -253,6 +308,8 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       revealRequests,
       enrollmentTrend,
       revenueTrend,
+      growthData,
+      centerGrowth,
       salesIntelligence: names.some(n => n?.toLowerCase().includes('sales & crm admin') || n?.toLowerCase().includes('sales intelligence')) ? {
         totalLeads: await Lead.count({ 
           where: restricted ? {
@@ -308,7 +365,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
           }]
         });
         const pendingLeavesCount = await Leave.count({
-          where: { status: { [Op.in]: ['pending_step1', 'pending_step2'] } },
+          where: { status: { [Op.in]: ['pending admin', 'pending hr'] } },
           include: [{
             model: User,
             as: 'employee',
@@ -383,7 +440,7 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
     // 2. Fetch aged leave requests
     const leavesRaw = await Leave.findAll({
       where: { 
-        status: { [Op.in]: ['pending_step1', 'pending_step2'] }
+        status: { [Op.in]: ['pending admin', 'pending hr'] }
       },
       include: [
         { 
@@ -439,20 +496,21 @@ router.get('/performance', verifyToken, isCEO, applyExecutiveScope, async (req, 
         include: [{ model: User, as: 'assignee', where: { deptId: dept.id } }] 
       });
       const onTimeTasks = await Task.count({ 
-        where: { status: 'completed' }, // In a real system, would check completionDate <= deadline
+        where: { status: 'completed', completedAt: { [Op.lte]: Sequelize.col('deadline') } },
         include: [{ model: User, as: 'assignee', where: { deptId: dept.id } }] 
       });
       const slaCompliance = totalTasks > 0 ? (onTimeTasks / totalTasks) * 100 : 100;
 
-      // 2. Leave Utilization (Approved leaves vs available - simulated for now)
-      const leaveRequests = await Leave.count({
+      // 2. Volume & Risk Metrics
+      const students = await Student.count({ where: { deptId: dept.id } });
+      const pendingLeaves = await Leave.count({
+        where: { status: { [Op.in]: ['pending admin', 'pending hr'] } },
         include: [{ model: User, as: 'employee', where: { deptId: dept.id } }]
       });
-      const approvedLeaves = await Leave.count({
-        where: { status: 'approved' },
-        include: [{ model: User, as: 'employee', where: { deptId: dept.id } }]
+      const overdueTasks = await Task.count({
+        where: { status: { [Op.ne]: 'completed' }, deadline: { [Op.lt]: now } },
+        include: [{ model: User, as: 'assignee', where: { deptId: dept.id } }]
       });
-      const leaveUtil = leaveRequests > 0 ? (approvedLeaves / leaveRequests) * 100 : 0;
 
       // 3. Revenue Achievement (Actual vs Target - simulated target)
       const invoiceData = await Invoice.findAll({
@@ -470,20 +528,16 @@ router.get('/performance', verifyToken, isCEO, applyExecutiveScope, async (req, 
       const target = 1000000; // Simulated 1M target per dept
       const revAchievement = Math.min(100, (revenue / target) * 100);
 
-      // 4. Weighted KPI Score
-      const kpiScore = (slaCompliance * 0.5) + (revAchievement * 0.5);
-
-      // 5. Real Trend based on Task Load
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevTasks = await Task.count({ 
-        where: { createdAt: { [Op.lt]: startOfMonth, [Op.gte]: lastMonth } },
-        include: [{ model: User, as: 'assignee', where: { deptId: dept.id } }] 
-      });
-      const currTasks = await Task.count({ 
-        where: { createdAt: { [Op.gte]: startOfMonth } },
-        include: [{ model: User, as: 'assignee', where: { deptId: dept.id } }] 
-      });
-      const trend = currTasks >= prevTasks ? 'up' : 'down';
+      return {
+        id: dept.id,
+        name: dept.name,
+        students,
+        revenue,
+        pendingLeaves,
+        overdueTasks,
+        slaCompliance,
+        revAchievement
+      };
     }));
 
     res.json(performanceData);
@@ -530,8 +584,8 @@ router.get('/performance/employees', verifyToken, isCEO, applyExecutiveScope, as
       // 2. Leave Score (20%) - Deduct for aged pending leaves
       const agedLeaves = await Leave.count({
         where: {
-          userId: user.uid,
-          status: { [Op.in]: ['pending_step1', 'pending_step2'] },
+          employeeId: user.uid,
+          status: { [Op.in]: ['pending admin', 'pending hr'] },
           createdAt: { [Op.lt]: new Date(now.getTime() - 48 * 60 * 60 * 1000) }
         }
       });
@@ -543,8 +597,8 @@ router.get('/performance/employees', verifyToken, isCEO, applyExecutiveScope, as
       const isSales = user.subDepartment?.toLowerCase().includes('sales') || user.department?.name?.toLowerCase().includes('sales');
       
       if (isSales) {
-        leadCount = await Lead.count({ where: { assigneeId: user.uid } });
-        const convertedLeads = await Lead.count({ where: { assigneeId: user.uid, status: 'CONVERTED' } });
+        leadCount = await Lead.count({ where: { assignedTo: user.uid } });
+        const convertedLeads = await Lead.count({ where: { assignedTo: user.uid, status: 'CONVERTED' } });
         salesScore = leadCount > 0 ? (convertedLeads / leadCount * 100) : 0;
       }
 
@@ -757,6 +811,13 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
       ]
     } : {};
 
+    const whereUser = restricted ? {
+      [Op.or]: [
+        { deptId: { [Op.in]: deptIds } },
+        { subDepartment: { [Op.in]: names } }
+      ]
+    } : {};
+
     switch (type) {
       case 'universities':
         data = await Department.findAll({
@@ -821,12 +882,81 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
         });
         break;
 
+      case 'risk_aged':
+        const now = new Date();
+        const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
+        const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
+        const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+        
+        const overdueTasksData = await Task.findAll({
+          where: { 
+            status: { [Op.ne]: 'completed' },
+            deadline: { [Op.lt]: gracePeriodThreshold }
+          },
+          include: [
+            {
+              model: User,
+              as: 'assignee',
+              required: true,
+              where: whereUser,
+              attributes: ['name']
+            },
+            {
+              model: User,
+              as: 'assigner',
+              attributes: ['name']
+            }
+          ],
+          attributes: ['id', 'title', 'deadline', 'createdAt'],
+          limit: 10
+        });
+
+        const pendingLeavesData = await Leave.findAll({
+          where: { 
+            status: { [Op.in]: ['pending admin', 'pending hr'] },
+            createdAt: { [Op.lt]: new Date(now.getTime() - 48 * 60 * 60 * 1000) }
+          },
+          include: [{
+            model: User,
+            as: 'employee',
+            required: true,
+            where: whereUser,
+            attributes: ['name']
+          }],
+          attributes: ['id', 'type', 'createdAt'],
+          limit: 10
+        });
+
+        data = [
+          ...overdueTasksData.map(t => ({
+            ...t.toJSON(),
+            module: 'Task',
+            daysOverdue: Math.ceil(Math.abs(now.getTime() - new Date(t.deadline).getTime()) / (1000 * 60 * 60 * 24))
+          })),
+          ...pendingLeavesData.map(l => ({
+            id: l.id,
+            title: `${l.type} Leave Request`,
+            deadline: l.createdAt, // Fallback
+            createdAt: l.createdAt,
+            assignee: { name: l.employee?.name },
+            assigner: { name: 'Employee Request' },
+            module: 'Leave',
+            daysOverdue: Math.ceil(Math.abs(now.getTime() - new Date(l.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          }))
+        ];
+        break;
+
       case 'department':
         if (!dId) return res.status(400).json({ error: 'Department ID required' });
         const dept = await Department.findByPk(dId, {
           include: [{ model: User, as: 'admin', attributes: ['name', 'email'] }]
         });
         
+        const nowDept = new Date();
+        const configDept = await OrgConfig.findAll({ where: { group: 'governance' } });
+        const taskGraceDept = parseInt(configDept.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
+        const graceThresholdDept = new Date(nowDept.getTime() - taskGraceDept * 60 * 60 * 1000);
+
         const studentsCount = await Student.count({ 
           where: { [Op.or]: [{ deptId: dId }, { subDepartmentId: dId }] } 
         });
@@ -842,56 +972,56 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
         });
         const revenueSum = revenueInvoices.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
 
-        const overdueT = await Task.count({
-          where: { status: 'overdue' },
-          include: [{ 
-            model: User, 
-            as: 'assignee', 
-            where: { deptId: dId } 
-          }]
+        const overdueTCount = await Task.count({
+          where: { 
+            status: { [Op.ne]: 'completed' },
+            deadline: { [Op.lt]: graceThresholdDept }
+          },
+          include: [{ model: User, as: 'assignee', where: { deptId: dId } }]
+        });
+
+        const pendingLCount = await Leave.count({
+          where: { status: { [Op.in]: ['pending admin', 'pending hr'] } },
+          include: [{ model: User, as: 'employee', where: { deptId: dId } }]
+        });
+
+        const overdueTasksDataDept = await Task.findAll({
+          where: { 
+            status: { [Op.ne]: 'completed' },
+            deadline: { [Op.lt]: graceThresholdDept }
+          },
+          include: [{ model: User, as: 'assignee', where: { deptId: dId }, attributes: ['name'] }],
+          attributes: ['id', 'title', 'deadline', 'createdAt'],
+          order: [['deadline', 'ASC']],
+          limit: 5
+        });
+
+        const pendingLeavesDataDept = await Leave.findAll({
+          where: { status: { [Op.in]: ['pending admin', 'pending hr'] } },
+          include: [{ model: User, as: 'employee', where: { deptId: dId }, attributes: ['name'] }],
+          attributes: ['id', 'type', 'createdAt'],
+          order: [['createdAt', 'DESC']],
+          limit: 5
         });
 
         data = { 
           ...dept.toJSON(), 
           students: studentsCount, 
           revenue: revenueSum, 
-          overdue: overdueT 
+          overdue: overdueTCount,
+          pendingLeaves: pendingLCount,
+          overdueTasksList: overdueTasksDataDept.map(t => ({
+            ...t.toJSON(),
+            daysOverdue: Math.ceil(Math.abs(nowDept.getTime() - new Date(t.deadline).getTime()) / (1000 * 60 * 60 * 24))
+          })),
+          pendingLeavesList: pendingLeavesDataDept.map(l => ({
+            id: l.id,
+            title: `${l.type} Leave Request`,
+            assignee: { name: l.employee?.name },
+            createdAt: l.createdAt,
+            daysOverdue: Math.ceil(Math.abs(nowDept.getTime() - new Date(l.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          }))
         };
-        break;
-
-      case 'risk_aged':
-        const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
-        const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
-        const now = new Date();
-        const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
-
-        const whereUserObj = restricted ? {
-          [Op.or]: [
-            { deptId: { [Op.in]: deptIds } },
-            { subDepartmentId: { [Op.in]: deptIds } }
-          ]
-        } : {};
-
-        data = await Task.findAll({
-          where: { 
-            status: { [Op.ne]: 'completed' },
-            deadline: { [Op.lt]: gracePeriodThreshold }
-          },
-          attributes: ['id', 'title', 'deadline', 'createdAt'],
-          include: [{
-            model: User,
-            as: 'assignee',
-            required: restricted ? true : false,
-            where: restricted ? whereUserObj : undefined,
-            attributes: ['name']
-          }, {
-            model: User,
-            as: 'assigner',
-            attributes: ['name']
-          }],
-          order: [['deadline', 'ASC']],
-          limit: 10
-        });
         break;
 
       default:

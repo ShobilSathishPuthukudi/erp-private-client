@@ -43,7 +43,9 @@ async function autoSeedFees(program, userUid) {
       }
     } else if (rawType.includes('emi') || rawType.includes('custom') || rawType.includes('installment') || rawType.includes('monthly')) {
       schemaType = 'emi';
-      const t = tenure || 1;
+      // Use tenure if provided, otherwise fallback to duration for monthly plans
+      const t = (tenure && tenure > 0) ? tenure : (rawType.includes('monthly') ? duration : 1);
+      
       schemaName = rawType.includes('monthly') ? 'Monthly Plan' : `${t} Months EMI Plan`;
       const amtPerInst = totalFee / t;
       for (let i = 1; i <= t; i++) {
@@ -97,10 +99,10 @@ async function autoSeedFees(program, userUid) {
 const getSubDeptId = (input) => {
   if (!input) return null;
   const unitStr = (typeof input === 'string' ? input : (input.subDepartment || input.role || '')).toLowerCase();
-  if (unitStr.includes('Open School Admin')) return 8;
-  if (unitStr.includes('Online Department Admin')) return 9;
-  if (unitStr.includes('Skill Department Admin')) return 10;
-  if (unitStr.includes('BVoc Department Admin')) return 11;
+  if (unitStr.includes('open school')) return 8;
+  if (unitStr.includes('online department')) return 9;
+  if (unitStr.includes('skill department')) return 10;
+  if (unitStr.includes('bvoc department')) return 11;
   return input.deptId || input.departmentId || null;
 };
 
@@ -499,7 +501,7 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
 
 router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchema), async (req, res) => {
   try {
-    const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, baseFee, taxPercentage, paymentStructure, totalCredits } = req.body;
+    const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, baseFee, taxPercentage, paymentStructure, totalCredits, tenure } = req.body;
     
     // SubDept mapping (simplified for now, usually correlates to Dept ID)
     const subDeptId = getSubDeptId({ role: type }); // Try to map via role-like type
@@ -521,6 +523,7 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
       baseFee: baseFee || 0,
       taxPercentage: taxPercentage || 18,
       paymentStructure: paymentStructure || [],
+      tenure: tenure || 0,
       totalCredits: totalCredits || 0,
       status: 'draft'
     });
@@ -532,9 +535,9 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
        module: 'Academic'
     });
     
-    // Trigger University Status: Draft (Standardized Transition)
+    // Trigger University Status: Staged (Standardized Transition)
     if (universityId) {
-       await Department.update({ status: 'draft' }, { where: { id: universityId, type: 'universities' } });
+       await Department.update({ status: 'staged' }, { where: { id: universityId, type: 'universities' } });
     }
 
     // Auto-provision initial fee structures
@@ -871,8 +874,22 @@ router.post('/students/bulk-verify', verifyToken, isAcademicOrAdmin, async (req,
 router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const whereClause = {};
-    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+    const role = req.user.role?.toLowerCase().trim();
+    
+    if (['sub_dept_admin', 'open school admin', 'online department admin', 'skill department admin', 'bvoc department admin', 'openschool', 'online', 'skill', 'bvoc'].includes(role)) {
         whereClause.subDeptId = getSubDeptId(req.user);
+    } else if (['partner-center', 'partner center', 'partner centers'].includes(role)) {
+        const centerId = req.user.deptId;
+        if (centerId) {
+            whereClause.centerId = centerId;
+        } else {
+            const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+            if (center) {
+                whereClause.centerId = center.id;
+            } else {
+                return res.json([]); // No center found for this admin
+            }
+        }
     }
 
     const sessions = await AdmissionSession.findAll({
@@ -911,7 +928,7 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
     }
 
     // 2. Center Validation
-    const center = await Department.findOne({ where: { id: centerId, type: 'center' } });
+    const center = await Department.findOne({ where: { id: centerId, type: 'partner centers' } });
     if (!center) return res.status(404).json({ error: 'Study Center not located' });
     
     if (center.auditStatus !== 'approved') {
@@ -931,7 +948,13 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
         return res.status(400).json({ error: `Jurisdictional Conflict: Center [${center.name}] is not accredited to support ${subDeptMap[subDeptId]} operations.` });
     }
 
-    // 4. Status Logic
+    // 4. Uniqueness Validation
+    const existing = await AdmissionSession.findOne({ where: { name, centerId } });
+    if (existing) {
+        return res.status(400).json({ error: 'A batch with this identity already exists at this study center.' });
+    }
+
+    // 5. Status Logic
     const requiresFinance = program.type === 'Skill';
     const approvalStatus = isSubDeptAdmin ? 'DRAFT' : 'APPROVED';
     const isActive = !isSubDeptAdmin && !requiresFinance;
@@ -1063,6 +1086,20 @@ router.put('/sessions/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
     const session = await AdmissionSession.findByPk(id);
     if (!session) return res.status(404).json({ error: 'Session node not found' });
 
+    // Uniqueness validation on update
+    if (name && name !== session.name) {
+        const existing = await AdmissionSession.findOne({ 
+            where: { 
+                name, 
+                centerId: session.centerId,
+                id: { [Op.ne]: id }
+            } 
+        });
+        if (existing) {
+            return res.status(400).json({ error: 'The specified batch name is already in use by another node in this center.' });
+        }
+    }
+
     await session.update({ name, startDate, endDate, maxCapacity, isActive });
     res.json(session);
   } catch (error) {
@@ -1093,7 +1130,7 @@ router.post('/credentials/request', verifyToken, isAcademicOrAdmin, async (req, 
     const { centerId, remarks } = req.body;
     
     // Validate target
-    const center = await Department.findOne({ where: { id: centerId, type: 'center' } });
+    const center = await Department.findOne({ where: { id: centerId, type: 'partner centers' } });
     if (!center) return res.status(404).json({ error: 'Target center node not located' });
 
     const request = await CredentialRequest.create({

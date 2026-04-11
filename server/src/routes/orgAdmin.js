@@ -509,7 +509,7 @@ router.post('/ceo-panels', verifyToken, isOrgAdmin, async (req, res) => {
     const generatedUid = `CEO-${Date.now().toString().slice(-6)}`;
     
     // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await User.unscoped().findOne({ where: { email } });
     if (existingUser) {
       if (transaction) await transaction.rollback();
       return res.status(400).json({ error: 'Institutional identity already provisioned for this email' });

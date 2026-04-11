@@ -78,7 +78,7 @@ export default function FinanceMainDashboard() {
   if (loading) return <div className="p-12 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Synchronizing Institutional Ledger...</div>;
 
   return (
-    <div className="p-8 space-y-10 bg-[#f8fafc] min-h-screen">
+    <div className="p-8 space-y-10 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4 uppercase">
@@ -216,7 +216,7 @@ function StatCard({ title, value, icon: Icon, color, trend, isAlert, onClick }: 
   return (
     <div 
       onClick={onClick}
-      className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 cursor-pointer hover:scale-[1.02] active:scale-95 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4 ring-offset-[#f8fafc]' : ''}`}
+      className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 cursor-pointer hover:scale-[1.02] active:scale-95 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4' : ''}`}
     >
       <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
         <Icon className="w-40 h-40" />

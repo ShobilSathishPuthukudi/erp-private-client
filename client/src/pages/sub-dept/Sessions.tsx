@@ -202,32 +202,34 @@ export default function SubDeptSessions() {
           <p className="text-slate-500 font-medium ml-15">Configure academic intake cycles and admission batches for jurisdictional operations.</p>
         </div>
 
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-            <button 
-                onClick={() => setSessionTypeFilter('ADMISSION')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    sessionTypeFilter === 'ADMISSION' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                }`}
-            >
-                Admission Batches
-            </button>
-            <button 
-                onClick={() => setSessionTypeFilter('ACADEMIC')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    sessionTypeFilter === 'ACADEMIC' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                }`}
-            >
-                Academic Sessions
-            </button>
-        </div>
+        <div className="flex flex-col items-end gap-4">
+          <button 
+            onClick={() => { reset(); setIsModalOpen(true); }}
+            className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold whitespace-nowrap w-fit"
+          >
+            <Plus className="w-5 h-5" />
+            <span>New {sessionTypeFilter === 'ACADEMIC' ? 'Academic Year' : 'Admission Intake'}</span>
+          </button>
 
-        <button 
-          onClick={() => { reset(); setIsModalOpen(true); }}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-bold whitespace-nowrap"
-        >
-          <Plus className="w-5 h-5" />
-          <span>New {sessionTypeFilter === 'ACADEMIC' ? 'Academic Year' : 'Admission Intake'}</span>
-        </button>
+          <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
+              <button 
+                  onClick={() => setSessionTypeFilter('ADMISSION')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                      sessionTypeFilter === 'ADMISSION' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+              >
+                  Admission Batches
+              </button>
+              <button 
+                  onClick={() => setSessionTypeFilter('ACADEMIC')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                      sessionTypeFilter === 'ACADEMIC' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+              >
+                  Academic Sessions
+              </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">

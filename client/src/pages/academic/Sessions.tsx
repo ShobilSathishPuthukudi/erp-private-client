@@ -7,6 +7,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Calendar, BookOpen, Users, ShieldCheck, History, Timer, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { useAuthStore } from '@/store/authStore';
 
 
 interface Session {
@@ -40,6 +41,11 @@ interface Center {
 }
 
 export default function Sessions() {
+  const user = useAuthStore(state => state.user);
+  const userRole = user?.role?.toLowerCase().trim() || '';
+  const isPartnerCenter = ['partner-center', 'partner center', 'partner centers'].includes(userRole);
+  const isReadOnly = ['operations admin', 'operations administrator', 'academic operations admin', 'academic operations administrator', 'academic operations'].includes(userRole);
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
@@ -47,7 +53,7 @@ export default function Sessions() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Session | null>(null);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, setValue, watch, setError, formState: { isSubmitting, errors } } = useForm();
   const watchAllFields = watch();
   const selectedProgramId = watchAllFields.programId;
 
@@ -70,6 +76,12 @@ export default function Sessions() {
       setSessions(sessRes.data);
       setPrograms(progRes.data);
       setCenters(centRes.data);
+      
+      // Auto-assign center if user is a partner center
+      if (isPartnerCenter && centRes.data.length > 0) {
+          const myCenter = centRes.data[0]; // Backend only returns 1 center for PC role
+          setValue('centerId', myCenter.id);
+      }
     } catch (error) {
       toast.error('Failed to access session topology');
     } finally {
@@ -92,8 +104,15 @@ export default function Sessions() {
   }, [selectedProgramId, programs, setValue, editingItem]);
 
   const openCreateModal = () => {
+    if (isReadOnly) return;
     setEditingItem(null);
-    reset({ name: '', programId: '', centerId: '', startDate: '', endDate: '', maxCapacity: 50 });
+    const defaults: any = { name: '', programId: '', startDate: '', endDate: '', maxCapacity: 50 };
+    if (isPartnerCenter && centers.length > 0) {
+        defaults.centerId = centers[0].id;
+    } else {
+        defaults.centerId = '';
+    }
+    reset(defaults);
     setIsModalOpen(true);
   };
 
@@ -109,7 +128,14 @@ export default function Sessions() {
       setIsModalOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Operational failure');
+      if (error.response?.status === 400 && (error.response.data?.error?.includes('identity') || error.response.data?.error?.includes('exists') || error.response.data?.error?.includes('name'))) {
+        setError('name', { 
+            type: 'manual', 
+            message: error.response.data.error 
+        });
+      } else {
+        toast.error(error.response?.data?.error || 'Operational failure');
+      }
     }
   };
 
@@ -184,7 +210,7 @@ export default function Sessions() {
     {
       id: 'actions',
       header: 'Action',
-      cell: ({ row }) => (
+      cell: ({ row }) => !isReadOnly && (
         <div className="flex items-center gap-2">
             <button 
                 onClick={() => {
@@ -200,7 +226,7 @@ export default function Sessions() {
         </div>
       )
     }
-  ];
+  ].filter(c => c.id !== 'actions' || !isReadOnly);
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
@@ -214,7 +240,7 @@ export default function Sessions() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Govern academic batches, temporal windows, and intake capacity safeguards.</p>
         </div>
-        {sessions.length > 0 && (
+        {!isLoading && programs.length > 0 && !isReadOnly && (
            <button 
               onClick={openCreateModal}
               className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
@@ -225,27 +251,27 @@ export default function Sessions() {
         )}
       </div>
 
-      {sessions.length === 0 && !isLoading && (
-        <div className="max-w-md">
+      {!isLoading && programs.length === 0 ? (
+        <div className="max-w-xl mx-auto py-20">
           <DashCard 
             title="Initialize Academic Session"
-            description="Deploy new academic batches and set temporal constraints for intake."
+            description="Deploy new academic batches and set temporal constraints for intake. Note: At least one academic program must be configured before deploying sessions."
             onClick={openCreateModal}
             icon={Calendar}
-            actionLabel="Deploy New Batch"
+            actionLabel="Review Program Pipeline"
+          />
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+          <DataTable 
+            columns={columns} 
+            data={sessions} 
+            isLoading={isLoading} 
+            searchKey="name" 
+            searchPlaceholder="Locate batch telemetry..." 
           />
         </div>
       )}
-
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <DataTable 
-          columns={columns} 
-          data={sessions} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Locate batch telemetry..." 
-        />
-      </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
@@ -281,9 +307,14 @@ export default function Sessions() {
                     <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
                     {...register('name', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900`}
                     placeholder="Batch July 2025 - BCA Phase 1"
                     />
+                    {errors.name && (
+                      <span className="text-[10px] font-bold text-red-500 mt-1.5 ml-1 block animate-in fade-in slide-in-from-top-1">
+                        {errors.name.message as string}
+                      </span>
+                    )}
                 </div>
                 </div>
 
@@ -303,21 +334,23 @@ export default function Sessions() {
                 </div>
                 </div>
 
-                <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Contextual Study Center</label>
-                <div className="relative group">
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                    <select
-                    {...register('centerId', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-                    >
-                    <option value="">-- Operational Accreditation Check Required --</option>
-                    {centers.filter(c => c.auditStatus === 'approved').map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                    </select>
-                </div>
-                </div>
+                {!isPartnerCenter && (
+                  <div className="col-span-2">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Contextual Study Center</label>
+                  <div className="relative group">
+                      <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                      <select
+                      {...register('centerId', { required: true })}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                      >
+                      <option value="">-- Operational Accreditation Check Required --</option>
+                      {centers.filter(c => c.auditStatus === 'approved').map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                      </select>
+                  </div>
+                  </div>
+                )}
 
                 <div>
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (Start)</label>

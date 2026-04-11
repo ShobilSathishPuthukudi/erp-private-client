@@ -110,7 +110,9 @@ export default function Leaves() {
         
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
-            {s === 'pending_step1' ? 'pending approval' : (s === 'pending_step2' ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'forwarded to hr') : s.replace('_', ' '))}
+            {['pending_step1', 'pending admin'].includes(s) ? 'pending admin' : 
+             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'pending hr') : 
+             s.replace('_', ' '))}
           </span>
         );
       }
@@ -120,7 +122,7 @@ export default function Leaves() {
       header: 'Dept Action (Step 1)',
       cell: ({ row }) => {
         const leave = row.original;
-        if (leave.status !== 'pending_step1') {
+        if (!['pending_step1', 'pending admin'].includes(leave.status)) {
           return <span className="text-xs text-slate-400 ">No action required</span>;
         }
 

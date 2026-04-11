@@ -27,7 +27,7 @@ export const applyExecutiveScope = async (req, res, next) => {
 
     // Resolve models at runtime to avoid circular dependency issues (CEOPanel might be undefined at module boot)
     const { CEOPanel, Department } = models;
-    const panel = await CEOPanel.findOne({ where: { userId: uid, status: 'Active' } });
+    const panel = await CEOPanel.unscoped().findOne({ where: { userId: uid, status: 'Active' } });
     
     if (!panel || !panel.visibilityScope || !Array.isArray(panel.visibilityScope) || panel.visibilityScope.length === 0) {
       // If no scope is defined, CEO sees NOTHING (Security by default)
@@ -45,7 +45,7 @@ export const applyExecutiveScope = async (req, res, next) => {
       ? panel.visibilityScope 
       : (typeof panel.visibilityScope === 'string' ? JSON.parse(panel.visibilityScope) : []);
 
-    const allDepts = await Department.findAll({ attributes: ['id', 'name', 'parentId'] });
+    const allDepts = await Department.unscoped().findAll({ attributes: ['id', 'name', 'parentId'] });
     
     // 1. Resolve Primary Scope (Mapped Tokenization for new UX suites & Legacy primitives)
     const primaryDepts = allDepts.filter(d => {

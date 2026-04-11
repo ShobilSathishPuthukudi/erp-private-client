@@ -4,8 +4,9 @@ import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart, FileText, Target } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { format } from 'date-fns';
+import { Sparkles } from 'lucide-react';
 
 interface Metrics {
   totalStudents: number;
@@ -32,14 +33,16 @@ interface Metrics {
     name: string;
     students: number;
     revenue: number;
-    overdueTasks: number;
     pendingLeaves: number;
+    overdueTasks: number;
   }>;
   salesIntelligence?: {
     totalLeads: number;
     convertedLeads: number;
     avgLeadAge: number;
   } | null;
+  growthData?: any[];
+  centerGrowth?: any[];
 }
 
 export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
@@ -49,8 +52,16 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const [selectedBrief, setSelectedBrief] = useState<{ type: string; title: string; dId?: number; value?: string | number; icon?: any; inlineDetails?: React.ReactNode } | null>(null);
   const [briefData, setBriefData] = useState<any>(null);
   const [briefLoading, setBriefLoading] = useState(false);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const [isInstAnalysisOpen, setIsInstAnalysisOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchMetrics();
@@ -111,6 +122,59 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
       normalizedVisScope.some(vs => vs.includes(scope.toLowerCase()))
     );
   };
+
+  const analyzeCenterGrowth = () => {
+    const data = metrics?.centerGrowth || [];
+    if (!data || data.length === 0) return null;
+    
+    const last = data[data.length - 1];
+    const first = data[0];
+    
+    const conversionRate = last.leads > 0 ? (last.approved / last.leads) * 100 : 0;
+    const growthRate = first.approved > 0 ? ((last.approved - first.approved) / first.approved) * 100 : (last.approved * 100);
+    
+    return {
+      conversionRate: conversionRate.toFixed(1),
+      growthRate: Math.abs(growthRate).toFixed(1),
+      isGrowthPositive: growthRate >= 0,
+      totalLeads: last.leads,
+      totalApproved: last.approved,
+      efficiency: conversionRate > 75 ? 'Optimal' : conversionRate > 50 ? 'Strong' : 'Moderate',
+      statusColor: conversionRate > 75 ? 'text-emerald-600' : conversionRate > 50 ? 'text-blue-600' : 'text-amber-600',
+      statusBg: conversionRate > 75 ? 'bg-emerald-50' : conversionRate > 50 ? 'bg-blue-50' : 'bg-amber-50',
+      insight: conversionRate > 70 ? 'Your network scaling is highly efficient. Focus on high-value leads.' : 'Moderate conversion detected. Registration follow-ups recommended.'
+    };
+  };
+
+  const analysis = analyzeCenterGrowth();
+
+  const analyzeInstitutionalGrowth = () => {
+    const data = metrics?.growthData || [];
+    if (!data || data.length === 0) return null;
+    
+    const last = data[data.length - 1];
+    const first = data[0];
+    
+    const studentGrowth = first.students > 0 ? ((last.students - first.students) / first.students) * 100 : 0;
+    const staffRatio = last.employees > 0 ? (last.students / last.employees).toFixed(1) : last.students;
+    const staffGrowth = first.employees > 0 ? ((last.employees - first.employees) / first.employees) * 100 : 0;
+    
+    return {
+      studentGrowth: studentGrowth.toFixed(1),
+      isStudentGrowthPositive: studentGrowth >= 0,
+      staffRatio,
+      staffGrowth: Math.abs(staffGrowth).toFixed(1),
+      isStaffGrowthPositive: staffGrowth >= 0,
+      totalStudents: last.students,
+      totalEmployees: last.employees,
+      institutionalHealth: (last.students / (last.employees || 1)) < 40 ? 'Balanced' : 'Optimal',
+      statusColor: (last.students / (last.employees || 1)) < 60 ? 'text-blue-600' : 'text-amber-600',
+      statusBg: (last.students / (last.employees || 1)) < 60 ? 'bg-blue-50' : 'bg-amber-50',
+      insight: (last.students / (last.employees || 1)) > 50 ? 'Student density is increasing. Consider augmenting faculty support.' : 'Scaling is balanced for current institutional density.'
+    };
+  };
+
+  const instAnalysis = analyzeInstitutionalGrowth();
 
   const KPIStore = [
     { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university'], inlineDetails: (
@@ -255,7 +319,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'risk_aged', title: 'Aged Escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+    { type: 'risk_aged', title: 'Governance Escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex gap-3">
           <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -303,7 +367,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>
         </div>
 
-        {metrics.visibilityScope && metrics.visibilityScope.length > 0 && (
+        {metrics?.visibilityScope && metrics.visibilityScope.length > 0 && (
           <div className="flex items-center gap-3 bg-blue-50/50 border border-blue-100 p-4 rounded-3xl mb-10 shadow-sm shadow-blue-500/5">
             <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
               <Zap className="w-4 h-4" />
@@ -576,16 +640,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                            <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">Status: {dept.overdueTasks > 5 ? 'High Risk' : 'Healthy'}</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                         <div>
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Students</p>
-                            <h5 className="text-xl font-black">{dept.students.toLocaleString()}</h5>
-                         </div>
-                         <div>
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">Revenue</p>
-                            <h5 className="text-xl font-black">₹{(dept.revenue / 1000).toFixed(1)}K</h5>
-                         </div>
-                      </div>
+                      {/* Volume metrics removed as per privacy directives */}
                       <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
                          <div className="flex items-center gap-3">
                             <div className="text-center">
@@ -644,20 +699,10 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                   <div className="space-y-6">
                     {selectedBrief.type === 'department' && briefData && (
                       <div className="space-y-8">
-                         <div className="grid grid-cols-2 gap-6">
-                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Students</p>
-                               <h4 className="text-2xl font-black text-slate-900">{briefData.students.toLocaleString()}</h4>
-                            </div>
-                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Revenue</p>
-                               <h4 className="text-2xl font-black text-slate-900">₹{briefData.revenue.toLocaleString()}</h4>
-                            </div>
-                         </div>
                          <div>
                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Leadership Context</h5>
-                            <div className="flex items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                               <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-lg">
+                            <div className="flex items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                               <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-lg border border-indigo-100 italic">
                                  {briefData.admin?.name?.charAt(0) || 'D'}
                                </div>
                                <div>
@@ -667,6 +712,71 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                                </div>
                             </div>
                          </div>
+
+                         {/* Forensic: Overdue Tasks */}
+                         {briefData.overdueTasksList && briefData.overdueTasksList.length > 0 && (
+                           <div>
+                              <div className="flex items-center justify-between mb-4">
+                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental Criticals</h5>
+                                <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">Action Required</span>
+                              </div>
+                              <div className="space-y-3">
+                                {briefData.overdueTasksList.map((task: any) => (
+                                  <div key={task.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-rose-100 hover:bg-rose-50/30 transition-all group">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:bg-rose-500 group-hover:text-white transition-all shadow-sm">
+                                          <Clock className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-black text-slate-900 line-clamp-1">{task.title}</div>
+                                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Assigned to {task.assignee?.name}</div>
+                                        </div>
+                                     </div>
+                                     <div className="text-right">
+                                        <div className="text-[10px] font-black text-rose-600 uppercase tracking-wider">{task.daysOverdue} Days Overdue</div>
+                                        <div className="text-[9px] font-bold text-slate-400">Due {format(new Date(task.deadline), 'MMM dd')}</div>
+                                     </div>
+                                  </div>
+                                ))}
+                              </div>
+                           </div>
+                         )}
+
+                         {/* Forensic: Pending Leaves */}
+                         {briefData.pendingLeavesList && briefData.pendingLeavesList.length > 0 && (
+                           <div>
+                              <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Workforce Authorizations</h5>
+                              <div className="space-y-3">
+                                {briefData.pendingLeavesList.map((leave: any) => (
+                                  <div key={leave.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all group">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
+                                          <Zap className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-black text-slate-900 uppercase tracking-tight">{leave.title}</div>
+                                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Employee: {leave.assignee?.name}</div>
+                                        </div>
+                                     </div>
+                                     <div className="text-right">
+                                        <div className="text-[10px] font-black text-slate-900 uppercase tracking-wider">{leave.daysOverdue}D Pending</div>
+                                        <div className="text-[9px] font-bold text-slate-400 tracking-widest">{format(new Date(leave.createdAt), 'MMM dd')}</div>
+                                     </div>
+                                  </div>
+                                ))}
+                              </div>
+                           </div>
+                         )}
+
+                         {(!briefData.overdueTasksList?.length && !briefData.pendingLeavesList?.length) && (
+                           <div className="py-12 flex flex-col items-center justify-center bg-slate-50/50 rounded-[40px] border border-dashed border-slate-200">
+                              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-emerald-500 shadow-sm border border-slate-100 mb-4">
+                                <CheckCircle2 className="w-8 h-8" />
+                              </div>
+                              <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Sector Fully Optimized</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">No pending escalations or authorizations detected.</p>
+                           </div>
+                         )}
                       </div>
                     )}
 
@@ -745,42 +855,39 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
 
                     {selectedBrief.type === 'risk_aged' && Array.isArray(briefData) && briefData.length > 0 && (
                       <div className="space-y-3">
-                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Critical Overdue Tasks</h5>
-                         {briefData.map((task: any) => (
-                           <div key={task.id} className="flex flex-col p-4 bg-rose-50/50 rounded-2xl border border-rose-100 hover:bg-rose-50 transition-all group gap-3">
+                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Governance Escalations</h5>
+                         {briefData.map((item: any) => (
+                           <div key={item.id} className={`flex flex-col p-4 ${item.module === 'Leave' ? 'bg-amber-50/50 border-amber-100 hover:bg-amber-50' : 'bg-rose-50/50 border-rose-100 hover:bg-rose-50'} rounded-2xl border transition-all group gap-3`}>
                               <div className="flex justify-between items-start">
                                 <div className="flex gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-500">
-                                    <FileText className="w-5 h-5" />
+                                  <div className={`w-10 h-10 rounded-xl ${item.module === 'Leave' ? 'bg-amber-100 text-amber-500' : 'bg-rose-100 text-rose-500'} flex items-center justify-center`}>
+                                    {item.module === 'Leave' ? <Calendar className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                   </div>
                                   <div>
-                                     <div className="text-sm font-black text-slate-900 line-clamp-1">{task.title}</div>
-                                     <div className="text-[10px] font-bold text-rose-600 mt-1">
-                                       Deadline: {format(new Date(task.deadline), 'MMM dd, yyyy h:mm a')}
+                                     <div className="text-sm font-black text-slate-900 line-clamp-1">{item.title}</div>
+                                     <div className={`text-[10px] font-bold ${item.module === 'Leave' ? 'text-amber-600' : 'text-rose-600'} mt-1 flex items-center gap-1.5`}>
+                                       <AlertTriangle className="w-3 h-3" />
+                                       {item.daysOverdue} Days Past Threshold
                                      </div>
                                   </div>
                                 </div>
+                                <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.module === 'Leave' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                                  {item.module}
+                                </div>
                               </div>
                               
-                              <div className="flex items-center gap-6 mt-1 ml-13 pt-3 border-t border-rose-100/50">
+                              <div className="flex items-center gap-6 mt-1 ml-13 pt-3 border-t border-slate-200/30">
                                 <div>
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Assigned By</div>
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">{item.module === 'Leave' ? 'Employee' : 'Assigned To'}</div>
                                   <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                                    {task.assigner?.name || 'System Auto-Assigned'}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Assigned To</div>
-                                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                    <Target className="w-3.5 h-3.5 text-rose-400" />
-                                    {task.assignee?.name || 'Unassigned'}
+                                    <Target className={`w-3.5 h-3.5 ${item.module === 'Leave' ? 'text-amber-400' : 'text-rose-400'}`} />
+                                    {item.assignee?.name || 'Unassigned'}
                                   </div>
                                 </div>
                                 <div className="ml-auto text-right">
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Created On</div>
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Reported On</div>
                                   <div className="text-xs font-bold text-slate-600">
-                                    {format(new Date(task.createdAt), 'MMM dd, yyyy')}
+                                    {format(new Date(item.createdAt), 'MMM dd, yyyy')}
                                   </div>
                                 </div>
                               </div>
@@ -817,8 +924,233 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>,
           document.body
         )}
-      </div>
-    );
+
+          {/* Institutional Growth & Center Conversion - Integrated for KPI Overview */}
+          <div className="mt-12 pt-12 border-t border-slate-100/50">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Institutional Growth</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">6 Month Performance Matrix</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-lg shadow-blue-500/20"></div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Students</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsInstAnalysisOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="h-[300px] w-full pt-4">
+                   {mounted && (
+                     <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={metrics?.growthData || []} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                            dy={10}
+                          />
+                          <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              borderRadius: '16px', 
+                              border: 'none', 
+                              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                              fontSize: '12px',
+                              fontWeight: '800'
+                            }} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="students" 
+                            stroke="#2563eb" 
+                            strokeWidth={4} 
+                            dot={{ r: 6, fill: '#2563eb', strokeWidth: 3, stroke: '#fff' }} 
+                            activeDot={{ r: 8, strokeWidth: 0 }} 
+                          />
+                        </LineChart>
+                     </ResponsiveContainer>
+                   )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Center-Leads Chart</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Center Conversion</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-lg shadow-indigo-500/20"></div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Approved</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Leads</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsAnalysisOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="h-[300px] w-full pt-4">
+                   {mounted && (
+                     <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={metrics?.centerGrowth || []} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="day" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                            dy={10}
+                          />
+                          <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              borderRadius: '16px', 
+                              border: 'none', 
+                              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                              fontSize: '12px',
+                              fontWeight: '800'
+                            }} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="approved" 
+                            stroke="#4f46e5" 
+                            strokeWidth={4} 
+                            dot={{ r: 6, fill: '#4f46e5', strokeWidth: 3, stroke: '#fff' }} 
+                            activeDot={{ r: 8, strokeWidth: 0 }} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="leads" 
+                            stroke="#cbd5e1" 
+                            strokeWidth={4} 
+                            dot={{ r: 6, fill: '#cbd5e1', strokeWidth: 3, stroke: '#fff' }} 
+                          />
+                        </LineChart>
+                     </ResponsiveContainer>
+                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Modals for KPI View */}
+          {isAnalysisOpen && analysis && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white">
+                           <Sparkles className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900 tracking-tight">Conversion Insight</h3>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Center Lead Analysis</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setIsAnalysisOpen(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6 text-slate-400" /></button>
+                  </div>
+                  <div className="p-10 space-y-8">
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Conversion Rate</p>
+                           <h4 className="text-3xl font-black text-slate-900">{analysis.conversionRate}%</h4>
+                        </div>
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Network Growth</p>
+                           <h4 className={`text-3xl font-black ${analysis.isGrowthPositive ? 'text-emerald-600' : 'text-slate-900'}`}>
+                             {analysis.isGrowthPositive ? '+' : '-'}{analysis.growthRate}%
+                           </h4>
+                        </div>
+                     </div>
+                     <div className={`p-6 rounded-[2rem] border ${analysis.statusBg} border-blue-100/50`}>
+                        <div className="flex items-center gap-3 mb-3">
+                           <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white border border-blue-100 ${analysis.statusColor}`}>
+                              {analysis.efficiency} Efficiency
+                           </div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{analysis.insight}"</p>
+                     </div>
+                  </div>
+                  <div className="p-8 bg-slate-50 flex justify-end">
+                     <button onClick={() => setIsAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {isInstAnalysisOpen && instAnalysis && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white">
+                           <TrendingUp className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900 tracking-tight">Institutional Health</h3>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Growth & Density Analysis</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setIsInstAnalysisOpen(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6 text-slate-400" /></button>
+                  </div>
+                  <div className="p-10 space-y-8">
+                     <div className="grid grid-cols-1 gap-6">
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Growth</p>
+                           <h4 className={`text-3xl font-black ${instAnalysis.isStudentGrowthPositive ? 'text-emerald-600' : 'text-slate-900'}`}>
+                             {instAnalysis.isStudentGrowthPositive ? '+' : '-'}{instAnalysis.studentGrowth}%
+                           </h4>
+                        </div>
+                     </div>
+                     <div className={`p-6 rounded-[2rem] border ${instAnalysis.statusBg} border-blue-100/50`}>
+                        <div className="flex items-center gap-3 mb-3">
+                           <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white border border-blue-100 ${instAnalysis.statusColor}`}>
+                              Steady Growth
+                           </div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{instAnalysis.insight}"</p>
+                     </div>
+                  </div>
+                  <div className="p-8 bg-slate-50 flex justify-end">
+                     <button onClick={() => setIsInstAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
+                  </div>
+               </div>
+            </div>
+          )}
+        </div>
+      );
   }
 
   return (
@@ -879,6 +1211,229 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+
+          {/* Third Row: Institutional Growth & Center Conversion */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Institutional Growth</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">6 Month Performance Matrix</p>
+                </div>
+                <div className="flex flex-col items-end gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-lg shadow-blue-500/20"></div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Students</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsInstAnalysisOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
+                  </button>
+                </div>
+              </div>
+              <div className="h-[300px] w-full pt-4">
+                 {mounted && (
+                   <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={metrics?.growthData || []} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            borderRadius: '16px', 
+                            border: 'none', 
+                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                            fontSize: '12px',
+                            fontWeight: '800'
+                          }} 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="students" 
+                          stroke="#2563eb" 
+                          strokeWidth={4} 
+                          dot={{ r: 6, fill: '#2563eb', strokeWidth: 3, stroke: '#fff' }} 
+                          activeDot={{ r: 8, strokeWidth: 0 }} 
+                        />
+                      </LineChart>
+                   </ResponsiveContainer>
+                 )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Center-Leads Chart</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Center Conversion</p>
+                </div>
+                <div className="flex flex-col items-end gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-lg shadow-indigo-500/20"></div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Approved</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Leads</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsAnalysisOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
+                  </button>
+                </div>
+              </div>
+              <div className="h-[300px] w-full pt-4">
+                 {mounted && (
+                   <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={metrics?.centerGrowth || []} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="day" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            borderRadius: '16px', 
+                            border: 'none', 
+                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                            fontSize: '12px',
+                            fontWeight: '800'
+                          }} 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="approved" 
+                          stroke="#4f46e5" 
+                          strokeWidth={4} 
+                          dot={{ r: 6, fill: '#4f46e5', strokeWidth: 3, stroke: '#fff' }} 
+                          activeDot={{ r: 8, strokeWidth: 0 }} 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="leads" 
+                          stroke="#cbd5e1" 
+                          strokeWidth={4} 
+                          dot={{ r: 6, fill: '#cbd5e1', strokeWidth: 3, stroke: '#fff' }} 
+                        />
+                      </LineChart>
+                   </ResponsiveContainer>
+                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Modals */}
+          {isAnalysisOpen && analysis && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white">
+                           <Sparkles className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900 tracking-tight">Conversion Insight</h3>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Center Lead Analysis</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setIsAnalysisOpen(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6 text-slate-400" /></button>
+                  </div>
+                  <div className="p-10 space-y-8">
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Conversion Rate</p>
+                           <h4 className="text-3xl font-black text-slate-900">{analysis.conversionRate}%</h4>
+                        </div>
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Network Growth</p>
+                           <h4 className={`text-3xl font-black ${analysis.isGrowthPositive ? 'text-emerald-600' : 'text-slate-900'}`}>
+                             {analysis.isGrowthPositive ? '+' : '-'}{analysis.growthRate}%
+                           </h4>
+                        </div>
+                     </div>
+                     <div className={`p-6 rounded-[2rem] border ${analysis.statusBg} border-blue-100/50`}>
+                        <div className="flex items-center gap-3 mb-3">
+                           <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white border border-blue-100 ${analysis.statusColor}`}>
+                              {analysis.efficiency} Efficiency
+                           </div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{analysis.insight}"</p>
+                     </div>
+                  </div>
+                  <div className="p-8 bg-slate-50 flex justify-end">
+                     <button onClick={() => setIsAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {isInstAnalysisOpen && instAnalysis && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white">
+                           <TrendingUp className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900 tracking-tight">Institutional Health</h3>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Growth & Density Analysis</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setIsInstAnalysisOpen(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all"><X className="w-6 h-6 text-slate-400" /></button>
+                  </div>
+                  <div className="p-10 space-y-8">
+                     <div className="grid grid-cols-1 gap-6">
+                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Growth</p>
+                           <h4 className={`text-3xl font-black ${instAnalysis.isStudentGrowthPositive ? 'text-emerald-600' : 'text-slate-900'}`}>
+                             {instAnalysis.isStudentGrowthPositive ? '+' : '-'}{instAnalysis.studentGrowth}%
+                           </h4>
+                        </div>
+                     </div>
+                     <div className={`p-6 rounded-[2rem] border ${instAnalysis.statusBg} border-blue-100/50`}>
+                        <div className="flex items-center gap-3 mb-3">
+                           <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white border border-blue-100 ${instAnalysis.statusColor}`}>
+                              Steady Growth
+                           </div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{instAnalysis.insight}"</p>
+                     </div>
+                  </div>
+                  <div className="p-8 bg-slate-50 flex justify-end">
+                     <button onClick={() => setIsInstAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
+                  </div>
+               </div>
+            </div>
+          )}
+        </div>
+      );
+    }

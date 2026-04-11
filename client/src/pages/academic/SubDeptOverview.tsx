@@ -49,7 +49,7 @@ export default function SubDeptOverview() {
         id: item.id,
         name: item.name || `Unit ${item.id}`,
         totalStudents: item.studentCount || 0,
-        activeBatches: item.programCount || 0, // Fallback to programs
+        activeBatches: item.batchCount || 0, 
         centersCount: item.centerCount || 0,
         approvalRate: '100%', 
         pendingReviews: 0

@@ -250,42 +250,44 @@ export default function Universities() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {[
-          { status: 'Proposed', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial institutional proposal awaiting review.' },
-          { status: 'Draft', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Working config; technical parameters being defined.' },
-          { status: 'Staged', color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Framework defined; awaiting center/program mapping.' },
-          { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational institution in central ledger.' },
-          { status: 'Inactive', color: 'border-rose-200 bg-rose-50 text-rose-700', desc: 'Deactivated endpoint; retained for forensic compliance.' }
-        ].map((item, i) => (
-          <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
-            <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
-            <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {universities.length === 0 && !isLoading && (
-        <div className="max-w-md">
+      {!isLoading && universities.length === 0 ? (
+        <div className="max-w-xl mx-auto py-20">
           <DashCard 
             title="Initialize Internal University Topology"
-            description="Register and configure a new accredited institution within the global ERP ledger."
+            description="Register and configure a new accredited institution within the global ERP ledger to begin institutional mapping."
             onClick={openCreateModal}
             icon={Building2}
             actionLabel="Onboard Institution"
           />
         </div>
-      )}
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[
+              { status: 'Proposed', color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Initial institutional proposal awaiting review.' },
+              { status: 'Draft', color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Working config; technical parameters being defined.' },
+              { status: 'Staged', color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Framework defined; awaiting center/program mapping.' },
+              { status: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Fully operational institution in central ledger.' },
+              { status: 'Inactive', color: 'border-rose-200 bg-rose-50 text-rose-700', desc: 'Deactivated endpoint; retained for forensic compliance.' }
+            ].map((item, i) => (
+              <div key={i} className={`p-4 rounded-2xl border ${item.color} flex flex-col gap-1 transition-all hover:scale-[1.02]`}>
+                <span className="text-[10px] font-black uppercase tracking-widest">{item.status} State</span>
+                <p className="text-[10px] font-bold leading-tight opacity-80">{item.desc}</p>
+              </div>
+            ))}
+          </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <DataTable 
-          columns={columns} 
-          data={universities} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Locate by institutional syntax..." 
-        />
-      </div>
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+            <DataTable 
+              columns={columns} 
+              data={universities} 
+              isLoading={isLoading} 
+              searchKey="name" 
+              searchPlaceholder="Locate by institutional syntax..." 
+            />
+          </div>
+        </>
+      )}
 
       <Modal
         isOpen={!!deletingItem}

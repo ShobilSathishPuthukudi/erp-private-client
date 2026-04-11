@@ -66,7 +66,9 @@ export const isAcademicOrAdmin = (req, res, next) => {
     'Academic Operations Admin',
     'Academic Operations Administrator',
     'Academic Operations',
-    'Sales & CRM Admin'
+    'Sales & CRM Admin',
+    'Partner Center',
+    'partner centers'
   ];
   const userRole = req.user.role || '';
   const deptName = req.user.departmentName || '';
@@ -93,7 +95,9 @@ export const isOpsOrAdmin = (req, res, next) => {
     'Academic Operations Administrator',
     'Academic Operations',
     'Organization Admin', 
-    'Sales & CRM Admin'
+    'Sales & CRM Admin',
+    'Partner Center',
+    'partner centers'
   ];
   const userRole = req.user.role || '';
   const deptName = req.user.departmentName || '';
@@ -111,3 +115,4 @@ export const isOpsOrAdmin = (req, res, next) => {
 export const isSubDeptAdmin = roleGuard(['BVoc Department Admin', 'Skill Department Admin', 'Open School Admin', 'Online Department Admin']);
 export const isSystemAdmin = roleGuard(['Organization Admin']);
 export const isArchitectureAdmin = roleGuard(['Operations Admin', 'Operations Administrator', 'Academic Operations Admin', 'Academic Operations Administrator', 'Academic Operations', 'Organization Admin']);
+export const isCEO = roleGuard(['ceo']);

@@ -43,14 +43,14 @@ router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const user = await User.findOne({ 
+    const user = await User.unscoped().findOne({ 
       where: { 
         [Op.or]: [
           { email: email },
           { uid: email }
         ]
       },
-      include: [{ model: Department, as: 'department', attributes: ['name'] }]
+      include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
     });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -80,7 +80,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
     }
 
-    const isManager = await User.count({ where: { reportingManagerUid: user.uid, status: 'active' } }) > 0;
+    const isManager = await User.unscoped().count({ where: { reportingManagerUid: user.uid, status: 'active' } }) > 0;
 
     const payload = {
       uid: user.uid,
@@ -124,7 +124,7 @@ router.post('/update-profile', verifyToken, async (req, res) => {
     const { name, oldPassword, newPassword, phone, dateOfBirth, bio, address } = req.body;
     const userId = req.user.uid;
 
-    const user = await User.findOne({ where: { uid: userId } });
+    const user = await User.unscoped().findOne({ where: { uid: userId } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -192,7 +192,7 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
     }
 
     const userId = req.user.uid;
-    const user = await User.findOne({ where: { uid: userId } });
+    const user = await User.unscoped().findOne({ where: { uid: userId } });
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -236,7 +236,7 @@ router.get('/demo-students', async (req, res) => {
 
 router.get('/recent-admins', async (req, res) => {
   try {
-    const recentAdmins = await User.findAll({
+    const recentAdmins = await User.unscoped().findAll({
       where: { 
         role: { [Op.notIn]: ['student', 'admin', 'ceo', 'Organization Admin', 'Organization Admin'] },
         status: 'active'
@@ -263,7 +263,7 @@ router.get('/recent-admins', async (req, res) => {
 
 router.get('/latest-center', async (req, res) => {
   try {
-    const latestUser = await User.findOne({
+    const latestUser = await User.unscoped().findOne({
       where: { 
         role: { [Op.in]: ['Partner Center'] },
         status: 'active' 
@@ -281,7 +281,7 @@ router.get('/latest-center', async (req, res) => {
 
 router.get('/demo-centers', async (req, res) => {
   try {
-    const centers = await User.findAll({
+    const centers = await User.unscoped().findAll({
       where: { 
         role: { [Op.in]: ['Partner Center'] },
         status: 'active'
@@ -332,7 +332,7 @@ router.get('/demo-ceos', async (req, res) => {
     // Fetch all executive panels with their identity records
     const panels = await CEOPanel.findAll({
       include: [{ 
-        model: User, 
+        model: User.unscoped(), 
         as: 'ceoUser', 
         attributes: ['uid', 'name', 'email'] 
       }],
@@ -341,21 +341,17 @@ router.get('/demo-ceos', async (req, res) => {
     });
 
     // Map to the standard identity payload used by the login quick-panel
-    const formatted = panels.map(panel => {
-      const user = panel.ceoUser || { 
-        uid: panel.userId || `PANEL_${panel.id}`, 
-        name: panel.name, 
-        email: `ceo_${panel.id}@erp.com` 
- 
-      };
-
-      return {
-        uid: user.uid,
-        name: panel.name, // Use panel name for better identification
-        email: user.email,
-        password: panel.devCredential || 'password123'
-      };
-    });
+    const formatted = panels
+      .filter(panel => panel.ceoUser) // Strictly ensure identity exists in user registry
+      .map(panel => {
+        const user = panel.ceoUser;
+        return {
+          uid: user.uid,
+          name: panel.name, // Use panel name for better identification
+          email: user.email,
+          password: panel.devCredential || 'password123'
+        };
+      });
 
     res.json(formatted);
   } catch (error) {

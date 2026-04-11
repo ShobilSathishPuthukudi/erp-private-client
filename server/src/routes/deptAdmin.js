@@ -113,7 +113,7 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
       const agedPendingLeaves = await Leave.count({
         where: {
           employeeId: user.uid,
-          status: { [Op.in]: ['pending_step1', 'pending_step2'] },
+          status: { [Op.in]: ['pending admin', 'pending hr'] },
           createdAt: { [Op.lt]: agedThreshold }
         }
       });
@@ -429,12 +429,12 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     if (leave.employee.deptId !== req.user.deptId) {
       return res.status(403).json({ error: 'You can only approve leaves for your department' });
     }
-    if (leave.status !== 'pending_step1') {
+    if (leave.status !== 'pending admin') {
       return res.status(400).json({ error: `Cannot Step-1 approve in current status: ${leave.status}` });
     }
 
     await leave.update({
-      status: 'pending_step2',
+      status: 'pending hr',
       step1By: req.user.uid
     });
     
@@ -465,12 +465,12 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     if (leave.employee.deptId !== req.user.deptId) {
       return res.status(403).json({ error: 'You can only reject leaves for your department' });
     }
-    if (leave.status !== 'pending_step1') {
+    if (leave.status !== 'pending admin') {
       return res.status(400).json({ error: `Cannot Step-1 reject in current status: ${leave.status}` });
     }
 
     await leave.update({
-      status: 'rejected_step1',
+      status: 'rejected',
       step1By: req.user.uid
     });
     
@@ -496,13 +496,13 @@ router.post('/leaves/test-create', verifyToken, isDeptAdmin, async (req, res) =>
     const emp = await User.findOne({ where: { uid: employeeId, deptId: req.user.deptId } });
     if (!emp) return res.status(400).json({ error: 'Invalid team employee for test' });
 
-    // Create as pending_step1 so dept-admin can act on it
+    // Create as pending admin so dept-admin can act on it
     const leave = await Leave.create({
       employeeId,
       type,
       fromDate,
       toDate,
-      status: 'pending_step1'
+      status: 'pending admin'
     });
     
     res.status(201).json(leave);

@@ -8,6 +8,7 @@ import { Calendar, CheckCircle2, Clock, AlertCircle, ClipboardCheck, X } from 'l
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 
 interface Exam {
   id: number;
@@ -26,6 +27,11 @@ interface Program {
 }
 
 export default function Exams() {
+  const user = useAuthStore(state => state.user);
+  const userRole = user?.role?.toLowerCase().trim() || '';
+  const isPartnerCenter = ['partner-center', 'partner center', 'partner centers'].includes(userRole);
+  const isReadOnly = ['operations admin', 'operations administrator', 'academic operations admin', 'academic operations administrator', 'academic operations'].includes(userRole);
+
   const [exams, setExams] = useState<Exam[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -52,6 +58,7 @@ export default function Exams() {
       ]);
       setExams(examRes.data);
       setPrograms(progRes.data);
+      // Filter sessions that are approved and belong to the correct center if role is limited
       setSessions(sessRes.data.filter((s: any) => s.approvalStatus === 'APPROVED'));
     } catch (error) {
       toast.error('Failed to access examination registry');
@@ -130,11 +137,11 @@ export default function Exams() {
     },
     {
       id: 'actions',
-      header: () => <div className="text-right pr-4 min-w-[220px]">Operations</div>,
-      cell: ({ row }) => (
+      header: () => !isReadOnly && <div className="text-right pr-4 min-w-[220px]">Operations</div>,
+      cell: ({ row }) => !isReadOnly && (
         <div className="flex justify-end pr-2 min-w-[220px]">
           <button 
-            onClick={() => navigate(`/dashboard/academic/exams/${row.original.id}/marks`)}
+            onClick={() => navigate(`${isPartnerCenter ? '/dashboard/partner-center' : '/dashboard/academic'}/exams/${row.original.id}/marks`)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20 whitespace-nowrap"
           >
             <ClipboardCheck className="w-3.5 h-3.5" />
@@ -143,7 +150,7 @@ export default function Exams() {
         </div>
       )
     }
-  ];
+  ].filter(c => c.id !== 'actions' || !isReadOnly);
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
@@ -157,7 +164,7 @@ export default function Exams() {
           </div>
           <p className="text-slate-500 font-medium ml-15">Schedule institutional assessments and manage academic transcript entry protocols.</p>
         </div>
-        {exams.length > 0 && (
+        {!isLoading && programs.length > 0 && !isReadOnly && (
            <button 
               onClick={() => { reset(); setIsModalOpen(true); }}
               className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
@@ -167,28 +174,28 @@ export default function Exams() {
            </button>
         )}
       </div>
-
-      {exams.length === 0 && !isLoading && (
-        <div className="max-w-md">
+ 
+      {!isLoading && programs.length === 0 ? (
+        <div className="max-w-xl mx-auto py-20">
           <DashCard 
             title="Schedule Institutional Assessment"
-            description="Initiate new exam schedules across configured cohorts."
+            description="Initiate new exam schedules across configured cohorts. Note: Academic programs must be established before assessments can be scheduled."
             onClick={() => { reset(); setIsModalOpen(true); }}
             icon={ClipboardCheck}
-            actionLabel="Schedule New Exam"
+            actionLabel="Review Program Pipeline"
+          />
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+          <DataTable 
+            columns={columns} 
+            data={exams} 
+            isLoading={isLoading} 
+            searchKey="name" 
+            searchPlaceholder="Locate assessment node..." 
           />
         </div>
       )}
-
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <DataTable 
-          columns={columns} 
-          data={exams} 
-          isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Locate assessment node..." 
-        />
-      </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
         <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">

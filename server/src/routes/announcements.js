@@ -2,17 +2,23 @@ import express from 'express';
 import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import { logAction } from '../lib/audit.js';
-import { verifyToken } from '../middleware/verifyToken.js';
+import { verifyToken, isCEO } from '../middleware/verifyToken.js';
 
 const router = express.Router();
 const { Announcement, AnnouncementRead, User, Program, Department } = models;
 import { createNotification } from './notifications.js';
 
-// HR: Get all announcements
+// HR: Get all announcements (including CEO directives)
 router.get('/hr', verifyToken, async (req, res) => {
     try {
         const announcements = await Announcement.findAll({
-            include: [{ model: User, as: 'author', attributes: ['name'] }],
+            where: {
+                [Op.or]: [
+                    { targetChannel: 'all_employees' },
+                    { targetChannel: 'hr_directives' }
+                ]
+            },
+            include: [{ model: User, as: 'author', attributes: ['name', 'role'] }],
             order: [['createdAt', 'DESC']]
         });
         res.json(announcements);
@@ -45,6 +51,62 @@ router.post('/hr', verifyToken, async (req, res) => {
         res.status(201).json(announcement);
     } catch (error) {
         console.error('[ANNOUNCEMENTS HR POST ERROR]:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// CEO: Get own directives
+router.get('/ceo', verifyToken, isCEO, async (req, res) => {
+    try {
+        const announcements = await Announcement.findAll({
+            where: { authorId: req.user.uid },
+            include: [{ model: User, as: 'author', attributes: ['name'] }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(announcements);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// CEO: Post HR directive
+router.post('/ceo/hr', verifyToken, isCEO, async (req, res) => {
+    try {
+        const { title, message, priority, expiryDate } = req.body;
+        const announcement = await Announcement.create({
+            title,
+            message,
+            priority: priority || 'normal',
+            expiryDate: expiryDate || null,
+            authorId: req.user.uid,
+            targetChannel: 'hr_directives'
+        });
+
+        // Notify all HR Admins
+        const hrUsers = await User.findAll({
+            where: { role: 'HR Admin' }
+        });
+
+        for (const u of hrUsers) {
+            await createNotification(null, {
+                targetUid: u.uid,
+                type: 'warning',
+                message: `Executive Directive: ${announcement.title}`,
+                link: '/dashboard/hr/announcements'
+            });
+        }
+
+        await logAction({
+            userId: req.user.uid,
+            action: 'CREATE_CEO_DIRECTIVE',
+            entity: 'Announcement',
+            module: 'Executive',
+            details: `CEO directive issued to HR: ${announcement.title}`,
+            after: announcement
+        });
+        res.status(201).json(announcement);
+    } catch (error) {
+        console.error('[ANNOUNCEMENTS CEO POST ERROR]:', error);
         res.status(500).json({ error: error.message });
     }
 });

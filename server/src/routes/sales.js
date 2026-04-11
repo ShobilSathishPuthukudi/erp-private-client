@@ -126,9 +126,26 @@ router.get('/performance', authenticate, authorize(['Sales & CRM Admin', 'Organi
 
 router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
   try {
+    // 1. Identify Sales Departments
+    const salesDepts = await Department.findAll({ 
+      where: { type: 'sales' },
+      attributes: ['id']
+    });
+    const salesDeptIds = salesDepts.map(d => d.id);
+
+    // 2. Fetch all personnel associated with Sales (Admins + Employees/BDEs)
     const [programs, salesStaff] = await Promise.all([
       Program.findAll({ attributes: ['id', 'name', 'shortName', 'type'] }),
-      User.findAll({ where: { role: 'Sales & CRM Admin' }, attributes: ['uid', 'name'] })
+      User.findAll({ 
+        where: { 
+          [Op.or]: [
+            { role: 'Sales & CRM Admin' },
+            { deptId: { [Op.in]: salesDeptIds } }
+          ],
+          status: 'active'
+        }, 
+        attributes: ['uid', 'name', 'role'] 
+      })
     ]);
 
     return res.json({
