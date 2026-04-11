@@ -471,10 +471,8 @@ export default function Tasks() {
                     return DEPT_ADMIN_ROLES.includes(t.role || '');
                   }
 
-                  // 3. Dept Admin Branch: Sectoral isolation
-                  // For Operations/Academic oversight, we allow any role returned by the backend.
-                  if (isOpsOrAcad) return true;
-
+                  // 3. Dept Admin Branch: Exact 'Employee' match + department isolation
+                  // Note: System/Org admins are excluded as they don't match 'Employee' role.
                   return t.role === "Employee" && String(t.deptId) === String(user?.deptId);
                 }).map((t) => (
                   <option key={t.uid} value={t.uid}>{t.name} ({t.role || 'Personnel'})</option>
