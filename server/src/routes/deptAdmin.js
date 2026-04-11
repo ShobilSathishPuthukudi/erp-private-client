@@ -70,8 +70,18 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
     }
 
     // Narrow Scope for Operations: See specified departments only (Executive Oversight)
-    if (role === 'operations admin') {
-      const targetRoles = ['operations admin', 'bvoc department admin', 'skill department admin', 'online department admin', 'open school admin'];
+    const isOpsOversight = role.includes('operations') || role.includes('academic');
+    if (isOpsOversight) {
+      const targetRoles = [
+        'Employee', 
+        'dept-admin',
+        'operations admin', 
+        'academic operations admin', 
+        'bvoc department admin', 
+        'skill department admin', 
+        'online department admin', 
+        'open school admin'
+      ];
       queryWhere.role = { [Op.in]: targetRoles };
     } else if (req.user.deptId && !globalRoles.includes(role)) {
       // Standard Departmental Isolation (Applies to HR Admin, Finance Admin, etc.)
