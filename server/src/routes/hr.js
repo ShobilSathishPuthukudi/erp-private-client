@@ -115,7 +115,18 @@ router.get('/vacancies', verifyToken, applyExecutiveScope, async (req, res) => {
     const { filter: visibilityFilter } = req.visibility;
     const vacancies = await Vacancy.findAll({
       where: visibilityFilter,
-      include: [{ model: Department, as: 'department', attributes: ['name'] }],
+      include: [{ 
+        model: Department, 
+        as: 'department', 
+        attributes: ['name', 'type'],
+        required: false,
+        include: [{ 
+          model: Department, 
+          as: 'parent', 
+          attributes: ['name'],
+          required: false
+        }]
+      }],
       order: [['createdAt', 'DESC']]
     });
     res.json(vacancies);
@@ -507,11 +518,13 @@ router.get('/leaves', verifyToken, isHR, applyExecutiveScope, async (req, res) =
     }
 });
 
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
+
 // Task Management
 router.get('/tasks', verifyToken, isHR, applyExecutiveScope, async (req, res) => {
     try {
         const { filter: visibilityFilter } = req.visibility;
-        const tasks = await Task.findAll({
+        const tasksRaw = await Task.findAll({
             where: {},
             include: [
                 { 
@@ -525,6 +538,7 @@ router.get('/tasks', verifyToken, isHR, applyExecutiveScope, async (req, res) =>
             ],
             order: [['createdAt', 'DESC']]
         });
+        const tasks = augmentTaskCollection(tasksRaw);
         res.json(tasks);
     } catch (error) {
         console.error("HR API ERROR:", error);

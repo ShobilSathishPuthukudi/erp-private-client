@@ -69,7 +69,7 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
         queryWhere.role = 'Employee';
     }
 
-    } else if (req.user.deptId && !globalRoles.includes(role)) {
+    if (req.user.deptId && !globalRoles.includes(role)) {
       // Standard Departmental Isolation (Applies to HR Admin, Finance Admin, etc.)
       queryWhere.deptId = req.user.deptId;
       
@@ -229,8 +229,11 @@ router.put('/team/:uid/status', verifyToken, isDeptAdmin, async (req, res) => {
 });
 
 // --- Tasks Management ---
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
+
 router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   const { departmentId, subDepartmentId } = req.query;
+  const role = req.user.role?.toLowerCase()?.trim();
   const globalRoles = ['organization admin', 'operations admin', 'Academic Operations Admin', 'operations', 'academic', 'finance admin', 'finance', 'hr admin', 'hr', 'sales & crm admin', 'sales', 'ceo', 'system-admin'];
 
   // Oversight Policy: departmentId is mandatory for department roles but optional for executives.
@@ -253,7 +256,6 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
         ]
     };
 
-    const now = new Date();
     const tasksRaw = await Task.findAll({
       where: whereClause,
       include: [
@@ -267,23 +269,7 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
       order: [['deadline', 'ASC']]
     });
 
-    const tasks = tasksRaw.map(t => {
-      const task = t.toJSON();
-      const deadlineDate = new Date(task.deadline);
-      const isOverdue = deadlineDate < now && task.status !== 'completed';
-      
-      // Grace Period Logic: 24 Hours after deadline
-      const gracePeriodThreshold = new Date(deadlineDate.getTime() + (24 * 60 * 60 * 1000));
-      const isEscalated = now > gracePeriodThreshold && task.status !== 'completed';
-
-      return {
-        ...task,
-        isOverdue,
-        isEscalated,
-        overdueLabel: isEscalated ? 'CRITICAL: ESCALATED TO CEO' : (isOverdue ? 'Overdue - Dept Admin Action Required' : null)
-      };
-    });
-
+    const tasks = augmentTaskCollection(tasksRaw);
     return res.json(tasks);
 
   } catch (error) {

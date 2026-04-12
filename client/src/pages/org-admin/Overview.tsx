@@ -21,8 +21,8 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
 import { 
-  LineChart, 
-  Line, 
+  AreaChart, 
+  Area, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -59,6 +59,8 @@ interface ChartPoint {
   name: string;
   students: number;
   employees: number;
+  administrators: number;
+  centers: number;
 }
 
 interface CenterPoint {
@@ -141,9 +143,10 @@ export default function Overview() {
     const last = data[data.length - 1];
     const first = data[0];
     
+    const totalStaff = last.employees + last.administrators;
     const studentGrowth = first.students > 0 ? ((last.students - first.students) / first.students) * 100 : 0;
-    const staffRatio = last.employees > 0 ? (last.students / last.employees).toFixed(1) : last.students;
-    const staffGrowth = first.employees > 0 ? ((last.employees - first.employees) / first.employees) * 100 : 0;
+    const staffRatio = totalStaff > 0 ? (last.students / totalStaff).toFixed(1) : last.students;
+    const staffGrowth = (first.employees + first.administrators) > 0 ? (((last.employees + last.administrators) - (first.employees + first.administrators)) / (first.employees + first.administrators)) * 100 : 0;
     
     return {
       studentGrowth: studentGrowth.toFixed(1),
@@ -153,10 +156,11 @@ export default function Overview() {
       isStaffGrowthPositive: staffGrowth >= 0,
       totalStudents: last.students,
       totalEmployees: last.employees,
-      institutionalHealth: (last.students / (last.employees || 1)) < 40 ? 'Balanced' : 'Optimal',
-      statusColor: (last.students / (last.employees || 1)) < 60 ? 'text-blue-600' : 'text-amber-600',
-      statusBg: (last.students / (last.employees || 1)) < 60 ? 'bg-blue-50' : 'bg-amber-50',
-      insight: (last.students / (last.employees || 1)) > 50 ? 'Student density is increasing. Consider augmenting faculty support.' : 'Scaling is balanced for current institutional density.'
+      totalAdministrators: last.administrators,
+      institutionalHealth: (last.students / (totalStaff || 1)) < 40 ? 'Balanced' : 'Optimal',
+      statusColor: (last.students / (totalStaff || 1)) < 60 ? 'text-blue-600' : 'text-amber-600',
+      statusBg: (last.students / (totalStaff || 1)) < 60 ? 'bg-blue-50' : 'bg-amber-50',
+      insight: (last.students / (totalStaff || 1)) > 50 ? 'Student density is increasing. Consider augmenting faculty support.' : 'Scaling is balanced for current institutional density.'
     };
   };
 
@@ -236,7 +240,7 @@ export default function Overview() {
       <div 
         onClick={() => !isLink && setSelectedMetric({ title, value, icon: Icon, details, primaryAction })}
         style={{ animationFillMode: 'both', animationDelay: `${index * 75}ms` }}
-        className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 ${isLink ? 'hover:border-blue-200 hover:scale-[1.01]' : 'hover:border-emerald-200'}`}
+        className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 ${isLink ? 'hover:border-blue-200' : 'hover:border-emerald-200'}`}
       >
         <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
           <Icon className="w-40 h-40" />
@@ -484,7 +488,7 @@ export default function Overview() {
           details={
             <div className="space-y-4">
               <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mb-4">Critical Action Queue</h4>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                  {stats.actionQueue.length > 0 ? stats.actionQueue.map((task, i) => (
                     <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-rose-200 transition-all cursor-default group">
                       <div className="flex items-center gap-3">
@@ -505,11 +509,13 @@ export default function Overview() {
                         </div>
                       </div>
                       <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border ${
-                        task.status === 'overdue' 
-                          ? 'bg-rose-50 text-rose-600 border-rose-100' 
-                          : 'bg-amber-50 text-amber-600 border-amber-100'
+                        task.isEscalated 
+                          ? 'bg-purple-50 text-purple-700 border-purple-100'
+                          : task.isOverdue 
+                            ? 'bg-rose-50 text-rose-600 border-rose-100' 
+                            : 'bg-slate-50 text-slate-500 border-slate-100'
                       }`}>
-                        {task.status === 'overdue' ? 'Overdue' : 'Pending'}
+                        {task.isEscalated ? 'Escalated' : task.isOverdue ? 'Overdue' : 'Pending'}
                       </span>
                     </div>
                  )) : (
@@ -581,23 +587,19 @@ export default function Overview() {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-6">
           <div className="flex justify-between items-center px-2">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Institutional Growth</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">6 Month Performance Matrix</p>
+              <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Student Intake</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Monthly Admission & Recruitment Intake</p>
             </div>
             <div className="flex flex-col items-end gap-3">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-lg shadow-blue-500/20"></div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Students</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Staff</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-lg shadow-indigo-500/20"></div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase">Registrations</span>
                 </div>
               </div>
               <button 
                 onClick={() => setIsInstAnalysisOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:scale-105 active:scale-95 group cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
@@ -607,7 +609,13 @@ export default function Overview() {
           <div className="h-[300px] w-full pt-4">
              {mounted && (
                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.growthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                   <AreaChart data={stats.growthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="name" 
@@ -623,29 +631,24 @@ export default function Overview() {
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: '16px', 
+                        borderRadius: '24px', 
                         border: 'none', 
-                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                        boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
                         fontSize: '12px',
                         fontWeight: '800'
                       }} 
                     />
-                    <Line 
+                    <Area 
                       type="monotone" 
                       dataKey="students" 
-                      stroke="#2563eb" 
+                      stroke="#4f46e5" 
                       strokeWidth={4} 
-                      dot={{ r: 6, fill: '#2563eb', strokeWidth: 3, stroke: '#fff' }} 
+                      fillOpacity={1}
+                      fill="url(#colorStudents)"
+                      dot={{ r: 6, fill: '#4f46e5', strokeWidth: 3, stroke: '#fff' }} 
                       activeDot={{ r: 8, strokeWidth: 0 }} 
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="employees" 
-                      stroke="#cbd5e1" 
-                      strokeWidth={4} 
-                      dot={{ r: 6, fill: '#cbd5e1', strokeWidth: 3, stroke: '#fff' }} 
-                    />
-                  </LineChart>
+                  </AreaChart>
                </ResponsiveContainer>
              )}
           </div>
@@ -664,13 +667,13 @@ export default function Overview() {
                   <span className="text-[10px] font-black text-slate-500 uppercase">Approved</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/20"></div>
                   <span className="text-[10px] font-black text-slate-500 uppercase">Leads</span>
                 </div>
               </div>
               <button 
                 onClick={() => setIsAnalysisOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:scale-105 active:scale-95 group cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Analyze</span>
@@ -680,7 +683,17 @@ export default function Overview() {
           <div className="h-[300px] w-full pt-4">
              {mounted && (
                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.centerGrowth} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                   <AreaChart data={stats.centerGrowth} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorApproved" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="day" 
@@ -696,29 +709,33 @@ export default function Overview() {
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: '16px', 
+                        borderRadius: '24px', 
                         border: 'none', 
-                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                        boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
                         fontSize: '12px',
                         fontWeight: '800'
                       }} 
                     />
-                    <Line 
+                    <Area 
+                      type="monotone" 
+                      dataKey="leads" 
+                      stroke="#f43f5e" 
+                      strokeWidth={4} 
+                      fillOpacity={1}
+                      fill="url(#colorLeads)"
+                      dot={{ r: 6, fill: '#f43f5e', strokeWidth: 3, stroke: '#fff' }} 
+                    />
+                    <Area 
                       type="monotone" 
                       dataKey="approved" 
                       stroke="#4f46e5" 
                       strokeWidth={4} 
+                      fillOpacity={1}
+                      fill="url(#colorApproved)"
                       dot={{ r: 6, fill: '#4f46e5', strokeWidth: 3, stroke: '#fff' }} 
                       activeDot={{ r: 8, strokeWidth: 0 }} 
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="leads" 
-                      stroke="#cbd5e1" 
-                      strokeWidth={4} 
-                      dot={{ r: 6, fill: '#cbd5e1', strokeWidth: 3, stroke: '#fff' }} 
-                    />
-                  </LineChart>
+                  </AreaChart>
                </ResponsiveContainer>
              )}
           </div>
@@ -787,7 +804,7 @@ export default function Overview() {
             </div>
             <button 
               onClick={() => setSelectedMetric(null)}
-              className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-colors shadow-lg cursor-pointer"
+              className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
             >
               Close Insight
             </button>
@@ -850,7 +867,7 @@ export default function Overview() {
               <div className="pt-4 flex justify-end">
                 <button 
                   onClick={() => setIsAnalysisOpen(false)}
-                  className="px-8 py-3 bg-slate-100 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 transition-all active:scale-95 cursor-pointer"
+                  className="px-8 py-3 bg-slate-100 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 hover:scale-105 transition-all active:scale-95 cursor-pointer"
                 >
                   Dismiss Analysis
                 </button>
@@ -915,7 +932,7 @@ export default function Overview() {
               <div className="pt-4 flex justify-end">
                 <button 
                   onClick={() => setIsInstAnalysisOpen(false)}
-                  className="px-8 py-3 bg-slate-100 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 transition-all active:scale-95 cursor-pointer"
+                  className="px-8 py-3 bg-slate-100 text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-200 hover:scale-105 transition-all active:scale-95 cursor-pointer"
                 >
                   Dismiss Analysis
                 </button>

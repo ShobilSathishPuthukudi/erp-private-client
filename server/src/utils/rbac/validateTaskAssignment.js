@@ -32,9 +32,12 @@ export const validateTaskAssignment = (assigner, assignee) => {
     "academic ops admin",
     "sales & crm admin",
     "bvoc dept admin",
+    "bvoc department admin",
     "online dept admin",
+    "online department admin",
     "open school admin",
-    "skill dept admin"
+    "skill dept admin",
+    "skill department admin"
   ];
 
   // 3. CEO Branch (Exception Case)

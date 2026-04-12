@@ -88,15 +88,6 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
           <p className="text-slate-500 mt-1 font-medium">Critical system events and high-priority escalations requiring immediate action.</p>
         </div>
         <div className="flex gap-4 items-center">
-          {displayedAlerts.length > 0 && (
-            <button 
-              onClick={handleDismissAll}
-              className="text-xs font-bold text-slate-400 hover:text-rose-600 hover:scale-110 active:scale-90 tracking-wider transition-all"
-            >
-              Dismiss all
-            </button>
-          )}
-          {/* Total Issues button removed as it is redundant on sub-menu pages */}
         </div>
       </div>
 
@@ -151,20 +142,10 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
             
             <div className="flex items-center gap-3">
               <button 
-                className="px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:scale-105 active:scale-95 rounded-xl transition-all"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleDismiss(alert.id);
-                }}
-              >
-                Archive
-              </button>
-              <button 
                 onClick={() => handleAction(alert)}
-                className="px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white bg-slate-900 rounded-xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center"
+                className="px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white bg-slate-900 rounded-xl shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center"
               >
-                Handle Action
-                <ArrowRight className="w-3.5 h-3.5 ml-2.5 group-hover:translate-x-1 transition-transform" />
+                Monitoring
               </button>
             </div>
           </div>
@@ -206,27 +187,48 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200">
-                 <p className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">Target module</p>
-                 <p className="text-sm font-bold text-slate-700">{selectedAlert?.department || 'System'}</p>
-            </div>
-            <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200">
-                 <p className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">Alert id</p>
-                 <p className="text-sm font-bold text-slate-700">SRV-{selectedAlert?.id}X</p>
-            </div>
-          </div>
+          {selectedAlert?.type === 'Escalated Task' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Institutional Timeline</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Assignment Date</span>
+                    <span className="font-bold text-slate-700">{selectedAlert.assignedDate ? new Date(selectedAlert.assignedDate).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                    <span className="text-slate-500">System Deadline</span>
+                    <span className="font-bold text-rose-600">{selectedAlert.dueDate ? new Date(selectedAlert.dueDate).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                    <span className="text-slate-500">CEO Escalation</span>
+                    <span className="font-bold text-purple-600">
+                      {selectedAlert.dueDate ? new Date(new Date(selectedAlert.dueDate).getTime() + 86400000).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <button 
-            onClick={() => {
-                setIsModalOpen(false);
-                if (selectedAlert?.actionLink) navigate(selectedAlert.actionLink);
-            }}
-            className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center"
-          >
-            <CheckCircle2 className="w-5 h-5 mr-2" />
-            Investigate Root Cause
-          </button>
+              <div className="p-4 bg-white border border-slate-100 rounded-2xl space-y-3">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Personnel Chain</p>
+                 <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Issued By</p>
+                       <p className="text-xs font-bold text-slate-700">{selectedAlert.assignerName}</p>
+                    </div>
+                    <ArrowRight className="w-3 h-3 text-slate-300" />
+                    <div className="flex-1 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                       <p className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Assigned To</p>
+                       <p className="text-xs font-bold text-indigo-700">{selectedAlert.assigneeName}</p>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-slate-100 flex justify-center">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read-Only Monitoring Mode</p>
+          </div>
         </div>
       </Modal>
       

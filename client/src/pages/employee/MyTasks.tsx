@@ -107,6 +107,7 @@ export default function MyTasks() {
               disabled={s === 'completed'}
               className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-600 transition-all ${
                 s === 'completed' ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' :
+                row.original.isEscalated ? 'bg-purple-50 text-purple-700 ring-purple-100' :
                 (s === 'overdue' || row.original.isOverdue) ? 'bg-red-50 text-red-600 ring-red-100' :
                 'bg-white text-slate-700'
               }`}
@@ -117,7 +118,7 @@ export default function MyTasks() {
               {(s === 'overdue' || row.original.isOverdue) && <option value="overdue">OVERDUE</option>}
             </select>
             {row.original.isOverdue && (
-               <span className="text-[8px] font-black text-red-500 uppercase tracking-tighter">
+               <span className={`text-[8px] font-black uppercase tracking-tighter ${row.original.isEscalated ? 'text-purple-600' : 'text-red-500'}`}>
                  {row.original.overdueLabel || 'Action Required'}
                </span>
             )}

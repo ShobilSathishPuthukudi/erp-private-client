@@ -59,6 +59,15 @@ export default function Employees() {
     }
   });
 
+  const fetchVacancies = async () => {
+    try {
+      const res = await api.get('/hr/vacancies');
+      setVacancies(res.data);
+    } catch (error) {
+      console.error('Failed to refresh vacancies:', error);
+    }
+  };
+
   const fetchInitialData = async () => {
     try {
       setIsLoading(true);
@@ -112,6 +121,7 @@ export default function Employees() {
   const openCreateModal = () => {
     setEditingEmployee(null);
     reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '', role: '' });
+    fetchVacancies(); // Ensure vacancy list is fresh when opening registration card
     setIsModalOpen(true);
   };
 
@@ -153,6 +163,9 @@ export default function Employees() {
         const r = e.role?.toLowerCase() || '';
         return !['student', 'partner center', 'ceo'].includes(r);
       }));
+      
+      // Also refresh vacancies to reflect the updated status (e.g. if the role was just filled and closed)
+      fetchVacancies();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Operation failed');
     }

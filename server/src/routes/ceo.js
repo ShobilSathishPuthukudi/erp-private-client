@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import { applyExecutiveScope } from '../middleware/visibility.js';
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 
 const router = express.Router();
 const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig } = models;
@@ -157,12 +158,14 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     const completedTasksCount = await Task.count({ where: { status: 'completed' }, include: [{ model: User, as: 'assignee', where: whereUser }] });
     const taskCompletionRate = totalTasksAll > 0 ? Math.round((completedTasksCount / totalTasksAll) * 100) : 100;
 
-    const completedTasksData = await Task.findAll({
+    const completedTasksDataRaw = await Task.findAll({
       where: { status: 'completed' },
       include: [{ model: User, as: 'assignee', where: whereUser }],
       limit: 100 // Sample for speed
     });
     
+    const completedTasksData = augmentTaskCollection(completedTasksDataRaw);
+
     const avgTaskTime = completedTasksData.length > 0 
       ? Math.round(completedTasksData.reduce((sum, t) => sum + (new Date(t.completedAt) - new Date(t.createdAt)), 0) / completedTasksData.length / (1000 * 60 * 60))
       : 0;
@@ -421,8 +424,9 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
       ]
     });
 
-    const tasks = tasksRaw.map(t => {
-      const task = t.toJSON();
+    const tasks = augmentTaskCollection(tasksRaw).map(t => {
+      const task = t;
+      const now = new Date();
       const deadline = new Date(task.deadline);
       const diffTime = Math.abs(now.getTime() - deadline.getTime());
       const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

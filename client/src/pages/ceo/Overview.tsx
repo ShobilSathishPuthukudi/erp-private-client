@@ -389,7 +389,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
             <div 
               key={idx} 
               onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })}
-              className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+              className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 cursor-pointer"
             >
               <div className={`absolute -right-6 -bottom-6 text-${kpi.color === 'slate' ? 'slate' : kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                 <kpi.icon className="w-40 h-40" />
@@ -431,14 +431,14 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               </div>
               <button 
                 onClick={() => navigate('/dashboard/ceo/performance')}
-                className="flex items-center gap-2 text-[10px] font-black bg-slate-900 text-white px-4 py-2 rounded-full uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                className="flex items-center gap-2 text-[10px] font-black bg-slate-900 text-white px-4 py-2 rounded-full uppercase tracking-widest hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-slate-900/20"
               >
                 Workforce Analytics <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {PerformanceStore.map((kpi, idx) => (
-                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-all">
+                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all">
                   <div className={`absolute -right-6 -bottom-6 text-${kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                     <kpi.icon className="w-40 h-40" />
                   </div>
@@ -471,13 +471,13 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                <h3 className="text-xl font-black text-slate-900 tracking-tight">Systemic Risk & Compliance</h3>
                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional Vulnerability & Security Telemetry</p>
              </div>
-             <button onClick={() => navigate('/dashboard/ceo/escalations')} className="text-[10px] font-black bg-rose-50 text-rose-600 px-4 py-2 rounded-full uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">
+             <button onClick={() => navigate('/dashboard/ceo/escalations')} className="text-[10px] font-black bg-rose-50 text-rose-600 px-4 py-2 rounded-full uppercase tracking-widest hover:bg-rose-600 hover:text-white hover:scale-105 active:scale-95 transition-all">
                Escalation Inbox
              </button>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {RiskStore.map((kpi, idx) => (
-                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-all">
+                <div key={idx} onClick={() => setSelectedBrief({ type: kpi.type, title: kpi.title, value: `${kpi.value.toLocaleString()}${kpi.suffix}`, icon: kpi.icon, inlineDetails: (kpi as any).inlineDetails })} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all">
                    <div className={`absolute -right-6 -bottom-6 text-${kpi.color === 'red' ? 'rose' : kpi.color}-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                       <kpi.icon className="w-40 h-40" />
                    </div>
@@ -629,7 +629,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                   <div 
                     key={idx} 
                     onClick={() => setSelectedBrief({ type: 'department', title: `${dept.name} Sector Brief`, dId: dept.id })}
-                    className="bg-slate-900 p-6 rounded-[32px] text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all"
+                    className="bg-slate-900 p-6 rounded-[32px] text-white shadow-2xl relative overflow-hidden group cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[100px] -z-0"></div>
                     <div className="relative z-10">
@@ -683,7 +683,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                 </div>
                 <button 
                   onClick={() => { setSelectedBrief(null); setBriefData(null); }}
-                  className="p-3 hover:bg-white hover:shadow-sm rounded-2xl transition-all text-slate-400"
+                  className="p-3 hover:bg-slate-50 hover:scale-110 active:scale-95 rounded-2xl transition-all text-slate-400 hover:text-slate-900"
                 >
                   <X className="w-6 h-6" />
                 </button>

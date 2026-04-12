@@ -73,7 +73,7 @@ export function Modal({
                 <h3 className="text-xl font-semibold text-slate-900 leading-6">{title}</h3>
                 <button
                   type="button"
-                  className="rounded-md bg-white text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  className="rounded-md bg-white text-slate-400 hover:text-slate-900 transition-all hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
                   onClick={onClose}
                 >
                   <X className="h-6 w-6" aria-hidden="true" />

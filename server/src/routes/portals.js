@@ -574,24 +574,17 @@ router.get('/student/profile', verifyToken, requireRole('student'), async (req, 
 });
 
 // --- EMPLOYEE PORTAL ---
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
+
 router.get('/employee/tasks', verifyToken, requireRole('employee'), async (req, res) => {
   try {
-    const now = new Date();
     const tasksRaw = await Task.findAll({
       where: { assignedTo: req.user.uid },
+      include: [{ model: User, as: 'assigner', attributes: ['name', 'uid'] }],
       order: [['deadline', 'ASC']]
     });
 
-    const tasks = tasksRaw.map(t => {
-      const task = t.toJSON();
-      const isOverdue = new Date(task.deadline) < now && task.status !== 'completed';
-      return {
-        ...task,
-        isOverdue,
-        overdueLabel: isOverdue ? 'Overdue - Execution Node' : null
-      };
-    });
-
+    const tasks = augmentTaskCollection(tasksRaw);
     res.json(tasks);
   } catch (error) {
     console.error('Fetch employee tasks error:', error);

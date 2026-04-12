@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { models, sequelize } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -168,7 +169,13 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
         order: [['name', 'ASC']]
       }),
       User.findAll({ 
-        where: { role: { [Op.ne]: 'student' } },
+        where: { 
+          [Op.and]: [
+            { role: { [Op.ne]: 'student' } },
+            { role: { [Op.notLike]: '%admin%' } },
+            { role: { [Op.notLike]: '%ceo%' } }
+          ]
+        },
         attributes: ['name', 'role'],
         order: [['name', 'ASC']]
       }),
@@ -178,7 +185,12 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
         order: [['name', 'ASC']]
       }),
       Student.count(),
-      Task.count({ where: { status: 'overdue' } })
+      Task.count({ 
+        where: { 
+          status: { [Op.ne]: 'completed' },
+          deadline: { [Op.lt]: new Date() }
+        } 
+      })
     ]);
 
     const pendingCenters = await Department.findAll({
@@ -196,20 +208,44 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       attributes: ['name', 'status']
     });
 
-    // 1. Institutional Growth (Last 6 Months)
+    // 1. Institutional Intake (Last 6 Months)
+    const adminRoles = await Role.findAll({ where: { isAdminEligible: true }, attributes: ['name'] });
+    const adminRoleNames = adminRoles.map(r => r.name);
+
     const growthData = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0);
       const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
       const monthName = date.toLocaleString('default', { month: 'short' });
       
-      const [studentCount, staffCount] = await Promise.all([
-        Student.count({ where: { createdAt: { [Op.lte]: endOfMonth } } }),
-        User.count({ where: { role: { [Op.ne]: 'student' }, createdAt: { [Op.lte]: endOfMonth } } })
+      const [studentCount, allStaff] = await Promise.all([
+        Student.count({ where: { createdAt: { [Op.between]: [startOfMonth, endOfMonth] } } }),
+        User.findAll({ 
+          where: { 
+            role: { [Op.ne]: 'student' }, 
+            createdAt: { [Op.between]: [startOfMonth, endOfMonth] } 
+          },
+          attributes: ['role']
+        })
       ]);
+
+      const administrators = allStaff.filter(u => adminRoleNames.includes(u.role)).length;
+      const centersCount = allStaff.filter(u => u.role === 'Partner Center' || u.role === 'center').length;
+      const employeesCount = allStaff.filter(u => 
+        !adminRoleNames.includes(u.role) && 
+        u.role !== 'Partner Center' && 
+        u.role !== 'center'
+      ).length;
       
-      growthData.push({ name: monthName, students: studentCount, employees: staffCount });
+      growthData.push({ 
+        name: monthName, 
+        students: studentCount, 
+        employees: employeesCount, 
+        administrators, 
+        centers: centersCount 
+      });
     }
 
     // 2. Center Growth (Last 7 Days)
@@ -238,16 +274,20 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
     }
 
     // 3. Action Queue (Real Tasks)
-    const actionQueue = await Task.findAll({
-      where: { status: 'overdue' },
+    const actionQueueRaw = await Task.findAll({
+      where: { 
+        status: { [Op.ne]: 'completed' },
+        deadline: { [Op.lt]: new Date() }
+      },
       include: [
-        { model: User, as: 'assignee', attributes: ['name'] },
-        { model: User, as: 'assigner', attributes: ['name'] }
+        { model: User, as: 'assignee', attributes: ['name'], required: false },
+        { model: User, as: 'assigner', attributes: ['name'], required: false }
       ],
       order: [['createdAt', 'DESC']],
-      limit: 5,
-      attributes: ['title', 'priority', 'description', 'status']
+      attributes: ['title', 'priority', 'description', 'status', 'deadline']
     });
+    
+    const actionQueue = augmentTaskCollection(actionQueueRaw);
 
     // 4. Student Demographics (By Program Type)
     const studentsByProgram = await Student.findAll({
@@ -728,29 +768,37 @@ router.get('/alerts', verifyToken, isOrgAdmin, async (req, res) => {
     const alerts = [];
 
     // 1. Escalated Tasks (Overdue)
-    const overdueTasks = await Task.findAll({
+    const overdueTasksRaw = await Task.findAll({
       where: {
-        status: 'pending',
+        status: { [Op.ne]: 'completed' },
         deadline: { [Op.lt]: new Date() }
       },
       include: [
-        { model: User, as: 'assignee', attributes: ['name', 'deptId'] },
-        { model: User, as: 'assigner', attributes: ['name'] }
+        { model: User, as: 'assignee', attributes: ['name', 'deptId'], required: false },
+        { model: User, as: 'assigner', attributes: ['name'], required: false }
       ],
-      limit: 5
+      order: [['deadline', 'ASC']]
     });
 
+    const overdueTasks = augmentTaskCollection(overdueTasksRaw);
+
     overdueTasks.forEach(task => {
+      const daysOverdue = Math.floor((new Date() - new Date(task.deadline)) / (1000 * 60 * 60 * 24));
+      const assigneeDisplay = task.assignee?.name || task.assignedTo;
       alerts.push({
         id: `task-${task.id}`,
         type: 'Escalated Task',
         title: task.title,
-        department: 'Operational', // Placeholder or derive from assignee.deptId
-        overdue: `${Math.floor((new Date() - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} Days`,
-        chain: `${task.assigner?.name || 'System'} → ${task.assignee?.name || 'Unassigned'}`,
+        department: task.assignee?.deptId ? `Dept ID: ${task.assignee.deptId}` : 'Institutional',
+        overdue: `${task.isEscalated ? Math.max(1, daysOverdue) : daysOverdue} Days`,
+        chain: `${task.assigner?.name || 'System'} → ${assigneeDisplay}`,
+        assignerName: task.assigner?.name || 'System',
+        assigneeName: assigneeDisplay,
+        assignedDate: task.createdAt,
+        dueDate: task.deadline,
         details: task.description || "Active task has exceeded its institutional deadline and requires immediate intervention.",
         actionLabel: 'View Task',
-        actionLink: '/dashboard/org-admin/settings/general', // Or specific task link
+        actionLink: '/dashboard/org-admin/overview', 
         source: 'Task'
       });
     });

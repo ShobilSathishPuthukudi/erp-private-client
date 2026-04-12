@@ -86,7 +86,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-4 mt-10">
                 <button 
                   onClick={() => setIsAdmissionModalOpen(true)}
-                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 group border border-white/20 active:scale-95 shadow-xl"
+                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group border border-white/20 shadow-xl"
                 >
                     <UserPlus className="w-4 h-4" />
                     Initiate Admission
@@ -94,7 +94,7 @@ export default function Dashboard() {
                 </button>
                 <button 
                   onClick={() => navigate('programs')}
-                  className="bg-slate-800/50 backdrop-blur-md text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 border border-white/10 active:scale-95"
+                  className="bg-slate-800/50 backdrop-blur-md text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/10"
                 >
                     Browse Programs
                 </button>
@@ -106,7 +106,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div 
             onClick={() => openDrillDown('totalStudents', 'Enrolled Students')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
               <div className="absolute -right-6 -bottom-6 text-blue-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Users className="w-40 h-40" />
@@ -130,7 +130,7 @@ export default function Dashboard() {
 
           <div 
             onClick={() => openDrillDown('pendingAdmissions', 'Students in Review')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
               <div className="absolute -right-6 -bottom-6 text-amber-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Clock className="w-40 h-40" />
@@ -154,7 +154,7 @@ export default function Dashboard() {
 
           <div 
             onClick={() => openDrillDown('programs', 'Sanctioned Programs')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
               <div className="absolute -right-6 -bottom-6 text-emerald-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                   <Layout className="w-40 h-40" />

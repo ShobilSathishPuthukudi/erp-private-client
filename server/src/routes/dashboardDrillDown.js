@@ -2,6 +2,7 @@ import express from 'express';
 import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 
 const router = express.Router();
 const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession, Invoice } = models;
@@ -133,7 +134,14 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
         {
           details = await User.findAll({
             attributes: ['uid', 'name', 'email', 'role', 'status'],
-            where: { status: 'active' },
+            where: { 
+              status: 'active',
+              [Op.and]: [
+                { role: { [Op.ne]: 'student' } },
+                { role: { [Op.notLike]: '%admin%' } },
+                { role: { [Op.notLike]: '%ceo%' } }
+              ]
+            },
             limit: 500
           });
         }
@@ -159,11 +167,15 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
 
       case 'tasks':
         {
-          details = await Task.findAll({
-            where: { status: { [Op.not]: 'completed' } },
-            include: [{ model: User, as: 'assignee', attributes: ['name'] }],
+          const tasksRaw = await Task.findAll({
+            where: { 
+              status: { [Op.ne]: 'completed' },
+              deadline: { [Op.lt]: new Date() }
+            },
+            include: [{ model: User, as: 'assignee', attributes: ['name'], required: false }],
             limit: 200
           });
+          details = augmentTaskCollection(tasksRaw);
         }
         break;
       

@@ -90,7 +90,7 @@ export default function FinanceMainDashboard() {
           </p>
         </div>
         <div className="flex gap-4">
-           <Link to="/dashboard/finance/approvals" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center gap-3">
+           <Link to="/dashboard/finance/approvals" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
               <Zap className="w-4 h-4 text-emerald-400 fill-emerald-400" /> Finalize Queues
            </Link>
         </div>
@@ -160,7 +160,7 @@ export default function FinanceMainDashboard() {
                </div>
                <div className="pt-8 border-t border-slate-100 mt-8 flex justify-between items-center">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Automated Fraud Detection Active</p>
-                  <Link to="/dashboard/finance/aging" className="text-blue-600 font-bold text-xs flex items-center gap-2 hover:translate-x-1 transition-all">
+                  <Link to="/dashboard/finance/aging" className="text-blue-600 font-bold text-xs flex items-center gap-2 hover:translate-x-1 hover:scale-105 active:scale-95 transition-all">
                      View Receivables Aging <ArrowUpRight className="w-4 h-4" />
                   </Link>
                </div>
@@ -216,7 +216,7 @@ function StatCard({ title, value, icon: Icon, color, trend, isAlert, onClick }: 
   return (
     <div 
       onClick={onClick}
-      className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden hover:-translate-y-1 duration-300 cursor-pointer hover:scale-[1.02] active:scale-95 ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4' : ''}`}
+      className={`p-8 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${isAlert ? 'ring-2 ring-rose-500 ring-offset-4' : ''}`}
     >
       <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
         <Icon className="w-40 h-40" />
@@ -265,7 +265,7 @@ function RiskItem({ title, count, severity, description }: any) {
 
 function ControlItem({ title, to }: any) {
   return (
-    <Link to={to} className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group">
+    <Link to={to} className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all group">
        <span className="text-sm font-bold tracking-tight text-white/80 group-hover:text-white">{title}</span>
        <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
     </Link>

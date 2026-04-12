@@ -102,7 +102,7 @@ export default function OpsDashboard() {
           <div 
             key={i} 
             onClick={() => openDrillDown(kpi.type, kpi.label)}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-95"
+            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 transition-all group relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className={`absolute -right-6 -bottom-6 ${kpi.color} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
               <kpi.icon className="w-40 h-40" />
@@ -133,7 +133,7 @@ export default function OpsDashboard() {
          </h2>
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.unitBreakdown?.map((unit: any) => (
-               <div key={unit.id} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/30 hover:shadow-xl transition-all group relative overflow-hidden">
+               <div key={unit.id} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all group relative overflow-hidden">
                   <div className="absolute -right-4 -bottom-4 text-indigo-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
                     <Layers className="w-32 h-32" />
                   </div>
@@ -243,7 +243,7 @@ export default function OpsDashboard() {
                     <button 
                       key={i} 
                       onClick={() => handleLogClick(log)}
-                      className="flex gap-4 items-start w-full text-left p-3 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group/item"
+                      className="flex gap-4 items-start w-full text-left p-3 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 hover:scale-[1.02] active:scale-[0.98] group/item"
                     >
                       <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0 group-hover/item:scale-125 transition-transform" />
                       <div>
@@ -346,12 +346,12 @@ export default function OpsDashboard() {
             )}
             
             <div className="pt-4 border-t border-slate-100 flex justify-end">
-               <button 
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-colors shadow-lg"
-               >
-                  Secure Closure
-               </button>
+                <button 
+                   onClick={() => setIsModalOpen(false)}
+                   className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                >
+                   Secure Closure
+                </button>
             </div>
           </div>
         )}

@@ -117,7 +117,7 @@ export default function SalesPerformance() {
                   <button 
                       disabled={!referralCode}
                       onClick={copyReferralLink}
-                      className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5 disabled:opacity-50"
+                      className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5 disabled:opacity-50"
                   >
                       <Copy className="w-4 h-4" /> Copy Link
                   </button>
@@ -198,7 +198,7 @@ function StatCard({ icon: Icon, label, value, color, onClick }: any) {
     return (
         <div 
           onClick={onClick}
-          className={`bg-white border border-slate-100 rounded-[2rem] p-7 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''}`}
+          className={`bg-white border border-slate-100 rounded-[2rem] p-7 shadow-xl shadow-slate-200/40 group hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
         >
             <div className={`absolute -right-6 -bottom-6 ${textColors[color]} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                 <Icon className="w-40 h-40" />
