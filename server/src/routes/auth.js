@@ -9,9 +9,40 @@ import { sequelize, models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import validate from '../middleware/validate.js';
 import { loginSchema } from '../lib/schemas.js';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
-const { User, Department, Student } = models;
+const { User, Department, Student, Role } = models;
 const router = express.Router();
+
+const SUB_DEPARTMENT_ADMIN_ROLES = ['BVoc Admin', 'Skill Admin', 'Online Admin', 'Open School Admin'];
+const CORE_DEPARTMENT_ADMIN_LABELS = {
+  'HR Admin': 'HR Department',
+  'Finance Admin': 'Finance Department',
+  'Sales Admin': 'Sales Department',
+  'Academic Operations Admin': 'Academic Operations Department'
+};
+
+const resolveDepartmentLabel = (effectiveUser, effectiveRole) => {
+  if (effectiveRole?.toLowerCase().includes('partner center')) {
+    return 'Partner Center Hub';
+  }
+
+  if (SUB_DEPARTMENT_ADMIN_ROLES.includes(effectiveRole) && effectiveUser.subDepartment) {
+    return `${effectiveUser.subDepartment} Department`;
+  }
+
+  if (CORE_DEPARTMENT_ADMIN_LABELS[effectiveRole]) {
+    return CORE_DEPARTMENT_ADMIN_LABELS[effectiveRole];
+  }
+
+  if (effectiveUser.department?.name) {
+    return effectiveUser.department.name.toLowerCase().includes('department')
+      ? effectiveUser.department.name
+      : `${effectiveUser.department.name} Department`;
+  }
+
+  return effectiveUser.subDepartment || 'Institutional Unit';
+};
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -56,7 +87,16 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const isMatch = await bcrypt.compare(password, user.password);
+    // User credentials remain primary so mapped admins can log in with their own email/password.
+    let isMatch = await bcrypt.compare(password, user.password);
+    let matchedWithRolePassword = false;
+    if (!isMatch) {
+      const roleDetails = await Role.findOne({ where: { name: user.role } });
+      if (roleDetails?.rolePassword) {
+        isMatch = await bcrypt.compare(password, roleDetails.rolePassword);
+        matchedWithRolePassword = isMatch;
+      }
+    }
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -80,22 +120,45 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
     }
 
-    const isManager = await User.unscoped().count({ where: { reportingManagerUid: user.uid, status: 'active' } }) > 0;
+    let effectiveUser = user;
+    let sessionRole = normalizeInstitutionRoleName(user.role || '');
+    const canonicalRole = normalizeInstitutionRoleName(user.role || '');
+    const seededRole = await Role.findOne({
+      where: {
+        name: canonicalRole,
+        isSeeded: true,
+        assignedUserUid: { [Op.ne]: null }
+      }
+    });
+
+    // If a seeded shortcut account (e.g. bvoc@erp.com) was used and that seeded role
+    // is currently assigned to a real employee, switch the session identity to that employee.
+    if (seededRole?.assignedUserUid && seededRole.assignedUserUid !== user.uid) {
+      const assignedUser = await User.unscoped().findOne({
+        where: { uid: seededRole.assignedUserUid },
+        include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
+      });
+
+      if (assignedUser?.status === 'active' && (matchedWithRolePassword || user.email === email)) {
+        effectiveUser = assignedUser;
+        sessionRole = seededRole.name;
+      }
+    }
+
+    const isManager = await User.unscoped().count({ where: { reportingManagerUid: effectiveUser.uid, status: 'active' } }) > 0;
+
+    const effectiveRole = normalizeInstitutionRoleName(sessionRole || effectiveUser.role || '');
 
     const payload = {
-      uid: user.uid,
-      email: user.email,
-      role: user.role,
+      uid: effectiveUser.uid,
+      email: effectiveUser.email,
+      role: effectiveRole,
       isManager,
-      deptId: user.deptId,
-      departmentName: user.role?.toLowerCase().includes('partner center')
-        ? 'Partner Center Hub'
-        : (user.department?.name 
-          ? (user.department.name.toLowerCase().includes('department') ? user.department.name : `${user.department.name} Department`)
-          : (user.subDepartment || 'Institutional Unit')),
-      subDepartment: user.subDepartment,
-      name: user.name,
-      avatar: user.avatar
+      deptId: effectiveUser.deptId,
+      departmentName: resolveDepartmentLabel(effectiveUser, effectiveRole),
+      subDepartment: effectiveUser.subDepartment,
+      name: effectiveUser.name,
+      avatar: effectiveUser.avatar
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
@@ -367,37 +430,42 @@ router.get('/demo-staff', async (req, res) => {
   try {
     const staff = await User.unscoped().findAll({
       where: { 
-        role: { [Op.notIn]: ['student', 'Organization Admin', 'CEO', 'ceo', 'admin'] },
         status: 'active'
       },
-      attributes: ['uid', 'name', 'email', 'role', 'devPassword'],
-      include: [{ 
-        model: Department, 
-        as: 'department',
-        attributes: ['name'] 
-      }],
-      limit: 100,
+      attributes: ['uid', 'name', 'email', 'role', 'devPassword', 'vacancyId'],
+      include: [
+        { 
+          model: Department, 
+          as: 'department',
+          attributes: ['name'] 
+        },
+        {
+          model: Role,
+          as: 'assignedAdminRoles',
+          attributes: ['id', 'name']
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
-    // Strategy: Exclude anyone clearly identified as an administrator
+    // Match filtering logic from HR Employee Remap system
     const filtered = staff.filter(s => {
-      const r = s.role.toLowerCase();
-      const n = s.name.toLowerCase();
-      // Exclude Department-level Admins, CEOs, and Centers
-      return !r.includes('admin') && !r.includes('administrator') && 
-             !r.includes('ceo') && !r.includes('center') &&
-             !n.includes('alpha partner center');
-    }).slice(0, 30);
+      const r = (s.role || '').toLowerCase();
+      const isCreatedEmployee = Boolean(s.vacancyId) || s.uid?.startsWith('EMP-');
+      const isMappedAdmin = Array.isArray(s.assignedAdminRoles) && s.assignedAdminRoles.length > 0;
+      
+      // Only include institutional employees (base or mapped)
+      return isCreatedEmployee || r === 'employee' || isMappedAdmin;
+    });
 
     const formatted = filtered.map(s => ({
       uid: s.uid,
       name: s.name,
       email: s.email,
-      role: s.role,
+      role: normalizeInstitutionRoleName(s.role || ''),
       department: s.department?.name || 'Institutional Unit',
       password: s.devPassword || 'password123'
-    }));
+    })).slice(0, 100);
     
     res.json(formatted);
   } catch (error) {

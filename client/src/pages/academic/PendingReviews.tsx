@@ -4,17 +4,17 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  FileText, 
-  UserCircle2, 
-  Landmark, 
-  Search, 
-  Eye, 
-  ShieldCheck, 
+import {
+  CheckCircle2,
+  XCircle,
+  FileText,
+  UserCircle2,
+  Search,
+  Eye,
+  ShieldCheck,
   Activity,
-  Clock
+  Clock,
+  Briefcase
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -35,8 +35,9 @@ interface Student {
 
 export default function PendingReviews() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') as 'pending' | 'finance' | 'approved') || 'pending';
-  const [activeTab, setActiveTab] = useState<'pending' | 'finance' | 'approved'>(initialTab);
+  const initialTab = (searchParams.get('tab') as 'pending' | 'finance' | 'approved' | 'rejected') || 'pending';
+  const [activeTab, setActiveTab] = useState<'pending' | 'finance' | 'approved' | 'rejected'>(initialTab);
+  const [counts, setCounts] = useState({ pending: 0, finance: 0, approved: 0, rejected: 0 });
 
   const isReadOnly = activeTab !== 'pending';
 
@@ -53,8 +54,9 @@ export default function PendingReviews() {
       setIsLoading(true);
       const statusMap = {
         'pending': 'PENDING_REVIEW',
-        'finance': 'FINANCE_PENDING',
-        'approved': 'ENROLLED'
+        'finance': 'FINANCE_PENDING,FINANCE_APPROVED',
+        'approved': 'ENROLLED',
+        'rejected': 'REJECTED'
       };
       const res = await api.get(`/academic/students?status=${statusMap[activeTab]}`);
       setStudents(res.data);
@@ -68,6 +70,28 @@ export default function PendingReviews() {
   useEffect(() => {
     fetchData();
   }, [activeTab]);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [p, f, a, r] = await Promise.all([
+          api.get('/academic/students?status=PENDING_REVIEW'),
+          api.get('/academic/students?status=FINANCE_PENDING,FINANCE_APPROVED'),
+          api.get('/academic/students?status=ENROLLED'),
+          api.get('/academic/students?status=REJECTED')
+        ]);
+        setCounts({
+          pending: p.data.length,
+          finance: f.data.length,
+          approved: a.data.length,
+          rejected: r.data.length
+        });
+      } catch (error) {
+        console.error('Status telemetry sync failure', error);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   const openReviewModal = (student: Student) => {
     setSelectedStudent(student);
@@ -130,22 +154,16 @@ export default function PendingReviews() {
         </div>
       ) 
     },
-    { 
-      id: 'program', 
+    {
+      id: 'program',
       header: 'Program Applied',
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-700">{row.original.program?.name || 'Manual Entry'}</span>
-          <span className="text-[10px] text-slate-400 flex items-center gap-1 uppercase font-bold tracking-widest">
-            <Landmark className="w-2.5 h-2.5" />
-            {row.original.university?.name || 'Local'}
-          </span>
-        </div>
+        <span className="text-sm font-bold text-slate-700">{row.original.program?.name || 'Manual Entry'}</span>
       )
     },
     { 
       accessorKey: 'status', 
-      header: 'Enrollment Status',
+      header: 'Student Status',
       cell: ({ row }) => {
         const { status, enrollStatus } = row.original;
         const isFinance = status === 'FINANCE_PENDING' || enrollStatus === 'pending_finance';
@@ -198,36 +216,54 @@ export default function PendingReviews() {
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Enrollment Status</h1>
-            <p className="text-slate-500 font-medium text-sm">Institutional Assessment: Verify academic credentials before financial activation.</p>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Student Status</h1>
+              <p className="text-slate-500 font-medium text-sm">Institutional Assessment: Verify academic credentials before financial activation.</p>
+            </div>
           </div>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
-           {(['pending', 'approved', 'finance'] as const).map(tab => (
+
+        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
+           {[
+             { id: 'pending', name: 'Pending', icon: Clock },
+             { id: 'finance', name: 'Finance Pending', icon: Briefcase },
+             { id: 'approved', name: 'Approved', icon: CheckCircle2 },
+             { id: 'rejected', name: 'Rejected', icon: XCircle }
+           ].map(tab => (
              <button
-                key={tab}
+                key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab);
-                  setSearchParams({ tab });
+                  setActiveTab(tab.id as any);
+                  setSearchParams({ tab: tab.id });
                 }}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`
+                  flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
+                  ${activeTab === tab.id 
+                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
+                `}
              >
-                {tab === 'pending' ? 'Pending' : tab === 'approved' ? 'Approved' : 'Finance Pending'}
+                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                {tab.name}
+                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {counts[tab.id as keyof typeof counts] || 0}
+                </span>
              </button>
            ))}
         </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-        <DataTable 
-          columns={columns} 
-          data={students} 
+        <DataTable
+          columns={columns}
+          data={students}
+          pageSize={10} 
           isLoading={isLoading} 
           searchKey="name" 
           searchPlaceholder="Search active eligibility tickets..." 
@@ -336,8 +372,9 @@ export default function PendingReviews() {
                         <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
                             <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Status</p>
                             <p className="text-[11px] font-bold text-amber-400 uppercase leading-tight">
-                                {selectedStudent?.reviewStage === 'SUB_DEPT' ? 'Stage-1 Review' : 
-                                 selectedStudent?.reviewStage === 'OPS' ? 'Institutional Review' : 
+                                {selectedStudent?.status === 'ENROLLED' ? 'Enrolled' :
+                                 selectedStudent?.reviewStage === 'SUB_DEPT' ? 'Stage-1 Review' :
+                                 selectedStudent?.reviewStage === 'OPS' ? 'Institutional Review' :
                                  selectedStudent?.reviewStage === 'FINANCE' ? 'Finance Clearance' : 'Eligibility Check'}
                             </p>
                         </div>

@@ -7,6 +7,9 @@ import { universitySchema, programSchema } from '../lib/schemas.js';
 import { logAction } from '../lib/audit.js';
 import express from 'express';
 import erpEvents from '../lib/events.js';
+import { checkPermission, checkPermissionOrRole } from '../middleware/rbac.js';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
+import { syncProgramLifecycle, syncUniversityLifecycle } from '../utils/academicLifecycle.js';
 
 const router = express.Router();
 const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept, CenterProgram, AcademicActionRequest, Lead } = models;
@@ -148,7 +151,7 @@ router.get('/referrals', verifyToken, isOpsOrAdmin, async (req, res) => {
     const [centers, leads] = await Promise.all([
       Department.findAll({
         where: { 
-          type: 'partner centers',
+          type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
           bdeId: { [Op.ne]: null }
         },
         include: [{ model: User, as: 'referringBDE', attributes: ['name', 'email'] }]
@@ -192,8 +195,8 @@ router.get('/action-requests', verifyToken, isOpsOrAdmin, async (req, res) => {
 router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { restricted, filter: visibilityFilter } = req.visibility;
-    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
-    const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
+    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isSubDeptAdmin = subDeptAdminRoles.includes(normalizeInstitutionRoleName(req.user.role));
     const sid = getSubDeptId(req.user);
 
     const totalUniversities = await Department.count({ 
@@ -207,7 +210,11 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
     });
     const pendingReviews = await Student.count({ 
       where: { 
-        ...(isSubDeptAdmin ? { subDepartmentId: sid, enrollStatus: 'pending' } : { enrollStatus: 'pending' }),
+        [Op.or]: [
+          { status: 'PENDING_REVIEW' },
+          { enrollStatus: { [Op.in]: ['pending', 'pending_ops', 'pending_subdept'] } }
+        ],
+        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
         ...visibilityFilter
       } 
     });
@@ -239,30 +246,55 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
 router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { filter: visibilityFilter } = req.visibility;
-    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
-    const isSubDeptAdmin = subDeptAdminRoles.includes(req.user.role);
+    const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isSubDeptAdmin = subDeptAdminRoles.includes(normalizeInstitutionRoleName(req.user.role));
     const sid = getSubDeptId(req.user);
 
-    // 1. Center Verification Stats
+    // 1. Center Verification Stats (Canonical Mapping)
     const centersRaw = await Department.findAll({
-      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
-      where: { 
-        type: { [Op.in]: ['partner centers'] },
+      attributes: [
+        [sequelize.literal(`
+          CASE 
+            WHEN auditStatus = 'pending' THEN 'PENDING_AUDIT'
+            WHEN auditStatus = 'PENDING_FINANCE' OR status = 'staged' THEN 'PENDING_FINANCE'
+            WHEN auditStatus = 'approved' OR status = 'active' THEN 'APPROVED'
+            WHEN auditStatus = 'rejected' OR status = 'inactive' THEN 'REJECTED'
+            ELSE status
+          END
+        `), 'canonical_status'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
+      where: {
+        type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
         ...visibilityFilter
       },
-      group: ['status'],
+      group: ['canonical_status'],
       raw: true
     });
 
-    // 2. Student Verification Stats
+    // 2. Student Verification Stats (Canonical Mapping for backward compatibility)
     const studentsRaw = await Student.findAll({
-      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+      attributes: [
+        [sequelize.literal(`
+          CASE 
+            WHEN status IN ('PENDING_REVIEW', 'OPS_APPROVED') OR enrollStatus IN ('pending', 'pending_ops', 'pending_subdept') THEN 'PENDING_REVIEW'
+            WHEN status IN ('FINANCE_PENDING', 'PAYMENT_VERIFIED') OR enrollStatus = 'pending_finance' THEN 'FINANCE_PENDING'
+            WHEN status IN ('ENROLLED', 'FINANCE_APPROVED') OR enrollStatus IN ('enrolled', 'active') THEN 'ENROLLED'
+            WHEN status = 'REJECTED' OR enrollStatus IN ('rejected', 'rejected_subdept') THEN 'REJECTED'
+            ELSE status
+          END
+        `), 'canonical_status'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
       where: { 
-        status: { [Op.ne]: 'DRAFT' },
+        [Op.or]: [
+          { status: { [Op.ne]: 'DRAFT' } },
+          { enrollStatus: { [Op.and]: [{ [Op.ne]: 'draft' }, { [Op.ne]: null }] } }
+        ],
         ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
         ...visibilityFilter
       },
-      group: ['status'],
+      group: ['canonical_status'],
       raw: true
     });
 
@@ -289,8 +321,8 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
     // 4. Recent Center Onboarding (Traceability)
     const recentCenters = await Department.findAll({
       attributes: ['name', 'status', 'auditStatus', 'centerStatus', 'updatedAt'],
-      where: { 
-        type: { [Op.in]: ['partner centers'] },
+      where: {
+        type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
         status: { [Op.ne]: 'inactive' }
       },
       order: [['updatedAt', 'DESC']],
@@ -299,8 +331,8 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
     });
 
     res.json({
-      centers: centersRaw,
-      students: studentsRaw,
+      centers: centersRaw.map(c => ({ status: c.canonical_status, count: c.count })),
+      students: studentsRaw.map(s => ({ status: s.canonical_status, count: s.count })),
       recentActivity: recentActivity || [],
       recentCenters: recentCenters || []
     });
@@ -317,6 +349,17 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
 router.get('/universities', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { filter: visibilityFilter } = req.visibility;
+    const unisRaw = await Department.findAll({
+      where: { type: 'universities', ...visibilityFilter },
+      attributes: ['id'],
+      raw: true
+    });
+
+    // JIT Sync: Ensure all university statuses are aligned with their program data
+    for (const uni of unisRaw) {
+      await syncUniversityLifecycle(uni.id);
+    }
+
     const unis = await Department.findAll({
       where: { type: 'universities', ...visibilityFilter },
       attributes: {
@@ -348,7 +391,7 @@ router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
   }
 });
 
-router.post('/universities', verifyToken, isArchitectureAdmin, validate(universitySchema), async (req, res) => {
+router.post('/universities', verifyToken, checkPermissionOrRole('ACAD_UNI_SEED', 'create', ['Academic Operations Admin']), validate(universitySchema), async (req, res) => {
   try {
     const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
     const uni = await Department.create({
@@ -375,12 +418,17 @@ router.post('/universities', verifyToken, isArchitectureAdmin, validate(universi
   }
 });
 
-router.put('/universities/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
+router.put('/universities/:id', verifyToken, checkPermissionOrRole('ACAD_UNI_SEED', 'update', ['Academic Operations Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
     const uni = await Department.findOne({ where: { id, type: 'universities' } });
     if (!uni) return res.status(404).json({ error: 'University not found' });
+    if (uni.status !== 'proposed') {
+      return res.status(400).json({
+        error: 'Governance Error: Only universities in PROPOSED state can be edited.'
+      });
+    }
 
     await uni.update({ name, shortName, status, accreditation, websiteUrl, affiliationDoc });
     res.json(uni);
@@ -395,10 +443,10 @@ router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req,
     const uni = await Department.findOne({ where: { id, type: 'universities' } });
     if (!uni) return res.status(404).json({ error: 'University not found' });
 
-    // Status Guard: Only draft universities can be eradicated
-    if (uni.status !== 'draft') {
+    // Status Guard: Only proposed universities can be eradicated
+    if (uni.status !== 'proposed' && uni.status !== 'draft') {
       return res.status(400).json({ 
-        error: 'Compliance Violation: Persistent university records cannot be terminated. Status must be DRAFT.' 
+        error: 'Compliance Violation: Persistent university records cannot be terminated. Status must be PROPOSED or DRAFT.' 
       });
     }
 
@@ -416,13 +464,13 @@ router.delete('/universities/:id', verifyToken, isArchitectureAdmin, async (req,
 router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { restricted, filter: visibilityFilter } = req.visibility;
-    const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
-    const isIsolated = rolesWithIsolation.includes(req.user.role);
+    const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
+    const isIsolated = rolesWithIsolation.includes(normalizeInstitutionRoleName(req.user.role));
     const sid = getSubDeptId(req.user);
 
     const { status } = req.query;
     const whereClause = { 
-      type: { [Op.in]: ['partner centers'] },
+      type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
       ...(status ? { status } : {}),
       ...visibilityFilter
     };
@@ -452,7 +500,7 @@ router.get('/programs', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     const { subDeptId } = req.query;
     const whereClause = { ...visibilityFilter };
     
-    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role)) {
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role))) {
       whereClause.subDeptId = getSubDeptId(req.user);
     } else if (subDeptId) {
       whereClause.subDeptId = subDeptId;
@@ -499,13 +547,23 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
   }
 });
 
-router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchema), async (req, res) => {
+router.post('/programs', verifyToken, checkPermissionOrRole('ACAD_PROG_ENG', 'create', ['Academic Operations Admin']), validate(programSchema), async (req, res) => {
   try {
     const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, baseFee, taxPercentage, paymentStructure, totalCredits, tenure } = req.body;
-    
-    // SubDept mapping (simplified for now, usually correlates to Dept ID)
-    const subDeptId = getSubDeptId({ role: type }); // Try to map via role-like type
-    
+
+    const PROGRAM_TYPE_TO_SUB_DEPT = {
+      'open school': 8,
+      'openschool': 8,
+      'online': 9,
+      'skill': 10,
+      'bvoc': 11,
+    };
+    const typeKey = String(type || '').toLowerCase().trim();
+    const subDeptId = PROGRAM_TYPE_TO_SUB_DEPT[typeKey];
+    if (!subDeptId) {
+      return res.status(400).json({ error: `Invalid program type: ${type}. Must map to a sub-department.` });
+    }
+
     // Calculate totalFee from baseFee and taxPercentage if provided
     const calculatedTotalFee = baseFee !== undefined && taxPercentage !== undefined 
       ? parseFloat(baseFee) * (1 + parseFloat(taxPercentage) / 100)
@@ -517,7 +575,7 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
       universityId: universityId || null,
       duration,
       type,
-      subDeptId: subDeptId || 0,
+      subDeptId,
       intakeCapacity: intakeCapacity || 0,
       totalFee: calculatedTotalFee,
       baseFee: baseFee || 0,
@@ -535,13 +593,11 @@ router.post('/programs', verifyToken, isArchitectureAdmin, validate(programSchem
        module: 'Academic'
     });
     
-    // Trigger University Status: Staged (Standardized Transition)
-    if (universityId) {
-       await Department.update({ status: 'staged' }, { where: { id: universityId, type: 'universities' } });
-    }
-
     // Auto-provision initial fee structures
     await autoSeedFees(p, req.user.uid);
+
+    await syncProgramLifecycle(p.id);
+    await p.reload();
 
     res.status(201).json(p);
   } catch (error) {
@@ -630,12 +686,17 @@ router.post('/centers/:id/register', verifyToken, isAcademicOrAdmin, async (req,
   }
 });
 
-router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) => {
+router.put('/programs/:id', verifyToken, checkPermissionOrRole('ACAD_PROG_ENG', 'update', ['Academic Operations Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const { subDeptId } = req.body;
     const p = await Program.findByPk(id);
     if (!p) return res.status(404).json({ error: 'Program core not found' });
+    if (p.status !== 'draft') {
+      return res.status(400).json({
+        error: 'Governance Error: Only programs in DRAFT state can be edited.'
+      });
+    }
 
     if (subDeptId && subDeptId !== p.subDeptId) {
       const studentCount = await Student.count({ where: { programId: id } });
@@ -654,6 +715,8 @@ router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) =
       calculatedTotalFee = parseFloat(base) * (1 + parseFloat(tax) / 100);
     }
 
+    const previousUniversityId = p.universityId;
+
     await p.update({ 
       ...updateData,
       name: updateData.name || p.name,
@@ -668,16 +731,14 @@ router.put('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res) =
       totalCredits: updateData.totalCredits !== undefined ? updateData.totalCredits : p.totalCredits
     });
 
-    // If syllabus mapped and credits > 0, transition to STAGED
-    if (p.status === 'draft' && p.syllabusDoc && p.totalCredits > 0) {
-      await p.update({ status: 'staged' });
-      if (p.universityId) {
-        await Department.update({ status: 'staged' }, { where: { id: p.universityId, type: 'universities' } });
-      }
-    }
-
     // Synchronize fee structures on update in case payment structures were toggled
     await autoSeedFees(p, req.user.uid);
+
+    await syncProgramLifecycle(p.id);
+    if (previousUniversityId && previousUniversityId !== p.universityId) {
+      await syncUniversityLifecycle(previousUniversityId);
+    }
+    await p.reload();
 
     res.json(p);
   } catch (error) {
@@ -691,15 +752,21 @@ router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res
     const p = await Program.findByPk(id);
     if (!p) return res.status(404).json({ error: 'Program core not found' });
 
-    // Status Guard: Only draft programs can be wiped
-    const allowed = ['draft'];
+    // Status Guard: Only draft/staged programs can be wiped
+    const allowed = ['draft', 'staged'];
     if (!allowed.includes(p.status?.toLowerCase())) {
         return res.status(400).json({ 
             error: 'Institutional Guardrail: Program deletion restricted. Active frameworks must be retained for data integrity.' 
         });
     }
 
+    const universityId = p.universityId;
     await p.destroy();
+    
+    if (universityId) {
+      await syncUniversityLifecycle(universityId);
+    }
+
     res.json({ message: 'Program safely sunsetted.' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to execute deletion.' });
@@ -713,26 +780,46 @@ router.delete('/programs/:id', verifyToken, isArchitectureAdmin, async (req, res
 router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
   try {
     const { status, programId, stage, subDeptId } = req.query;
-    const whereClause = {
-      status: { [Op.ne]: 'DRAFT' } // Isolation: Only see submitted candidates
-    };
+    const whereClause = {};
     if (status) {
       const statuses = status.split(',');
-      const validStatuses = ['PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_PENDING', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED', 'DRAFT'];
+      const validStatuses = ['PENDING_REVIEW', 'OPS_APPROVED', 'FINANCE_PENDING', 'FINANCE_APPROVED', 'REJECTED', 'ENROLLED', 'APPROVED', 'DRAFT'];
+      const legacyMap = {
+        'PENDING_REVIEW': ['pending', 'pending_ops', 'pending_subdept'],
+        'OPS_APPROVED': ['ops_approved'],
+        'FINANCE_PENDING': ['pending_finance', 'pending_eligibility', 'finance_approved'],
+        'FINANCE_APPROVED': ['finance_approved'],
+        'REJECTED': ['rejected', 'rejected_subdept', 'rejected_finance'],
+        'ENROLLED': ['enrolled', 'active'],
+        'APPROVED': ['enrolled', 'active']
+      };
+
       const statusFilters = statuses.filter(s => validStatuses.includes(s));
-      
+
       if (statusFilters.length > 0) {
-        whereClause.status = { [Op.in]: statusFilters };
+        // Inclusive Filtering: Match either standard ENUM status OR legacy enrollStatus variants
+        // Also include DRAFT students whose enrollStatus matches (e.g. enrollStatus='pending' with status='DRAFT')
+        const orConditions = statusFilters.flatMap(s => {
+          const conditions = [{ status: s }];
+          if (legacyMap[s]) {
+            legacyMap[s].forEach(variant => conditions.push({ enrollStatus: variant }));
+          }
+          return conditions;
+        });
+        whereClause[Op.or] = orConditions;
       } else {
         whereClause.enrollStatus = status;
       }
+    } else {
+      // No status filter: default to only submitted (non-draft) candidates
+      whereClause.status = { [Op.ne]: 'DRAFT' };
     }
     if (programId) whereClause.programId = programId;
     if (stage) whereClause.reviewStage = stage;
     if (subDeptId) whereClause.subDepartmentId = subDeptId;
 
     // Isolation: Sub-Dept Admin only sees their unit's students
-    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role)) {
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role))) {
       whereClause.subDepartmentId = getSubDeptId(req.user);
     }
 
@@ -744,8 +831,10 @@ router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
       where: finalWhere,
       include: [
         { model: Program, attributes: ['id', 'name', 'subDeptId'] },
-        { model: Department, as: 'center', attributes: ['id', 'name'] },
-        { model: Department, as: 'subDepartment', attributes: ['id', 'name'] }
+        // Use unscoped() to prevent Department's defaultScope WHERE from converting LEFT JOINs
+        // into effective INNER JOINs (students with NULL centerId would otherwise be excluded)
+        { model: Department.unscoped(), as: 'center', attributes: ['id', 'name'], required: false },
+        { model: Department.unscoped(), as: 'subDepartment', attributes: ['id', 'name'], required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -807,7 +896,7 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
         await student.update({
             reviewStage: nextStage,
             status: status === 'approved' ? 'FINANCE_PENDING' : 'REJECTED',
-            enrollStatus: status === 'approved' ? 'pending_finance' : 'REJECTED',
+            enrollStatus: status === 'approved' ? 'pending_finance' : 'rejected',
             reviewedBy: req.user.uid,
             reviewedAt: new Date(),
             remarks: remarks || student.remarks
@@ -911,7 +1000,7 @@ router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   }
 });
 
-router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
+router.post('/sessions', verifyToken, checkPermission('ACAD_BATCH_INIT', 'create'), async (req, res) => {
   try {
     const { name, programId, centerId, startDate, endDate, maxCapacity, sessionType, academicSessionId } = req.body;
     
@@ -919,9 +1008,9 @@ router.post('/sessions', verifyToken, isOpsOrAdmin, async (req, res) => {
     const program = await Program.findByPk(programId);
     if (!program) return res.status(404).json({ error: 'Program core not found' });
 
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
 
-    const subDeptId = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role) ? getSubDeptId(req.user) : program.subDeptId;
+    const subDeptId = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role)) ? getSubDeptId(req.user) : program.subDeptId;
 
     if (isSubDeptAdmin && program.subDeptId !== subDeptId) {
         return res.status(403).json({ error: 'Jurisdictional Violation: Program does not belong to your academic unit.' });

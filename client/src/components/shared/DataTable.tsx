@@ -18,21 +18,25 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   isLoading?: boolean;
   exportFileName?: string;
+  headerAction?: React.ReactNode;
   emptyMessage?: string;
   emptyDescription?: string;
   onRowClick?: (data: TData) => void;
+  pageSize?: number;
 }
 
-export function DataTable<TData, TValue>({ 
-  columns, 
-  data, 
-  searchKey, 
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  searchKey,
   searchPlaceholder = "Search...",
   isLoading,
   exportFileName,
+  headerAction,
   emptyMessage = "No results found.",
   emptyDescription = "Try adjusting your search criteria.",
-  onRowClick
+  onRowClick,
+  pageSize = 25
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -51,7 +55,7 @@ export function DataTable<TData, TValue>({
       globalFilter,
     },
     initialState: {
-      pagination: { pageSize: 25 }
+      pagination: { pageSize }
     }
   });
 
@@ -105,6 +109,8 @@ export function DataTable<TData, TValue>({
             Export Excel
           </button>
         )}
+
+        {headerAction}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">

@@ -1,100 +1,81 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
-  Building2,
-  Share2,
-  Printer,
-  Download,
-  LayoutGrid,
-  List,
-  Plus,
+  Building2, 
+  Power, 
+  ShieldCheck, 
+  Share2, 
+  Printer, 
+  Download, 
+  LayoutGrid, 
+  List, 
   Search,
-  Filter,
-  Edit2,
-  Trash2,
-  Power,
-  CheckCircle2,
-  AlertCircle,
-  ShieldCheck,
   Shield,
-  Layers,
-  MapPin,
-  School
+  Plus
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { api } from '@/lib/api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import toast from 'react-hot-toast';
 import { Modal } from '../../components/shared/Modal';
-import DepartmentCreate from './DepartmentCreate';
+
+interface DepartmentRecord {
+  id: number;
+  name: string;
+  shortName?: string | null;
+  status: string;
+  type?: string | null;
+  admin?: {
+    uid: string;
+    name: string;
+    email: string;
+  } | null;
+}
 
 export default function DepartmentsList() {
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
-  const [policy, setPolicy] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedDept, setSelectedDept] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  const fetchPolicy = async () => {
-    try {
-      const response = await fetch('/api/org-admin/config/policies');
-      if (response.ok) {
-        const data = await response.json();
-        setPolicy(data.governance_policy);
-      }
-    } catch (error) {
-      console.error('Failed to fetch governance policy:', error);
-    }
-  };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentRecord | null>(null);
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('/api/departments');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setDepartments(data);
-      setLoading(false);
+      setLoading(true);
+      const { data } = await api.get('/departments');
+      setDepartments(
+        data.filter((item: any) =>
+          ['departments', 'department'].includes((item.type || '').toLowerCase()) && item.parentId === null
+        )
+      );
     } catch (error) {
-      console.error("Failed to fetch departments", error);
+      toast.error('Failed to synchronize core departments');
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDepartments();
-    fetchPolicy();
   }, []);
 
-  const toggleStatus = async (id: number, currentStatus: string) => {
-    try {
-      const newStatus = (currentStatus === 'active' || currentStatus === 'Active') ? 'inactive' : 'active';
-      const response = await fetch(`/api/departments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (response.ok) fetchDepartments();
-    } catch (error) {
-      console.error("Failed to toggle status", error);
-    }
-  };
+  const handleDeactivate = async (department: DepartmentRecord) => {
+    if (department.status === 'inactive') return;
+    if (!window.confirm(`Deactivate ${department.name} and all linked staff, sub-departments, and admin roles?`)) return;
 
-  const deleteDept = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this department?")) return;
     try {
-      const response = await fetch(`/api/departments/${id}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) fetchDepartments();
-    } catch (error) {
-      console.error("Failed to delete department", error);
+      await api.post(`/org-admin/departments/${department.id}/deactivate`);
+      toast.success(`${department.name} deactivated`);
+      fetchDepartments();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to deactivate department');
     }
   };
 
   const handlePrint = () => {
     window.print();
-    toast.success('Preparing departmental registry for print');
+    toast.success('Preparing institutional registry for print');
   };
 
   const handleShare = () => {
@@ -103,101 +84,61 @@ export default function DepartmentsList() {
   };
 
   const handleExportExcel = () => {
-    const data = departments.map(d => ({
+    const data = filteredDepartments.map(d => ({
       ID: d.id,
-      'Department Name': d.name.toUpperCase(),
-      Administrator: d.admin?.name || 'Unassigned',
+      'Department Name': d.name,
+      Identity: d.shortName || 'N/A',
       Status: d.status,
-      Type: d.type
+      Admin: d.admin?.name || 'Unassigned'
     }));
     
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Departments");
-    XLSX.writeFile(wb, "Departmental_Registry.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Core_Departments");
+    XLSX.writeFile(wb, "Institutional_Departments.xlsx");
     toast.success('Excel manifest generated');
   };
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    const tableData = departments.map(d => [
+    const tableData = filteredDepartments.map(d => [
       d.id,
-      d.name.toUpperCase(),
-      d.admin?.name || 'Unassigned',
+      d.name,
+      d.shortName || 'N/A',
       d.status,
-      d.type
+      d.admin?.name || 'Unassigned'
     ]);
 
     doc.setFontSize(18);
-    doc.text('Institutional Departmental Registry', 14, 22);
+    doc.text('Institutional Core Department Registry', 14, 22);
     autoTable(doc, {
       startY: 35,
-      head: [['ID', 'Department Name', 'Administrator', 'Status', 'Type']],
+      head: [['ID', 'Department Identity', 'Pillar Identity', 'Status', 'Assigned Admin']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42] }
     });
 
-    doc.save("Departmental_Registry.pdf");
+    doc.save("Department_Registry.pdf");
     toast.success('PDF Registry generated');
   };
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
-
-  const filteredDepts = departments.filter(dept => {
-    const type = (dept.type || '').toLowerCase();
-    const name = (dept.name || '').toLowerCase();
-
-    // Strict Identity Filter: Show only core departments
-    if ((type !== 'departments' && type !== 'department') || dept.parentId !== null) return false;
-    
-    const matchesSearch = (name.includes(searchTerm.toLowerCase()) || 
-                          (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = filterStatus === 'All' || (dept.status && dept.status.toLowerCase() === filterStatus.toLowerCase());
-    
-    return matchesStatus && matchesSearch;
-  });
-
-  const getEntityTag = (type: string, name: string) => {
-    const isSub = ['BVoc', 'Online', 'Skill', 'Open School'].some(s => name.includes(s));
-    
-    if (isSub) {
-      return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black uppercase tracking-tight">
-          <Layers className="w-3 h-3" />
-          Sub-Department
-        </span>
-      );
-    }
-
-    const t = type?.toLowerCase();
-    if (t === 'university') return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100/50 text-indigo-700 border border-indigo-200 text-[10px] font-black uppercase tracking-tight"><School className="w-3 h-3" /> University</span>;
-    if (t === 'branch') return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-100/50 text-rose-700 border border-rose-200 text-[10px] font-black uppercase tracking-tight"><MapPin className="w-3 h-3" /> Regional Branch</span>;
-    if (t === 'center' || t === 'partner-center') return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-100/50 text-teal-700 border border-teal-200 text-[10px] font-black uppercase tracking-tight"><MapPin className="w-3 h-3" /> Partner Center</span>;
-    
-    return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-black uppercase tracking-tight"><Shield className="w-3 h-3" /> Department</span>;
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Active': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 flex items-center w-fit"><CheckCircle2 className="w-3 h-3 mr-1" /> Active</span>;
-      case 'Inactive': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center w-fit"><Power className="w-3 h-3 mr-1" /> Inactive</span>;
-      default: return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 flex items-center w-fit"><AlertCircle className="w-3 h-3 mr-1" /> Draft</span>;
-    }
-  };
+  const filteredDepartments = departments.filter(dept => 
+    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (dept.admin?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
+      {/* Premium Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Departments</h1>
-            <p className="text-slate-500 mt-1">Manage core institutional pillars and functional administration.</p>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Core Departments</h1>
+            <p className="text-slate-500 mt-1">Manage foundational organizational sectors and institutional pillars.</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -211,7 +152,7 @@ export default function DepartmentsList() {
           <button 
             onClick={handlePrint}
             className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-            title="Print Role Registry"
+            title="Print Registry"
           >
             <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
@@ -222,8 +163,8 @@ export default function DepartmentsList() {
             >
               <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50 transition-all duration-200">
-              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
+              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl cursor-pointer overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <button 
                   onClick={handleExportExcel}
                   className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
@@ -239,205 +180,119 @@ export default function DepartmentsList() {
               </div>
             </div>
           </div>
-          <button 
-            onClick={() => {
-              setSelectedDept(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            New Department
-          </button>
         </div>
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        hideHeader={true}
-      >
-        <DepartmentCreate 
-          initialData={selectedDept}
-          context="department"
-          defaultType={selectedDept?.type || ''}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedDept(null);
-          }}
-          onSuccess={() => {
-            fetchDepartments();
-          }}
-        />
-      </Modal>
-
-      {/* Controls & Cards Grid */}
+      {/* Control Bar */}
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="relative flex-1 max-w-md w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search by name or admin..." 
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none shadow-sm"
+              placeholder="Search by department name or admin..." 
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm gap-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 px-3 tracking-wider">
-              <Filter className="w-3.5 h-3.5" />
-              <span>Status</span>
-            </div>
-            <select 
-              className="bg-slate-50 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-0 text-slate-700 cursor-pointer mr-2"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <div className="w-px h-6 bg-slate-100 mx-2" />
-
-            <button
+             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-xl transition-all ${
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
                 viewMode === 'grid' 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
               }`}
-              title="Grid View"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-xl transition-all ${
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
                 viewMode === 'list' 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
               }`}
-              title="List View"
             >
               <List className="w-4 h-4" />
             </button>
           </div>
+
         </div>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-xs font-bold text-slate-400 tracking-wider mt-4">Hydrating institutional data...</p>
+             <p className="text-[10px] font-bold text-slate-400 tracking-wider mt-4 uppercase">Synchronizing infrastructure...</p>
           </div>
-        ) : filteredDepts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed text-slate-400">
-            No departments found matching your search.
+        ) : filteredDepartments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed text-slate-400 text-sm font-medium">
+            No core departments found matching your search.
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDepts.map((dept) => (
+            {filteredDepartments.map((dept) => (
               <div 
                 key={dept.id} 
-                onClick={() => {
-                  setSelectedDept(dept);
-                  setIsModalOpen(true);
-                }}
-                className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:border-blue-400/30 hover:-translate-y-2 hover:scale-[1.01]"
+                onClick={() => setSelectedDepartment(dept)}
+                className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:border-blue-400/30 hover:-translate-y-2 hover:scale-[1.01] cursor-pointer"
               >
+
                 <div className={`h-2 ${
-                  dept.status === 'active' || dept.status === 'Active' ? 'bg-green-500' : 'bg-rose-500'
+                  dept.status?.toLowerCase() === 'active' ? 'bg-green-500' : 'bg-rose-500'
                 }`}></div>
                 <div className="p-6 space-y-6">
                   <div className="flex justify-between items-start gap-4">
                     <div className="min-w-0">
-                      <h3 className="text-xl font-bold text-slate-900 mb-2 truncate uppercase tracking-tight" title={dept.name}>{dept.name.toUpperCase()}</h3>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2 truncate" title={dept.name}>{dept.name}</h3>
                       <div className="flex flex-wrap gap-2">
-                        {getStatusBadge(dept.status === 'active' || dept.status === 'Active' ? 'Active' : 'Inactive')}
-                        {getEntityTag(dept.type, dept.name)}
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap uppercase tracking-tight ${
+                          dept.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {dept.status}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-wider pt-1 whitespace-nowrap uppercase">Seeded Pillar</span>
                       </div>
                     </div>
                     <div className={`flex-shrink-0 p-3 rounded-2xl border transition-all duration-300 shadow-sm ${
-                      dept.status === 'active' || dept.status === 'Active'
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white'
+                      dept.status?.toLowerCase() === 'active'
+                        ? 'bg-blue-50 text-blue-600 border-blue-100 group-hover:bg-blue-600 group-hover:text-white'
                         : 'bg-rose-50 text-rose-600 border-rose-100 group-hover:bg-rose-600 group-hover:text-white'
                     }`}>
-                      {dept.type?.toLowerCase() === 'university' && <School className="w-6 h-6" />}
-                      {(dept.type?.toLowerCase() === 'branch' || dept.type?.toLowerCase() === 'center') && <Building2 className="w-6 h-6" />}
-                      {(!['university', 'branch', 'center'].includes(dept.type?.toLowerCase())) && <Shield className="w-6 h-6" />}
-                    </div>
-                   </div>
-
-                   <div className="space-y-2">
-                    <p className="text-[10px] text-slate-400 font-bold tracking-wider px-1">Active features</p>
-                    <div className="flex flex-wrap gap-2">
-                        {(dept.metadata?.features || dept.features || []).map((f: any) => {
-                            const id = typeof f === 'string' ? f : f.id;
-                            const perms = typeof f === 'string' ? ['read'] : (f.permissions || []);
-                            const permSuffix = perms.length > 0 
-                                ? ` (${perms.map((p: string) => p.charAt(0).toLowerCase()).join('/')})` 
-                                : '';
-                            
-                            return (
-                                <span key={id} className="bg-slate-50 text-slate-600 text-[9px] px-2 py-0.5 rounded-lg font-bold border border-slate-100 tracking-tighter">
-                                    {id}{permSuffix}
-                                </span>
-                            );
-                        })}
-                        {(dept.metadata?.features || dept.features || []).length === 0 && (
-                            <span className="text-[9px] text-slate-400 font-medium ">No features provisioned</span>
-                        )}
+                      <Building2 className="w-6 h-6" />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
-                      {(dept.admin?.name || 'U').charAt(0).toUpperCase()}
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 group-hover:bg-white group-hover:border-blue-100 transition-all">
+                      <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase mb-1">Assigned Admin</p>
+                      <p className="text-sm font-bold text-slate-700 truncate">{dept.admin?.name || 'Not assigned yet'}</p>
+                      <p className="text-[10px] text-slate-500 truncate mt-0.5">{dept.admin?.email || 'Awaiting role mapping...'}</p>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">Admin managed by</p>
-                      <p className={`text-xs font-bold ${!dept.admin ? 'text-rose-500' : 'text-slate-700'}`}>{dept.admin?.name || 'Unassigned'}</p>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                      Core Institutional Unit
                     </div>
                   </div>
 
                   <div className="flex justify-end items-center gap-2 pt-2">
                     <button 
+                      disabled={dept.status === 'inactive'}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedDept(dept);
-                        setIsModalOpen(true);
+                        handleDeactivate(dept);
                       }}
-                      className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all hover:scale-110 active:scale-95"
-                      title="Edit department"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleStatus(dept.id, dept.status);
-                      }}
-                      className={`p-2.5 rounded-xl transition-all hover:scale-110 active:scale-95 ${
-                        dept.status === 'active' || dept.status === 'Active' 
+                      className={`p-3 rounded-xl transition-all border border-slate-100 active:scale-[0.95] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer ${
+                        dept.status?.toLowerCase() === 'active' 
                         ? 'bg-rose-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200' 
-                        : 'bg-green-50/50 text-slate-400 hover:text-green-600 hover:bg-green-100/50 hover:border-green-200'
+                        : 'bg-slate-50 text-slate-300'
                       }`}
-                      title={dept.status === 'active' ? 'Deactivate' : 'Activate'}
+                      title={dept.status?.toLowerCase() === 'active' ? 'Deactivate Department' : 'Already Inactive'}
                     >
                       <Power className="w-4 h-4" />
                     </button>
-                    {dept.type === 'Custom' && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteDept(dept.id);
-                        }}
-                        className="p-3 bg-slate-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
-                        title="Delete department"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+
                   </div>
                 </div>
               </div>
@@ -449,64 +304,58 @@ export default function DepartmentsList() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-200">
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Department Name</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrator</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Governance Status</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unit Type</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer">Department Unit</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer">Admin Liaison</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer">Operational Role</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer">System Status</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredDepts.map((dept) => (
+                  {filteredDepartments.map((dept) => (
                     <tr 
                       key={dept.id} 
-                      onClick={() => {
-                        setSelectedDept(dept);
-                        setIsModalOpen(true);
-                      }}
+                      onClick={() => setSelectedDepartment(dept)}
                       className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
                     >
+
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg border transition-all duration-300 ${
+                           <div className={`p-2 rounded-lg border transition-all duration-300 ${
                             dept.status?.toLowerCase() === 'active'
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white'
+                              ? 'bg-blue-50 text-blue-600 border-blue-100 group-hover:bg-blue-600 group-hover:text-white'
                               : 'bg-rose-50 text-rose-600 border-rose-100 group-hover:bg-rose-600 group-hover:text-white'
                           }`}>
-                            {dept.type?.toLowerCase() === 'university' ? <School className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                            <Building2 className="w-4 h-4" />
                           </div>
-                          <div className="flex flex-col">
-                            <p className="font-bold text-slate-900 text-sm">{dept.name.toUpperCase()}</p>
-                          </div>
+                          <p className="font-bold text-slate-900 text-sm">{dept.name}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs text-slate-500 font-medium">{dept.admin?.name || 'Unassigned'}</p>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                         {dept.admin?.name || 'Unassigned'}
                       </td>
                       <td className="px-6 py-4">
-                         {getStatusBadge(dept.status?.toLowerCase() === 'active' ? 'Active' : 'Inactive')}
-                      </td>
-                      <td className="px-6 py-4 text-[10px] text-slate-400 font-bold tracking-wider">
-                         {getEntityTag(dept.type, dept.name)}
+                        <span className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                           {dept.shortName || 'Seeded Pillar'}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                           <button 
-                             onClick={(e) => { 
-                               e.stopPropagation();
-                               setSelectedDept(dept); 
-                               setIsModalOpen(true); 
-                             }}
-                             className="p-2 text-slate-400 hover:text-blue-600"
-                           ><Edit2 className="w-4 h-4" /></button>
-                           <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               toggleStatus(dept.id, dept.status);
-                             }}
-                             className="p-2 text-slate-400 hover:text-emerald-600"
-                           ><Power className="w-4 h-4" /></button>
-                        </div>
+                         <span className={`px-2.5 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${
+                            dept.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {dept.status}
+                          </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                          <button 
+                            disabled={dept.status === 'inactive'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeactivate(dept);
+                            }}
+                            className="p-2 text-slate-400 hover:text-rose-600 disabled:opacity-20 transition-colors cursor-pointer"
+                          ><Power className="w-4 h-4" /></button>
+
                       </td>
                     </tr>
                   ))}
@@ -517,48 +366,52 @@ export default function DepartmentsList() {
         )}
       </div>
 
+      {/* Institutional Banner */}
       <div className="bg-slate-900 rounded-3xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
-        <ShieldCheck className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 text-white/5 rotate-12" />
+        <Shield className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 text-white/5 rotate-12" />
         <div className="max-w-xl relative z-10">
-          <h4 className="text-xl font-bold mb-3 font-display">Institutional Integrity & Continuity</h4>
+          <h4 className="text-xl font-bold mb-3 font-display">Institutional Infrastructure & Governance</h4>
           <p className="text-slate-400 text-sm leading-relaxed font-medium">
-            Departments are the core building blocks of your ERP. Ensure each and every unit has a designated administrator 
-            for smooth workflow execution. Deactivating a department will suspend all related dashboards while preserving 
-            historical audit trails.
+            Core departments represent the foundational sectors of the organization. 
+            All departmental configurations are synchronized with the institutional structure registry. 
+            Deactivation of a core unit propagates status updates across all linked administrative roles and personnel.
           </p>
         </div>
         <button 
           onClick={() => setIsPolicyModalOpen(true)}
-          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10"
+          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl cursor-pointer hover:scale-[1.05] transition-all relative z-10 text-xs uppercase tracking-widest cursor-pointer"
         >
-          Governance Policy
+          Security Policy
         </button>
       </div>
 
+      {/* Security Policy Modal */}
       <Modal
         isOpen={isPolicyModalOpen}
         onClose={() => setIsPolicyModalOpen(false)}
-        title={policy?.title || "Institutional Governance & Hierarchy"}
+        title="Institutional Data Isolation & Boundaries"
       >
         <div className="space-y-6">
-          <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl">
-            <h3 className="text-indigo-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
+          <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl cursor-pointer">
+            <h3 className="text-blue-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
               <Shield className="w-4 h-4" />
-              Institutional Structure
+              Organizational Visibility Guard
             </h3>
-            <p className="text-indigo-800 text-sm leading-relaxed">
-              {policy?.description || "The institutional hierarchy enforces a strictly layered governance model. Departments are autonomous units linked to a centralized Permission Matrix that defines access levels for every role within the organization."}
+            <p className="text-blue-800 text-sm leading-relaxed">
+              The 'Visibility Guard' is a centralized security middleware that strictly isolates departmental data. 
+              Personnel registered under a core unit are restricted to their provisioned jurisdiction unless global 
+              privileges are explicitly granted by the Organization Administrator.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(policy?.blocks || [
-              { title: "Departmental Autonomy", content: "Each department operates within its provisioned data boundaries. Personnel management and resource allocation are isolated ensuring peak organizational stability." },
-              { title: "Governance Matrix", content: "Structural changes are synchronized with the Master Permission Matrix. This ensures that any new department inherits the institution's standardized identity system." }
-            ]).map((block: any, i: number) => (
-              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm">
+            {[
+              { title: "Jurisdictional Isolation", content: "Database records are strictly filtered by deptId at the controller layer to prevent cross-sector visibility." },
+              { title: "Audit Trail Registry", content: "All modifications to core infrastructure units are recorded in the immutable institutional Audit Log." }
+            ].map((block, i) => (
+              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm cursor-pointer">
                 <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2 text-sm">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                   {block.title}
                 </h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -571,12 +424,83 @@ export default function DepartmentsList() {
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button 
               onClick={() => setIsPolicyModalOpen(false)}
-              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm"
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm uppercase tracking-widest cursor-pointer"
             >
-              Acknowledge Policy
+              Acknowledge
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Core Department Details Modal */}
+      <Modal
+        isOpen={!!selectedDepartment}
+        onClose={() => setSelectedDepartment(null)}
+        title="Core Department Insight"
+      >
+        {selectedDepartment && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl shadow-lg ${
+                  selectedDepartment.status?.toLowerCase() === 'active' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white'
+                }`}>
+                  <Building2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{selectedDepartment.name}</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      selectedDepartment.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {selectedDepartment.status}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2.5 py-0.5 rounded-full">
+                      Pillar Identity: {selectedDepartment.shortName || 'SEEDED'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Assigned Administrative Liaison</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-slate-900 font-black text-lg">
+                    {selectedDepartment.admin?.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-black text-slate-900 uppercase tracking-tight truncate">{selectedDepartment.admin?.name || 'Unassigned'}</p>
+                    <p className="text-[11px] font-bold text-slate-500 truncate">{selectedDepartment.admin?.email || 'Awaiting role mapping'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100/50">
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">Operational Monitoring</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[11px] font-black text-blue-700 uppercase tracking-tight">
+                    <ShieldCheck className="w-4 h-4" />
+                    Core Institutional Unit
+                  </div>
+                  <p className="text-[10px] font-bold text-blue-600/60 leading-relaxed uppercase tracking-tight">
+                    This unit is a foundational pillar of the organization, protected by strict data isolation protocols.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setSelectedDepartment(null)}
+                className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+              >
+                Close Insight
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -2,7 +2,9 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
+import { ACADEMIC_HIERARCHY } from '../config/rbac.js';
 import { Op } from 'sequelize';
+import { SEEDED_DEPARTMENT_NAMES } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { Department, User } = models;
@@ -75,6 +77,10 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
     const finalAdminName = adminName || newAdmin?.name;
     const finalAdminEmail = adminEmail || newAdmin?.email || newAdmin?.adminEmail;
     const finalAdminPassword = adminPassword || newAdmin?.password || newAdmin?.adminPassword;
+
+    if (['departments', 'department', 'sub-departments', 'sub-department'].includes((type || '').toLowerCase())) {
+      return res.status(403).json({ error: 'Core departments and sub-departments are seed-managed and cannot be created here.' });
+    }
     
     const existing = await Department.findOne({ where: { name } });
     if (existing) {
@@ -125,12 +131,22 @@ router.post('/', verifyToken, isOrgAdmin, async (req, res) => {
       finalStatus = 'proposed';
     }
 
+    // Enforce Institutional Hierarchy for Academic Sub-Departments
+    let finalParentId = parentId;
+    if (ACADEMIC_HIERARCHY.CHILDREN.some(child => name.toLowerCase().includes(child.toLowerCase()))) {
+      const parentDept = await Department.findOne({ where: { name: ACADEMIC_HIERARCHY.PARENT } });
+      if (parentDept) {
+        finalParentId = parentDept.id;
+        console.log(`[HIERARCHY] Automatically parenting '${name}' under '${ACADEMIC_HIERARCHY.PARENT}'`);
+      }
+    }
+
     const newDept = await Department.create({
       name, 
       shortName: finalShortName,
       type: type === 'branch' ? 'branches' : type, 
       adminId: finalAdminId || null, 
-      parentId: parentId || null,
+      parentId: finalParentId || null,
       status: finalStatus,
       logo: finalLogo,
       address,
@@ -166,6 +182,14 @@ router.put('/:id', verifyToken, isOrgAdmin, async (req, res) => {
     const dept = await Department.findByPk(id);
     if (!dept) {
       return res.status(404).json({ error: 'Department not found' });
+    }
+
+    if (
+      SEEDED_DEPARTMENT_NAMES.includes(dept.name) &&
+      ['departments', 'department', 'sub-departments', 'sub-department'].includes((dept.type || '').toLowerCase()) &&
+      [name, shortName, type, adminId, parentId].some((value) => value !== undefined)
+    ) {
+      return res.status(403).json({ error: 'Seed-managed departments can only be changed through the institutional seed structure and role mapping flow.' });
     }
 
     let finalAdminId = adminId;
@@ -204,12 +228,21 @@ router.put('/:id', verifyToken, isOrgAdmin, async (req, res) => {
       finalAdminId = newUser.uid;
     }
 
+    // Enforce Institutional Hierarchy for Academic Sub-Departments on Update
+    let finalParentId = parentId !== undefined ? parentId : dept.parentId;
+    if (name && ACADEMIC_HIERARCHY.CHILDREN.some(child => name.toLowerCase().includes(child.toLowerCase()))) {
+      const parentDept = await Department.findOne({ where: { name: ACADEMIC_HIERARCHY.PARENT } });
+      if (parentDept) {
+        finalParentId = parentDept.id;
+      }
+    }
+
     const updateData = { 
       name, 
       shortName, 
       type: type === 'branch' ? 'branches' : type, 
       adminId: finalAdminId || null, 
-      parentId: parentId !== undefined ? parentId : dept.parentId,
+      parentId: finalParentId,
       status,
       logo,
       address: address !== undefined ? address : dept.address,
@@ -251,6 +284,10 @@ router.delete('/:id', verifyToken, isOrgAdmin, async (req, res) => {
     const dept = await Department.findByPk(id);
     if (!dept) {
       return res.status(404).json({ error: 'Department not found' });
+    }
+
+    if (SEEDED_DEPARTMENT_NAMES.includes(dept.name)) {
+      return res.status(403).json({ error: 'Seed-managed departments cannot be deleted. Use deactivate instead.' });
     }
     
     // GAP-SOFT-DELETE: Satisfy non-destructive policy by archiving instead of destroying

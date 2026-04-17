@@ -24,6 +24,23 @@ import DatabaseTables from './DatabaseTables';
 import RoleHierarchyView from './RoleHierarchyView';
 import { useAuthStore } from '@/store/authStore';
 import OpsDashboard from '../academic/OpsDashboard';
+import InstitutionalRoster from '@/components/team/InstitutionalRoster';
+import {
+  GlobalMonitorOverview,
+  HRMarketingMonitor,
+  FinanceAccountingMonitor,
+  SalesIntelligenceMonitor,
+  AcademicEnrollmentMonitor,
+  OperationsMonitor,
+  SecurityMonitor,
+  GlobalAllMonitor,
+  CEOMonitor,
+  SubDeptMonitor,
+  AdminAssignmentsMonitor,
+  TeamsMonitor,
+  DirectivesMonitor,
+  SingleCEOMonitor,
+} from './GlobalMonitor';
 
 export default function OrgAdminDashboard() {
   const { user } = useAuthStore();
@@ -39,12 +56,12 @@ export default function OrgAdminDashboard() {
 
       <Route path="roles/hierarchy" element={<RoleHierarchyView />} />
       <Route path="alerts/escalated" element={<Alerts type="Escalated" />} />
-      <Route path="alerts/institutional" element={<Alerts type="System" />} />
       <Route path="alerts" element={<Navigate to="alerts/escalated" replace />} />
       
       {/* Department Routes */}
       <Route path="departments" element={<DepartmentsList />} />
       <Route path="sub-departments" element={<SubDepartmentsList />} />
+      <Route path="roster" element={<InstitutionalRoster />} />
       
       {/* CEO Panel Routes */}
       <Route path="ceo-panels" element={<CEOPanelsList />} />
@@ -72,7 +89,24 @@ export default function OrgAdminDashboard() {
       <Route path="cron" element={<CronMonitoring />} />
       <Route path="surveys" element={<SurveyCreator />} />
       <Route path="database/tables" element={<DatabaseTables />} />
-      
+
+      {/* Global Monitor — Org Admin live panel view */}
+      <Route path="monitor" element={<Navigate to="monitor/overview" replace />} />
+      <Route path="monitor/overview" element={<GlobalMonitorOverview />} />
+      <Route path="monitor/hr" element={<HRMarketingMonitor />} />
+      <Route path="monitor/finance" element={<FinanceAccountingMonitor />} />
+      <Route path="monitor/sales" element={<SalesIntelligenceMonitor />} />
+      <Route path="monitor/academic" element={<AcademicEnrollmentMonitor />} />
+      <Route path="monitor/operations" element={<OperationsMonitor />} />
+      <Route path="monitor/security" element={<SecurityMonitor />} />
+      <Route path="monitor/global-all" element={<GlobalAllMonitor />} />
+      <Route path="monitor/ceo" element={<CEOMonitor />} />
+      <Route path="monitor/subdepts" element={<SubDeptMonitor />} />
+      <Route path="monitor/admin-assignments" element={<AdminAssignmentsMonitor />} />
+      <Route path="monitor/teams" element={<TeamsMonitor />} />
+      <Route path="monitor/directives" element={<DirectivesMonitor />} />
+      <Route path="monitor/ceo/:panelId" element={<SingleCEOMonitor />} />
+
     </Routes>
   );
 }

@@ -4,6 +4,7 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import sequelize from '../config/db.js';
 import { Op } from 'sequelize';
 import erpEvents from '../lib/events.js';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam } = models;
@@ -251,6 +252,10 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
     let center = await Department.findOne({ where: { id: req.user.deptId } });
     if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
     if (!center) return res.status(400).json({ error: 'Center profile not found for this user' });
+
+    if (center.status !== 'active') {
+        return res.status(403).json({ error: 'Admissions halted: Partner center is not currently in an active state.' });
+    }
 
     // --- Phase 3 & 5: Center-Program Mapping Validation ---
     const mapping = await CenterProgram.findOne({ 
@@ -757,8 +762,8 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
           attributes: ['role']
         });
 
-        const headRole = head?.role?.toLowerCase();
-        if (headRole === 'Organization Admin' || headRole === 'admin') {
+        const headRole = head?.role?.toLowerCase()?.trim();
+        if (headRole === 'organization admin' || headRole === 'admin') {
           initialStatus = 'pending hr';
         }
       }
@@ -798,15 +803,17 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
         
         if (dept?.adminId) {
           const targetAdmin = await User.findByPk(dept.adminId);
-          const role = targetAdmin?.role?.toLowerCase()?.trim();
-          let adminLink = '/dashboard/team/leaves'; 
+          const role = targetAdmin?.role?.toLowerCase()?.trim() || '';
+          let adminLink = '/dashboard/tasks'; 
           
-          if (role === 'HR Admin') adminLink = '/dashboard/hr/dept-leaves';
-          else if (role === 'Sales & CRM Admin') adminLink = '/dashboard/sales/leaves';
-          else if (role === 'Finance Admin') adminLink = '/dashboard/finance/leaves';
-          else if (role === 'Operations Admin') adminLink = '/dashboard/operations/leaves';
-          else if (role === 'Operations Admin') adminLink = '/dashboard/operations';
-          else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) adminLink = `/dashboard/subdept/${role}/leaves`;
+          if (role.includes('hr')) adminLink = '/dashboard/hr/dept-leaves';
+          else if (role.includes('sales')) adminLink = '/dashboard/sales/leaves';
+          else if (role.includes('finance')) adminLink = '/dashboard/finance/leaves';
+          else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leaves';
+          else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leaves';
+          else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leaves';
+          else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leaves';
+          else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leaves';
 
           await createNotification(req.io, {
             targetUid: dept.adminId,
@@ -1007,7 +1014,7 @@ router.get(['/marks/grading-roster', '/internal-marks/roster'], verifyToken, asy
       }
       if (!centerId) return res.status(403).json({ error: 'Jurisdictional Error: Center ID not resolved' });
       whereClause.centerId = centerId;
-    } else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role) || req.user.subDepartment) {
+    } else if (['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(role)) || req.user.subDepartment) {
       const subDeptId = getSubDeptId(req.user);
       if (subDeptId) whereClause.subDepartmentId = subDeptId;
     } else if (['Operations Admin', 'Organization Admin'].includes(role)) {
@@ -1070,7 +1077,7 @@ router.post('/marks/bulk', verifyToken, async (req, res) => {
         const normalizedRole = role?.replace(/-/g, ' ');
         if (normalizedRole === 'partner center' || normalizedRole === 'study center') {
            verifyWhere.centerId = req.user.deptId;
-        } else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) {
+        } else if (['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(role))) {
            verifyWhere.subDepartmentId = getSubDeptId(req.user);
         }
 

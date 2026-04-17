@@ -109,7 +109,7 @@ export default function Programs() {
     !!watchAllFields.type &&
     watchAllFields.totalFee !== undefined && watchAllFields.totalFee !== null && String(watchAllFields.totalFee).trim() !== '' &&
     watchAllFields.paymentStructure && watchAllFields.paymentStructure.length > 0 &&
-    (isCustomSelected ? !!watchAllFields.tenure : true) &&
+    (isTenureRequired ? !!watchAllFields.tenure : true) &&
     watchAllFields.totalCredits !== undefined;
 
   const fetchData = async () => {
@@ -141,8 +141,17 @@ export default function Programs() {
   const openEditModal = (item: Program) => {
     setEditingItem(item);
     // Reverse calculate base fee if it is not present for legacy records
-    const initialBaseFee = item.baseFee || (item.totalFee ? (item.totalFee / 1.18) : 0);
-    const initialTax = item.taxPercentage || 18;
+    const normalizedBaseFee = item.baseFee !== undefined && item.baseFee !== null
+      ? Number(item.baseFee)
+      : null;
+    const normalizedTotalFee = item.totalFee !== undefined && item.totalFee !== null
+      ? Number(item.totalFee)
+      : 0;
+    const normalizedTax = item.taxPercentage !== undefined && item.taxPercentage !== null
+      ? Number(item.taxPercentage)
+      : 18;
+    const initialBaseFee = normalizedBaseFee ?? (normalizedTotalFee ? (normalizedTotalFee / 1.18) : 0);
+    const initialTax = Number.isFinite(normalizedTax) ? normalizedTax : 18;
 
     reset({ 
       name: item.name, 
@@ -151,8 +160,8 @@ export default function Programs() {
       duration: item.duration,
       intakeCapacity: item.intakeCapacity,
       type: item.type,
-      totalFee: item.totalFee || 0,
-      baseFee: parseFloat(initialBaseFee.toFixed(2)),
+      totalFee: normalizedTotalFee || 0,
+      baseFee: Number.isFinite(initialBaseFee) ? parseFloat(initialBaseFee.toFixed(2)) : 0,
       taxPercentage: initialTax,
       paymentStructure: item.paymentStructure || [],
       tenure: item.tenure || 0,
@@ -310,9 +319,19 @@ export default function Programs() {
       header: 'Controls',
       cell: ({ row }) => {
         const item = row.original;
+        const canEdit = item.status?.toLowerCase() === 'draft';
         return (
           <div className="flex items-center space-x-2">
-            <button onClick={() => openEditModal(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (canEdit) openEditModal(item);
+              }}
+              disabled={!canEdit}
+              title={canEdit ? 'Edit program' : 'Only draft programs can be edited'}
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+            >
               <Edit2 className="w-4 h-4" />
             </button>
             <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
@@ -395,12 +414,12 @@ export default function Programs() {
             <ShieldAlert className={`w-6 h-6 mt-1 shrink-0 ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-600' : 'text-amber-600'}`} />
             <div>
               <h4 className={`text-sm font-black uppercase tracking-tight ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-900' : 'text-amber-900'}`}>
-                {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'Syllabus Revocation Protocol' : 'Institutional Deletion Guardrail'}
+                {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'Delete Program Confirmation' : 'Deletion Restricted'}
               </h4>
               <p className={`text-xs mt-1 leading-relaxed font-medium ${['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') ? 'text-rose-700' : 'text-amber-700'}`}>
                 {['draft', 'staged'].includes(deletingItem?.status?.toLowerCase() || '') 
-                  ? `You are about to eradicate the program "${deletingItem?.name}" from the curriculum architecture. This action halts all ongoing structural telemetry.`
-                  : `Institutional Guardrail: Program deletion restricted. The program "${deletingItem?.name}" is currently in the ${deletingItem?.status.toUpperCase()} state. Active frameworks must be retained for institutional data integrity.`
+                  ? `You are about to permanently delete the program "${deletingItem?.name}". This action will remove all associated curriculum data and cannot be undone.`
+                  : `Deletion Restricted: The program "${deletingItem?.name}" is currently in the ${deletingItem?.status.toUpperCase()} state. Active academic frameworks must be preserved to maintain institutional records.`
                 }
               </p>
             </div>

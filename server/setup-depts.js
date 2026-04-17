@@ -1,17 +1,26 @@
 
 import { models } from './src/models/index.js';
+import { Op } from 'sequelize';
+import { getDepartmentNameAliases, normalizeDepartmentName } from './src/config/institutionalStructure.js';
 const { User, Department } = models;
 
 async function setup() {
   try {
-    const [fDept] = await Department.findOrCreate({ 
-      where: { name: 'Finance' }, 
-      defaults: { type: 'administrative', status: 'active' } 
-    });
-    const [hDept] = await Department.findOrCreate({ 
-      where: { name: 'HR' }, 
-      defaults: { type: 'administrative', status: 'active' } 
-    });
+    const findOrCreateDepartment = async (name) => {
+      const existingDepartment = await Department.findOne({
+        where: { name: { [Op.in]: getDepartmentNameAliases(name) } },
+        order: [['id', 'ASC']],
+      });
+
+      return existingDepartment || Department.create({
+        name: normalizeDepartmentName(name),
+        type: 'departments',
+        status: 'active',
+      });
+    };
+
+    const fDept = await findOrCreateDepartment('Finance');
+    const hDept = await findOrCreateDepartment('HR');
     
     await User.update({ deptId: fDept.id }, { where: { email: 'finance@erp.com' } });
     await User.update({ deptId: hDept.id }, { where: { email: 'hr@erp.com' } });

@@ -3,7 +3,60 @@ import { Op } from 'sequelize';
 import { models } from '../models/index.js';
 import { logAction } from '../lib/audit.js';
 
-const { Task, User, Department, CronJob, Notification, ReregConfig, ReregRequest, EMI } = models;
+const { Task, User, Department, CronJob, Notification, ReregConfig, ReregRequest, EMI, CEOPanel } = models;
+
+const HOURS_24 = 24 * 60 * 60 * 1000;
+
+const getDeptTaskLink = (role = '') => {
+  const roleLower = role.toLowerCase().trim();
+  if (roleLower === 'hr admin' || roleLower === 'hr') return '/dashboard/hr/tasks';
+  if (roleLower === 'finance admin' || roleLower === 'finance') return '/dashboard/finance/tasks';
+  if (roleLower === 'sales & crm admin' || roleLower === 'sales') return '/dashboard/sales/tasks';
+  if (roleLower.includes('operations') || roleLower.includes('academic')) return '/dashboard/operations/tasks';
+  if (['open school admin', 'online department admin', 'skill department admin', 'bvoc department admin'].includes(roleLower)) {
+    if (roleLower.includes('open school')) return '/dashboard/subdept/openschool/tasks';
+    if (roleLower.includes('online')) return '/dashboard/subdept/online/tasks';
+    if (roleLower.includes('skill')) return '/dashboard/subdept/skill/tasks';
+    if (roleLower.includes('bvoc')) return '/dashboard/subdept/bvoc/tasks';
+  }
+  return '/dashboard/tasks';
+};
+
+const escalateTaskToCeo = async (task, allCeoPanels, now, reason) => {
+  const deptName = task.assignee?.department?.name || 'General';
+  const targetingCeos = allCeoPanels.filter(p =>
+    p.visibilityScope && Array.isArray(p.visibilityScope) && p.visibilityScope.includes(deptName)
+  );
+
+  await task.update({
+    escalationLevel: 'CEO',
+    escalatedAt: now,
+    deptAdminDecision: task.deptAdminDecision === 'GRACE_GRANTED' ? 'GRACE_GRANTED' : 'ESCALATED_TO_CEO',
+    remarks: reason
+  });
+
+  if (targetingCeos.length > 0) {
+    for (const panel of targetingCeos) {
+      await Notification.create({
+        userUid: panel.userId,
+        type: 'error',
+        message: `CRITICAL ESCALATION [${deptName}]: Task "${task.title}" (Lead: ${task.assignee?.name}) requires CEO intervention.`,
+        link: '/dashboard/ceo/escalations'
+      });
+    }
+    return;
+  }
+
+  const fallbackAdmin = await User.findOne({ where: { role: 'Organization Admin' } });
+  if (fallbackAdmin) {
+    await Notification.create({
+      userUid: fallbackAdmin.uid,
+      type: 'error',
+      message: `UNMAPPED ESCALATION [${deptName}]: Task "${task.title}" requires oversight but no CEO is authorized for this sector.`,
+      link: '/dashboard/org-admin/alerts/escalated'
+    });
+  }
+};
 
 // Helper to update CronJob status in DB
 const updateJobStatus = async (name, status, result) => {
@@ -26,10 +79,12 @@ export const initCronJobs = () => {
   cron.schedule('0 */4 * * *', async () => {
     console.log('[CRON] Running Task Escalation Engine...');
     let processed = 0;
-    let escalations = 0;
+    let deptAdminNotifications = 0;
+    let escalationsToCeo = 0;
 
     try {
       const now = new Date();
+      const allCeoPanels = await CEOPanel.findAll({ where: { status: 'Active' } });
       
       // 1. Status Sync: Mark overdue immediately when deadline passes
       const overdueTasks = await Task.findAll({
@@ -44,18 +99,11 @@ export const initCronJobs = () => {
         processed++;
       }
 
-      // 2. Automated CEO Escalation (Grace Period Passed)
-      // Logic: If task is 'overdue' AND (Now - Deadline) > taskEscalationGraceHours (Default 24h)
-      // We look for tasks where escalationLevel is still 'EMPLOYEE' (Initial)
-      
-      const taskGrace = 24; // Synchronized institutional standard
-      const graceCutoff = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
-      const allCeoPanels = await CEOPanel.findAll({ where: { status: 'Active' } });
-
-      const criticalTasks = await Task.findAll({
+      // 2. First escalation: notify the department admin once a task is overdue.
+      const deptReviewTasks = await Task.findAll({
         where: { 
-          status: 'overdue', 
-          deadline: { [Op.lt]: graceCutoff },
+          status: { [Op.ne]: 'completed' },
+          deadline: { [Op.lt]: now },
           escalationLevel: 'EMPLOYEE'
         },
         include: [
@@ -64,50 +112,74 @@ export const initCronJobs = () => {
         ]
       });
 
-      if (criticalTasks.length > 0) {
-        for (const task of criticalTasks) {
-          const deptName = task.assignee?.department?.name || 'General';
-          
-          // Find the specific CEO(s) responsible for this department
-          const targetingCeos = allCeoPanels.filter(p => 
-            p.visibilityScope && Array.isArray(p.visibilityScope) && p.visibilityScope.includes(deptName)
+      for (const task of deptReviewTasks) {
+        const deptAdminUid = task.assignee?.department?.adminId;
+        const deptAdmin = deptAdminUid ? await User.findOne({ where: { uid: deptAdminUid } }) : null;
+
+        if (!deptAdmin) {
+          await escalateTaskToCeo(
+            task,
+            allCeoPanels,
+            now,
+            'CRITICAL ESCALATION: No Department Admin is mapped for this overdue task. CEO intervention required.'
           );
+          escalationsToCeo++;
+          continue;
+        }
 
-          // Escalate to CEO level in DB
+        await task.update({
+          escalationLevel: 'DEPT_ADMIN',
+          deptAdminNotifiedAt: now,
+          deptAdminDecision: 'PENDING_REVIEW',
+          deptAdminGraceUntil: null,
+          remarks: 'Department Admin review required for overdue task.'
+        });
+
+        await Notification.create({
+          userUid: deptAdmin.uid,
+          type: 'warning',
+          message: `OVERDUE TASK REVIEW: "${task.title}" assigned to ${task.assignee?.name || 'employee'} requires your action. Escalate now or grant a 24h grace period.`,
+          link: getDeptTaskLink(deptAdmin.role)
+        });
+        deptAdminNotifications++;
+      }
+
+      // 3. Second escalation: CEO only after no action or grace expiry.
+      const deptAdminPendingTasks = await Task.findAll({
+        where: {
+          status: { [Op.ne]: 'completed' },
+          escalationLevel: 'DEPT_ADMIN'
+        },
+        include: [
+          { model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] },
+          { model: User, as: 'assigner' }
+        ]
+      });
+
+      for (const task of deptAdminPendingTasks) {
+        const notifiedAt = task.deptAdminNotifiedAt ? new Date(task.deptAdminNotifiedAt) : null;
+        const noActionWindowExpired = notifiedAt ? (now.getTime() - notifiedAt.getTime()) >= HOURS_24 : true;
+        const graceExpired = task.deptAdminDecision === 'GRACE_GRANTED' &&
+          task.deptAdminGraceUntil &&
+          new Date(task.deptAdminGraceUntil) <= now;
+
+        if (task.deptAdminDecision === 'ESCALATED_TO_CEO' || graceExpired || (task.deptAdminDecision !== 'GRACE_GRANTED' && noActionWindowExpired)) {
           await task.update({ 
-            escalationLevel: 'CEO',
-            escalatedAt: now,
-            remarks: `CRITICAL ESCALATION: Department Admin Inaction detected (> ${taskGrace}h Overdue). Sectoral intervention required.`
+            status: 'overdue'
           });
-
-          // Notify relevant CEOs
-          if (targetingCeos.length > 0) {
-            for (const panel of targetingCeos) {
-              await Notification.create({
-                userUid: panel.userId,
-                type: 'error',
-                message: `CRITICAL ESCALATION [${deptName}]: Task "${task.title}" (Lead: ${task.assignee?.name}) has passed the ${taskGrace}h grace period.`,
-                link: '/dashboard/ceo/escalations'
-              });
-            }
-          } else {
-            // Fallback to Org Admin if no specialized CEO is mapped
-            const fallbackAdmin = await User.findOne({ where: { role: 'Organization Admin' } });
-            if (fallbackAdmin) {
-              await Notification.create({
-                userUid: fallbackAdmin.uid,
-                type: 'error',
-                message: `UNMAPPED ESCALATION [${deptName}]: Task "${task.title}" requires oversight but no CEO is authorized for this sector.`,
-                link: '/dashboard/org-admin/alerts/escalated'
-              });
-            }
-          }
-          
-          escalations++;
+          await escalateTaskToCeo(
+            task,
+            allCeoPanels,
+            now,
+            task.deptAdminDecision === 'GRACE_GRANTED'
+              ? 'CRITICAL ESCALATION: Department Admin grace period expired without resolution.'
+              : 'CRITICAL ESCALATION: Department Admin did not act within 24 hours.'
+          );
+          escalationsToCeo++;
         }
       }
 
-      const result = `Processed ${processed} tasks, triggered ${escalations} critical escalations.`;
+      const result = `Processed ${processed} tasks, notified ${deptAdminNotifications} department admins, triggered ${escalationsToCeo} CEO escalations.`;
       await updateJobStatus('task-escalation', 'active', result);
       await logAction({ entity: 'System', action: 'CRON_RUN', details: `Task Escalation: ${result}`, module: 'Operations' });
 

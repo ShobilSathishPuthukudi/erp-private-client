@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, User as UserIcon, LogOut, Search, ChevronDown, Lock } from 'lucide-react';
+import { Menu, User as UserIcon, LogOut, Search, ChevronDown, Lock, Palette } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -117,6 +117,7 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
                     <div className="popover-actions">
                         <button onClick={() => { navigate('/dashboard/profile'); setShowUserMenu(false); }}><UserIcon size={16} /> My Profile</button>
                         <button onClick={() => { navigate('/dashboard/change-password'); setShowUserMenu(false); }}><Lock size={16} /> Change Password</button>
+                        <button onClick={() => { navigate('/dashboard/profile/theme'); setShowUserMenu(false); }}><Palette size={16} /> Theme</button>
                         <div className="popover-divider"></div>
                         <button className="logout-btn-red" onClick={() => { setShowUserMenu(false); setIsLogoutModalOpen(true); }}><LogOut size={16} /> Logout</button>
                     </div>

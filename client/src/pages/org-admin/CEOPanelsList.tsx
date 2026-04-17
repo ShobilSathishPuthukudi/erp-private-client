@@ -58,11 +58,8 @@ export default function CEOPanelsList() {
 
   const fetchPolicy = async () => {
     try {
-      const response = await fetch('/api/org-admin/config/policies');
-      if (response.ok) {
-        const data = await response.json();
-        setPolicy(data.security_policy);
-      }
+      const { data } = await api.get('/org-admin/config/policies');
+      setPolicy(data.security_policy);
     } catch (error) {
       console.error('Failed to fetch security policy:', error);
     }
@@ -70,9 +67,7 @@ export default function CEOPanelsList() {
 
   const fetchPanels = async () => {
     try {
-      const response = await fetch('/api/org-admin/ceo-panels');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
+      const { data } = await api.get('/org-admin/ceo-panels');
       setPanels(data);
       setLoading(false);
     } catch (error) {
@@ -84,12 +79,8 @@ export default function CEOPanelsList() {
   const handleToggleStatus = async (id: number, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-      const response = await fetch(`/api/org-admin/ceo-panels/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (response.ok) fetchPanels();
+      await api.put(`/org-admin/ceo-panels/${id}`, { status: newStatus });
+      fetchPanels();
     } catch (error) {
       console.error("Failed to toggle status", error);
     }
@@ -200,7 +191,7 @@ export default function CEOPanelsList() {
               <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
             <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50 transition-all duration-200">
-              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl cursor-pointer overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <button 
                   onClick={handleExportExcel}
                   className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
@@ -221,11 +212,12 @@ export default function CEOPanelsList() {
               setSelectedPanel(null);
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
+            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20 cursor-pointer"
           >
             <Plus className="w-5 h-5" />
             New CEO
           </button>
+
         </div>
       </div>
 
@@ -263,7 +255,7 @@ export default function CEOPanelsList() {
           <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm gap-1">
              <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-xl transition-all ${
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
                 viewMode === 'grid' 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
@@ -274,7 +266,7 @@ export default function CEOPanelsList() {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-xl transition-all ${
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
                 viewMode === 'list' 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
@@ -283,6 +275,7 @@ export default function CEOPanelsList() {
             >
               <List className="w-4 h-4" />
             </button>
+
           </div>
         </div>
 
@@ -359,7 +352,7 @@ export default function CEOPanelsList() {
                         setSelectedPanel(panel);
                         setIsModalOpen(true);
                       }}
-                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-slate-900 hover:bg-slate-100/50 hover:border-slate-200 rounded-xl transition-all border border-slate-100 hover:scale-110 active:scale-95"
+                      className="p-3 bg-slate-50/50 text-slate-400 hover:text-slate-900 hover:bg-slate-100/50 hover:border-slate-200 rounded-xl transition-all border border-slate-100 hover:scale-110 active:scale-95 cursor-pointer"
                       title="Edit Panel"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -370,7 +363,7 @@ export default function CEOPanelsList() {
                          e.stopPropagation();
                          setPanelToDelete(panel);
                        }}
-                       className="p-3 bg-slate-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95]"
+                       className="p-3 bg-slate-50/50 text-slate-400 hover:text-rose-600 hover:bg-rose-100/50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 active:scale-[0.95] cursor-pointer"
                        title="Delete Panel"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -408,7 +401,7 @@ export default function CEOPanelsList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredPanels.map((panel) => (
+                   {filteredPanels.map((panel) => (
                     <tr 
                       key={panel.id} 
                       onClick={() => {
@@ -417,6 +410,7 @@ export default function CEOPanelsList() {
                       }}
                       className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
                     >
+
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                            <div className={`p-2 rounded-lg border transition-all duration-300 ${
@@ -456,14 +450,14 @@ export default function CEOPanelsList() {
                                setSelectedPanel(panel); 
                                setIsModalOpen(true); 
                              }} 
-                             className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                             className="p-2 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
                            ><Edit2 className="w-4 h-4" /></button>
                            <button 
                              onClick={(e) => {
                                e.stopPropagation();
                                handleToggleStatus(panel.id, panel.status);
                              }} 
-                             className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                             className="p-2 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
                            ><Power className="w-4 h-4" /></button>
                          </div>
                       </td>
@@ -488,10 +482,11 @@ export default function CEOPanelsList() {
         </div>
         <button 
           onClick={() => setIsPolicyModalOpen(true)}
-          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl hover:scale-[1.05] transition-all relative z-10"
+          className="px-6 py-4 bg-white text-slate-900 font-bold rounded-2xl shadow-xl cursor-pointer hover:scale-[1.05] transition-all relative z-10 cursor-pointer"
         >
           Security Policy
         </button>
+
       </div>
 
       <Modal
@@ -500,7 +495,7 @@ export default function CEOPanelsList() {
         title={policy?.title || "Executive Security & Data Boundaries"}
       >
         <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl">
+          <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl cursor-pointer">
             <h3 className="text-blue-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
               <Shield className="w-4 h-4" />
               Institutional Visibility Guard
@@ -515,7 +510,7 @@ export default function CEOPanelsList() {
               { title: "Departmental Isolation", content: "Database queries are dynamically patched with categorical filters mapped to the executive's Initial Visibility Scope." },
               { title: "Audit Integrity", content: "Every attempt to access or modify visibility configurations is recorded in the immutable Audit Log." }
             ]).map((block: any, i: number) => (
-              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm">
+              <div key={i} className="p-5 border border-slate-100 rounded-2xl bg-white shadow-sm cursor-pointer">
                 <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2 text-sm">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                   {block.title}
@@ -530,10 +525,11 @@ export default function CEOPanelsList() {
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button 
               onClick={() => setIsPolicyModalOpen(false)}
-              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm"
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm cursor-pointer"
             >
               Acknowledge Policy
             </button>
+
           </div>
         </div>
       </Modal>
@@ -544,7 +540,7 @@ export default function CEOPanelsList() {
         title="Confirm Termination"
       >
         <div className="space-y-6">
-          <div className="bg-rose-50 border border-rose-100 p-6 rounded-2xl">
+          <div className="bg-rose-50 border border-rose-100 p-6 rounded-2xl cursor-pointer">
               <h3 className="text-rose-900 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider">
                 <Trash2 className="w-4 h-4" />
                 Permanent Deletion

@@ -17,13 +17,11 @@ interface Employee {
   deptId: number | null;
   department?: { id: number, name: string };
   role?: string;
+  avatar?: string | null;
+  subDepartment?: string | null;
+  reportingManagerUid?: string | null;
+  vacancyId?: number | null;
   createdAt: string;
-}
-
-interface Department {
-  id: number;
-  name: string;
-  type?: string;
 }
 
 interface Vacancy {
@@ -38,13 +36,13 @@ export default function Employees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
-  const [roles, setRoles] = useState<any[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
@@ -52,10 +50,8 @@ export default function Employees() {
       email: '',
       password: '',
       status: 'active',
-      deptId: '',
       vacancyId: '',
-      reportingManagerUid: '',
-      role: ''
+      reportingManagerUid: ''
     }
   });
 
@@ -71,11 +67,9 @@ export default function Employees() {
   const fetchInitialData = async () => {
     try {
       setIsLoading(true);
-      const [empRes, deptRes, vacRes, roleRes] = await Promise.all([
+      const [empRes, vacRes] = await Promise.all([
         api.get('/hr/employees'),
-        api.get('/departments'),
-        api.get('/hr/vacancies'),
-        api.get('/hr/roles')
+        api.get('/hr/vacancies')
       ]);
       // Filter strictly for HR-registered personnel (those possessing a vacancyId)
       // This structural discriminator naturally excludes external entities like Partner Centers, Students, and Universities
@@ -87,12 +81,7 @@ export default function Employees() {
         const r = e.role?.toLowerCase() || '';
         return !['student', 'partner center', 'ceo'].includes(r);
       }));
-      setDepartments(deptRes.data);
       setVacancies(vacRes.data);
-      setRoles(roleRes.data.filter((r: any) => {
-        const name = r.name?.toLowerCase() || '';
-        return !['student', 'partner center', 'ceo'].includes(name);
-      }));
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
@@ -105,46 +94,54 @@ export default function Employees() {
   }, []);
 
   const selectedVacancyId = watch('vacancyId');
-  useEffect(() => {
-    if (selectedVacancyId) {
-      const v = vacancies.find(v => v.id === parseInt(selectedVacancyId));
-      if (v) {
-        reset((prev: any) => ({ 
-          ...prev, 
-          deptId: String(v.departmentId),
-          vacancyId: String(v.id)
-        }));
-      }
-    }
-  }, [selectedVacancyId, vacancies, reset]);
+  const selectedVacancy = selectedVacancyId
+    ? vacancies.find(v => v.id === parseInt(selectedVacancyId))
+    : null;
 
   const openCreateModal = () => {
     setEditingEmployee(null);
-    reset({ name: '', email: '', password: '', status: 'active', deptId: '', vacancyId: '', reportingManagerUid: '', role: '' });
+    setAvatarFile(null);
+    setAvatarPreview('');
+    setShowPassword(false);
+    reset({ name: '', email: '', password: '', status: 'active', vacancyId: '', reportingManagerUid: '' });
     fetchVacancies(); // Ensure vacancy list is fresh when opening registration card
     setIsModalOpen(true);
   };
 
   const openEditModal = (employee: any) => {
     setEditingEmployee(employee);
+    setAvatarFile(null);
+    setAvatarPreview(employee.avatar || '');
+    setShowPassword(false);
     reset({ 
       name: employee.name, 
       email: employee.email, 
       password: '', 
       status: employee.status,
-      deptId: employee.deptId || '',
       reportingManagerUid: employee.reportingManagerUid || '',
-      role: employee.role || ''
+      vacancyId: employee.vacancyId ? String(employee.vacancyId) : ''
     });
     setIsModalOpen(true);
   };
 
   const onSubmit = async (data: any) => {
     try {
-      const payload = { ...data, deptId: data.deptId ? parseInt(data.deptId) : null };
-      
-      if (!editingEmployee && !payload.password) {
+      if (!editingEmployee && !data.password) {
         return toast.error('Password is required for new employees');
+      }
+
+      const payload = new FormData();
+      payload.append('name', data.name);
+      payload.append('email', data.email);
+      payload.append('reportingManagerUid', data.reportingManagerUid || '');
+      if (!editingEmployee) {
+        payload.append('vacancyId', data.vacancyId);
+      }
+      if (data.password) {
+        payload.append('password', data.password);
+      }
+      if (avatarFile) {
+        payload.append('avatar', avatarFile);
       }
 
       if (editingEmployee) {
@@ -260,7 +257,7 @@ export default function Employees() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Personnel Directory"
-        description="Manage institutional staff details and assignments"
+        description="Create employees from approved vacancies and maintain workforce records"
         icon={Users}
         action={
           <button 
@@ -268,7 +265,7 @@ export default function Employees() {
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>Register Staff</span>
+            <span>Create Employee</span>
           </button>
         }
       />
@@ -338,28 +335,6 @@ export default function Employees() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Department assignment {selectedVacancyId && <span className="text-blue-600 font-bold">(Allocated via Vacancy)</span>}
-                </label>
-                <select
-                  {...register('deptId', { required: !selectedVacancyId ? 'Department is required' : false })}
-                  disabled={!!selectedVacancyId}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white disabled:opacity-70 disabled:cursor-not-allowed text-slate-900"
-                >
-                  <option value="">-- No Department Assigned --</option>
-                  {departments
-                    .filter(d => {
-                      const type = d.type?.toLowerCase() || '';
-                      return ['departments', 'department', 'sub-departments', 'sub-department'].includes(type);
-                    })
-                    .map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                {errors.deptId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.deptId.message as string}</p>}
-              </div>
-
               {!editingEmployee && (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Vacancy (Required)</label>
@@ -375,7 +350,45 @@ export default function Employees() {
                   {errors.vacancyId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.vacancyId.message as string}</p>}
                 </div>
               )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Employee Photo <span className="text-slate-400 font-normal normal-case">(Optional)</span></label>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-200 flex items-center justify-center text-slate-500 font-black text-lg">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      (watch('name') || editingEmployee?.name || 'U').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        setAvatarFile(file);
+                        setAvatarPreview(file ? URL.createObjectURL(file) : (editingEmployee?.avatar || ''));
+                      }}
+                      className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:bg-slate-800"
+                    />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">PNG, JPG, or WebP up to 5MB</p>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {!editingEmployee && selectedVacancy && (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Vacancy Scope</p>
+                <p className="mt-2 text-sm font-bold text-slate-900">
+                  {selectedVacancy.title}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Department assignment is inherited from the selected vacancy{selectedVacancy.subDepartment && selectedVacancy.subDepartment !== 'General' ? ` (${selectedVacancy.subDepartment})` : ''}, and all new registrations are created as `Employee`.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -396,20 +409,6 @@ export default function Employees() {
                   ))}
                 </select>
                 {errors.reportingManagerUid && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.reportingManagerUid.message as string}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Functional Role</label>
-                <select
-                  {...register('role', { required: 'Functional role is required' })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
-                >
-                  <option value="">-- Select Functional Role --</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.name}>{toSentenceCase(r.name)}</option>
-                  ))}
-                </select>
-                {errors.role && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.role.message as string}</p>}
               </div>
             </div>
 

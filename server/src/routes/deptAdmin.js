@@ -2,20 +2,45 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
-import { Op } from 'sequelize';
+import { Op, fn, col, where as sqlWhere } from 'sequelize';
 import { createNotification } from './notifications.js';
 import { validateTaskAssignment } from '../utils/rbac/validateTaskAssignment.js';
+import { normalizeInstitutionRoleName, normalizeSubDepartmentName, getSubDepartmentNameAliases } from '../config/institutionalStructure.js';
 
 const router = express.Router();
-const { User, Task, Leave, Department } = models;
+const { User, Task, Leave, Department, AuditLog, CEOPanel, Notification, Lead } = models;
+
+const DEPT_GRACE_HOURS = 24;
+
+const getTaskScope = async (task) => {
+  const assignee = task.assignee || await User.findOne({
+    where: { uid: task.assignedTo },
+    include: [{ model: Department, as: 'department' }]
+  });
+
+  return { assignee, department: assignee?.department || null };
+};
+
+const canManageTaskEscalation = (reqUser, department, assignee) => {
+  const role = reqUser.role?.toLowerCase()?.trim() || '';
+  const globalRoles = ['organization admin', 'ceo', 'system-admin'];
+  if (globalRoles.includes(role)) return true;
+  if (!department || !assignee) return false;
+
+  return (
+    department.adminId === reqUser.uid ||
+    assignee.deptId === reqUser.deptId ||
+    (reqUser.deptId && department.id === reqUser.deptId)
+  );
+};
 
 const isDeptAdmin = (req, res, next) => {
-  const role = req.user.role?.toLowerCase()?.trim();
+  const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
   const deptId = req.user.deptId || req.user.departmentId;
   const allowedRoles = [
     'dept-admin', 
-    'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 
-    'Finance Admin', 'Sales & CRM Admin', 'HR Admin', 'Operations Admin', 'Academic Operations Admin',
+    'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 
+    'Finance Admin', 'Sales Admin', 'HR Admin', 'Operations Admin', 'Academic Operations Admin',
     'Operations', 'Academic', 'Sales', 'Finance', 'HR',
     'Organization Admin', 'ceo', 'staff'
   ];
@@ -28,12 +53,15 @@ const isDeptAdmin = (req, res, next) => {
   }
 
   // If no deptId, we only block if it's NOT one of the center-level roles that MUST have a deptId
-  const centerRoles = ['open school admin', 'online department admin', 'skill department admin', 'bvoc department admin'];
+  const centerRoles = ['open school admin', 'online admin', 'skill admin', 'bvoc admin'];
   if (centerRoles.includes(role) && !deptId) {
     return res.status(403).json({ error: 'Access denied: Unit ID missing for specialized role.' });
   }
 
-  const effectiveSubDept = req.user.subDepartment || (centerRoles.includes(role) ? role.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : null);
+  const inferredSubDept = centerRoles.includes(role)
+    ? normalizeSubDepartmentName(normalizeInstitutionRoleName(req.user.role || '').replace(/\s+Admin$/i, '').trim())
+    : null;
+  const effectiveSubDept = normalizeSubDepartmentName(req.user.subDepartment || inferredSubDept || '');
 
   // Avoid mutating frozen req.user - Create local context for route consistency
   req.user = { 
@@ -48,49 +76,68 @@ const isDeptAdmin = (req, res, next) => {
 // --- Team Management ---
 router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const role = req.user.role?.toLowerCase()?.trim();
-    const queryWhere = {};
-    
-    // Oversight Policy: Only filter by deptId if the user is a departmental role
-    // Global roles continue to have institutional oversight.
+    const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
     const globalRoles = ['organization admin', 'ceo', 'system-admin'];
-    
-    const isHRDept = parseInt(req.user.deptId) === 35;
-    
-    // EXCLUSION POLICY: Do not include the current administrator or institutional roles as "team members"
-    queryWhere.uid = { [Op.ne]: req.user.uid };
-    
-    // [GOVERNANCE] Contextual Roster Visibility:
-    // HR Department (ID 35) shows all departmental roles (Admins + Employees).
-    // All other departments strictly display their 'Employee' personnel roster.
-    if (isHRDept) {
-        queryWhere.role = { [Op.notIn]: ['organization admin', 'ceo', 'system-admin'] };
-    } else {
-        queryWhere.role = 'Employee';
+    const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
+
+    if (globalRoles.includes(role)) {
+      return res.status(403).json({
+        error: 'Use the institutional roster endpoint for executive/global access.'
+      });
     }
 
-    if (req.user.deptId && !globalRoles.includes(role)) {
-      // Standard Departmental Isolation (Applies to HR Admin, Finance Admin, etc.)
-      queryWhere.deptId = req.user.deptId;
-      
-      // Specialized Unit Isolation (BVoc, Skill, etc.)
-      const unitRoles = ['bvoc department admin', 'skill department admin', 'online department admin', 'open school admin'];
-      if (unitRoles.includes(role)) {
-          // [FIX] Institutional Visibility Hardening:
-          // Ensure the Admin can see all users in their deptId, but prioritize subDepartment matches.
-          // We include users with NULL subDepartment or 'General' to prevent registration leakage.
-          queryWhere[Op.or] = [
-              { subDepartment: req.user.subDepartment },
-              { subDepartment: 'General' },
-              { subDepartment: null },
-              { role: 'Employee' } // Force employee-only visibility for specialized units too
-          ];
+    if (!req.user.deptId) {
+      return res.status(400).json({ error: 'Department scope missing' });
+    }
+
+    const queryWhere = {
+      uid: { [Op.ne]: req.user.uid },
+      [Op.and]: [
+        sqlWhere(fn('lower', col('role')), 'employee')
+      ]
+    };
+
+    // Strict unit isolation for specialized sub-department admins.
+    if (unitRoles.includes(role)) {
+      if (!req.user.subDepartment) {
+        return res.status(400).json({ error: 'Sub-department scope missing for unit admin' });
       }
+      const subDepartmentAliases = getSubDepartmentNameAliases(req.user.subDepartment);
+      const subDepartmentUnits = await Department.findAll({
+        attributes: ['id'],
+        where: {
+          name: {
+            [Op.in]: subDepartmentAliases
+          }
+        }
+      });
+      const scopedDeptIds = [
+        req.user.deptId,
+        ...subDepartmentUnits.map((department) => department.id)
+      ].filter(Boolean);
+
+      queryWhere[Op.and].push({
+        [Op.or]: [
+          { reportingManagerUid: req.user.uid },
+          {
+            deptId: {
+              [Op.in]: scopedDeptIds
+            }
+          },
+          {
+            subDepartment: {
+              [Op.in]: subDepartmentAliases
+            }
+          }
+        ]
+      });
+    } else {
+      queryWhere.deptId = req.user.deptId;
     }
 
     const teamRaw = await User.findAll({
       where: queryWhere,
-      attributes: { exclude: ['password'] },
+      attributes: { exclude: ['password', 'devPassword'] },
       order: [['name', 'ASC']]
     });
 
@@ -165,7 +212,7 @@ router.post('/team/onboard', verifyToken, isDeptAdmin, async (req, res) => {
       email,
       password: hashedPassword,
       devPassword: password,
-      role: role || 'employee',
+      role: role || 'Employee',
       name,
       deptId: req.user.deptId,
       subDepartment: subDepartment || req.user.subDepartment || 'General',
@@ -234,7 +281,7 @@ import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   const { departmentId, subDepartmentId } = req.query;
   const role = req.user.role?.toLowerCase()?.trim();
-  const globalRoles = ['organization admin', 'operations admin', 'Academic Operations Admin', 'operations', 'academic', 'finance admin', 'finance', 'hr admin', 'hr', 'sales & crm admin', 'sales', 'ceo', 'system-admin'];
+  const globalRoles = ['organization admin', 'operations admin', 'academic operations admin', 'operations', 'academic', 'finance admin', 'finance', 'hr admin', 'hr', 'sales admin', 'sales', 'ceo', 'system-admin'];
 
   // Oversight Policy: departmentId is mandatory for department roles but optional for executives.
   if (!departmentId && !globalRoles.includes(role)) {
@@ -287,7 +334,24 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     let { assignedTo, title, deadline, priority, departmentId, subDepartmentId } = req.body;
     // 1. Resolve target user's context for RBAC enforcement
-    const targetUser = await User.findOne({ where: { uid: assignedTo } });
+    let targetUser = await User.findOne({ where: { uid: assignedTo } });
+
+    // Fallback: If 'HR-SYSTEM' flag was provided (or exact match failed), dynamically heal mapping
+    if (!targetUser && String(assignedTo).startsWith('HR-')) {
+       targetUser = await User.findOne({ 
+          where: { 
+             [Op.or]: [
+               { role: 'HR Admin' },
+               sqlWhere(fn('lower', col('role')), 'hr admin'),
+               sqlWhere(fn('lower', col('role')), 'human resources')
+             ]
+          } 
+       });
+       if (targetUser) {
+           assignedTo = targetUser.uid; // Heal the payload
+       }
+    }
+
     if (!targetUser) return res.status(404).json({ error: 'Assignee not found' });
 
     try {
@@ -326,12 +390,13 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
     }, { context: { assigner: req.user } });
 
     // GAP-2: Real-Time & Persistent Notification
+    const isCEO = req.user.role?.toLowerCase()?.trim() === 'ceo';
     await createNotification(req.io, {
       targetUid: assignedTo,
       title: 'New Institutional Directive',
       message: `New task: ${title}. High-priority delivery expected.`,
       type: 'info',
-      link: '/dashboard/tasks'
+      link: isCEO ? '/dashboard/hr/dept-tasks' : '/dashboard/tasks'
     });
 
     res.status(201).json(task);
@@ -344,16 +409,127 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
 router.put('/tasks/:id', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, deadline, priority, status } = req.body;
+    const { title, deadline, priority, status, remarks } = req.body;
 
     const task = await Task.findOne({ where: { id, assignedBy: req.user.uid } });
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    await task.update({ title, deadline, priority, status });
+    if (status && status !== task.status && !remarks?.trim()) {
+      return res.status(400).json({ error: 'Remarks are required when changing task status' });
+    }
+
+    await task.update({ title, deadline, priority, status, ...(remarks ? { remarks } : {}) });
     res.json(task);
   } catch (error) {
     console.error('Update task error:', error);
     res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+router.put('/tasks/:id/grace', verifyToken, isDeptAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await Task.findByPk(id, {
+      include: [{ model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] }]
+    });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    const { assignee, department } = await getTaskScope(task);
+    if (!canManageTaskEscalation(req.user, department, assignee)) {
+      return res.status(403).json({ error: 'You can only manage escalation for tasks in your department scope' });
+    }
+    if (task.status === 'completed') {
+      return res.status(400).json({ error: 'Completed tasks cannot be placed into grace review' });
+    }
+
+    const graceUntil = new Date(Date.now() + DEPT_GRACE_HOURS * 60 * 60 * 1000);
+    await task.update({
+      escalationLevel: 'DEPT_ADMIN',
+      deptAdminDecision: 'GRACE_GRANTED',
+      deptAdminNotifiedAt: task.deptAdminNotifiedAt || new Date(),
+      deptAdminGraceUntil: graceUntil,
+      remarks: `Department Admin granted a 24-hour grace period until ${graceUntil.toISOString()}.`
+    });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'TASK_GRACE_GRANTED',
+      entity: 'Task',
+      module: 'DEPT_ADMIN',
+      after: { taskId: task.id, deptAdminGraceUntil: graceUntil },
+      timestamp: new Date()
+    });
+
+    res.json({ message: '24-hour grace period granted', task });
+  } catch (error) {
+    console.error('Grant task grace error:', error);
+    res.status(500).json({ error: 'Failed to grant task grace period' });
+  }
+});
+
+router.put('/tasks/:id/escalate', verifyToken, isDeptAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await Task.findByPk(id, {
+      include: [{ model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] }]
+    });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    const { assignee, department } = await getTaskScope(task);
+    if (!canManageTaskEscalation(req.user, department, assignee)) {
+      return res.status(403).json({ error: 'You can only escalate tasks in your department scope' });
+    }
+    if (task.status === 'completed') {
+      return res.status(400).json({ error: 'Completed tasks cannot be escalated' });
+    }
+
+    await task.update({
+      escalationLevel: 'CEO',
+      deptAdminDecision: 'ESCALATED_TO_CEO',
+      deptAdminNotifiedAt: task.deptAdminNotifiedAt || new Date(),
+      deptAdminGraceUntil: null,
+      escalatedAt: new Date(),
+      remarks: 'Department Admin manually escalated this overdue task to the CEO.'
+    });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'TASK_ESCALATED_TO_CEO',
+      entity: 'Task',
+      module: 'DEPT_ADMIN',
+      after: { taskId: task.id },
+      timestamp: new Date()
+    });
+
+    await createNotification(req.io, {
+      targetUid: task.assignedTo,
+      title: 'Task Escalated',
+      message: `Your overdue task "${task.title}" has been escalated to the CEO by the Department Admin.`,
+      type: 'warning',
+      link: '/dashboard/tasks'
+    });
+
+    const allCeoPanels = await CEOPanel.findAll({ where: { status: 'Active' } });
+    const deptName = department?.name || assignee?.department?.name || 'General';
+    const targetingCeos = allCeoPanels.filter(panel =>
+      panel.visibilityScope && Array.isArray(panel.visibilityScope) && panel.visibilityScope.includes(deptName)
+    );
+
+    if (targetingCeos.length > 0) {
+      for (const panel of targetingCeos) {
+        await Notification.create({
+          userUid: panel.userId,
+          type: 'error',
+          message: `CRITICAL ESCALATION [${deptName}]: Task "${task.title}" was escalated directly by the Department Admin.`,
+          link: '/dashboard/ceo/escalations'
+        });
+      }
+    }
+
+    res.json({ message: 'Task escalated to CEO', task });
+  } catch (error) {
+    console.error('Escalate task to CEO error:', error);
+    res.status(500).json({ error: 'Failed to escalate task to CEO' });
   }
 });
 
@@ -374,19 +550,35 @@ router.delete('/tasks/:id', verifyToken, isDeptAdmin, async (req, res) => {
 // --- Leave Approvals (Step-1) ---
 router.get('/leaves', verifyToken, isDeptAdmin, async (req, res) => {
   try {
-    const role = req.user.role?.toLowerCase()?.trim();
-    const globalRoles = ['organization admin', 'operations admin', 'Academic Operations Admin', 'operations', 'academic', 'finance admin', 'finance', 'hr admin', 'hr', 'sales & crm admin', 'sales', 'ceo', 'system-admin'];
-    const isGlobal = globalRoles.includes(role);
+    const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
+    const globalRoles = ['organization admin', 'ceo', 'system-admin'];
+    const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
 
-    // Oversight Policy: Global admins see all leaves, departmental admins see only their own.
-    const employeeWhere = isGlobal ? {} : { deptId: req.user.deptId };
+    if (globalRoles.includes(role)) {
+      return res.status(403).json({
+        error: 'Use the institutional or HR leave views for executive/global access.'
+      });
+    }
+
+    if (!req.user.deptId) {
+      return res.status(400).json({ error: 'Department scope missing' });
+    }
+
+    const employeeWhere = { deptId: req.user.deptId };
+
+    if (unitRoles.includes(role)) {
+      if (!req.user.subDepartment) {
+        return res.status(400).json({ error: 'Sub-department scope missing for unit admin' });
+      }
+      employeeWhere.subDepartment = req.user.subDepartment;
+    }
 
     const leaves = await Leave.findAll({
       include: [
         { 
           model: User, 
           as: 'employee', 
-          attributes: ['uid', 'name', 'email', 'deptId'],
+          attributes: ['uid', 'name', 'email', 'deptId', 'subDepartment'],
           include: [{ model: Department, as: 'department', attributes: ['name'] }],
           where: employeeWhere 
         }
@@ -403,6 +595,8 @@ router.get('/leaves', verifyToken, isDeptAdmin, async (req, res) => {
 router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
+    const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
     const leave = await Leave.findByPk(id, {
       include: [{ model: User, as: 'employee' }]
     });
@@ -410,6 +604,9 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
     if (leave.employee.deptId !== req.user.deptId) {
       return res.status(403).json({ error: 'You can only approve leaves for your department' });
+    }
+    if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {
+      return res.status(403).json({ error: 'You can only approve leaves for your sub-department' });
     }
     if (leave.status !== 'pending admin') {
       return res.status(400).json({ error: `Cannot Step-1 approve in current status: ${leave.status}` });
@@ -439,6 +636,8 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
 router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
+    const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
     const leave = await Leave.findByPk(id, {
       include: [{ model: User, as: 'employee' }]
     });
@@ -446,6 +645,9 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
     if (leave.employee.deptId !== req.user.deptId) {
       return res.status(403).json({ error: 'You can only reject leaves for your department' });
+    }
+    if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {
+      return res.status(403).json({ error: 'You can only reject leaves for your sub-department' });
     }
     if (leave.status !== 'pending admin') {
       return res.status(400).json({ error: `Cannot Step-1 reject in current status: ${leave.status}` });
@@ -464,6 +666,8 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
       type: 'error',
       link: '/dashboard/employee/leaves'
     });
+
+    res.json(leave);
   } catch (error) {
     console.error('Reject team leave error:', error);
     res.status(500).json({ error: 'Failed to reject team leave' });

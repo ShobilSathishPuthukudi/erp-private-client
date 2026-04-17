@@ -12,8 +12,11 @@ type EscalationTask = {
   daysOverdue: number;
   moduleSource: string;
   assignee: { name: string; uid: string; department?: { name: string; id: number } };
+  assigner?: { name: string; uid: string };
   deptAdmin: { name: string; email: string };
   deadline: string;
+  description?: string;
+  createdAt?: string;
   isCritical?: boolean;
   escalationLabel?: string;
 };
@@ -36,11 +39,12 @@ export default function Escalations() {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<EscalationTask | null>(null);
   const [selectedLeave, setSelectedLeave] = useState<EscalationLeave | null>(null);
-  const [modalMode, setModalMode] = useState<'resolve' | 'reassign' | 'chain' | 'override_leave' | null>(null);
+  const [modalMode, setModalMode] = useState<'resolve' | 'reassign' | 'chain' | 'override_leave' | 'view_details' | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuthStore();
-  const isReadOnly = !['CEO', 'Organization Admin'].includes(user?.role || '');
+  const normalizedRole = user?.role?.toLowerCase().trim() || '';
+  const isReadOnly = !['ceo', 'organization admin', 'system admin'].includes(normalizedRole);
   const [deptUsers, setDeptUsers] = useState<any[]>([]);
   const [targetAssignee, setTargetAssignee] = useState('');
   const [deptLoading, setDeptLoading] = useState(false);
@@ -204,7 +208,7 @@ export default function Escalations() {
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{activeTab === 'tasks' ? 'Task Objective' : 'Employee / Leave Type'}</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental Chain</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inertia</th>
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{activeTab === 'tasks' ? 'Context' : 'Duration'}</th>
+                {activeTab === 'leaves' && <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Duration</th>}
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
               </tr>
             </thead>
@@ -218,13 +222,17 @@ export default function Escalations() {
                     </td>
                   </tr>
                 ) : tasks.map((task) => (
-                  <tr key={task.id} className="group hover:bg-slate-50/50 transition-all">
+                  <tr 
+                    key={task.id} 
+                    className="group hover:bg-slate-50/50 transition-all cursor-pointer"
+                    onClick={() => { setSelectedTask(task); setModalMode('view_details'); }}
+                  >
                     <td className="px-10 py-6">
                       <div className="flex items-start gap-3">
                         <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${task.daysOverdue > 7 ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
                         <div>
-                          <div className="font-black text-slate-900 leading-tight mb-1 flex items-center gap-2">
-                             {task.title}
+                          <div className="font-black text-slate-900 leading-tight mb-1 flex items-center gap-2 group-hover:text-indigo-600 transition-colors">
+                             {task.title.length > 12 ? task.title.slice(0, 12) + '...' : task.title}
                              {task.isCritical && (
                                <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[8px] font-black rounded-sm border border-red-200">
                                  {task.escalationLabel || 'CRITICAL'}
@@ -238,11 +246,11 @@ export default function Escalations() {
                     <td className="px-10 py-6">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Admin:</span>
-                          <span className="font-bold text-slate-700">{task.deptAdmin?.name || 'Unassigned'}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned By:</span>
+                          <span className="font-bold text-slate-700">{task.assigner?.name || 'System Generated'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase w-12 shrink-0">Owner:</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned To:</span>
                           <span className="font-bold text-slate-600 ">{task.assignee?.name}</span>
                         </div>
                       </div>
@@ -253,24 +261,20 @@ export default function Escalations() {
                         {task.daysOverdue} Days Overdue
                       </div>
                     </td>
-                    <td className="px-10 py-6">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-black text-[10px] uppercase tracking-wider">
-                        {task.moduleSource}
-                      </span>
-                    </td>
+
                     <td className="px-10 py-6 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {!isReadOnly && (
                           <>
                             <button 
-                              onClick={() => { setSelectedTask(task); setModalMode('resolve'); }}
-                              className="p-2.5 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-xl transition-all border border-transparent hover:border-emerald-100 group"
-                              title="Resolve Task"
+                              onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalMode('resolve'); }}
+                              className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all whitespace-nowrap border border-emerald-100"
+                              title="Resolve Escalation"
                             >
-                              <UserCheck className="w-5 h-5" />
+                              Resolve Escalation
                             </button>
                             <button 
-                              onClick={() => { setSelectedTask(task); setModalMode('reassign'); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalMode('reassign'); }}
                               className="p-2.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-all border border-transparent hover:border-indigo-100"
                               title="Reassign Task"
                             >
@@ -279,7 +283,7 @@ export default function Escalations() {
                           </>
                         )}
                         <button 
-                          onClick={() => { setSelectedTask(task); setModalMode('chain'); }}
+                          onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalMode('chain'); }}
                           className="p-2.5 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl transition-all border border-transparent hover:border-slate-800"
                           title="View Governance Chain"
                         >
@@ -361,6 +365,7 @@ export default function Escalations() {
                     {modalMode === 'reassign' && <UserPlus className="w-5 h-5" />}
                     {modalMode === 'chain' && <History className="w-5 h-5" />}
                     {modalMode === 'override_leave' && <AlertTriangle className="w-5 h-5" />}
+                    {modalMode === 'view_details' && <AlertTriangle className="w-5 h-5" />}
                  </div>
                  <div>
                     <h3 className="text-lg font-black text-slate-900 tracking-tight capitalize">
@@ -380,6 +385,39 @@ export default function Escalations() {
             </div>
 
             <div className="p-8">
+              {modalMode === 'view_details' && selectedTask && (
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Full Objective Title</h4>
+                    <p className="text-sm font-bold text-slate-900 bg-slate-50 border border-slate-100 p-4 rounded-2xl">{selectedTask.title}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Detailed Context</h4>
+                    <p className="text-sm font-bold text-slate-600 bg-slate-50 border border-slate-100 p-4 rounded-2xl min-h-[100px] whitespace-pre-wrap">{selectedTask.description || 'No detailed context provided.'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned By</span>
+                        <span className="text-xs font-bold text-slate-900">{selectedTask.assigner?.name || 'System Generated'}</span>
+                     </div>
+                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned To</span>
+                        <span className="text-xs font-bold text-slate-900">{selectedTask.assignee?.name || 'Unassigned'}</span>
+                     </div>
+                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date Created</span>
+                        <span className="text-xs font-bold text-slate-900">{selectedTask.createdAt ? format(new Date(selectedTask.createdAt), 'MMM dd, yyyy') : 'Unknown'}</span>
+                     </div>
+                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Days Overdue</span>
+                        <span className={`text-xs font-black ${selectedTask.daysOverdue > 7 ? 'text-red-600' : 'text-amber-600'}`}>
+                          {selectedTask.daysOverdue} Days 
+                        </span>
+                     </div>
+                  </div>
+                </div>
+              )}
+
               {modalMode === 'resolve' && selectedTask && (
                 <div className="space-y-6">
                   <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3">

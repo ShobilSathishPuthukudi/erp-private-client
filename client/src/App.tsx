@@ -5,6 +5,7 @@ import { useAuthStore } from './store/authStore';
 import Login from './pages/login';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import ClickableCursorManager from './components/shared/ClickableCursorManager';
 
 // Dashboard Components
 import OrgAdminDashboard from './pages/org-admin';
@@ -22,6 +23,7 @@ import SubDeptDashboard from './pages/sub-dept';
 import ProfilePage from './pages/profile';
 import ChangePassword from './pages/profile/ChangePassword';
 import Preferences from './pages/profile/Preferences';
+import ThemeSelector from './pages/profile/Theme';
 import Notifications from './pages/shared/Notifications';
 import SurveyHub from './pages/shared/SurveyHub';
 import SurveyCreator from './pages/org-admin/SurveyCreator';
@@ -119,6 +121,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <ClickableCursorManager />
         <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
@@ -158,6 +161,7 @@ export default function App() {
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
             <Route path="profile/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />
+            <Route path="profile/theme" element={<ProtectedRoute><ThemeSelector /></ProtectedRoute>} />
             
             <Route path="org-admin/*" element={<ProtectedRoute allowedRoles={['organization admin', 'operations']}><OrgAdminDashboard /></ProtectedRoute>} />
             <Route path="org-admin/system-health" element={<ProtectedRoute allowedRoles={['organization admin', 'ceo', 'operations']}><SystemHealth /></ProtectedRoute>} />

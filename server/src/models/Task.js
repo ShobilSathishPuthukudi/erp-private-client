@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import sequelize from '../config/db.js';
 import { validateTaskAssignment } from '../utils/rbac/validateTaskAssignment.js';
 
@@ -58,11 +58,23 @@ const Task = sequelize.define('task', {
     allowNull: true,
   },
   escalationLevel: {
-    type: DataTypes.ENUM('EMPLOYEE', 'MANAGER', 'CEO'),
+    type: DataTypes.ENUM('EMPLOYEE', 'DEPT_ADMIN', 'CEO'),
     defaultValue: 'EMPLOYEE',
   },
   escalatedAt: {
     type: DataTypes.DATE,
+    allowNull: true,
+  },
+  deptAdminNotifiedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  deptAdminGraceUntil: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  deptAdminDecision: {
+    type: DataTypes.ENUM('PENDING_REVIEW', 'GRACE_GRANTED', 'ESCALATED_TO_CEO'),
     allowNull: true,
   },
   departmentId: {
@@ -75,7 +87,14 @@ const Task = sequelize.define('task', {
   }
 }, {
   indexes: [{ fields: ['assignedTo', 'status'] }],
-  paranoid: true // Supports deletedAt for non-destructive deletes
+  paranoid: true, // Supports deletedAt for non-destructive deletes
+  defaultScope: {
+    where: {
+      title: {
+        [Op.notIn]: ['Complete q3 auditing', 'Demo task 2']
+      }
+    }
+  }
 });
 
 // RBAC Model-Level Safety Guards

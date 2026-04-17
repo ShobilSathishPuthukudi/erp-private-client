@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { 
-  Users, 
-  CheckSquare, 
-  Clock, 
-  Zap, 
-  Search, 
+import {
+  Users,
+  CheckSquare,
+  Clock,
+  Zap,
+  Search,
   ChevronRight,
   TrendingDown,
   Award,
-  Briefcase
+  Briefcase,
+  X,
+  ListChecks,
+  CalendarOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Modal } from '@/components/shared/Modal';
 
 interface EmployeeMetric {
   uid: string;
@@ -34,6 +38,9 @@ export default function EmployeePerformance() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [drillEmployee, setDrillEmployee] = useState<EmployeeMetric | null>(null);
+  const [drillData, setDrillData] = useState<any>(null);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   useEffect(() => {
     fetchPerformance();
@@ -48,6 +55,20 @@ export default function EmployeePerformance() {
       toast.error('Failed to load employee performance metrics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openDrillDown = async (employee: EmployeeMetric) => {
+    setDrillEmployee(employee);
+    setDrillData(null);
+    setDrillLoading(true);
+    try {
+      const { data } = await api.get(`/ceo/details/employee?uid=${employee.uid}`);
+      setDrillData(data);
+    } catch {
+      toast.error('Failed to load employee details');
+    } finally {
+      setDrillLoading(false);
     }
   };
 
@@ -241,7 +262,10 @@ export default function EmployeePerformance() {
             {/* Bottom Action Bar */}
             <div className="px-8 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{employee.uid}</span>
-               <button className="flex items-center gap-2 text-[10px] font-black text-slate-900 uppercase tracking-widest bg-white px-4 py-2 rounded-xl shadow-sm hover:-translate-x-1 transition-all">
+               <button
+                 onClick={() => openDrillDown(employee)}
+                 className="flex items-center gap-2 text-[10px] font-black text-slate-900 uppercase tracking-widest bg-white px-4 py-2 rounded-xl shadow-sm hover:-translate-x-1 transition-all"
+               >
                   Drill Down Analytics <ChevronRight className="w-3.5 h-3.5" />
                </button>
             </div>
@@ -258,7 +282,7 @@ export default function EmployeePerformance() {
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Telemetry Matches</h3>
               <p className="text-sm font-bold text-slate-400 mt-2">Adjust your governance filters or check access partition status.</p>
            </div>
-           <button 
+           <button
              onClick={() => { setSearchQuery(''); setDepartmentFilter('All'); }}
              className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-all"
            >
@@ -266,6 +290,80 @@ export default function EmployeePerformance() {
            </button>
         </div>
       )}
+
+      {/* Employee Drill-Down Modal */}
+      <Modal
+        isOpen={!!drillEmployee}
+        onClose={() => { setDrillEmployee(null); setDrillData(null); }}
+        title={drillEmployee ? `${drillEmployee.name} — Productivity Audit` : ''}
+      >
+        {drillLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900" />
+          </div>
+        ) : drillData ? (
+          <div className="space-y-6 pb-2">
+            {/* Score summary */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Task Score', value: `${drillEmployee?.metrics.taskScore}%` },
+                { label: 'Leave Score', value: `${drillEmployee?.metrics.leaveScore}%` },
+                { label: 'Productivity', value: `${drillEmployee?.productivityScore}%` },
+              ].map(s => (
+                <div key={s.label} className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+                  <p className="text-2xl font-black text-slate-900">{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Tasks */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <ListChecks className="w-4 h-4 text-blue-600" />
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">
+                  Recent Tasks ({drillData.tasks?.length ?? 0})
+                </h4>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {drillData.tasks?.length > 0 ? drillData.tasks.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-xs">
+                    <span className="font-bold text-slate-800 truncate max-w-[60%]">{t.title}</span>
+                    <span className={`font-black uppercase text-[9px] px-2 py-0.5 rounded-full ${
+                      t.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                      t.status === 'overdue' ? 'bg-rose-100 text-rose-700' :
+                      t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>{t.status}</span>
+                  </div>
+                )) : <p className="text-xs text-slate-400 font-bold px-1">No tasks found.</p>}
+              </div>
+            </div>
+
+            {/* Leaves */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarOff className="w-4 h-4 text-amber-500" />
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">
+                  Leave History ({drillData.leaves?.length ?? 0})
+                </h4>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {drillData.leaves?.length > 0 ? drillData.leaves.map((l: any) => (
+                  <div key={l.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-xs">
+                    <span className="font-bold text-slate-800">{l.fromDate} → {l.toDate}</span>
+                    <span className={`font-black uppercase text-[9px] px-2 py-0.5 rounded-full ${
+                      l.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                      l.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>{l.status}</span>
+                  </div>
+                )) : <p className="text-xs text-slate-400 font-bold px-1">No leave records found.</p>}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

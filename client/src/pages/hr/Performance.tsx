@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Target, AlertCircle, CheckCircle2, Clock, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Target, AlertCircle, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { toSentenceCase } from '@/lib/utils';
@@ -15,6 +15,8 @@ interface PerformanceMetric {
     taskCompletionRate: string;
     delayCount: number;
     totalTasks: number;
+    agedPendingLeaves: number;
+    productivityScore: number;
   };
 }
 
@@ -40,17 +42,19 @@ export default function Performance() {
             ...res.data,
             metrics: {
               ...res.data.metrics,
-              delayCount: res.data.metrics.delayCount || 0 // Provide fallback
+              delayCount: res.data.metrics.delayCount || 0,
+              agedPendingLeaves: res.data.metrics.agedPendingLeaves || 0,
+              productivityScore: res.data.metrics.productivityScore ?? 100
             },
             uid: emp.uid,
             name: emp.name,
             role: emp.role
           }))
-          .catch(err => ({
+          .catch(() => ({
             uid: emp.uid,
             name: emp.name,
             role: emp.role,
-            metrics: { taskCompletionRate: '0', delayCount: 0, totalTasks: 0 }
+            metrics: { taskCompletionRate: '0', delayCount: 0, totalTasks: 0, agedPendingLeaves: 0, productivityScore: 0 }
           }))
       );
 
@@ -106,12 +110,37 @@ export default function Performance() {
       )
     },
     {
+      id: 'leaveRisk',
+      header: 'Leave Risk',
+      cell: ({ row }) => (
+        <span className={`px-2 py-1 rounded text-xs font-bold ${
+          row.original.metrics.agedPendingLeaves > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+        }`}>
+          {row.original.metrics.agedPendingLeaves} aged leaves
+        </span>
+      )
+    },
+    {
+      id: 'score',
+      header: 'Productivity Score',
+      cell: ({ row }) => {
+        const score = row.original.metrics.productivityScore;
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-bold ${
+            score >= 85 ? 'bg-emerald-100 text-emerald-700' : score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+          }`}>
+            {score}
+          </span>
+        );
+      }
+    },
+    {
       id: 'status',
       header: 'Accountability rank',
       cell: ({ row }) => {
-        const rate = parseFloat(row.original.metrics.taskCompletionRate);
-        if (rate >= 90) return <span className="text-green-600 flex items-center gap-1 text-xs font-bold font-mono"><CheckCircle2 className="w-3 h-3"/> Elite</span>;
-        if (rate >= 70) return <span className="text-blue-600 flex items-center gap-1 text-xs font-bold font-mono"><Target className="w-3 h-3"/> Efficient</span>;
+        const score = row.original.metrics.productivityScore;
+        if (score >= 90) return <span className="text-green-600 flex items-center gap-1 text-xs font-bold font-mono"><CheckCircle2 className="w-3 h-3"/> Elite</span>;
+        if (score >= 70) return <span className="text-blue-600 flex items-center gap-1 text-xs font-bold font-mono"><Target className="w-3 h-3"/> Efficient</span>;
         return <span className="text-orange-600 flex items-center gap-1 text-xs font-bold font-mono"><Clock className="w-3 h-3"/> Needs review</span>;
       }
     }

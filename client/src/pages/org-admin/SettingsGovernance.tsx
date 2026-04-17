@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Shield, Save, Plus, Trash2, Edit3, Lock, Landmark, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Modal } from '../../components/shared/Modal';
+import { api } from '@/lib/api';
 
 export default function SettingsGovernance() {
   const [loading, setLoading] = useState(true);
@@ -16,9 +17,7 @@ export default function SettingsGovernance() {
 
   const fetchPolicies = async () => {
     try {
-      const response = await fetch('/api/org-admin/config/policies');
-      if (!response.ok) throw new Error('Failed to fetch policies');
-      const data = await response.json();
+      const { data } = await api.get('/org-admin/config/policies');
       setPolicies(data);
       setInitialPolicies(JSON.parse(JSON.stringify(data)));
       setLoading(false);
@@ -31,12 +30,7 @@ export default function SettingsGovernance() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/api/org-admin/config/policies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(policies)
-      });
-      if (!response.ok) throw new Error('Failed to update');
+      await api.post('/org-admin/config/policies', policies);
       setInitialPolicies(JSON.parse(JSON.stringify(policies)));
       toast.success("Institutional policies updated successfully");
       setSelectedPolicy(null); // Close modal on save

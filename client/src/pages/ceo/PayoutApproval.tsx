@@ -25,10 +25,8 @@ export default function PayoutApproval() {
 
   const fetchPayouts = async () => {
     try {
-      // CEO sees what's ready for payroll but uses specific approval route
-      // Actually CEO needs a specific "pending" route
-      const pendingRes = await api.get('/incentives/hr/payouts'); // Placeholder, normally /ceo/pending-payouts
-      setPayouts(pendingRes.data.filter((p: any) => p.status === 'pending_ceo'));
+      const { data } = await api.get('/ceo/incentive-payouts');
+      setPayouts(data);
     } catch (error) {
       console.error('Failed to load pending incentives');
     } finally {
@@ -38,14 +36,14 @@ export default function PayoutApproval() {
 
   const handleApproval = async (id: number, status: 'approved' | 'rejected') => {
     const remarks = window.prompt(`Provide CEO remarks for this ${status}:`);
-    if (remarks === null) return;
+    if (remarks === null || !remarks.trim()) return;
 
     try {
-      await api.put(`/incentives/ceo/approve/${id}`, { status, remarks });
+      await api.put(`/ceo/incentive-payouts/${id}/approve`, { status, remarks });
       toast.success(`Incentive ${status} successfully`);
       fetchPayouts();
-    } catch (error) {
-      toast.error('Failed to update incentive status');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to update incentive status');
     }
   };
 

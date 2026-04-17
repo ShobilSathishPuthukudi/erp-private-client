@@ -1,8 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Phone, Globe, ShieldCheck, FileText, Loader2, ArrowRight, X, GraduationCap, Building2, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, Globe, ShieldCheck, FileText, Loader2, ArrowRight, X, GraduationCap, Building2, CheckCircle2, MapPin, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const COUNTRY_CODES = [
+  { name: 'India', code: '+91', flag: '🇮🇳', maxLength: 10 },
+  { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪', maxLength: 9 },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧', maxLength: 10 },
+  { name: 'United States', code: '+1', flag: '🇺🇸', maxLength: 10 },
+  { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦', maxLength: 9 },
+  { name: 'Qatar', code: '+974', flag: '🇶🇦', maxLength: 8 },
+  { name: 'Oman', code: '+968', flag: '🇴🇲', maxLength: 8 },
+  { name: 'Kuwait', code: '+965', flag: '🇰🇼', maxLength: 8 },
+  { name: 'Bahrain', code: '+973', flag: '🇧🇭', maxLength: 8 },
+  { name: 'Malaysia', code: '+60', flag: '🇲🇾', maxLength: 10 },
+  { name: 'Singapore', code: '+65', flag: '🇸🇬', maxLength: 8 },
+  { name: 'Australia', code: '+61', flag: '🇦🇺', maxLength: 9 },
+  { name: 'Canada', code: '+1', flag: '🇨🇦', maxLength: 10 },
+  { name: 'Germany', code: '+49', flag: '🇩🇪', maxLength: 11 },
+  { name: 'France', code: '+33', flag: '🇫🇷', maxLength: 9 },
+];
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -15,9 +33,12 @@ export default function CenterRegistration() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showCountrySelector, setShowCountrySelector] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
 
   const [formData, setFormData] = useState({
     name: '',
+    shortName: '',
     email: '',
     phone: '',
     website: 'https://www.google.com',
@@ -42,13 +63,20 @@ export default function CenterRegistration() {
         else if (value.length < 3) error = 'Name must be at least 3 characters';
         else if (value.length > 30) error = 'Name must not exceed 30 characters';
         break;
+      case 'shortName':
+        if (!value.trim()) error = 'Short name / city is required';
+        else if (value.length < 2) error = 'Must be at least 2 characters';
+        else if (value.length > 15) error = 'Must not exceed 15 characters';
+        break;
       case 'email':
         if (!value.trim()) error = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
         break;
       case 'phone':
         if (!value.trim()) error = 'Phone is required';
-        else if (value.length > 13) error = 'Phone must not exceed 13 characters';
+        else if (value.replace(/\-/g, '').length !== selectedCountry.maxLength) {
+          error = `${selectedCountry.name} phone must be exactly ${selectedCountry.maxLength} digits`;
+        }
         break;
       case 'website':
         if (value && value.length > 30) error = 'Website must not exceed 30 characters';
@@ -121,12 +149,13 @@ export default function CenterRegistration() {
 
     // Final validation pass
     const nameErr = validateField('name', formData.name);
+    const shortNameErr = validateField('shortName', formData.shortName);
     const emailErr = validateField('email', formData.email);
     const phoneErr = validateField('phone', formData.phone);
     const webErr = validateField('website', formData.website);
     const descErr = validateField('description', formData.description);
 
-    if (nameErr || emailErr || phoneErr || webErr || descErr) {
+    if (nameErr || shortNameErr || emailErr || phoneErr || webErr || descErr) {
         toast.error('Please correct the validation errors before proceeding');
         return;
     }
@@ -140,6 +169,7 @@ export default function CenterRegistration() {
     try {
       await axios.post(`${API_URL}/public/register-center`, {
         ...formData,
+        phone: `${selectedCountry.code}${formData.phone}`,
         code
       });
       setSubmitted(true);
@@ -242,9 +272,9 @@ export default function CenterRegistration() {
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Center Legal Name</label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
-                  <input 
+                  <input
                     id="center-name"
-                    type="text" 
+                    type="text"
                     required
                     className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all ${errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="Acme Institute"
@@ -259,12 +289,36 @@ export default function CenterRegistration() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Short Name / City</label>
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                  <input
+                    id="short-name"
+                    type="text"
+                    required
+                    maxLength={15}
+                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all font-mono uppercase ${errors.shortName ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
+                    placeholder="DELHI / ACME"
+                    value={formData.shortName}
+                    onChange={e => {
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9\s\-]/g, '');
+                        setFormData({...formData, shortName: val});
+                        validateField('shortName', val);
+                    }}
+                  />
+                </div>
+                {errors.shortName && <p className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.shortName}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Primary Email</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
-                  <input 
+                  <input
                     id="primary-email"
-                    type="email" 
+                    type="email"
                     required
                     className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all ${errors.email ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
                     placeholder="center@example.com"
@@ -277,25 +331,61 @@ export default function CenterRegistration() {
                 </div>
                 {errors.email && <p id="email-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.email}</p>}
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1">Contact Phone</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
-                  <input 
-                    id="contact-phone"
-                    type="tel" 
-                    required
-                    className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all font-mono ${errors.phone ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
-                    placeholder="+91-XXXXX-XXXXX"
-                    value={formData.phone}
-                    onChange={e => {
-                        setFormData({...formData, phone: e.target.value});
-                        validateField('phone', e.target.value);
-                    }}
-                  />
+                <div className="relative flex gap-2">
+                  {/* Country Code Selector */}
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowCountrySelector(!showCountrySelector)}
+                      className="h-full px-3 bg-slate-50 border-2 border-slate-50 rounded-xl flex items-center justify-center gap-1.5 focus:border-blue-600 focus:bg-white transition-all group"
+                    >
+                      <span className="text-xs font-black text-slate-900">{selectedCountry.code}</span>
+                      <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-transform duration-200 ${showCountrySelector ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showCountrySelector && (
+                      <div className="absolute top-full left-0 mt-2 w-56 max-h-64 bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-200/50 overflow-y-auto z-[60] py-2 animate-in fade-in slide-in-from-top-2 duration-200 custom-scrollbar">
+                        {COUNTRY_CODES.map((c) => (
+                          <button
+                            key={c.code + c.name}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCountry(c);
+                              setShowCountrySelector(false);
+                            }}
+                            className={`w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left ${selectedCountry.code === c.code ? 'bg-blue-50/50' : ''}`}
+                          >
+                            <span className="text-lg leading-none">{c.flag}</span>
+                            <div className="flex-grow min-w-0">
+                              <p className="text-[10px] font-bold text-slate-900 truncate">{c.name}</p>
+                              <p className="text-[9px] font-black text-blue-600">{c.code}</p>
+                            </div>
+                            {selectedCountry.code === c.code && <CheckCircle2 className="w-3 h-3 text-blue-600 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative flex-grow">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                    <input 
+                      id="contact-phone"
+                      type="tel" 
+                      required
+                      className={`w-full bg-slate-50 border-2 rounded-xl pl-11 pr-4 py-2.5 text-sm font-bold focus:bg-white focus:ring-0 transition-all font-mono ${errors.phone ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-slate-50 focus:border-blue-600'}`}
+                      placeholder="XXXXX-XXXXX"
+                      value={formData.phone}
+                      onChange={e => {
+                          const val = e.target.value.replace(/[^0-9\-]/g, '').slice(0, selectedCountry.maxLength);
+                          setFormData({...formData, phone: val});
+                          validateField('phone', val);
+                      }}
+                    />
+                  </div>
                 </div>
                 {errors.phone && <p id="phone-error" className="text-[9px] font-bold text-rose-500 pl-1 uppercase tracking-tight mt-1">{errors.phone}</p>}
               </div>

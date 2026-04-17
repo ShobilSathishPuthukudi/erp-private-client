@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart, FileText, Target } from 'lucide-react';
+import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart, FileText, Target, Calendar } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { format } from 'date-fns';
 import { Sparkles } from 'lucide-react';
@@ -68,8 +68,17 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   }, []);
 
   useEffect(() => {
-    if (selectedBrief) {
-      fetchBriefDetails();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchMetrics();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    const isModalOpen = selectedBrief || isAnalysisOpen || isInstAnalysisOpen;
+    if (isModalOpen) {
+      if (selectedBrief) fetchBriefDetails();
       document.body.style.overflow = 'hidden';
       document.body.classList.add('modal-open-blur');
     } else {
@@ -80,7 +89,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
       document.body.style.overflow = 'auto';
       document.body.classList.remove('modal-open-blur');
     };
-  }, [selectedBrief]);
+  }, [selectedBrief, isAnalysisOpen, isInstAnalysisOpen]);
 
   const fetchMetrics = async () => {
     try {
@@ -115,10 +124,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   };
 
   const checkScope = (scopes: string[]) => {
-    if (!metrics?.visibilityScope || metrics.visibilityScope.length === 0) return true;
+    if (!metrics?.visibilityScope) return false;
+    if (metrics.visibilityScope.length === 0) return false;
     const normalizedVisScope = metrics.visibilityScope.map(v => v.toLowerCase());
-    if (normalizedVisScope.includes('all')) return true;
-    return scopes.some(scope => 
+    if (normalizedVisScope.includes('all') || normalizedVisScope.includes('global(all)')) return true;
+    return scopes.some(scope =>
       normalizedVisScope.some(vs => vs.includes(scope.toLowerCase()))
     );
   };
@@ -177,11 +187,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const instAnalysis = analyzeInstitutionalGrowth();
 
   const KPIStore = [
-    { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university'], inlineDetails: (
+    { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university', 'hr', 'finance', 'operations', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
-            Total number of active university branches currently established under the institutional umbrella.
+            Total number of academic institutional universities currently in active or staged lifecycle phases.
           </p>
         </div>
       </div>
@@ -231,7 +241,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'centers', title: 'Active Study Centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20), scopes: ['operations', 'regional', 'academic'], inlineDetails: (
+    { type: 'centers', title: 'Active Partner Centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20), scopes: ['operations', 'regional', 'academic'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -280,11 +290,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'perf_cycle', title: 'Admission Cycle', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 7 ? 'emerald' : 'amber', scopes: ['academic', 'sales', 'student', 'admission'], inlineDetails: (
+    { type: 'perf_cycle', title: 'Center Acquisition', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 14 ? 'emerald' : 'amber', scopes: ['academic', 'sales', 'operations', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
-            Average duration to fully convert an incoming lead into a verified enrolled student.
+            Average duration to fully convert an incoming lead into a verified partner center.
           </p>
         </div>
       </div>
@@ -552,7 +562,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                   <h4 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
                     {metrics.salesIntelligence.avgLeadAge} Days
                   </h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avg Time to Institutional Enrollment</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avg Time to Center Onboarding</p>
                   
                   <div className="mt-8 p-4 bg-rose-50 rounded-2xl border border-rose-100">
                     <div className="flex items-center gap-3">
@@ -564,24 +574,32 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               </div>
 
               {/* BDE Productivity Index */}
-              <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[100px] -z-0"></div>
-                <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-600/20">
-                    <Users className="w-6 h-6" />
+              {(() => {
+                const si = metrics.salesIntelligence;
+                const rate = si && si.totalLeads > 0 ? ((si.convertedLeads / si.totalLeads) * 100) : 0;
+                const rateDisplay = rate.toFixed(1);
+                const filledStars = Math.round(rate / 20);
+                const tier = rate >= 80 ? 'Tier-1 Sector' : rate >= 60 ? 'Tier-2 Sector' : rate >= 40 ? 'Tier-3 Sector' : 'Developing';
+                return (
+                  <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[100px] -z-0"></div>
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-600/20">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Strategic Acquisition Index</p>
+                      <h4 className="text-3xl font-black text-slate-900 tracking-tight mb-2">{si ? rateDisplay : '—'}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">BDE Conversion Rate</p>
+                      <div className="mt-8 flex items-center gap-2">
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} className={`h-1.5 w-6 rounded-full ${i <= filledStars ? 'bg-blue-600' : 'bg-slate-100'}`}></div>
+                        ))}
+                        <span className="text-[10px] font-black text-blue-600 ml-2">{tier}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Strategic Acquisition Index</p>
-                  <h4 className="text-3xl font-black text-slate-900 tracking-tight mb-2">94.8</h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">BDE Cumulative Performance Rating</p>
-                  
-                  <div className="mt-8 flex items-center gap-2">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className={`h-1.5 w-6 rounded-full ${i <= 4 ? 'bg-blue-600' : 'bg-slate-100'}`}></div>
-                    ))}
-                    <span className="text-[10px] font-black text-blue-600 ml-2">Tier-1 Sector</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -841,12 +859,65 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                                 </div>
                                 <div>
                                    <div className="text-sm font-black text-slate-900">{inv.invoiceNo}</div>
-                                   <div className="text-[9px] font-bold text-teal-600 uppercase tracking-widest font-black ">{inv.student?.name}</div>
+                                   <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest font-black ">{inv.student?.name}</div>
                                 </div>
                               </div>
                               <div className="text-right">
-                                 <div className="text-sm font-black text-slate-900">₹{inv.total.toLocaleString()}</div>
+                                 <div className="text-sm font-black text-slate-900">₹{parseFloat(inv.total).toLocaleString()}</div>
                                  <div className="text-[9px] font-bold text-slate-400 tracking-widest">{format(new Date(inv.createdAt), 'MMM dd, yyyy')}</div>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    )}
+
+                    {selectedBrief.type === 'risk_highval' && Array.isArray(briefData) && briefData.length > 0 && (
+                      <div className="space-y-3">
+                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">High-Value Pending Invoices</h5>
+                         {briefData.map((inv: any, idx: number) => (
+                           <div key={idx} className="flex items-center justify-between p-4 bg-rose-50/30 rounded-2xl border border-rose-100/50 hover:bg-rose-50 transition-all group">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                                   <Wallet className="w-5 h-5" />
+                                </div>
+                                <div>
+                                   <div className="text-sm font-black text-slate-900">{inv.invoiceNo}</div>
+                                   <div className="text-[9px] font-bold text-rose-600 uppercase tracking-widest font-black ">{inv.student?.name}</div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                 <div className="text-sm font-black text-rose-600 italic">₹{parseFloat(inv.total).toLocaleString()}</div>
+                                 <div className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Status: {inv.status}</div>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    )}
+
+                    {(selectedBrief.type === 'risk_security' || selectedBrief.type === 'risk_audit') && Array.isArray(briefData) && briefData.length > 0 && (
+                      <div className="space-y-3">
+                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Critical Audit Telemetry</h5>
+                         {briefData.map((log: any, idx: number) => (
+                           <div key={idx} className="flex flex-col p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-xl ${selectedBrief.type === 'risk_security' ? 'bg-amber-500' : 'bg-rose-500'} flex items-center justify-center text-white shadow-md`}>
+                                    <ShieldAlert className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-black text-slate-900">{log.action}</div>
+                                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{log.entity} Registry</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-[10px] font-black text-slate-900">{format(new Date(log.timestamp), 'HH:mm:ss')}</div>
+                                  <div className="text-[9px] font-bold text-slate-400">{format(new Date(log.timestamp), 'MMM dd, yyyy')}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-100 mt-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Operator: {log.user?.name || 'Unknown'}</span>
+                                <span className="text-[10px] font-medium text-slate-300 ml-auto">{log.user?.email || ''}</span>
                               </div>
                            </div>
                          ))}
@@ -928,6 +999,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           {/* Institutional Growth & Center Conversion - Integrated for KPI Overview */}
           <div className="mt-12 pt-12 border-t border-slate-100/50">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {checkScope(['academic', 'enrollment']) && (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
@@ -982,13 +1054,14 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                             stroke="#2563eb" 
                             strokeWidth={4} 
                             dot={{ r: 6, fill: '#2563eb', strokeWidth: 3, stroke: '#fff' }} 
-                            activeDot={{ r: 8, strokeWidth: 0 }} 
+                            activeDot={{ r: 8 }} 
                           />
                         </LineChart>
                      </ResponsiveContainer>
                    )}
                 </div>
               </div>
+              )}
 
               <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
                 <div className="flex justify-between items-center">
@@ -1066,7 +1139,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>
 
           {/* Analysis Modals for KPI View */}
-          {isAnalysisOpen && analysis && (
+          {isAnalysisOpen && analysis && createPortal(
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                   <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -1107,10 +1180,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                      <button onClick={() => setIsAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
           )}
 
-          {isInstAnalysisOpen && instAnalysis && (
+          {isInstAnalysisOpen && instAnalysis && createPortal(
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                   <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -1147,7 +1221,8 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                      <button onClick={() => setIsInstAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       );
@@ -1214,6 +1289,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
 
           {/* Third Row: Institutional Growth & Center Conversion */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {checkScope(['academic', 'enrollment']) && (
             <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -1272,9 +1348,10 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                         />
                       </LineChart>
                    </ResponsiveContainer>
-                 )}
+                  )}
               </div>
             </div>
+            )}
 
             <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
               <div className="flex justify-between items-center">
@@ -1345,13 +1422,13 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                         />
                       </LineChart>
                    </ResponsiveContainer>
-                 )}
+                  )}
               </div>
             </div>
           </div>
 
           {/* Analysis Modals */}
-          {isAnalysisOpen && analysis && (
+          {isAnalysisOpen && analysis && createPortal(
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                   <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -1392,10 +1469,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                      <button onClick={() => setIsAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
           )}
 
-          {isInstAnalysisOpen && instAnalysis && (
+          {isInstAnalysisOpen && instAnalysis && createPortal(
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                   <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -1432,7 +1510,8 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                      <button onClick={() => setIsInstAnalysisOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all">Close Analysis</button>
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       );

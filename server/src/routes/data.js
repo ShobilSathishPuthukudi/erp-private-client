@@ -11,7 +11,7 @@ let backups = [
 ];
 
 const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'Organization Admin' && req.user.role !== 'Organization Admin') {
+  if (req.user.role !== 'Organization Admin') {
     return res.status(403).json({ error: 'Access denied' });
   }
   next();
@@ -30,7 +30,7 @@ router.get('/backups', verifyToken, isAdmin, async (req, res) => {
 router.post('/backup', verifyToken, isAdmin, async (req, res) => {
   try {
     const newBackup = {
-      id: feedbacks.length + 1,
+      id: backups.length + 1,
       name: `Manual Backup - ${new Date().toISOString().split('T')[0]}`,
       size: 'Processing...',
       status: 'pending',

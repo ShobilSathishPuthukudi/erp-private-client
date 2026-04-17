@@ -161,10 +161,14 @@ export default function SyllabusManager() {
       cell: ({ row }) => (
         <button 
           onClick={() => setSelectedProgram(row.original)}
-          className="flex items-center gap-2 group text-indigo-600 font-bold"
+          className={`flex items-center gap-2 group font-bold ${
+            row.original.status?.toLowerCase() === 'active' ? 'text-slate-500' : 'text-indigo-600'
+          }`}
         >
-          Modify Structure
-          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          {row.original.status?.toLowerCase() === 'active' ? 'View Architecture' : 'Modify Structure'}
+          <ChevronRight className={`w-4 h-4 transition-transform ${
+            row.original.status?.toLowerCase() !== 'active' ? 'group-hover:translate-x-1' : ''
+          }`} />
         </button>
       )
     }
@@ -215,18 +219,30 @@ export default function SyllabusManager() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900 uppercase leading-tight tracking-tight">Architectural Mapping</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure and ratify course structures</p>
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 uppercase leading-tight tracking-tight">Architectural Mapping</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                {selectedProgram?.status?.toLowerCase() === 'active' 
+                                    ? 'Read-only archive for active program' 
+                                    : 'Configure and ratify course structures'}
+                            </p>
+                        </div>
+                        {selectedProgram?.status?.toLowerCase() === 'active' && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
+                                <FileCheck className="w-4 h-4 text-amber-600" />
+                                <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Logic Locked</span>
+                            </div>
+                        )}
                     </div>
-                    <button 
-                        onClick={() => setIsSubjectModalOpen(true)}
-                        className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200"
-                    >
-                        <Plus className="w-6 h-6" />
-                    </button>
-                </div>
+                    {selectedProgram?.status?.toLowerCase() !== 'active' && (
+                        <button 
+                            onClick={() => setIsSubjectModalOpen(true)}
+                            className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200"
+                        >
+                            <Plus className="w-6 h-6" />
+                        </button>
+                    )}
 
                 {/* Credit Scorecard */}
                 {selectedProgram && (
@@ -282,12 +298,14 @@ export default function SyllabusManager() {
                                         </div>
                                         <span className="font-bold text-slate-700 uppercase tracking-tight">{sub.name}</span>
                                     </div>
-                                    <button 
-                                        onClick={() => handleDeleteSubject(sub.id)}
-                                        className="text-rose-500 p-2 hover:bg-rose-50 rounded-xl transition-all active:scale-95"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {selectedProgram?.status?.toLowerCase() !== 'active' && (
+                                        <button 
+                                            onClick={() => handleDeleteSubject(sub.id)}
+                                            className="text-rose-500 p-2 hover:bg-rose-50 rounded-xl transition-all active:scale-95"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             ))
                         ) : (
@@ -362,7 +380,7 @@ export default function SyllabusManager() {
                     onClick={handleAddSubject}
                     className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
                 >
-                    Ratify Subject
+                    Add Subject
                 </button>
             </div>
         </div>

@@ -193,7 +193,7 @@ router.put('/students/:id/verify-documents', verifyToken, isSubDeptAdmin, async 
 
     if (!student) return res.status(404).json({ error: 'Student not found in your jurisdictional queue' });
 
-    if (student.enrollStatus !== 'pending_subdept') {
+    if (!['pending_ops', 'pending_subdept'].includes(student.enrollStatus)) {
       return res.status(400).json({ error: 'Student is not in sub-department verification phase' });
     }
 
@@ -219,8 +219,9 @@ router.get('/students/pending', verifyToken, isSubDeptAdmin, async (req, res) =>
   try {
     const deptId = getSubDeptId(req.user);
     const students = await Student.findAll({
-      where: { 
-        status: { [Op.in]: ['PENDING_REVIEW', 'SUBMITTED', 'OPS_PENDING'] } 
+      where: {
+        status: 'PENDING_REVIEW',
+        reviewStage: 'SUB_DEPT'
       },
       include: [
         { model: Program, where: deptId ? { subDeptId: deptId } : {}, attributes: ['id', 'name'] },
@@ -301,19 +302,18 @@ router.post('/students/:id/approve', verifyToken, isSubDeptAdmin, async (req, re
     if (!student) return res.status(404).json({ error: 'Student not found in jurisdictional queue' });
 
     await student.update({
-      status: 'FINANCE_PENDING', // State Machine Phase 5: OPS_APPROVED -> FINANCE_PENDING
-      enrollStatus: 'pending_finance',
-      reviewStage: 'FINANCE',
+      reviewStage: 'OPS', // State Machine Phase 2: SUB_DEPT -> OPS (status stays PENDING_REVIEW)
+      enrollStatus: 'pending_ops',
       reviewedBy: req.user.uid,
       reviewedAt: new Date(),
     });
 
-    erpEvents.emit('OPS_APPROVED', { 
-        studentId: student.id, 
-        subDeptId: getSubDeptId(req.user) 
+    erpEvents.emit('SUBDEPT_APPROVED', {
+        studentId: student.id,
+        subDeptId: getSubDeptId(req.user)
     });
 
-    res.json({ message: 'Student application approved and routed to Finance', student });
+    res.json({ message: 'Student application approved and routed to Academic Operations', student });
   } catch (error) {
     res.status(500).json({ error: 'Approval protocol failed' });
   }

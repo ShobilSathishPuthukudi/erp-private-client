@@ -40,12 +40,12 @@ export const validateTaskAssignment = (assigner, assignee) => {
     "skill department admin"
   ];
 
-  // 3. CEO Branch (Exception Case)
+  // 3. CEO Branch: strictly HR Admin only
   if (assignerRole === "ceo") {
-    if (!DEPT_ADMIN_WHITELIST.includes(assigneeRole)) {
-      throw new Error("Invalid task assignment: role hierarchy violation");
+    if (assigneeRole !== "hr admin") {
+      throw new Error("Invalid task assignment: CEO can only assign tasks to HR Admin");
     }
-    return true; // Valid CEO → Dept Admin assignment
+    return true;
   }
 
   // 4. Departmental Admin Branch

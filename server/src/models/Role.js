@@ -29,6 +29,26 @@ const Role = sequelize.define('role', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  scopeType: {
+    type: DataTypes.ENUM('institutional', 'core_department', 'sub_department'),
+    defaultValue: 'institutional',
+  },
+  scopeDepartmentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  scopeSubDepartment: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  assignedUserUid: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  isSeeded: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   isAdminEligible: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
@@ -40,6 +60,17 @@ const Role = sequelize.define('role', {
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active',
+  },
+  roleId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    comment: 'Automatically generated unique role identifier'
+  },
+  rolePassword: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Hashed password for login-enabled roles'
   }
 }, {
   timestamps: true

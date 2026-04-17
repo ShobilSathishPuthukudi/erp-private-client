@@ -58,9 +58,6 @@ interface Stats {
 interface ChartPoint {
   name: string;
   students: number;
-  employees: number;
-  administrators: number;
-  centers: number;
 }
 
 interface CenterPoint {
@@ -139,28 +136,23 @@ export default function Overview() {
   const analyzeInstitutionalGrowth = () => {
     const data = stats.growthData;
     if (!data || data.length === 0) return null;
-    
+
     const last = data[data.length - 1];
     const first = data[0];
-    
-    const totalStaff = last.employees + last.administrators;
-    const studentGrowth = first.students > 0 ? ((last.students - first.students) / first.students) * 100 : 0;
-    const staffRatio = totalStaff > 0 ? (last.students / totalStaff).toFixed(1) : last.students;
-    const staffGrowth = (first.employees + first.administrators) > 0 ? (((last.employees + last.administrators) - (first.employees + first.administrators)) / (first.employees + first.administrators)) * 100 : 0;
-    
+
+    const studentGrowth = first.students > 0 ? ((last.students - first.students) / first.students) * 100 : (last.students > 0 ? 100 : 0);
+    const peakMonth = data.reduce((max, pt) => pt.students > max.students ? pt : max, data[0]);
+
     return {
       studentGrowth: studentGrowth.toFixed(1),
       isStudentGrowthPositive: studentGrowth >= 0,
-      staffRatio,
-      staffGrowth: Math.abs(staffGrowth).toFixed(1),
-      isStaffGrowthPositive: staffGrowth >= 0,
       totalStudents: last.students,
-      totalEmployees: last.employees,
-      totalAdministrators: last.administrators,
-      institutionalHealth: (last.students / (totalStaff || 1)) < 40 ? 'Balanced' : 'Optimal',
-      statusColor: (last.students / (totalStaff || 1)) < 60 ? 'text-blue-600' : 'text-amber-600',
-      statusBg: (last.students / (totalStaff || 1)) < 60 ? 'bg-blue-50' : 'bg-amber-50',
-      insight: (last.students / (totalStaff || 1)) > 50 ? 'Student density is increasing. Consider augmenting faculty support.' : 'Scaling is balanced for current institutional density.'
+      peakMonth: peakMonth.name,
+      peakCount: peakMonth.students,
+      statusColor: studentGrowth >= 0 ? 'text-emerald-600' : 'text-rose-600',
+      statusBg: studentGrowth >= 0 ? 'bg-emerald-50' : 'bg-rose-50',
+      trend: studentGrowth >= 10 ? 'Strong' : studentGrowth >= 0 ? 'Stable' : 'Declining',
+      insight: studentGrowth > 20 ? 'Strong enrollment momentum. Admissions pipeline is healthy.' : studentGrowth >= 0 ? 'Steady intake. Monitor batch capacity and program demand.' : 'Enrollment declining. Review admission outreach and center performance.'
     };
   };
 
@@ -192,7 +184,7 @@ export default function Overview() {
           roleNames: data.roleNames || [],
           totalEmployees: data.totalEmployees,
           employeeNames: data.employeeNames || [],
-          totalStudyCenters: data.studyCenters,
+          totalStudyCenters: data.totalStudyCenters,
           centerNames: data.centerNames || [],
           totalStudents: data.totalStudents,
           pendingOverdueTasks: data.pendingOverdueTasks,
@@ -216,7 +208,7 @@ export default function Overview() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 60000); 
+    const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -420,14 +412,14 @@ export default function Overview() {
         />
         <MetricCard 
           index={5}
-          title="Total Study Centers" 
+          title="Partner Centers" 
           value={stats.totalStudyCenters} 
           icon={MapPin} 
           color={{ bg: 'bg-amber-50', text: 'text-amber-600' }}
           details={
             <div className="space-y-6">
               <div className="space-y-3">
-                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Regional Centers</h4>
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified Partners</h4>
                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2">
                     {stats.centerNames.length > 0 ? (
                       stats.centerNames.map((center, i) => (
@@ -439,7 +431,7 @@ export default function Overview() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 text-center py-4">No center enrollment detected.</p>
+                      <p className="text-xs text-slate-400 text-center py-4">No verified partners detected.</p>
                     )}
                  </div>
               </div>
@@ -563,18 +555,24 @@ export default function Overview() {
             <div className="space-y-4">
               <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">Pending Enrollment</h4>
               <div className="space-y-2">
-                 {stats.pendingStudents && stats.pendingStudents.length > 0 ? stats.pendingStudents.map((student, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 transition-all">
-                      <span className="text-xs font-bold text-slate-700">{student.name}</span>
-                      <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border ${
-                        student.status?.includes('FINANCE') 
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                          : 'bg-indigo-50 text-indigo-600 border-indigo-100'
-                      }`}>
-                        {student.status?.includes('FINANCE') ? 'Finance Pending' : 'Review Pending'}
-                      </span>
-                    </div>
-                 )) : (
+                 {stats.pendingStudents && stats.pendingStudents.length > 0 ? stats.pendingStudents.map((student, i) => {
+                    const stageMap: Record<string, { label: string; color: string }> = {
+                      PENDING_REVIEW:    { label: 'Sub-Dept Review', color: 'bg-indigo-50 text-indigo-600 border-indigo-100' },
+                      OPS_APPROVED:      { label: 'Ops Review',      color: 'bg-blue-50 text-blue-600 border-blue-100' },
+                      FINANCE_PENDING:   { label: 'Finance Pending',  color: 'bg-amber-50 text-amber-600 border-amber-100' },
+                      FINANCE_APPROVED:  { label: 'Finance Approved', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+                      PAYMENT_VERIFIED:  { label: 'Payment Verified', color: 'bg-teal-50 text-teal-600 border-teal-100' },
+                    };
+                    const stage = stageMap[student.status] ?? { label: student.status, color: 'bg-slate-50 text-slate-500 border-slate-100' };
+                    return (
+                      <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 transition-all">
+                        <span className="text-xs font-bold text-slate-700">{student.name}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border ${stage.color}`}>
+                          {stage.label}
+                        </span>
+                      </div>
+                    );
+                 }) : (
                     <p className="text-xs text-slate-400 text-center py-4">No student approvals pending.</p>
                  )}
               </div>
@@ -804,7 +802,7 @@ export default function Overview() {
             </div>
             <button 
               onClick={() => setSelectedMetric(null)}
-              className="px-6 py-2.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+              className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
             >
               Close Insight
             </button>
@@ -888,18 +886,18 @@ export default function Overview() {
             <>
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Student-to-Staff Ratio</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Enrollment Momentum</p>
                   <div className="flex items-end gap-2">
-                    <h4 className="text-4xl font-black text-slate-900 tracking-tighter">{instAnalysis.staffRatio}:1</h4>
+                    <h4 className="text-4xl font-black text-slate-900 tracking-tighter">{instAnalysis.studentGrowth}%</h4>
                     <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md mb-1 ${instAnalysis.statusBg} ${instAnalysis.statusColor}`}>
-                      {instAnalysis.institutionalHealth}
+                      {instAnalysis.trend}
                     </span>
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Enrollment Momentum</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Peak Intake Month</p>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-4xl font-black text-slate-900 tracking-tighter">{instAnalysis.studentGrowth}%</h4>
+                    <h4 className="text-4xl font-black text-slate-900 tracking-tighter">{instAnalysis.peakMonth}</h4>
                     {instAnalysis.isStudentGrowthPositive ? (
                       <TrendingUp className="w-6 h-6 text-emerald-500" />
                     ) : (
@@ -912,18 +910,18 @@ export default function Overview() {
               <div className="p-8 bg-slate-900 rounded-[2rem] text-white relative overflow-hidden">
                 <Sparkles className="absolute -right-4 -top-4 w-32 h-32 text-white/5 rotate-12" />
                 <div className="relative z-10">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-amber-400 mb-4">Strategic Faculty Insight</h4>
+                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-amber-400 mb-4">Enrollment Intelligence</h4>
                   <p className="text-slate-300 text-lg font-medium leading-relaxed tracking-tight italic">
                     "{instAnalysis.insight}"
                   </p>
                   <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-2 gap-8 text-center">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Scholar Base</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Total Students</p>
                       <p className="text-2xl font-black">{instAnalysis.totalStudents}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Faculty Strength</p>
-                      <p className="text-2xl font-black">{instAnalysis.totalEmployees}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Peak Month Intake</p>
+                      <p className="text-2xl font-black">{instAnalysis.peakCount}</p>
                     </div>
                   </div>
                 </div>

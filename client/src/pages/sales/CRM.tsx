@@ -41,7 +41,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', source: '', notes: '', assignedTo: '' });
   const [conversionData, setConversionData] = useState({ programIds: [] as number[], notes: '', shortName: '', email: '' });
   const [editData, setEditData] = useState({ programIds: [] as number[] });
-  const [conversionOptions, setConversionOptions] = useState<{ programs: any[], salesStaff: any[] }>({ programs: [], salesStaff: [] });
+  const [conversionOptions, setConversionOptions] = useState<{ programs: any[], salesStaff: any[], hasUniversities: boolean }>({ programs: [], salesStaff: [], hasUniversities: false });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingLeadId, setUpdatingLeadId] = useState<number | null>(null);
@@ -237,9 +237,15 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
               navigator.clipboard.writeText(link);
               toast.success('Your unique partnership link has been copied to clipboard!');
             }}
-            className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-100 active:scale-95 flex items-center gap-2 border border-slate-700"
+            disabled={!conversionOptions.hasUniversities || conversionOptions.programs.length === 0}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
+              !conversionOptions.hasUniversities || conversionOptions.programs.length === 0
+                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-70'
+                : 'bg-slate-900 text-white hover:bg-black shadow-xl shadow-slate-100 active:scale-95 border-slate-700'
+            }`}
+            title={!conversionOptions.hasUniversities || conversionOptions.programs.length === 0 ? "Academic foundation (Universities/Programs) required before recruitment." : ""}
           >
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
+            <ShieldCheck className={`w-4 h-4 ${!conversionOptions.hasUniversities || conversionOptions.programs.length === 0 ? 'text-slate-400' : 'text-blue-400'}`} />
             Share Your Link
           </button>
           <button 

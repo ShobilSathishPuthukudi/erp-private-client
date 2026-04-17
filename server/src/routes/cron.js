@@ -7,7 +7,7 @@ const router = express.Router();
 const { CronJob } = models;
 
 const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'Organization Admin' && req.user.role !== 'Organization Admin') {
+  if (req.user.role !== 'Organization Admin') {
     return res.status(403).json({ error: 'Access denied' });
   }
   next();

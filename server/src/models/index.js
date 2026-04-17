@@ -52,10 +52,18 @@ import Referral from './Referral.js';
 import Permission from './Permission.js';
 import Role from './Role.js';
 import AcademicActionRequest from './AcademicActionRequest.js';
+import PermissionVersion from './PermissionVersion.js';
+import RolePermissionShadow from './RolePermissionShadow.js';
 
 // Department -> User (Admin)
 Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
 User.hasMany(Department, { foreignKey: 'adminId' });
+
+// Role -> Department / User (Seeded admin role mapping)
+Role.belongsTo(Department, { as: 'scopeDepartment', foreignKey: 'scopeDepartmentId' });
+Department.hasMany(Role, { foreignKey: 'scopeDepartmentId', as: 'mappedRoles' });
+Role.belongsTo(User, { as: 'assignedUser', foreignKey: 'assignedUserUid', targetKey: 'uid' });
+User.hasMany(Role, { foreignKey: 'assignedUserUid', sourceKey: 'uid', as: 'assignedAdminRoles' });
 
 // User -> Department
 User.belongsTo(Department, { as: 'department', foreignKey: 'deptId' });
@@ -172,6 +180,9 @@ Quotation.belongsTo(User, { as: 'creator', foreignKey: 'createdBy', targetKey: '
 
 // Department -> BDE Referral
 Department.belongsTo(User, { as: 'referringBDE', foreignKey: 'bdeId', targetKey: 'uid' });
+
+// Department -> Source Lead (fallback referral traceability when bdeId is null)
+Department.belongsTo(Lead, { as: 'sourceLead', foreignKey: 'sourceLeadId' });
 
 // Lead -> Deal
 Lead.hasMany(Deal, { foreignKey: 'leadId', as: 'deals' });
@@ -378,7 +389,9 @@ const models = {
   Referral,
   Permission,
   Role,
-  AcademicActionRequest
+  AcademicActionRequest,
+  PermissionVersion,
+  RolePermissionShadow
 };
 
 // GAP-5: Global Audit Interceptor

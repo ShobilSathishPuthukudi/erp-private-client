@@ -120,10 +120,10 @@ router.post('/register-center', async (req, res) => {
   const { sequelize } = await import('../models/index.js');
   const t = await sequelize.transaction();
   try {
-    const { name, email, phone, website, code, infrastructure, description, interest } = req.body;
+    const { name, shortName, email, phone, website, code, infrastructure, description, interest } = req.body;
 
-    if (!name || !phone || !code || !email || !interest?.universityId || !interest?.programIds || interest?.programIds.length === 0) {
-      return res.status(400).json({ error: 'All fields (Name, Email, Phone, University, and Program) are strictly mandatory.' });
+    if (!name || !shortName || !phone || !code || !email || !interest?.universityId || !interest?.programIds || interest?.programIds.length === 0) {
+      return res.status(400).json({ error: 'All fields (Name, Short Name, Email, Phone, University, and Program) are strictly mandatory.' });
     }
 
     const placeholderPassword = 'provision_pending';
@@ -148,7 +148,7 @@ router.post('/register-center', async (req, res) => {
     // 2. Create high-fidelity Department record
     const center = await Department.create({
       name,
-      shortName: name.substring(0, 5).toUpperCase(),
+      shortName: shortName.toUpperCase().trim(),
       type: 'partner centers',
       status: 'proposed',
       auditStatus: 'pending', // Key for Ops Audit

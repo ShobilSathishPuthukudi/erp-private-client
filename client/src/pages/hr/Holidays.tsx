@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Clock, MapPin } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -19,6 +19,8 @@ export default function Holidays() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null);
   const [formData, setFormData] = useState({ name: '', date: '', description: '' });
 
   const fetchHolidays = async () => {
@@ -104,7 +106,16 @@ export default function Holidays() {
       />
 
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden min-h-[400px]">
-        <DataTable columns={columns} data={holidays} isLoading={isLoading} searchKey="name" />
+        <DataTable 
+          columns={columns} 
+          data={holidays} 
+          isLoading={isLoading} 
+          searchKey="name" 
+          onRowClick={(h) => {
+            setSelectedHoliday(h);
+            setIsDetailOpen(true);
+          }}
+        />
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Certify Institutional Holiday">
@@ -142,6 +153,77 @@ export default function Holidays() {
                 </button>
             </div>
          </form>
+      </Modal>
+
+      {/* Holiday Detail Modal */}
+      <Modal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} title="Institutional Holiday Details">
+        {selectedHoliday && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-slate-50 -mx-6 -mt-6 p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                  <CalendarDays className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900">{toSentenceCase(selectedHoliday.name)}</h4>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    ID: #{selectedHoliday.id} · Verified Global Break
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-widest">
+                Certified
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/50">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Contextual Description</div>
+                <p className="text-slate-700 text-sm font-medium leading-relaxed">
+                  {selectedHoliday.description || "No specific administrative directive provided for this holiday."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-slate-100 bg-white">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Calendar Timestamp</div>
+                  <div className="flex items-center text-xs text-slate-900 font-black">
+                    <Clock className="w-4 h-4 mr-2 text-slate-400" />
+                    {new Date(selectedHoliday.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-100 bg-white">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Scope of Break</div>
+                  <div className="flex items-center text-xs text-slate-900 font-black">
+                    <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+                    All Departments
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-200 flex justify-end gap-3">
+               <button 
+                onClick={() => {
+                  if (confirm('Are you sure you want to revoke this holiday?')) {
+                    deleteHoliday(selectedHoliday.id);
+                    setIsDetailOpen(false);
+                  }
+                }}
+                className="px-6 py-2.5 text-red-500 hover:bg-red-50 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+              >
+                Revoke Holiday
+              </button>
+              <button 
+                onClick={() => setIsDetailOpen(false)}
+                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+              >
+                Dismiss Detail
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -13,6 +13,8 @@ import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import EmployeeCards from './EmployeeCards';
+import RemapEmployees from './RemapEmployees';
+import RoleMapping from '../org-admin/RoleMapping';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 import { useState, useEffect } from 'react';
@@ -28,7 +30,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Zap,
-  Briefcase
+  Briefcase,
+  Shuffle
 } from 'lucide-react';
 
 function DashboardLanding() {
@@ -70,6 +73,7 @@ function DashboardLanding() {
 
   const quickLinks = [
     { title: 'Personnel Control', path: 'employees', icon: Users, desc: 'Centralized Staff Registry' },
+    { title: 'Employee Remap', path: 'remap', icon: Shuffle, desc: 'Department Reassignment' },
     { title: 'Hiring Pipeline', path: 'vacancies', icon: UserPlus, desc: 'Vacancy-Based Recruitment' },
     { title: 'Leave Radar', path: 'leaves', icon: Calendar, desc: 'Time-Off Appraisal Hub' },
     { title: 'Performance HUD', path: 'performance', icon: TrendingUp, desc: 'Efficiency & KPI Tracking' },
@@ -221,6 +225,8 @@ export default function HRDashboard() {
       <Route path="/" element={<DashboardLanding />} />
       <Route path="vacancies" element={<Vacancies />} />
       <Route path="employees" element={<Employees />} />
+      <Route path="remap" element={<RemapEmployees />} />
+      <Route path="role-mapping" element={<RoleMapping />} />
       <Route path="admins" element={<Admins />} />
       <Route path="performance" element={<Performance />} />
       <Route path="tasks" element={<HRTasks />} />

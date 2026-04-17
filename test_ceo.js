@@ -1,0 +1,38 @@
+import express from 'express';
+import { models } from './server/src/models/index.js';
+import { Op } from 'sequelize';
+import sequelize from './server/src/config/db.js';
+
+// Replicate the logic from ceo.js to see what throws
+async function test() {
+  try {
+    const { Department, Student, User, Invoice, Task, Lead, Leave, AuditLog, Program, OrgConfig } = models;
+    const restricted = true;
+    const deptIds = [86, 87, 88, 89, 90];
+    const names = ['academic operations', 'online department admin', 'skill department admin', 'bvoc department admin', 'open school admin'];
+    const now = new Date();
+
+    const isFinance = false;
+    const whereStudent = restricted ? { [Op.or]: [{ deptId: { [Op.in]: deptIds } }, { subDepartmentId: { [Op.in]: deptIds } }] } : {};
+    const whereUser = restricted ? { [Op.or]: [{ deptId: { [Op.in]: deptIds } }, { subDepartment: { [Op.in]: names } }] } : {};
+
+    // Center metrics
+    const centerWhere = {
+      type: { [Op.in]: ['partner-center', 'partner center', 'partner centers'] },
+      status: 'active',
+      ...(restricted ? {
+        [Op.or]: [
+          { id: { [Op.in]: deptIds } },
+          { parentId: { [Op.in]: deptIds } },
+          ...(deptIds?.length > 0 ? [{ id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${deptIds.join(',')}))`) } }] : [])
+        ]
+      } : {})
+    };
+    await Department.unscoped().count({ where: centerWhere });
+    console.log('Center where passed');
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+test();

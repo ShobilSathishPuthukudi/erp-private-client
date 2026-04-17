@@ -1,5 +1,6 @@
 import { models, sequelize } from './src/models/index.js';
 import bcrypt from 'bcryptjs';
+import { normalizeSubDepartmentName } from './src/config/institutionalStructure.js';
 
 const { User, CenterSubDept, Department, Program } = models;
 
@@ -9,7 +10,7 @@ async function seedSubDeptInfrastructure() {
     console.log('Database connected for sub-dept seeding...');
 
     const password = await bcrypt.hash('admin123', 10);
-    const subDepts = ['OpenSchool', 'Online', 'Skill', 'BVoc'];
+    const subDepts = ['OpenSchool', 'Online', 'Skill', 'BVoc'].map((name) => normalizeSubDepartmentName(name));
 
     // 1. Create Sub-Dept Admins
     for (const sd of subDepts) {

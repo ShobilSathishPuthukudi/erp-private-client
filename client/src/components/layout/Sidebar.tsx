@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useOrgStore } from '@/store/orgStore';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import {
   Home,
   Users,
@@ -48,12 +50,27 @@ const menus: Record<string, MenuLink[]> = {
       icon: Home
     },
     {
+      name: 'Global Monitor',
+      icon: Activity,
+      isGroup: true,
+      items: [
+        { name: 'Live Overview', path: '/dashboard/org-admin/monitor/overview' },
+        { name: 'Academic & Enrollment', path: '/dashboard/org-admin/monitor/academic' },
+        { name: 'Finance & Accounting', path: '/dashboard/org-admin/monitor/finance' },
+        { name: 'Operations & Regional', path: '/dashboard/org-admin/monitor/operations' },
+        { name: 'HR & Marketing', path: '/dashboard/org-admin/monitor/hr' },
+        { name: 'Sales Intelligence', path: '/dashboard/org-admin/monitor/sales' },
+        { name: 'Security Telemetry', path: '/dashboard/org-admin/monitor/security' },
+        { name: 'Global (All)', path: '/dashboard/org-admin/monitor/global-all' },
+        { name: 'CEO Panel Master', path: '/dashboard/org-admin/monitor/ceo' },
+      ]
+    },
+    {
       name: 'Alerts',
       icon: Bell,
       isGroup: true,
       items: [
         { name: 'Escalated Tasks', path: '/dashboard/org-admin/alerts/escalated' },
-        { name: 'Institutional Alerts', path: '/dashboard/org-admin/alerts/institutional' },
       ]
     },
     {
@@ -63,6 +80,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Core Departments', path: '/dashboard/org-admin/departments' },
         { name: 'Sub-Departments', path: '/dashboard/org-admin/sub-departments' },
+        { name: 'Institutional Structure', path: '/dashboard/org-admin/roster' },
       ]
     },
     {
@@ -90,7 +108,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Onboarding Hub', path: '/dashboard/operations/onboarding-hub' },
         { name: 'Onboarding Pulse', path: '/dashboard/operations/onboarding-pulse' },
-        { name: 'Enrollment Status', path: '/dashboard/operations/pending-reviews' },
+        { name: 'Student Status', path: '/dashboard/operations/pending-reviews' },
         { name: 'Center Audit Status', path: '/dashboard/operations/center-audit' },
       ]
     },
@@ -133,7 +151,6 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Overview', path: '/dashboard/ceo/kpis' },
         { name: 'Growth Trends', path: '/dashboard/ceo/trends' },
         { name: 'Critical Inbox', path: '/dashboard/ceo/escalations' },
-        { name: 'Executive Surveys', path: '/dashboard/shared/surveys' },
       ]
     },
     {
@@ -141,8 +158,16 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/ceo/team' },
+        { name: 'Institutional Structure', path: '/dashboard/ceo/team' },
         { name: 'Tasks', path: '/dashboard/ceo/tasks' },
+      ]
+    },
+    {
+      name: 'Surveys',
+      icon: CheckSquare,
+      isGroup: true,
+      items: [
+        { name: 'Institutional Surveys', path: '/dashboard/shared/surveys' },
       ]
     },
     {
@@ -212,7 +237,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/finance/team' },
+        { name: 'Department Team', path: '/dashboard/finance/team' },
         { name: 'Tasks', path: '/dashboard/finance/tasks' },
         { name: 'Team Leave', path: '/dashboard/finance/leaves' },
       ]
@@ -227,6 +252,8 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Workforce Planning', path: '/dashboard/hr/vacancies' },
         { name: 'Registration', path: '/dashboard/hr/employees' },
+        { name: 'Employee Remap', path: '/dashboard/hr/remap' },
+        { name: 'Role Mapping', path: '/dashboard/hr/role-mapping' },
         { name: 'Administrators', path: '/dashboard/hr/admins' },
         { name: 'Performance Audit', path: '/dashboard/hr/performance' },
         { name: 'Attendance', path: '/dashboard/hr/attendance' },
@@ -248,7 +275,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/hr/dept-team' },
+        { name: 'Department Team', path: '/dashboard/hr/dept-team' },
         { name: 'Tasks', path: '/dashboard/hr/dept-tasks' },
         { name: 'Team Leave', path: '/dashboard/hr/dept-leaves' },
       ]
@@ -256,7 +283,25 @@ const menus: Record<string, MenuLink[]> = {
   ],
   'operations': [
     { name: 'Academic Dashboard', path: '/dashboard/operations/overview', icon: Home },
-
+    {
+      name: 'Architecture',
+      icon: Database,
+      isGroup: true,
+      items: [
+        { name: 'Universities', path: '/dashboard/operations/universities' },
+        { name: 'Programs', path: '/dashboard/operations/programs' },
+        { name: 'Syllabus Management', path: '/dashboard/operations/syllabus' },
+      ]
+    },
+    {
+      name: 'Operations Panel',
+      icon: Activity,
+      isGroup: true,
+      items: [
+        { name: 'Center Performance', path: '/dashboard/operations/center-performance' },
+        { name: 'Sub-Dept Overview', path: '/dashboard/operations/sub-dept-overview' },
+      ]
+    },
     {
       name: 'Onboarding Control',
       icon: ShieldCheck,
@@ -276,38 +321,11 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
-      name: 'Operations Panel',
-      icon: Activity,
-      isGroup: true,
-      items: [
-        { name: 'Center Performance', path: '/dashboard/operations/center-performance' },
-        { name: 'Sub-Dept Overview', path: '/dashboard/operations/sub-dept-overview' },
-      ]
-    },
-    {
-      name: 'Communications',
-      icon: Bell,
-      isGroup: true,
-      items: [
-        { name: 'Center Announcements', path: '/dashboard/operations/announcements' },
-      ]
-    },
-    {
-      name: 'Architecture',
-      icon: Database,
-      isGroup: true,
-      items: [
-        { name: 'Universities', path: '/dashboard/operations/universities' },
-        { name: 'Programs', path: '/dashboard/operations/programs' },
-        { name: 'Syllabus Management', path: '/dashboard/operations/syllabus' },
-      ]
-    },
-    {
       name: 'Student Review',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'Pending Reviews', path: '/dashboard/operations/pending-reviews' },
+        { name: 'Student Status', path: '/dashboard/operations/pending-reviews' },
         { name: 'Pipeline View', path: '/dashboard/operations/pipeline' },
         { name: 'Resubmission Logs', path: '/dashboard/operations/resubmissions' },
         { name: 'All Students', path: '/dashboard/operations/students' },
@@ -331,6 +349,14 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
+      name: 'Communications',
+      icon: Bell,
+      isGroup: true,
+      items: [
+        { name: 'Center Announcements', path: '/dashboard/operations/announcements' },
+      ]
+    },
+    {
       name: 'Support Services',
       icon: Bell,
       isGroup: true,
@@ -343,7 +369,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/operations/team' },
+        { name: 'Department Team', path: '/dashboard/operations/team' },
         { name: 'Tasks', path: '/dashboard/operations/tasks' },
         { name: 'Team Leave', path: '/dashboard/operations/leaves' },
       ]
@@ -351,6 +377,16 @@ const menus: Record<string, MenuLink[]> = {
   ],
   'academic': [
     { name: 'Academic Dashboard', path: '/dashboard/academic/overview', icon: Home },
+    {
+      name: 'Architecture',
+      icon: Database,
+      isGroup: true,
+      items: [
+        { name: 'Universities', path: '/dashboard/academic/universities' },
+        { name: 'Programs', path: '/dashboard/academic/programs' },
+        { name: 'Syllabus Management', path: '/dashboard/academic/syllabus' },
+      ]
+    },
     {
       name: 'Operations Panel',
       icon: Activity,
@@ -370,29 +406,11 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
-      name: 'Communications',
-      icon: Bell,
-      isGroup: true,
-      items: [
-        { name: 'Center Announcements', path: '/dashboard/academic/announcements' },
-      ]
-    },
-    {
-      name: 'Architecture',
-      icon: Database,
-      isGroup: true,
-      items: [
-        { name: 'Universities', path: '/dashboard/academic/universities' },
-        { name: 'Programs', path: '/dashboard/academic/programs' },
-        { name: 'Syllabus Management', path: '/dashboard/academic/syllabus' },
-      ]
-    },
-    {
       name: 'Student Review',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'Pending Reviews', path: '/dashboard/academic/pending-reviews' },
+        { name: 'Student Status', path: '/dashboard/academic/pending-reviews' },
         { name: 'Pipeline View', path: '/dashboard/academic/pipeline' },
         { name: 'Resubmission Logs', path: '/dashboard/academic/resubmissions' },
         { name: 'All Students', path: '/dashboard/academic/students' },
@@ -416,6 +434,14 @@ const menus: Record<string, MenuLink[]> = {
       ]
     },
     {
+      name: 'Communications',
+      icon: Bell,
+      isGroup: true,
+      items: [
+        { name: 'Center Announcements', path: '/dashboard/academic/announcements' },
+      ]
+    },
+    {
       name: 'Support Services',
       icon: Bell,
       isGroup: true,
@@ -428,7 +454,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/academic/team' },
+        { name: 'Department Team', path: '/dashboard/academic/team' },
         { name: 'Tasks', path: '/dashboard/academic/tasks' },
         { name: 'Team Leave', path: '/dashboard/academic/leaves' },
       ]
@@ -454,7 +480,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/openschool/sessions' },
         { name: 'Internal Marks', path: '/dashboard/subdept/openschool/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/openschool/exams' },
-        { name: 'Institutional Roster', path: '/dashboard/subdept/openschool/students' },
+        { name: 'Institutional Structure', path: '/dashboard/subdept/openschool/students' },
       ]
     },
     {
@@ -462,7 +488,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/subdept/openschool/team' },
+        { name: 'Unit Team', path: '/dashboard/subdept/openschool/team' },
         { name: 'Tasks', path: '/dashboard/subdept/openschool/tasks' },
         { name: 'Team Leave', path: '/dashboard/subdept/openschool/leaves' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
@@ -489,7 +515,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/online/sessions' },
         { name: 'Internal Marks', path: '/dashboard/subdept/online/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/online/exams' },
-        { name: 'Institutional Roster', path: '/dashboard/subdept/online/students' },
+        { name: 'Institutional Structure', path: '/dashboard/subdept/online/students' },
       ]
     },
     {
@@ -497,7 +523,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/subdept/online/team' },
+        { name: 'Unit Team', path: '/dashboard/subdept/online/team' },
         { name: 'Tasks', path: '/dashboard/subdept/online/tasks' },
         { name: 'Team Leave', path: '/dashboard/subdept/online/leaves' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
@@ -524,7 +550,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/skill/sessions' },
         { name: 'Internal Marks', path: '/dashboard/subdept/skill/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/skill/exams' },
-        { name: 'Institutional Roster', path: '/dashboard/subdept/skill/students' },
+        { name: 'Institutional Structure', path: '/dashboard/subdept/skill/students' },
       ]
     },
     {
@@ -532,7 +558,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/subdept/skill/team' },
+        { name: 'Unit Team', path: '/dashboard/subdept/skill/team' },
         { name: 'Tasks', path: '/dashboard/subdept/skill/tasks' },
         { name: 'Team Leave', path: '/dashboard/subdept/skill/leaves' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
@@ -560,7 +586,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/bvoc/sessions' },
         { name: 'Internal Marks', path: '/dashboard/subdept/bvoc/internal-marks' },
         { name: 'Academic Performance', path: '/dashboard/subdept/bvoc/exams' },
-        { name: 'Institutional Roster', path: '/dashboard/subdept/bvoc/students' },
+        { name: 'Institutional Structure', path: '/dashboard/subdept/bvoc/students' },
       ]
     },
     {
@@ -568,7 +594,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/subdept/bvoc/team' },
+        { name: 'Unit Team', path: '/dashboard/subdept/bvoc/team' },
         { name: 'Tasks', path: '/dashboard/subdept/bvoc/tasks' },
         { name: 'Team Leave', path: '/dashboard/subdept/bvoc/leaves' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
@@ -646,7 +672,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'My Team', path: '/dashboard/sales/team' },
+        { name: 'Department Team', path: '/dashboard/sales/team' },
         { name: 'Tasks', path: '/dashboard/sales/tasks' },
         { name: 'Team Leave', path: '/dashboard/sales/leaves' },
       ]
@@ -671,7 +697,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Assigned Programs', path: '/dashboard/subdept/:unit/programs' },
         { name: 'Enrollment Intakes', path: '/dashboard/subdept/:unit/sessions' },
         { name: 'Academic Performance', path: '/dashboard/subdept/:unit/exams' },
-        { name: 'Institutional Roster', path: '/dashboard/subdept/:unit/students' },
+        { name: 'Institutional Structure', path: '/dashboard/subdept/:unit/students' },
       ]
     }
   ],
@@ -723,10 +749,36 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   };
 
   const role = useMemo(() => getNormalizedRole(user?.role || ''), [user?.role]);
+
+  const { data: summary } = useQuery({
+    queryKey: ['org-monitor', 'summary'],
+    queryFn: async () => (await api.get('/org-monitor/summary')).data,
+    enabled: role === 'Organization Admin',
+  });
   const unit = user?.subDepartment?.toLowerCase() || 'portal';
   
   const links = useMemo(() => {
     let rawLinks = [...(menus[role as keyof typeof menus] || menus['default'])];
+
+    // Inject individual CEO monitors if Role is Org Admin
+    if (role === 'Organization Admin' && summary?.ceoPanels) {
+      rawLinks = rawLinks.map(group => {
+        if (group.name === 'Global Monitor' && group.isGroup) {
+          const dynamicItems = summary.ceoPanels
+            .filter((p: any) => p.status?.toLowerCase() === 'active')
+            .map((p: any) => ({
+              name: `CEO: ${p.assignedCEO?.name || 'Vacant'} (${p.name})`,
+              path: `/dashboard/org-admin/monitor/ceo/${p.id}`
+            }));
+          
+          return {
+            ...group,
+            items: [...group.items, ...dynamicItems]
+          };
+        }
+        return group;
+      });
+    }
 
     // Academic Hierarchy: Dynamically inject Team Management for any staff with subordinates
     if ((user as any)?.isManager && role !== 'Organization Admin' && !rawLinks.some(l => l.name === 'Team Management')) {
@@ -736,7 +788,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
         icon: Users,
         isGroup: true,
         items: [
-          { name: 'My Team', path: `/dashboard/${dashboardPath}/team` },
+          { name: role === 'openschool' || role === 'online' || role === 'skill' || role === 'bvoc' ? 'Unit Team' : 'Department Team', path: `/dashboard/${dashboardPath}/team` },
           { name: 'Tasks', path: `/dashboard/${dashboardPath}/tasks` },
           { name: 'Team Leave', path: `/dashboard/${dashboardPath}/leaves` },
         ]

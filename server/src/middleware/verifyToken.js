@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { context } from '../lib/context.js';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 dotenv.config();
 
@@ -35,8 +36,8 @@ export const roleGuard = (allowedRoles) => {
     if (!req.user || !req.user.role) {
       return res.status(403).json({ error: 'Forbidden: Role missing' });
     }
-    const userRole = req.user.role.toLowerCase();
-    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+    const userRole = normalizeInstitutionRoleName(req.user.role).toLowerCase();
+    const normalizedAllowed = allowedRoles.map(r => normalizeInstitutionRoleName(r).toLowerCase());
     
     // Alias normalization: Standardized on 'partner centers'
     let effectorRole = userRole;
@@ -55,9 +56,9 @@ export const roleGuard = (allowedRoles) => {
 export const isAcademicOrAdmin = (req, res, next) => {
   const UNIT_ROLES = [
     'Open School Admin', 
-    'Online Department Admin', 
-    'Skill Department Admin', 
-    'BVoc Department Admin', 
+    'Online Admin', 
+    'Skill Admin', 
+    'BVoc Admin', 
     'Academic Admin', 
     'Organization Admin', 
     'Finance Admin', 
@@ -66,11 +67,11 @@ export const isAcademicOrAdmin = (req, res, next) => {
     'Academic Operations Admin',
     'Academic Operations Administrator',
     'Academic Operations',
-    'Sales & CRM Admin',
+    'Sales Admin',
     'Partner Center',
     'partner centers'
   ];
-  const userRole = req.user.role || '';
+  const userRole = normalizeInstitutionRoleName(req.user.role || '');
   const deptName = req.user.departmentName || '';
 
   const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
@@ -86,20 +87,20 @@ export const isAcademicOrAdmin = (req, res, next) => {
 export const isOpsOrAdmin = (req, res, next) => {
   const UNIT_ROLES = [
     'Open School Admin', 
-    'Online Department Admin', 
-    'Skill Department Admin', 
-    'BVoc Department Admin', 
+    'Online Admin', 
+    'Skill Admin', 
+    'BVoc Admin', 
     'Operations Admin', 
     'Operations Administrator',
     'Academic Operations Admin',
     'Academic Operations Administrator',
     'Academic Operations',
     'Organization Admin', 
-    'Sales & CRM Admin',
+    'Sales Admin',
     'Partner Center',
     'partner centers'
   ];
-  const userRole = req.user.role || '';
+  const userRole = normalizeInstitutionRoleName(req.user.role || '');
   const deptName = req.user.departmentName || '';
 
   const normalizedRoles = UNIT_ROLES.map(r => r.toLowerCase());
@@ -112,7 +113,7 @@ export const isOpsOrAdmin = (req, res, next) => {
   return res.status(403).json({ error: `Forbidden: Operations access denied for: ${userRole}` });
 };
 
-export const isSubDeptAdmin = roleGuard(['BVoc Department Admin', 'Skill Department Admin', 'Open School Admin', 'Online Department Admin']);
+export const isSubDeptAdmin = roleGuard(['BVoc Admin', 'Skill Admin', 'Open School Admin', 'Online Admin']);
 export const isSystemAdmin = roleGuard(['Organization Admin']);
 export const isArchitectureAdmin = roleGuard(['Operations Admin', 'Operations Administrator', 'Academic Operations Admin', 'Academic Operations Administrator', 'Academic Operations', 'Organization Admin']);
 export const isCEO = roleGuard(['ceo']);

@@ -4,10 +4,12 @@ import { useOrgStore } from '@/store/orgStore';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import CommandPalette from '../shared/CommandPalette';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const fetchOrgConfig = useOrgStore(state => state.fetchConfig);
+  useApplyTheme();
 
   useEffect(() => {
     fetchOrgConfig();

@@ -213,9 +213,19 @@ export default function Universities() {
       header: 'Controls',
       cell: ({ row }) => {
         const item = row.original;
+        const canEdit = item.status?.toLowerCase() === 'proposed';
         return (
           <div className="flex items-center space-x-2">
-            <button onClick={() => openEditModal(item)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (canEdit) openEditModal(item);
+              }}
+              disabled={!canEdit}
+              title={canEdit ? 'Edit university' : 'Only proposed universities can be edited'}
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+            >
               <Edit2 className="w-4 h-4" />
             </button>
             <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">

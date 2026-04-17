@@ -36,18 +36,33 @@ export default function Leaves() {
   const [confirmModal, setConfirmModal] = useState<{id: number, action: 'approve' | 'reject'} | null>(null);
   const user = useAuthStore(state => state.user);
   const userRole = getNormalizedRole(user?.role || '');
-  const isCEO = userRole === 'ceo';
+  const scopedDeptId = user?.deptId || (user as any)?.departmentId;
+  const isDeptScopedRole = ['hr', 'finance', 'sales', 'operations'].includes(userRole);
+  const isSubDeptRole = ['openschool', 'online', 'skill', 'bvoc'].includes(userRole);
+  const isExecutive = userRole === 'ceo' || userRole === 'organization admin';
+  const canManage = isDeptScopedRole || isSubDeptRole;
 
   const fetchLeaves = async () => {
-    const isGlobal = isCEO || ['organization admin', 'operations', 'partner-center'].includes(userRole);
-    if (!user?.deptId && !isGlobal) {
+    if (isExecutive) {
+      setLeaves([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!scopedDeptId) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      const res = await api.get('/dept-admin/leaves');
+      const res = await api.get('/dept-admin/leaves', {
+        params: {
+          deptId: scopedDeptId,
+          subDepartment: user?.subDepartment,
+          strictSubDepartment: isSubDeptRole
+        }
+      });
       setLeaves(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('[LEAVES-FETCH-ERROR]:', error);
@@ -60,7 +75,7 @@ export default function Leaves() {
 
   useEffect(() => {
     fetchLeaves();
-  }, []);
+  }, [scopedDeptId, user?.subDepartment, userRole]);
 
   const handleAction = async (id: number, action: 'approve' | 'reject') => {
     try {
@@ -150,20 +165,40 @@ export default function Leaves() {
     }
   ];
 
-  if (isCEO) {
-    // Hide 'Dept Action' column for CEO
+  if (!canManage) {
     columns.pop();
   }
+
+  if (isExecutive) {
+    return (
+      <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem] p-10">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="w-5 h-5 text-blue-600" />
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Team Leave View Not Available</h1>
+          </div>
+          <p className="text-slate-500 text-sm font-medium">
+            Use the HR leave approvals view for institution-wide leave oversight.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const title = isSubDeptRole ? 'Unit Leave Requests' : 'Department Leave Requests';
+  const description = isSubDeptRole
+    ? 'Step-1 leave approvals for employees in your sub-department'
+    : 'Step-1 leave approvals for employees in your department';
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {isCEO ? 'Institutional Leave Oversight' : 'Team Leave Requests'}
+            {title}
           </h1>
           <p className="text-slate-500">
-            {isCEO ? 'Monitor institutional personnel absence requests and approval status' : 'Provide Step-1 structural approval for your team members\' absence requests'}
+            {description}
           </p>
         </div>
       </div>

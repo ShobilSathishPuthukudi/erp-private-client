@@ -44,10 +44,12 @@ import distributionRoutes from './routes/distribution.js';
 import emiRoutes from './routes/emi.js';
 import metricRoutes from './routes/dashboardMetrics.js';
 import orgAdminRoutes from './routes/orgAdmin.js';
+import orgMonitorRoutes from './routes/orgMonitor.js';
 import operationsRoutes from './routes/operations.js';
 import publicRoutes from './routes/public.js';
 import drillDownRoutes from './routes/dashboardDrillDown.js';
 import { initCronJobs } from './jobs/cronJobs.js';
+import { syncInstitutionalStructure } from './services/institutionalStructure.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -110,6 +112,7 @@ app.use('/api/distribution', distributionRoutes);
 app.use('/api/emi', emiRoutes);
 app.use('/api/dashboard', metricRoutes);
 app.use('/api/dashboard-drilldown', drillDownRoutes);
+app.use('/api/org-monitor', orgMonitorRoutes);
 app.use('/api/org-admin', orgAdminRoutes);
 app.use('/api/operations', operationsRoutes);
 app.use('/api/public', publicRoutes);
@@ -241,59 +244,11 @@ const startServer = (port) => {
       await models.Role.sync({ alter: true });
       await models.Permission.sync({ alter: true });
 
-      // [GAP-5.1] Institutional Role & Eligibility Seeding
-      const baselineRoles = [
-        { name: 'Organization Admin', description: 'Primary institutional custodian with absolute authority over system configuration, security policies, and administrative guardrails.', isAudited: true },
-        { name: 'CEO', description: 'High-level executive oversight with comprehensive visibility into institutional growth, performance metrics, and departmental telemetry.', isAudited: true },
-        { name: 'HR Admin', description: 'Authorized for personnel lifecycle management, including recruitment, payroll, leave approvals, and workforce compliance.', isAudited: true },
-        { name: 'Finance Admin', description: 'Sole authority over institutional financial records, including fee reconciliations, expense tracking, and fiscal audits.', isAudited: true },
-        { name: 'Sales & CRM Admin', description: 'Orchestrates partner acquisition and public-facing enrollment pipelines to maximize institutional reach and revenue growth.', isAudited: true },
-        { name: 'Academic Operations Admin', description: 'Central coordinator for institutional logistics, academic workflows, and unified operations efficiency.', isAudited: true },
-        { name: 'Partner Center', description: 'Authorized affiliate or third-party partner entity with access to delegated institutional processes.', isAudited: true },
-        { name: 'Employee', description: 'Authenticated institutional staff member with access to personal task queues, attendance, and departmental resources.', isAudited: true },
-        { name: 'student', description: 'Authorized learner with access to academic progress, fee status, learning materials, and institutional announcements.', isAudited: true }
-      ];
-      
-      const eligibleRoles = [
-        'Organization Admin', 
-        'CEO', 
-        'Finance Admin', 
-        'HR Admin', 
-        'Academic Operations Admin', 
-        'Sales & CRM Admin',
-        'BVoc Department Admin',
-        'Skill Department Admin',
-        'Open School Admin',
-        'Online Department Admin'
-      ];
-      const { Op } = (await import('sequelize')).default;
-
-      // Ensure all baseline roles exist and match institutional standards
-      for (const roleDef of baselineRoles) {
-        await models.Role.findOrCreate({
-          where: { name: roleDef.name },
-          defaults: { 
-            name: roleDef.name, 
-            description: roleDef.description,
-            isCustom: false,
-            status: 'active',
-            isAudited: roleDef.isAudited,
-            isAdminEligible: eligibleRoles.includes(roleDef.name)
-          }
-        });
-        
-        // Ensure description/audit updates if role pre-existed with different metadata
-        await models.Role.update({
-          description: roleDef.description,
-          isAudited: roleDef.isAudited,
-          isAdminEligible: eligibleRoles.includes(roleDef.name)
-        }, { where: { name: roleDef.name, isCustom: false } });
-      }
-
       // 2. Sync models with a soft fail (Sync already verified manually via DESC)
       await sequelize.sync({ alter: true }).catch(err => {
          console.error('[DATABASE] Minor schema sync warning (Non-blocking):', err.message);
       });
+      await syncInstitutionalStructure(models);
       console.log('Institutional Database Engine authenticated successfully.');
 
       // 3. Seed standard institutional cron jobs (GAP-3)

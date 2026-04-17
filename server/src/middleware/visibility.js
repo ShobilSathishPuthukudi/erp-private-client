@@ -16,12 +16,24 @@ export const applyExecutiveScope = async (req, res, next) => {
     const adminRoles = ['organization admin', 'academic operations admin', 'operations admin'];
 
     if (adminRoles.includes(normalizedRole)) {
-      req.visibility = { restricted: false, filter: {} };
+      req.visibility = { 
+        restricted: false, 
+        filter: {}, 
+        userFilter: {}, 
+        vacancyFilter: {}, 
+        studentFilter: {} 
+      };
       return next();
     }
 
     if (normalizedRole !== 'ceo') {
-      req.visibility = { restricted: false, filter: {} };
+      req.visibility = { 
+        restricted: false, 
+        filter: {}, 
+        userFilter: {}, 
+        vacancyFilter: {}, 
+        studentFilter: {} 
+      };
       return next();
     }
 
@@ -31,11 +43,15 @@ export const applyExecutiveScope = async (req, res, next) => {
     
     if (!panel || !panel.visibilityScope || !Array.isArray(panel.visibilityScope) || panel.visibilityScope.length === 0) {
       // If no scope is defined, CEO sees NOTHING (Security by default)
+      const impossible = { uid: 'impossible-registry-key' };
       req.visibility = { 
         restricted: true, 
         deptIds: [], 
         names: [],
-        filter: { uid: 'impossible-registry-key' } // Impossible query
+        filter: impossible,
+        userFilter: impossible,
+        vacancyFilter: impossible,
+        studentFilter: impossible
       };
       return next();
     }
@@ -110,13 +126,30 @@ export const applyExecutiveScope = async (req, res, next) => {
       restricted: !isGlobal,
       deptIds,
       names: [...new Set([...names, ...scopeStrings])],
-      filter: isGlobal ? {} : {
+      // Specific filter for User-related models (User, Leave, Task employees/assignees)
+      userFilter: isGlobal ? {} : {
         [Op.or]: [
-          { deptId: { [Op.in]: deptIds } },           // For User, Student, Task, etc.
-          { departmentId: { [Op.in]: deptIds } },     // For Vacancy
-          { subDepartmentId: { [Op.in]: deptIds } }, // For Student sub-dept links
-          { subDepartment: { [Op.in]: names } }      // For User textual links
+          { deptId: { [Op.in]: deptIds } },
+          { subDepartment: { [Op.in]: names } }
         ]
+      },
+      // Specific filter for Vacancy model
+      vacancyFilter: isGlobal ? {} : {
+        [Op.or]: [
+          { departmentId: { [Op.in]: deptIds } },
+          { subDepartment: { [Op.in]: names } }
+        ]
+      },
+      // Specific filter for Student model
+      studentFilter: isGlobal ? {} : {
+        [Op.or]: [
+          { deptId: { [Op.in]: deptIds } },
+          { subDepartmentId: { [Op.in]: deptIds } }
+        ]
+      },
+      // Legacy generic filter (restricted to safest minimal fields for backward compatibility)
+      filter: isGlobal ? {} : {
+        deptId: { [Op.in]: deptIds }
       }
     };
 

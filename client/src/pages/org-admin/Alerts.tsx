@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ShieldAlert, Layout, ShieldCheck, ArrowRight, Activity, Clock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ShieldAlert, ArrowRight, Activity, Clock, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
-  const navigate = useNavigate();
-  const activeTab = type || 'Escalated';
+export default function Alerts() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,37 +15,20 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
       setLoading(true);
       const response = await axios.get('/api/org-admin/alerts');
       
-      // Map icons and colors based on type
-      const mappedAlerts = response.data.map((alert: any) => {
-        let icon = ShieldAlert;
-        let color = 'text-slate-600';
-        let bg = 'bg-slate-50';
-
-        switch (alert.type) {
-          case 'Escalated Task':
-            icon = ShieldAlert;
-            color = 'text-rose-600';
-            bg = 'bg-rose-50';
-            break;
-          case 'CEO Panel Issue':
-            icon = Layout;
-            color = 'text-blue-600';
-            bg = 'bg-blue-50';
-            break;
-          case 'Audit Exception':
-            icon = ShieldCheck;
-            color = 'text-emerald-600';
-            bg = 'bg-emerald-50';
-            break;
-        }
-
-        return { ...alert, icon, color, bg };
-      });
+      // Filter for Escalated Tasks only and map UI properties
+      const mappedAlerts = response.data
+        .filter((a: any) => a.type === 'Escalated Task')
+        .map((alert: any) => ({
+          ...alert,
+          icon: ShieldAlert,
+          color: 'text-rose-600',
+          bg: 'bg-rose-50'
+        }));
 
       setAlerts(mappedAlerts);
     } catch (error) {
       console.error('Fetch Alerts Error:', error);
-      toast.error('Failed to sync system alerts');
+      toast.error('Failed to sync escalated tasks');
     } finally {
       setLoading(false);
     }
@@ -58,57 +38,39 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  const handleDismiss = (id: number) => {
-    setAlerts(prev => prev.filter(a => a.id !== id));
-  };
-
   const handleAction = (alert: any) => {
-    if (alert.actionLabel === 'View Task') {
-      setSelectedAlert(alert);
-      setIsModalOpen(true);
-    } else {
-      navigate(alert.actionLink);
-    }
+    setSelectedAlert(alert);
+    setIsModalOpen(true);
   };
-
-  const handleDismissAll = () => {
-    setAlerts(prev => prev.filter(a => (activeTab === 'Escalated' ? a.type !== 'Escalated Task' : a.type === 'Escalated Task')));
-  };
-
-  const displayedAlerts = activeTab === 'Escalated' 
-    ? alerts.filter(a => a.type === 'Escalated Task')
-    : alerts.filter(a => a.type !== 'Escalated Task');
-
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Alert Hub</h1>
-          <p className="text-slate-500 mt-1 font-medium">Critical system events and high-priority escalations requiring immediate action.</p>
-        </div>
-        <div className="flex gap-4 items-center">
+          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">
+            Escalated Task Hub
+          </h1>
+          <p className="text-slate-500 mt-1 font-medium">Critical personnel tasks and institutional deadlines requiring immediate executive oversight.</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 animate-pulse">
            <Loader2 className="w-12 h-12 text-slate-300 animate-spin mb-4" />
-           <p className="text-slate-400 font-bold tracking-widest text-xs uppercase">Synchronizing System Telemetry...</p>
+           <p className="text-slate-400 font-bold tracking-widest text-xs uppercase">Synchronizing Task Telemetry...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-        {displayedAlerts.map((alert) => (
+        {alerts.map((alert) => (
           <div key={alert.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/40 animate-in slide-in-from-right-4 duration-300 group">
             <div className="flex items-start gap-5">
               <div className={`p-3.5 rounded-2xl ${alert.bg} shadow-inner transition-transform group-hover:scale-110 duration-300`}>
-                {/* @ts-ignore */}
                 <alert.icon className={`w-6 h-6 ${alert.color}`} />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${alert.bg} ${alert.color} border-current/10 shadow-sm shadow-current/5`}>
-                    {alert.type}
+                    Personnel Escalation
                   </span>
                   {alert.overdue && (
                     <span className="text-rose-600 text-[10px] font-black uppercase tracking-tight flex items-center bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
@@ -120,7 +82,7 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
                 <p className="text-xs text-slate-400 mt-1 font-medium flex items-center gap-2">
                   {alert.department && (
                     <span className="flex items-center gap-1.5">
-                      <Layout className="w-3 h-3" />
+                      <ShieldCheck className="w-3 h-3" />
                       {alert.department}
                     </span>
                   )}
@@ -128,12 +90,6 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
                     <span className="flex items-center gap-1.5 border-l border-slate-200 pl-2">
                        <ArrowRight className="w-3 h-3 text-slate-300" />
                        {alert.chain}
-                    </span>
-                  )}
-                  {alert.createdDate && (
-                    <span className="flex items-center gap-1.5 border-l border-slate-200 pl-2">
-                      <Clock className="w-3 h-3 text-slate-300" />
-                      {alert.createdDate}
                     </span>
                   )}
                 </p>
@@ -151,13 +107,13 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
           </div>
         ))}
 
-        {displayedAlerts.length === 0 && (
+        {alerts.length === 0 && (
           <div className="bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100 p-20 text-center animate-in fade-in zoom-in-95 duration-500">
             <div className="bg-white w-20 h-20 rounded-full shadow-2xl shadow-slate-200 flex items-center justify-center mx-auto mb-8">
-              <ShieldCheck className={`w-10 h-10 ${activeTab === 'Escalated' ? 'text-green-500' : 'text-blue-500'}`} />
+              <ShieldCheck className="w-10 h-10 text-green-500" />
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Queue fully processed!</h3>
-            <p className="text-slate-400 mt-2 font-medium">All {activeTab === 'Escalated' ? 'escalated tasks' : 'institutional warnings'} have been synchronized.</p>
+            <p className="text-slate-400 mt-2 font-medium">All escalated tasks have been synchronized and accounted for.</p>
           </div>
       )}
       </div>
@@ -176,7 +132,7 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
             </div>
             <div>
               <p className="text-xs font-bold text-blue-400 tracking-wider">Process tracking</p>
-              <p className="text-sm font-bold text-blue-900">{selectedAlert?.type} Isolation</p>
+              <p className="text-sm font-bold text-blue-900">Personnel Accountability</p>
             </div>
           </div>
 
@@ -187,118 +143,62 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
             </p>
           </div>
 
-          {selectedAlert?.type === 'Escalated Task' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Institutional Timeline</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Assignment Date</span>
-                    <span className="font-bold text-slate-700">{selectedAlert.assignedDate ? new Date(selectedAlert.assignedDate).toLocaleDateString() : 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
-                    <span className="text-slate-500">System Deadline</span>
-                    <span className="font-bold text-rose-600">{selectedAlert.dueDate ? new Date(selectedAlert.dueDate).toLocaleDateString() : 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
-                    <span className="text-slate-500">CEO Escalation</span>
-                    <span className="font-bold text-purple-600">
-                      {selectedAlert.dueDate ? new Date(new Date(selectedAlert.dueDate).getTime() + 86400000).toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Institutional Timeline</p>
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">Assignment Date</span>
+                  <span className="font-bold text-slate-700">{selectedAlert?.assignedDate ? new Date(selectedAlert.assignedDate).toLocaleDateString() : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                  <span className="text-slate-500">System Deadline</span>
+                  <span className="font-bold text-rose-600">{selectedAlert?.dueDate ? new Date(selectedAlert.dueDate).toLocaleDateString() : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                  <span className="text-slate-500">CEO Escalation</span>
+                  <span className="font-bold text-purple-600">
+                    {selectedAlert?.dueDate ? new Date(new Date(selectedAlert.dueDate).getTime() + 86400000).toLocaleDateString() : 'N/A'}
+                  </span>
                 </div>
               </div>
-
-              <div className="p-4 bg-white border border-slate-100 rounded-2xl space-y-3">
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Personnel Chain</p>
-                 <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Issued By</p>
-                       <p className="text-xs font-bold text-slate-700">{selectedAlert.assignerName}</p>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-slate-300" />
-                    <div className="flex-1 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                       <p className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Assigned To</p>
-                       <p className="text-xs font-bold text-indigo-700">{selectedAlert.assigneeName}</p>
-                    </div>
-                 </div>
-              </div>
             </div>
-          )}
 
-          <div className="pt-4 border-t border-slate-100 flex justify-center">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read-Only Monitoring Mode</p>
+            <div className="p-4 bg-white border border-slate-100 rounded-2xl space-y-3">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Personnel Chain</p>
+               <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Issued By</p>
+                     <p className="text-xs font-bold text-slate-700">{selectedAlert?.assignerName}</p>
+                  </div>
+                  <ArrowRight className="w-3 h-3 text-slate-300" />
+                  <div className="flex-1 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                     <p className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Assigned To</p>
+                     <p className="text-xs font-bold text-indigo-700">{selectedAlert?.assigneeName}</p>
+                  </div>
+               </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-slate-100 flex justify-end">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+            >
+              Close Insight
+            </button>
           </div>
         </div>
       </Modal>
-      
-      {/* Alert Glossary Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-8 space-y-6 border-b-4 border-b-blue-600">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-6">
-          <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
-              Institutional Alert Registry
-            </h2>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">What alerts are currently being monitored?</p>
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full uppercase">
-              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
-              Live Monitoring Active
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-6">
-          {[
-            { 
-              type: 'Escalated Task', 
-              icon: Clock, 
-              color: 'text-rose-600', 
-              bg: 'bg-rose-50', 
-              border: 'border-rose-100',
-              desc: 'High-priority task has exceeded its institutional deadline without resolution.' 
-            },
-            { 
-              type: 'Scope Failure', 
-              icon: Layout, 
-              color: 'text-blue-600', 
-              bg: 'bg-blue-50', 
-              border: 'border-blue-100',
-              desc: 'An executive CEO panel is missing visibility scopes, preventing data aggregation.' 
-            },
-            { 
-              type: 'Audit Exception', 
-              icon: Activity, 
-              color: 'text-emerald-600', 
-              bg: 'bg-emerald-50', 
-              border: 'border-emerald-100',
-              desc: 'Anomalous record activity detected (e.g. bulk deletions in target modules).' 
-            },
-          ].filter(item => (activeTab === 'Escalated' ? item.type === 'Escalated Task' : item.type !== 'Escalated Task'))
-           .map((item, i) => (
-            <div key={i} className={`flex-1 min-w-[300px] p-5 rounded-2xl border ${item.border} ${item.bg}/30 hover:shadow-lg transition-all group`}>
-               <div className={`w-10 h-10 rounded-xl ${item.bg} ${item.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
-                 <item.icon className="w-5 h-5" />
-               </div>
-               <h4 className="text-sm font-bold text-slate-800 mb-2 uppercase tracking-tight">{item.type}</h4>
-               <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                 {item.desc}
-               </p>
-            </div>
-          ))}
-        </div>
-      </div>
 
       <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-xl text-center md:text-left">
-            <h4 className="text-xl font-bold mb-3 font-display">System Governance Alert Hub</h4>
+            <h4 className="text-xl font-bold mb-3 font-display">Escalated Task Governance</h4>
             <p className="text-slate-400 leading-relaxed font-medium">
-              These alerts are automatically generated by systemic event processors. 
-              Dismissing an alert will hide it from the dashboard, but the underlying 
-              configuration issue must be resolved in the respective panel.
+              This hub tracks critical personnel lapses and institutional deadline breaches. 
+              Status monitoring is performed in real-time. Unaccounted tasks are automatically 
+              flagged for Organization Admin and CEO review.
             </p>
           </div>
           <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/20">
@@ -307,7 +207,7 @@ export default function Alerts({ type }: { type?: 'Escalated' | 'System' }) {
                 <ShieldCheck className="text-white w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-slate-400 font-bold tracking-wider">Active status</p>
+                <p className="text-xs text-slate-400 font-bold tracking-wider">Active Monitoring</p>
                 <p className="text-[11px] font-bold">Standard Logic</p>
               </div>
             </div>

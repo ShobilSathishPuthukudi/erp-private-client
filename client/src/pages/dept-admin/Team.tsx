@@ -67,7 +67,7 @@ export default function Team() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Team Roster</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Department Team Roster</h1>
           <p className="text-slate-500">View all personnel assigned to your department</p>
         </div>
       </div>

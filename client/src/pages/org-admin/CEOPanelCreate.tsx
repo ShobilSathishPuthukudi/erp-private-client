@@ -204,7 +204,7 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-200 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-200 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -215,7 +215,8 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
                 </div>
             </div>
 
-            <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 flex items-start gap-4 mx-1">
+            <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 flex items-start gap-4 mx-1 cursor-pointer">
+
               <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <p className="text-[11px] font-medium text-blue-800 leading-relaxed text-left">
                 <span className="block font-black uppercase tracking-wider text-[9px] mb-1">Administrative Alert</span>
@@ -235,14 +236,14 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
                   <button 
                     type="button" 
                     onClick={() => setFormData({ ...formData, visibilityScope: ['Global(All)'] })}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 transition-colors"
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 transition-colors cursor-pointer"
                   >
                     Select All
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setFormData({ ...formData, visibilityScope: [] })}
-                    className="text-[10px] font-bold text-slate-400 hover:text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 transition-colors"
+                    className="text-[10px] font-bold text-slate-400 hover:text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 transition-colors cursor-pointer"
                   >
                     Clear Selection
                   </button>
@@ -259,11 +260,12 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
                   key={dept}
                   type="button"
                   onClick={() => toggleScope(dept)}
-                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
                     formData.visibilityScope.includes(dept)
                     ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-md translate-y-[-1px]'
                     : 'border-slate-100 hover:border-slate-300 text-slate-600 bg-white'
                   }`}
+
                 >
                   <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
                     formData.visibilityScope.includes(dept) ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'
@@ -283,14 +285,16 @@ export default function CEOPanelCreate({ onClose, onSuccess, initialData }: CEOP
           <button 
             type="button"
             onClick={onClose}
-            className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all border border-slate-200 shadow-sm"
+            className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all border border-slate-200 shadow-sm cursor-pointer"
+
           >
             Cancel
           </button>
           <button 
             type="submit"
             disabled={loading}
-            className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

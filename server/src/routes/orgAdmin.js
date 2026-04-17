@@ -3,11 +3,14 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { models, sequelize } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { handleAuthoritySuccession } from '../utils/governance/singletonEnforcement.js';
+import { SINGLETON_ROLES } from '../config/rbac.js';
 import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { CORE_DEPARTMENTS, SEEDED_ADMIN_ROLE_NAMES, SUB_DEPARTMENTS, normalizeInstitutionRoleName, normalizeSubDepartmentName } from '../config/institutionalStructure.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,71 +29,19 @@ const {
   Permission,
   Role,
   Notification,
-  Program
+  Program,
+  PermissionVersion,
+  RolePermissionShadow
 } = models;
 
-const COLLECTION_ROLES = [
-  'CEO',
-  'ceo', 
-  'Employee',
-  'student',
-  'Partner Centers',
-  'Sales & CRM Admin',
-  'Sales',
-  'HR Admin',
-  'Operations Admin',
-  'Academic Operations Admin',
-  'Finance Admin',
-  'Organization Admin'
-];
-
-/**
- * Institutional Governance: Authority Succession
- * Ensures that for singleton roles, only one active identity exists.
- * Any predecessor is automatically moved to 'suspended' state.
- */
-const handleAuthoritySuccession = async (role, newUserId, transaction, adminUid = 'SYSTEM') => {
-  // Normalize role comparison
-  const roleLower = role?.toLowerCase()?.trim();
-  const collectionLowers = COLLECTION_ROLES.map(r => r.toLowerCase());
-  
-  if (collectionLowers.includes(roleLower)) return;
-
-  const predecessors = await User.findAll({
-    where: { 
-      role, 
-      status: 'active', 
-      uid: { [Op.ne]: newUserId } 
-    },
-    transaction
-  });
-
-  if (predecessors.length > 0) {
-    console.log(`[EXEC-GOVERNANCE] Authority Succession for '${role}': Suspending ${predecessors.length} identity/identities.`);
-    
-    await User.update(
-      { status: 'suspended' },
-      { where: { role, status: 'active', uid: { [Op.ne]: newUserId } }, transaction }
-    );
-
-    for (const p of predecessors) {
-      await AuditLog.create({
-        userId: adminUid,
-        action: 'AUTHORITY_SUCCESSION',
-        entity: `User: ${p.uid}`,
-        module: 'GOVERNANCE',
-        remarks: `Account suspended automatically as role '${role}' was assumed by UID: ${newUserId}`,
-        timestamp: new Date()
-      }, { transaction });
-    }
-  }
-};
+import { clearMatrixCache } from '../middleware/rbac.js';
 
 // Helper to check for role authority conflicts
 const checkAuthorityConflict = async (roleName, excludeUid = null) => {
   const roleLower = roleName?.toLowerCase()?.trim();
-  const collectionLowers = COLLECTION_ROLES.map(r => r.toLowerCase());
-  if (collectionLowers.includes(roleLower)) return false;
+  const singletonLowers = SINGLETON_ROLES.map(r => r.toLowerCase());
+  
+  if (!singletonLowers.includes(roleLower)) return false;
   
   const where = { role: roleName, status: 'active' };
   if (excludeUid) where.uid = { [Op.ne]: excludeUid };
@@ -100,7 +51,7 @@ const checkAuthorityConflict = async (roleName, excludeUid = null) => {
 
 // Middleware to ensure Org Admin role
 const isOrgAdmin = (req, res, next) => {
-  const role = req.user.role?.toLowerCase()?.trim();
+  const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
   const allowedRoles = [
     'organization admin', 
     'operations', 
@@ -112,6 +63,14 @@ const isOrgAdmin = (req, res, next) => {
   if (!allowedRoles.includes(role)) {
     console.warn(`[AUTH-FAILURE] Role: '${role}' denied access to Org Admin dashboard.`);
     return res.status(403).json({ error: 'Access denied: Org Admin or Operations privileges required' });
+  }
+  next();
+};
+
+const isRoleMappingManager = (req, res, next) => {
+  const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
+  if (role !== 'hr admin') {
+    return res.status(403).json({ error: 'Access denied: only HR Admin can assign seeded admin roles' });
   }
   next();
 };
@@ -168,23 +127,29 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
         attributes: ['name'],
         order: [['name', 'ASC']]
       }),
-      User.findAll({ 
-        where: { 
+      User.findAll({
+        where: {
+          status: 'active',
           [Op.and]: [
             { role: { [Op.ne]: 'student' } },
             { role: { [Op.notLike]: '%admin%' } },
-            { role: { [Op.notLike]: '%ceo%' } }
+            { role: { [Op.notLike]: '%ceo%' } },
+            { role: { [Op.notLike]: '%Partner Center%' } },
+            { role: { [Op.ne]: 'partner-center' } }
           ]
         },
         attributes: ['name', 'role'],
         order: [['name', 'ASC']]
       }),
-      Department.findAll({ 
-        where: { type: 'partner centers', status: 'active' },
+      Department.findAll({
+        where: {
+          type: { [Op.in]: ['partner centers', 'partner-center', 'partner center', 'study-center'] },
+          auditStatus: 'approved'
+        },
         attributes: ['name'],
         order: [['name', 'ASC']]
       }),
-      Student.count(),
+      Student.count({ where: { status: 'ENROLLED' } }),
       Task.count({ 
         where: { 
           status: { [Op.ne]: 'completed' },
@@ -195,7 +160,7 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
 
     const pendingCenters = await Department.findAll({
       where: {
-        type: { [Op.in]: ['partner centers', 'partner-center'] },
+        type: { [Op.in]: ['partner centers', 'partner-center', 'partner center', 'study-center'] },
         auditStatus: { [Op.in]: ['pending', 'PENDING_FINANCE'] }
       },
       attributes: ['name', 'auditStatus']
@@ -203,15 +168,12 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
 
     const pendingStudents = await Student.findAll({
       where: {
-        status: { [Op.in]: ['PENDING_REVIEW', 'FINANCE_PENDING'] }
+        status: { [Op.notIn]: ['ENROLLED', 'REJECTED', 'DRAFT'] }
       },
       attributes: ['name', 'status']
     });
 
-    // 1. Institutional Intake (Last 6 Months)
-    const adminRoles = await Role.findAll({ where: { isAdminEligible: true }, attributes: ['name'] });
-    const adminRoleNames = adminRoles.map(r => r.name);
-
+    // 1. Student Intake (Last 6 Months)
     const growthData = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date();
@@ -219,57 +181,45 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0);
       const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
       const monthName = date.toLocaleString('default', { month: 'short' });
-      
-      const [studentCount, allStaff] = await Promise.all([
-        Student.count({ where: { createdAt: { [Op.between]: [startOfMonth, endOfMonth] } } }),
-        User.findAll({ 
-          where: { 
-            role: { [Op.ne]: 'student' }, 
-            createdAt: { [Op.between]: [startOfMonth, endOfMonth] } 
-          },
-          attributes: ['role']
-        })
-      ]);
 
-      const administrators = allStaff.filter(u => adminRoleNames.includes(u.role)).length;
-      const centersCount = allStaff.filter(u => u.role === 'Partner Center' || u.role === 'center').length;
-      const employeesCount = allStaff.filter(u => 
-        !adminRoleNames.includes(u.role) && 
-        u.role !== 'Partner Center' && 
-        u.role !== 'center'
-      ).length;
-      
-      growthData.push({ 
-        name: monthName, 
-        students: studentCount, 
-        employees: employeesCount, 
-        administrators, 
-        centers: centersCount 
+      const studentCount = await Student.count({
+        where: {
+          status: { [Op.notIn]: ['DRAFT', 'REJECTED'] },
+          createdAt: { [Op.between]: [startOfMonth, endOfMonth] }
+        }
       });
+
+      growthData.push({ name: monthName, students: studentCount });
     }
 
-    // 2. Center Growth (Last 7 Days)
+    // 2. Center Growth (Last 7 Days — per-day new registrations and approvals)
+    const CENTER_TYPES = ['partner centers', 'partner-center', 'partner center', 'study-center'];
     const centerGrowth = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+      const endOfDay   = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
       const dayName = date.toLocaleString('default', { weekday: 'short' });
-      
+
+      // New center registrations created on this day
       const leads = await Department.count({
-        where: { 
-          type: 'partner centers', 
-          createdAt: { [Op.lte]: endOfDay }
+        where: {
+          type: { [Op.in]: CENTER_TYPES },
+          createdAt: { [Op.between]: [startOfDay, endOfDay] }
         }
       });
 
+      // Centers that reached fully-approved status (Finance cleared) on this day
+      // updatedAt is the best available proxy for approval date without a dedicated column
       const approved = await Department.count({
-        where: { 
-          type: 'partner centers', 
-          status: 'active',
-          createdAt: { [Op.lte]: endOfDay }
+        where: {
+          type: { [Op.in]: CENTER_TYPES },
+          auditStatus: 'approved',
+          updatedAt: { [Op.between]: [startOfDay, endOfDay] }
         }
       });
+
       centerGrowth.push({ day: dayName, leads, approved });
     }
 
@@ -289,8 +239,9 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
     
     const actionQueue = augmentTaskCollection(actionQueueRaw);
 
-    // 4. Student Demographics (By Program Type)
+    // 4. Student Demographics (By Program Type — enrolled only)
     const studentsByProgram = await Student.findAll({
+      where: { status: 'ENROLLED' },
       include: [{ model: Program, attributes: ['type', 'name'] }],
       attributes: ['id', 'name', 'uid']
     });
@@ -321,7 +272,7 @@ router.get('/dashboard/stats', verifyToken, isOrgAdmin, async (req, res) => {
       roleNames: totalRoles.map(r => r.name),
       totalEmployees: employees.length,
       employeeNames: employees.map(e => ({ name: e.name, role: e.role })),
-      studyCenters: centers.length,
+      totalStudyCenters: centers.length,
       centerNames: centers.map(c => c.name),
       totalStudents,
       pendingOverdueTasks: pendingTasks, // Renamed export map for frontend
@@ -565,9 +516,8 @@ router.post('/ceo-panels', verifyToken, isOrgAdmin, async (req, res) => {
         status: 'active'
       }, { transaction });
 
-      // Handle Authority Succession (CEO is a collection role, so this will skip, 
-      // but provided for framework consistency)
-      await handleAuthoritySuccession(user.role, user.uid, transaction, req.user.uid);
+      // Handle Authority Succession
+      await handleAuthoritySuccession(models, user.role, user.uid, transaction, req.user.uid);
 
       const panel = await CEOPanel.create({
         name,
@@ -699,9 +649,267 @@ router.get('/roles', verifyToken, isOrgAdmin, async (req, res) => {
   }
 });
 
+router.get('/admin-role-mappings', verifyToken, isRoleMappingManager, async (req, res) => {
+  try {
+    const roles = await Role.findAll({
+      where: {
+        name: { [Op.in]: SEEDED_ADMIN_ROLE_NAMES },
+        isSeeded: true
+      },
+      include: [
+        {
+          model: Department,
+          as: 'scopeDepartment',
+          attributes: ['id', 'name', 'status'],
+          required: false
+        },
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['uid', 'name', 'email', 'status', 'deptId', 'subDepartment', 'avatar'],
+          required: false
+        }
+      ],
+      order: [['scopeType', 'ASC'], ['name', 'ASC']]
+    });
+
+    const payload = roles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      description: role.description,
+      status: role.status,
+      scopeType: role.scopeType,
+      scopeSubDepartment: role.scopeSubDepartment,
+      department: role.scopeType === 'sub_department'
+        ? `${role.scopeDepartment?.name || role.department} / ${role.scopeSubDepartment}`
+        : (role.scopeDepartment?.name || role.department),
+      departmentId: role.scopeDepartmentId,
+      assignedUser: role.assignedUser
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Fetch admin role mappings error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin role mappings' });
+  }
+});
+
+router.get('/admin-role-mappings/:id/candidates', verifyToken, isRoleMappingManager, async (req, res) => {
+  try {
+    const role = await Role.findByPk(req.params.id);
+    if (!role || !role.isSeeded || !SEEDED_ADMIN_ROLE_NAMES.includes(role.name)) {
+      return res.status(404).json({ error: 'Mapped admin role not found' });
+    }
+
+    let eligibleDeptIds = [role.scopeDepartmentId];
+    if (role.scopeType === 'sub_department') {
+      const subDepartmentNode = await Department.findOne({
+        where: {
+          type: 'sub-departments',
+          parentId: role.scopeDepartmentId,
+          name: normalizeSubDepartmentName(role.scopeSubDepartment)
+        }
+      });
+      if (subDepartmentNode) {
+        eligibleDeptIds.push(subDepartmentNode.id);
+      }
+    }
+
+    const employeeWhere = {
+      deptId: { [Op.in]: eligibleDeptIds },
+      status: 'active',
+      [Op.or]: [
+        { role: 'Employee' },
+        { uid: role.assignedUserUid || '' }
+      ]
+    };
+
+    if (role.scopeType === 'sub_department') {
+      employeeWhere.subDepartment = {
+        [Op.in]: [role.scopeSubDepartment, normalizeSubDepartmentName(role.scopeSubDepartment)]
+      };
+    }
+
+    const candidates = await User.findAll({
+      where: employeeWhere,
+      attributes: ['uid', 'name', 'email', 'role', 'deptId', 'subDepartment', 'avatar'],
+      order: [['name', 'ASC']]
+    });
+
+    res.json(candidates);
+  } catch (error) {
+    console.error('Fetch admin role candidates error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin candidates' });
+  }
+});
+
+router.post('/admin-role-mappings/:id/assign', verifyToken, isRoleMappingManager, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { userUid } = req.body;
+    const role = await Role.findByPk(req.params.id, { transaction });
+
+    if (!role || !role.isSeeded || !SEEDED_ADMIN_ROLE_NAMES.includes(role.name)) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Mapped admin role not found' });
+    }
+
+    const candidate = await User.findByPk(userUid, { transaction });
+    if (!candidate) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    let eligibleDeptIds = [role.scopeDepartmentId];
+    if (role.scopeType === 'sub_department') {
+      const subDepartmentNode = await Department.findOne({
+        where: {
+          type: 'sub-departments',
+          name: normalizeSubDepartmentName(role.scopeSubDepartment),
+          parentId: role.scopeDepartmentId
+        },
+        transaction
+      });
+      if (subDepartmentNode) {
+        eligibleDeptIds.push(subDepartmentNode.id);
+      }
+    }
+
+    const matchesDepartment = eligibleDeptIds.includes(candidate.deptId);
+    const matchesSubDepartment = role.scopeType !== 'sub_department' || normalizeSubDepartmentName(candidate.subDepartment) === normalizeSubDepartmentName(role.scopeSubDepartment);
+    const isEligibleEmployee = normalizeInstitutionRoleName(candidate.role) === 'Employee' || candidate.uid === role.assignedUserUid;
+
+    if (!matchesDepartment || !matchesSubDepartment || !isEligibleEmployee) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Selected user is not an eligible employee for this role scope' });
+    }
+
+    if (role.assignedUserUid && role.assignedUserUid !== candidate.uid) {
+      const previousAdmin = await User.findByPk(role.assignedUserUid, { transaction });
+      if (previousAdmin) {
+        await previousAdmin.update({
+          role: 'Employee',
+          deptId: role.scopeDepartmentId,
+          subDepartment: role.scopeType === 'sub_department' ? role.scopeSubDepartment : previousAdmin.subDepartment,
+          status: 'active'
+        }, { transaction });
+      }
+    }
+
+    await candidate.update({
+      role: role.name,
+      deptId: role.scopeDepartmentId,
+      subDepartment: role.scopeType === 'sub_department' ? normalizeSubDepartmentName(role.scopeSubDepartment) : candidate.subDepartment,
+      status: 'active'
+    }, { transaction });
+
+    await role.update({
+      assignedUserUid: candidate.uid,
+      status: 'active'
+    }, { transaction });
+
+    if (role.scopeType === 'core_department') {
+      await Department.update(
+        { adminId: candidate.uid, status: 'active' },
+        { where: { id: role.scopeDepartmentId }, transaction }
+      );
+    }
+
+    if (role.scopeType === 'sub_department') {
+      const subDepartment = await Department.findOne({
+        where: { type: 'sub-departments', name: normalizeSubDepartmentName(role.scopeSubDepartment), parentId: role.scopeDepartmentId },
+        transaction
+      });
+      if (subDepartment) {
+        await subDepartment.update({ adminId: candidate.uid, status: 'active' }, { transaction });
+      }
+    }
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'ROLE_ADMIN_ASSIGNED',
+      entity: 'Role',
+      module: 'ORG_ADMIN',
+      after: { roleId: role.id, roleName: role.name, assignedUserUid: candidate.uid },
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({ message: 'Administrative role assigned successfully' });
+  } catch (error) {
+    if (transaction && !transaction.finished) await transaction.rollback();
+    console.error('Assign admin role error:', error);
+    res.status(500).json({ error: 'Failed to assign admin role' });
+  }
+});
+
+router.post('/departments/:id/deactivate', verifyToken, isRoleMappingManager, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const department = await Department.findByPk(req.params.id, { transaction });
+    if (!department) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Department not found' });
+    }
+
+    const impactedDepartments = [department];
+    if (department.type === 'departments') {
+      const children = await Department.findAll({
+        where: { parentId: department.id, type: 'sub-departments' },
+        transaction
+      });
+      impactedDepartments.push(...children);
+    }
+
+    for (const dept of impactedDepartments) {
+      await dept.update({ status: 'inactive' }, { transaction });
+    }
+
+    const impactedRoleWhere = department.type === 'sub-departments'
+      ? { scopeType: 'sub_department', scopeSubDepartment: department.name, isSeeded: true }
+      : {
+          [Op.or]: [
+            { scopeDepartmentId: department.id, isSeeded: true },
+            { scopeType: 'sub_department', scopeDepartmentId: department.id, isSeeded: true }
+          ]
+        };
+
+    const roles = await Role.findAll({ where: impactedRoleWhere, transaction });
+    const assignedUserUids = roles.map((role) => role.assignedUserUid).filter(Boolean);
+
+    await Role.update({ status: 'inactive' }, { where: impactedRoleWhere, transaction });
+
+    if (assignedUserUids.length > 0) {
+      await User.update({ status: 'inactive' }, { where: { uid: assignedUserUids }, transaction });
+    }
+
+    const employeeWhere = department.type === 'sub-departments'
+      ? { deptId: department.parentId, subDepartment: { [Op.in]: [department.name, normalizeSubDepartmentName(department.name)] } }
+      : { deptId: department.id };
+
+    await User.update({ status: 'inactive' }, { where: employeeWhere, transaction });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'DEPARTMENT_DEACTIVATED',
+      entity: 'Department',
+      module: 'ORG_ADMIN',
+      after: { departmentId: department.id, departmentName: department.name },
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({ message: 'Department and associated governance chain deactivated successfully' });
+  } catch (error) {
+    if (transaction && !transaction.finished) await transaction.rollback();
+    console.error('Deactivate department error:', error);
+    res.status(500).json({ error: 'Failed to deactivate department hierarchy' });
+  }
+});
+
 router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
   try {
-    const { name, description, isCustom, isAdminEligible } = req.body;
+    const { name, description, isCustom, isAdminEligible, password } = req.body;
     
     if (!name) return res.status(400).json({ error: 'Role name is mandatory' });
     
@@ -709,9 +917,20 @@ router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
     const existing = await Role.findOne({ where: { name } });
     if (existing) return res.status(400).json({ error: 'Role identifier already exists' });
 
+    // Auto-generate Unique Role ID
+    const roleId = `ROLE-${Date.now().toString().slice(-6)}`;
+    
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     const role = await Role.create({ 
       name, 
       description, 
+      roleId,
+      rolePassword: hashedPassword,
       isCustom: isCustom !== undefined ? isCustom : true,
       isAdminEligible: isAdminEligible || false
     });
@@ -742,20 +961,43 @@ router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
 
 router.get('/verified-admins', verifyToken, isOrgAdmin, async (req, res) => {
   try {
-    const admins = await User.findAll({
-      where: { 
-        status: 'active'
-      },
-      include: [{
-        model: Role,
-        as: 'RoleDetails',
-        where: { isAdminEligible: true },
-        attributes: ['isAdminEligible', 'description']
-      }],
-      attributes: ['uid', 'name', 'email', 'role'],
-      order: [['name', 'ASC']]
+    // Fetch all roles eligible for administration
+    const adminRoles = await Role.findAll({
+      where: { isAdminEligible: true },
+      attributes: ['name', 'description']
     });
-    res.json(admins);
+
+    // Fetch all active users with these roles
+    const activeAdmins = await User.findAll({
+      where: { 
+        status: 'active',
+        role: { [Op.in]: adminRoles.map(r => r.name) }
+      },
+      attributes: ['uid', 'name', 'email', 'role'],
+    });
+
+    // Map roles to their current occupant or vacancy fallback
+    const displayAdmins = adminRoles.map(role => {
+      const occupant = activeAdmins.find(u => u.role === role.name);
+      if (occupant) {
+        return {
+          uid: occupant.uid,
+          name: occupant.name || role.name,
+          email: occupant.email,
+          role: role.name,
+          isVacant: false
+        };
+      }
+      return {
+        uid: `VACANT-${role.name.toUpperCase().replace(/\s+/g, '-')}`,
+        name: role.name, // Fallback to role name as requested
+        email: 'Institutional Vacancy',
+        role: role.name,
+        isVacant: true
+      };
+    });
+
+    res.json(displayAdmins);
   } catch (error) {
     console.error('Fetch Verified Admins Error:', error);
     res.status(500).json({ error: 'Failed to fetch verified institutional administrators' });
@@ -774,7 +1016,13 @@ router.get('/alerts', verifyToken, isOrgAdmin, async (req, res) => {
         deadline: { [Op.lt]: new Date() }
       },
       include: [
-        { model: User, as: 'assignee', attributes: ['name', 'deptId'], required: false },
+        { 
+          model: User, 
+          as: 'assignee', 
+          attributes: ['name', 'deptId'], 
+          required: false,
+          include: [{ model: Department, as: 'department', attributes: ['name'], required: false }]
+        },
         { model: User, as: 'assigner', attributes: ['name'], required: false }
       ],
       order: [['deadline', 'ASC']]
@@ -784,12 +1032,12 @@ router.get('/alerts', verifyToken, isOrgAdmin, async (req, res) => {
 
     overdueTasks.forEach(task => {
       const daysOverdue = Math.floor((new Date() - new Date(task.deadline)) / (1000 * 60 * 60 * 24));
-      const assigneeDisplay = task.assignee?.name || task.assignedTo;
+      const assigneeDisplay = task.assignee?.name || 'Unassigned';
       alerts.push({
         id: `task-${task.id}`,
         type: 'Escalated Task',
         title: task.title,
-        department: task.assignee?.deptId ? `Dept ID: ${task.assignee.deptId}` : 'Institutional',
+        department: task.assignee?.department?.name || 'Institutional',
         overdue: `${task.isEscalated ? Math.max(1, daysOverdue) : daysOverdue} Days`,
         chain: `${task.assigner?.name || 'System'} → ${assigneeDisplay}`,
         assignerName: task.assigner?.name || 'System',
@@ -973,6 +1221,181 @@ router.post('/permissions/matrix', verifyToken, isOrgAdmin, async (req, res) => 
     if (transaction) await transaction.rollback();
     console.error('Permission Update Error:', error);
     res.status(500).json({ error: 'Failed to update permissions matrix', details: error.message });
+  }
+});
+
+// [NEW] GET /permissions/matrix/full - Retrieve action-level centralized matrix
+router.get('/permissions/matrix/full', verifyToken, isOrgAdmin, async (req, res) => {
+  try {
+    const config = await OrgConfig.findOne({ where: { key: 'GLOBAL_PERMISSION_MATRIX' } });
+    if (!config) {
+      // Return empty structure if not initialized
+      return res.json({ matrix: {} });
+    }
+    res.json(config.value);
+  } catch (error) {
+    console.error('[PERM_MATRIX] Fetch Full Error:', error);
+    res.status(500).json({ error: 'Failed to retrieve granular permission matrix' });
+  }
+});
+
+// [NEW] POST /permissions/matrix/update-full - Centralized matrix update with Versioning & Shadow Sync
+router.post('/permissions/matrix/update-full', verifyToken, isOrgAdmin, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { matrix, remarks } = req.body;
+    
+    // 1. Snapshot previous version if exists
+    const currentConfig = await OrgConfig.findOne({ where: { key: 'GLOBAL_PERMISSION_MATRIX' } });
+    if (currentConfig) {
+      const lastVersion = await PermissionVersion.max('versionNumber') || 0;
+      await PermissionVersion.create({
+        versionNumber: lastVersion + 1,
+        updatedBy: req.user.uid,
+        snapshot: currentConfig.value.matrix,
+        remarks: remarks || 'Institutional recalibration'
+      }, { transaction });
+    }
+
+    // 2. Update Master JSON
+    const [config, created] = await OrgConfig.findOrCreate({
+      where: { key: 'GLOBAL_PERMISSION_MATRIX' },
+      defaults: { 
+        value: { matrix },
+        group: 'governance'
+      },
+      transaction
+    });
+
+    if (!created) {
+      await config.update({ value: { matrix } }, { transaction });
+    }
+
+    // 3. Synchronize Shadow Registry
+    await RolePermissionShadow.destroy({ where: {}, transaction });
+    const shadowRows = [];
+    for (const [roleName, actions] of Object.entries(matrix)) {
+      for (const [actionId, perms] of Object.entries(actions)) {
+        shadowRows.push({
+          roleName,
+          actionId,
+          create: perms.create || false,
+          read: perms.read || false,
+          update: perms.update || false,
+          delete: perms.delete || false,
+          approve: perms.approve || false,
+          scope: perms.scope || 'SELF',
+          ownership: perms.ownership || false
+        });
+      }
+    }
+    await RolePermissionShadow.bulkCreate(shadowRows, { transaction });
+
+    // 4. Audit & Cache Invalidation
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'PERMISSION_MATRIX_RECONCILIATION',
+      entity: 'OrgConfig: GLOBAL_PERMISSION_MATRIX',
+      module: 'GOVERNANCE',
+      remarks: remarks || 'Full action-level permission matrix recalibrated and synchronized with shadow registry.',
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    clearMatrixCache();
+
+    res.json({ success: true, message: 'Institutional governance synchronized and versioned.' });
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error('[PERM_MATRIX] Update Full Error:', error);
+    res.status(500).json({ error: 'Failed to synchronize institutional permission matrix' });
+  }
+});
+
+/**
+ * [NEW] GET /permissions/history
+ * Retrieve the audit trail of governance recalibrations.
+ */
+router.get('/permissions/history', verifyToken, isOrgAdmin, async (req, res) => {
+  try {
+    const versions = await PermissionVersion.findAll({
+      order: [['versionNumber', 'DESC']],
+      attributes: ['id', 'versionNumber', 'updatedBy', 'remarks', 'timestamp']
+    });
+    res.json(versions);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve governance history' });
+  }
+});
+
+/**
+ * [NEW] GET /permissions/version/:id
+ * Retrieve a specific snapshot from history.
+ */
+router.get('/permissions/version/:id', verifyToken, isOrgAdmin, async (req, res) => {
+  try {
+    const version = await PermissionVersion.findByPk(req.params.id);
+    if (!version) return res.status(404).json({ error: 'Version not found' });
+    res.json(version);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve version snapshot' });
+  }
+});
+
+/**
+ * [NEW] POST /permissions/rollback/:id
+ * Institutional recovery to a previous governance state.
+ */
+router.post('/permissions/rollback/:id', verifyToken, isOrgAdmin, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const version = await PermissionVersion.findByPk(req.params.id);
+    if (!version) return res.status(404).json({ error: 'Version not found' });
+
+    const matrix = version.snapshot;
+
+    // Update Master JSON
+    await OrgConfig.update(
+      { value: { matrix } },
+      { where: { key: 'GLOBAL_PERMISSION_MATRIX' }, transaction }
+    );
+
+    // Sync Shadow Registry
+    await RolePermissionShadow.destroy({ where: {}, transaction });
+    const shadowRows = [];
+    for (const [roleName, actions] of Object.entries(matrix)) {
+      for (const [actionId, perms] of Object.entries(actions)) {
+        shadowRows.push({
+          roleName,
+          actionId,
+          create: perms.create || false,
+          read: perms.read || false,
+          update: perms.update || false,
+          delete: perms.delete || false,
+          approve: perms.approve || false,
+          scope: perms.scope || 'SELF',
+          ownership: perms.ownership || false
+        });
+      }
+    }
+    await RolePermissionShadow.bulkCreate(shadowRows, { transaction });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'PERMISSION_ROLLBACK',
+      entity: 'OrgConfig: GLOBAL_PERMISSION_MATRIX',
+      module: 'GOVERNANCE',
+      remarks: `Emergency institutional rollback to Version [${version.versionNumber}] by Administrator.`,
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    clearMatrixCache();
+
+    res.json({ success: true, message: `Institutional governance rolled back to Version ${version.versionNumber}.` });
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    res.status(500).json({ error: 'Rollback operation failed' });
   }
 });
 
@@ -1228,7 +1651,7 @@ router.get('/roles/hierarchy', verifyToken, isOrgAdmin, async (req, res) => {
           isAdminEligible: role.isAdminEligible,
           isAudited: role.isAudited,
           representativeEmail: roleToEmail[role.name] || 'system@erp.com',
-          isConflict: !COLLECTION_ROLES.includes(role.name) && (roleToCount[role.name] || 0) > 1
+          isConflict: SINGLETON_ROLES.some(s => s.toLowerCase() === role.name.toLowerCase()) && (roleToCount[role.name] || 0) > 1
         });
       }
     });
@@ -1252,7 +1675,7 @@ router.get('/roles/hierarchy', verifyToken, isOrgAdmin, async (req, res) => {
             isAdminEligible: h.toLowerCase().includes('admin') || h === 'CEO',
             isAudited: true,
             representativeEmail: roleToEmail[h] || `admin.${h.toLowerCase().replace(/[^a-z]/g, '')}@erp.com`,
-            isConflict: !COLLECTION_ROLES.includes(h) && (roleToCount[h] || 0) > 1
+            isConflict: SINGLETON_ROLES.some(s => s.toLowerCase() === h.toLowerCase()) && (roleToCount[h] || 0) > 1
           });
         }
       }

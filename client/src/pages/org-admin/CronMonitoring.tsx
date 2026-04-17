@@ -107,7 +107,7 @@ export default function CronMonitoring() {
             <h2 className="text-2xl font-bold mb-2">Automated Escalation Logic (GAP-2)</h2>
             <p className="text-indigo-100 text-sm leading-relaxed mb-6">
               The `task-escalation` job bridges our event stream and multi-tier accountability. 
-              Level 1 (48h) notifies Department Admins; Level 2 (96h) escalates directly to the CEO Dashboard.
+              Once a task becomes overdue, the Department Admin is notified immediately. They can escalate directly or grant a 24-hour grace period. If they do nothing, or the grace period expires, the task escalates to the CEO Dashboard automatically.
             </p>
             <div className="flex items-center space-x-4">
                <div className="flex items-center text-xs font-bold text-green-300">

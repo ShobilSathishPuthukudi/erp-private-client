@@ -1,11 +1,13 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 import { verifyToken, isOpsOrAdmin } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
+import { syncProgramLifecycle } from '../utils/academicLifecycle.js';
 
 const router = express.Router();
-const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram, Notification } = models;
+const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram, Notification, Lead } = models;
 
 const getSubDeptId = (user) => {
   if (!user) return null;
@@ -32,9 +34,9 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
       queryAuditStatus = 'approved';
     }
 
-    const whereClause = { 
-      type: { [Op.in]: ['partner-center', 'partner centers'] }, 
-      auditStatus: queryAuditStatus 
+    const whereClause = {
+      type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
+      auditStatus: queryAuditStatus
     };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit or seeking affiliation
@@ -46,7 +48,7 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
         attributes: ['centerId']
       }).then(res => [...new Set(res.map(c => c.centerId))]);
       
-      // 2. Interest-based discovery (Proposed centers seeking entry into this unit)
+      // 2. Interest-based discovery (Proposed/Approved centers seeking entry into this unit)
       const unitPrograms = await Program.findAll({ where: { subDeptId }, attributes: ['id'] });
       const unitProgIds = unitPrograms.map(p => p.id);
 
@@ -56,8 +58,8 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
           EXISTS(
             SELECT 1 FROM departments d2 
             WHERE d2.id = department.id 
-            AND d2.auditStatus = 'pending' 
-            AND d2.type IN ('partner-center', 'partner centers') 
+            AND d2.auditStatus = '${queryAuditStatus}' 
+            AND d2.type IN ('partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers')
             AND JSON_OVERLAPS(d2.metadata->'$.primaryInterest.programIds', CAST('[${unitProgIds.join(',') || 0}]' AS JSON))
           )
         )`)
@@ -67,11 +69,32 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
     const centers = await Department.findAll({
       where: whereClause,
       include: [
-        { model: User, as: 'referringBDE', attributes: ['name', 'uid'], required: false }
+        { model: User, as: 'referringBDE', attributes: ['name', 'uid'], required: false },
+        {
+          model: Lead,
+          as: 'sourceLead',
+          attributes: ['id', 'employeeId', 'bdeId'],
+          required: false,
+          include: [
+            { model: User, as: 'employee', attributes: ['name', 'uid', 'role'], required: false },
+            { model: User, as: 'referrer', attributes: ['name', 'uid', 'role'], required: false }
+          ]
+        }
       ],
       order: [['createdAt', 'DESC']]
     });
-    res.json(centers);
+
+    // Normalize: if department.bdeId is null, fall back to the source lead's employee/BDE
+    const normalized = centers.map(c => {
+      const plain = c.toJSON();
+      if (!plain.referringBDE) {
+        const lead = plain.sourceLead;
+        plain.referringBDE = lead?.employee || lead?.referrer || null;
+      }
+      return plain;
+    });
+
+    res.json(normalized);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch center audit ledger' });
   }
@@ -83,7 +106,7 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
     const { status, reason, infrastructureDetails, programIds, password } = req.body;
 
     const center = await Department.findByPk(id);
-    if (!center || !['partner-center', 'partner centers'].includes(center.type)) {
+    if (!center || !['partner-center', 'partner center', 'partner centers', 'study-center'].includes(center.type)) {
       return res.status(404).json({ error: 'Study center not found' });
     }
 
@@ -168,19 +191,7 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
 
 async function recalculateSyllabusStatus(programId) {
   try {
-    const program = await Program.findByPk(programId);
-    if (!program) return;
-
-    // Only transition to 'staged' if it's currently 'draft'
-    if (program.status !== 'draft' && program.status !== 'staged') return;
-
-    const subjects = await Subject.findAll({ where: { programId } });
-    const currentCredits = subjects.reduce((sum, s) => sum + (s.credits || 0), 0);
-    
-    const isThresholdMet = currentCredits >= (program.totalCredits || 0) && currentCredits > 0;
-    const newStatus = isThresholdMet ? 'staged' : 'draft';
-
-    await program.update({ status: newStatus });
+    await syncProgramLifecycle(programId);
   } catch (error) {
     console.error('[SYLLABUS SYNC ERROR]:', error);
   }
@@ -188,8 +199,16 @@ async function recalculateSyllabusStatus(programId) {
 
 router.post('/subjects', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
+    const { programId } = req.body;
+    const program = await Program.findByPk(programId);
+    if (program && program.status === 'active') {
+      return res.status(400).json({ 
+        error: 'Governance Restriction: Curriculum is locked for active programs.' 
+      });
+    }
+
     const subject = await Subject.create(req.body);
-    await recalculateSyllabusStatus(req.body.programId);
+    await recalculateSyllabusStatus(programId);
     res.status(201).json(subject);
   } catch (error) {
     res.status(500).json({ error: 'Failed to add academic subject' });
@@ -212,6 +231,12 @@ router.delete('/subjects/:id', verifyToken, isOpsOrAdmin, async (req, res) => {
     if (!subject) return res.status(404).json({ error: 'Subject not found' });
     
     const programId = subject.programId;
+    const program = await Program.findByPk(programId);
+    if (program && program.status === 'active') {
+      return res.status(400).json({ 
+        error: 'Governance Restriction: Active program curriculum cannot be modified.' 
+      });
+    }
     
     // Manual Cascade for stabilization
     await Module.destroy({ where: { subjectId: id } });
@@ -245,13 +270,8 @@ router.put('/programs/:id/syllabus', verifyToken, isOpsOrAdmin, async (req, res)
 
     await program.update({ syllabusDoc });
 
-    // Transition logic: Staging program if credits fulfill requirement
-    if (program.status === 'draft' && program.totalCredits > 0) {
-      await program.update({ status: 'staged' });
-      if (program.universityId) {
-        await Department.update({ status: 'staged' }, { where: { id: program.universityId, type: 'universities' } });
-      }
-    }
+    await syncProgramLifecycle(program.id);
+    await program.reload();
 
     res.json({ message: 'Syllabus PDF manifest updated', program });
   } catch (error) {
@@ -266,7 +286,7 @@ router.put('/programs/:id/syllabus', verifyToken, isOpsOrAdmin, async (req, res)
 router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { subDeptId: querySubDeptId } = req.query;
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
     const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
     
     // Base stats
@@ -291,7 +311,7 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     const [totalActiveCenters, totalActivePrograms] = await Promise.all([
       Department.count({ 
         where: { 
-          type: { [Op.in]: ['partner-center', 'partner centers'] }, 
+          type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] }, 
           status: 'active', 
           auditStatus: 'approved' 
         } 
@@ -316,7 +336,7 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     if (!isSubDeptAdmin) {
       const subDeptIds = [8, 9, 10, 11];
       const subDeptNames = ['Open School', 'Online', 'Skill', 'BVoc'];
-      const subDeptKeys = ['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'];
+      const subDeptKeys = ['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'];
 
       const breakdown = await Promise.all(subDeptIds.map(async (id, index) => {
         const key = subDeptKeys[index];
@@ -402,9 +422,9 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
   try {
     const { subDeptId: querySubDeptId } = req.query;
     const whereClause = { 
-       type: { [Op.in]: ['partner-center', 'partner centers'] } 
+       type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] } 
     };
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
     const sid = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
 
     if (sid) {
@@ -437,7 +457,7 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
 
 router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
     const subDeptId = getSubDeptId(req.user);
     const whereClause = isSubDeptAdmin ? { subDepartmentId: subDeptId } : {};
 
@@ -461,12 +481,28 @@ router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
 router.get('/pipeline/details', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { reviewStage, enrollStatus, subDepartmentId } = req.query;
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(req.user.role);
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
     const adminSubDeptId = getSubDeptId(req.user);
 
     const whereClause = {};
     if (reviewStage) whereClause.reviewStage = reviewStage;
-    if (enrollStatus) whereClause.enrollStatus = enrollStatus;
+    
+    if (enrollStatus) {
+      if (enrollStatus === 'enrolled') {
+        whereClause[Op.or] = [
+          { enrollStatus: 'enrolled' },
+          { enrollStatus: 'active' },
+          { status: 'ENROLLED' }
+        ];
+      } else if (enrollStatus === 'rejected') {
+        whereClause[Op.or] = [
+          { enrollStatus: 'rejected' },
+          { status: 'REJECTED' }
+        ];
+      } else {
+        whereClause.enrollStatus = enrollStatus;
+      }
+    }
     
     // Authorization & Filter Logic
     if (isSubDeptAdmin) {

@@ -3,66 +3,147 @@ import { applyExecutiveScope } from '../middleware/visibility.js';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { models, sequelize } from '../models/index.js';
 import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
 import { createNotification } from './notifications.js';
+import { checkPermission, checkPermissionOrRole, enforceApprovalChain } from '../middleware/rbac.js';
+import { normalizeInstitutionRoleName, normalizeSubDepartmentName, SEEDED_ADMIN_ROLE_NAMES } from '../config/institutionalStructure.js';
 
 import { logAction } from '../lib/audit.js';
+import { handleAuthoritySuccession } from '../utils/governance/singletonEnforcement.js';
 import { validateTaskAssignment } from '../utils/rbac/validateTaskAssignment.js';
 
 const router = express.Router();
-const { User, Vacancy, Task, Department, Leave, Attendance, Lead, Referral, AuditLog, ReregRequest } = models;
+const { User, Vacancy, Task, Department, Leave, Attendance, Lead, Referral, AuditLog, ReregRequest, Role } = models;
 
 const isHR = roleGuard(['HR Admin', 'Organization Admin', 'ceo', 'hr']);
 
-const COLLECTION_ROLES = [
-  'CEO',
-  'ceo',
-  'Employee',
-  'student',
-  'Partner Center',
-  'Sales & CRM Admin',
-  'Sales',
-  'HR Admin',
-  'hr',
-  'Operations Admin',
-  'Academic Operations Admin',
-  'Finance Admin',
-  'Organization Admin',
-  'ops',
-  'finance'
-];
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(process.cwd(), 'uploads', 'avatars');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const seed = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `hr-employee-${seed}${path.extname(file.originalname)}`);
+  }
+});
 
-/**
- * Institutional Governance: Authority Succession
- */
-const handleAuthoritySuccession = async (role, newUserId, transaction, adminUid = 'SYSTEM') => {
-  if (COLLECTION_ROLES.includes(role)) return;
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed'));
+    }
+  }
+});
 
-  const predecessors = await models.User.findAll({
-    where: { role, status: 'active', uid: { [Op.ne]: newUserId } },
+const buildAvatarUrl = (req, file) => {
+  if (!file) return null;
+  const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  return `${baseUrl}/uploads/avatars/${file.filename}`;
+};
+
+const resolveDepartmentScope = async (departmentId, transaction) => {
+  if (!departmentId) {
+    return { deptId: null, subDepartment: null };
+  }
+
+  const department = await Department.findByPk(departmentId, { transaction });
+  if (!department) {
+    return { deptId: departmentId, subDepartment: null };
+  }
+
+  const type = department.type?.toLowerCase() || '';
+  if (type.startsWith('sub-')) {
+    return {
+      deptId: department.parentId,
+      subDepartment: normalizeSubDepartmentName(department.name)
+    };
+  }
+
+  return {
+    deptId: department.id,
+    subDepartment: normalizeSubDepartmentName(department.name) === department.name ? null : normalizeSubDepartmentName(department.name)
+  };
+};
+
+const resolveVacancyScope = async (vacancy, transaction) => {
+  const resolved = await resolveDepartmentScope(vacancy.departmentId, transaction);
+  return {
+    deptId: resolved.deptId,
+    subDepartment: resolved.subDepartment || normalizeSubDepartmentName(vacancy.subDepartment || 'General')
+  };
+};
+
+const clearSeededAdminAssignment = async (user, transaction, actorUid) => {
+  const assignedRoles = await Role.findAll({
+    where: {
+      assignedUserUid: user.uid,
+      isSeeded: true
+    },
     transaction
   });
 
-  if (predecessors.length > 0) {
-    console.log(`[HR-GOVERNANCE] Authority Succession: Transitioning ${predecessors.length} predecessor(s) of role '${role}' to suspended.`);
-    await models.User.update(
-      { status: 'suspended' },
-      { where: { role, status: 'active', uid: { [Op.ne]: newUserId } }, transaction }
-    );
-    
-    for (const p of predecessors) {
-      await models.AuditLog.create({
-        userId: adminUid, 
-        action: 'AUTHORITY_SUCCESSION',
-        entity: `User: ${p.uid}`,
-        module: 'GOVERNANCE',
-        remarks: `Account suspended automatically as role '${role}' was assumed by UID: ${newUserId}`,
-        timestamp: new Date()
-      }, { transaction });
-    }
+  if (assignedRoles.length === 0) {
+    return false;
   }
+
+  for (const role of assignedRoles) {
+    await role.update({ assignedUserUid: null }, { transaction });
+
+    if (role.scopeType === 'core_department' && role.scopeDepartmentId) {
+      await Department.update(
+        { adminId: null },
+        {
+          where: {
+            id: role.scopeDepartmentId,
+            adminId: user.uid
+          },
+          transaction
+        }
+      );
+    }
+
+    if (role.scopeType === 'sub_department' && role.scopeDepartmentId && role.scopeSubDepartment) {
+      await Department.update(
+        { adminId: null },
+        {
+          where: {
+            type: 'sub-departments',
+            parentId: role.scopeDepartmentId,
+            name: normalizeSubDepartmentName(role.scopeSubDepartment),
+            adminId: user.uid
+          },
+          transaction
+        }
+      );
+    }
+
+    await AuditLog.create({
+      userId: actorUid || user.uid,
+      action: 'ROLE_ADMIN_REMOVED_ON_REMAP',
+      entity: 'Role',
+      module: 'HR',
+      before: { roleId: role.id, roleName: role.name, assignedUserUid: user.uid },
+      after: { roleId: role.id, roleName: role.name, assignedUserUid: null },
+      timestamp: new Date()
+    }, { transaction });
+  }
+
+  return true;
 };
+
+// Shared governance enforces singleton rules based on config/rbac.js
 
 // Step 9: Logging Middleware
 router.use((req, res, next) => {
@@ -73,23 +154,23 @@ router.use((req, res, next) => {
 // Step 7: FIX STATS API
 router.get('/stats', verifyToken, isHR, applyExecutiveScope, async (req, res) => {
   try {
-    const { filter: visibilityFilter } = req.visibility;
+    const { userFilter = {}, vacancyFilter = {} } = req.visibility || {};
     const workforceFilter = {
       status: 'active',
-      vacancyId: { [Op.not]: null }, // Use Op.not for cleaner NULL check
-      ...visibilityFilter
+      vacancyId: { [Op.not]: null }, 
+      ...userFilter
     };
 
     const [employeeCount, vacancyCount, pendingLeaves, activeTasks] = await Promise.all([
       User.count({ where: workforceFilter }),
-      Vacancy.count({ where: { status: 'OPEN', ...visibilityFilter } }),
+      Vacancy.count({ where: { status: 'OPEN', ...vacancyFilter } }),
       Leave.count({ 
         where: { status: 'pending hr' },
-        include: [{ model: User, as: 'employee', where: visibilityFilter, required: true }]
+        include: [{ model: User, as: 'employee', where: userFilter, required: true }]
       }),
       Task.count({ 
         where: { status: 'pending' },
-        include: [{ model: User, as: 'assignee', where: visibilityFilter, required: true }]
+        include: [{ model: User, as: 'assignee', where: userFilter, required: true }]
       })
     ]);
     
@@ -112,9 +193,9 @@ router.get('/stats', verifyToken, isHR, applyExecutiveScope, async (req, res) =>
 // Step 6: FIX VACANCIES API
 router.get('/vacancies', verifyToken, applyExecutiveScope, async (req, res) => {
   try {
-    const { filter: visibilityFilter } = req.visibility;
+    const { vacancyFilter = {} } = req.visibility || {};
     const vacancies = await Vacancy.findAll({
-      where: visibilityFilter,
+      where: vacancyFilter,
       include: [{ 
         model: Department, 
         as: 'department', 
@@ -173,7 +254,8 @@ router.get('/employees', verifyToken, isHR, applyExecutiveScope, async (req, res
       attributes: { exclude: ['password'] },
       include: [
         { model: Department, as: 'department', attributes: ['name'], required: false },
-        { model: User, as: 'manager', attributes: ['name', 'uid'], required: false }
+        { model: User, as: 'manager', attributes: ['name', 'uid'], required: false },
+        { model: Role, as: 'assignedAdminRoles', attributes: ['id', 'name', 'scopeType', 'scopeSubDepartment'], required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -189,12 +271,15 @@ router.get('/employees', verifyToken, isHR, applyExecutiveScope, async (req, res
   }
 });
 
-router.post('/employees', verifyToken, isHR, async (req, res) => {
-  const t = await sequelize.transaction();
+router.post('/employees', verifyToken, isHR, avatarUpload.single('avatar'), async (req, res) => {
+  let t;
   try {
-    const { vacancyId, email, password, name, reportingManagerUid, role } = req.body;
+    const { vacancyId, email, password, name, reportingManagerUid } = req.body;
+
+    t = await sequelize.transaction();
 
     if (!vacancyId || !email || !password || !name) {
+      await t.rollback();
       return res.status(400).json({ 
         error: "Invalid payload: email, password, name and vacancyId required", 
         module: "HR" 
@@ -203,8 +288,11 @@ router.post('/employees', verifyToken, isHR, async (req, res) => {
 
     const vacancy = await Vacancy.findByPk(vacancyId, { transaction: t });
     if (!vacancy || vacancy.status !== 'OPEN' || vacancy.filledCount >= vacancy.count) {
+      await t.rollback();
       return res.status(400).json({ message: "Selected vacancy is invalid or already filled.", module: "HR" });
     }
+
+    const resolvedScope = await resolveVacancyScope(vacancy, t);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const generatedUid = `EMP-${Date.now().toString().slice(-6)}`;
@@ -223,14 +311,15 @@ router.post('/employees', verifyToken, isHR, async (req, res) => {
       uid: generatedUid,
       email,
       password: hashedPassword,
-      role: role || 'employee',
+      role: 'Employee',
       name,
-      deptId: vacancy.departmentId,
-      subDepartment: vacancy.subDepartment || 'General', // Inheritance from Vacancy Unit Tag
+      deptId: resolvedScope.deptId,
+      subDepartment: resolvedScope.subDepartment, // Inheritance from vacancy structure
       reportingManagerUid: finalizedManagerUid,
       vacancyId,
       status: 'active',
-      devPassword: password
+      devPassword: password,
+      avatar: buildAvatarUrl(req, req.file)
     }, { transaction: t });
 
     vacancy.filledCount += 1;
@@ -241,7 +330,7 @@ router.post('/employees', verifyToken, isHR, async (req, res) => {
 
     // Handle Authority Succession if the new user is active
     if (newUser.status === 'active') {
-      await handleAuthoritySuccession(newUser.role, newUser.uid, t, req.user.uid);
+      await handleAuthoritySuccession(models, newUser.role, newUser.uid, t, req.user.uid);
     }
 
     await t.commit();
@@ -283,7 +372,7 @@ router.post('/employees', verifyToken, isHR, async (req, res) => {
 });
 router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
   try {
-    const { email, password, name, departmentId, subDepartment, role, reportingManagerUid } = req.body;
+    const { email, password, name, departmentId, subDepartment, reportingManagerUid } = req.body;
 
     if (!email || !password || !name || !departmentId) {
       return res.status(400).json({ message: "Invalid payload: email, password, name, and departmentId required", module: "HR" });
@@ -297,15 +386,16 @@ router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const generatedUid = `EMP-${Date.now().toString().slice(-6)}`;
+    const resolvedScope = await resolveDepartmentScope(departmentId);
 
     const newUser = await User.create({
       uid: generatedUid,
       email,
       password: hashedPassword,
-      role: role || 'employee',
+      role: 'Employee',
       name,
-      deptId: departmentId,
-      subDepartment: subDepartment || 'General',
+      deptId: resolvedScope.deptId,
+      subDepartment: resolvedScope.subDepartment || normalizeSubDepartmentName(subDepartment || 'General'),
       reportingManagerUid,
       status: 'pending_dept', // Awaiting department admin acceptance
       devPassword: password
@@ -319,10 +409,10 @@ router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
 });
 
 // [NEW] PUT /employees/:uid - Update personnel details
-router.put('/employees/:uid', verifyToken, isHR, async (req, res) => {
+router.put('/employees/:uid', verifyToken, isHR, avatarUpload.single('avatar'), async (req, res) => {
   try {
     const { uid } = req.params;
-    const { email, password, role, name, status, deptId, reportingManagerUid, subDepartment } = req.body;
+    const { email, password, name, status, deptId, reportingManagerUid, subDepartment } = req.body;
 
     const user = await User.findByPk(uid);
     if (!user) {
@@ -331,17 +421,21 @@ router.put('/employees/:uid', verifyToken, isHR, async (req, res) => {
 
     const updates = {
       email: email || user.email,
-      role: role || user.role,
+      role: user.role,
       name: name || user.name,
       status: status || user.status,
       deptId: deptId === undefined ? user.deptId : deptId,
       reportingManagerUid: reportingManagerUid === undefined ? user.reportingManagerUid : reportingManagerUid,
-      subDepartment: subDepartment || user.subDepartment
+      subDepartment: normalizeSubDepartmentName(subDepartment || user.subDepartment)
     };
 
     if (password && password.trim() !== '') {
       updates.password = await bcrypt.hash(password, 10);
       updates.devPassword = password;
+    }
+
+    if (req.file) {
+      updates.avatar = buildAvatarUrl(req, req.file);
     }
 
     const transaction = await sequelize.transaction();
@@ -352,11 +446,11 @@ router.put('/employees/:uid', verifyToken, isHR, async (req, res) => {
       await user.update(updates, { transaction });
 
       // Handle Authority Succession if role or status changed to active
-      const roleChanged = role && role !== oldRole;
+      const roleChanged = user.role !== oldRole;
       const becameActive = status === 'active' && oldStatus !== 'active';
       
       if (user.status === 'active' && (roleChanged || becameActive)) {
-        await handleAuthoritySuccession(user.role, user.uid, transaction);
+        await handleAuthoritySuccession(models, user.role, user.uid, transaction);
       }
 
       await transaction.commit();
@@ -368,6 +462,91 @@ router.put('/employees/:uid', verifyToken, isHR, async (req, res) => {
   } catch (error) {
     console.error("HR UPDATE ERROR:", error);
     res.status(500).json({ message: "Failed to update personnel record", module: "HR" });
+  }
+});
+
+router.put('/employees/:uid/remap', verifyToken, isHR, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { uid } = req.params;
+    const { departmentId, reportingManagerUid } = req.body;
+
+    if (!departmentId) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Target department is required', module: 'HR' });
+    }
+
+    const user = await User.findByPk(uid, {
+      include: [{ model: Role, as: 'assignedAdminRoles', attributes: ['id', 'name'], required: false }],
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Personnel record not found', module: 'HR' });
+    }
+
+    const resolvedScope = await resolveDepartmentScope(departmentId, transaction);
+    if (!resolvedScope.deptId && !resolvedScope.subDepartment) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Target department could not be resolved', module: 'HR' });
+    }
+
+    let finalizedManagerUid = reportingManagerUid || null;
+    if (finalizedManagerUid) {
+      const manager = await User.findByPk(finalizedManagerUid, { transaction });
+      if (!manager) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Selected reporting manager was not found', module: 'HR' });
+      }
+    }
+
+    const currentCanonicalRole = normalizeInstitutionRoleName(user.role || '');
+    const previousState = {
+      uid: user.uid,
+      deptId: user.deptId,
+      subDepartment: user.subDepartment,
+      reportingManagerUid: user.reportingManagerUid,
+      role: currentCanonicalRole
+    };
+
+    const wasSeededAdmin = await clearSeededAdminAssignment(user, transaction, req.user.uid);
+    const nextRole = wasSeededAdmin || SEEDED_ADMIN_ROLE_NAMES.includes(currentCanonicalRole) ? 'Employee' : user.role;
+
+    await user.update({
+      deptId: resolvedScope.deptId,
+      subDepartment: resolvedScope.subDepartment,
+      reportingManagerUid: finalizedManagerUid,
+      role: nextRole
+    }, { transaction });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'EMPLOYEE_REMAP',
+      entity: 'User',
+      module: 'HR',
+      before: previousState,
+      after: {
+        uid: user.uid,
+        deptId: resolvedScope.deptId,
+        subDepartment: resolvedScope.subDepartment,
+        reportingManagerUid: finalizedManagerUid,
+        role: nextRole
+      },
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({
+      message: wasSeededAdmin
+        ? 'Employee remapped successfully and previous admin mapping was cleared'
+        : 'Employee remapped successfully',
+      uid: user.uid
+    });
+  } catch (error) {
+    if (transaction && !transaction.finished) await transaction.rollback();
+    console.error('HR REMAP ERROR:', error);
+    res.status(500).json({ error: 'Failed to remap employee', module: 'HR' });
   }
 });
 
@@ -440,15 +619,42 @@ router.get('/performance/employee/:employeeId', verifyToken, async (req, res) =>
     const user = await User.findOne({ where: { uid: employeeId } });
     if (!user) return res.status(404).json({ message: "Employee not found", module: "HR" });
 
+    const requesterRole = req.user.role?.toLowerCase()?.trim() || '';
+    const isHrViewer = requesterRole.includes('hr');
+    const sameDepartment = Boolean(req.user.deptId) && req.user.deptId === user.deptId;
+    const isDepartmentOwner = sameDepartment && (
+      requesterRole.includes('admin') ||
+      ['finance', 'sales', 'operations', 'academic'].some(token => requesterRole.includes(token))
+    );
+
+    if (!isHrViewer && !isDepartmentOwner) {
+      return res.status(403).json({ message: "Access denied for this employee performance record", module: "HR" });
+    }
+
     const tasks = await Task.findAll({ where: { assignedTo: employeeId } });
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
+    const delayCount = tasks.filter(t => t.status === 'overdue' || (t.deadline && new Date(t.deadline) < new Date() && t.status !== 'completed')).length;
+    const agedPendingLeaves = await Leave.count({
+      where: {
+        employeeId,
+        status: { [Op.in]: ['pending admin', 'pending hr'] },
+        createdAt: { [Op.lt]: new Date(Date.now() - (48 * 60 * 60 * 1000)) }
+      }
+    });
+    const productivityScore = Math.max(
+      0,
+      Math.round((total > 0 ? (completed / total) * 100 : 100) - (delayCount * 15) - (agedPendingLeaves * 10))
+    );
 
     res.json({
       employeeId,
       metrics: {
         taskCompletionRate: total > 0 ? ((completed / total) * 100).toFixed(1) : 0,
-        totalTasks: total
+        totalTasks: total,
+        delayCount,
+        agedPendingLeaves,
+        productivityScore
       }
     });
   } catch (error) {
@@ -496,9 +702,14 @@ router.get('/performance/department/:departmentId', verifyToken, isHR, async (re
 });
 
 // Step 5: IMPLEMENT MISSING ROUTE (Leaves)
-router.get('/leaves', verifyToken, isHR, applyExecutiveScope, async (req, res) => {
+router.get('/leaves', verifyToken, checkPermissionOrRole('HR_LEAVE_S2', 'read', ['HR Admin', 'hr']), applyExecutiveScope, async (req, res) => {
     try {
-        const { filter: visibilityFilter } = req.visibility;
+        const { permissionFilter = {} } = req;
+        const { userFilter = {} } = req.visibility || {};
+
+        // Merge RBAC permission filter with model-specific visibility scope
+        const combinedFilter = { ...permissionFilter, ...userFilter };
+
         const leaves = await Leave.findAll({
             where: { status: { [Op.ne]: 'pending admin' } },
             include: [{ 
@@ -506,7 +717,7 @@ router.get('/leaves', verifyToken, isHR, applyExecutiveScope, async (req, res) =
               as: 'employee', 
               attributes: ['name', 'uid', 'deptId'],
               include: [{ model: Department, as: 'department', attributes: ['name'] }],
-              where: visibilityFilter,
+              where: combinedFilter,
               required: true
             }],
             order: [['createdAt', 'DESC']]
@@ -523,7 +734,7 @@ import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 // Task Management
 router.get('/tasks', verifyToken, isHR, applyExecutiveScope, async (req, res) => {
     try {
-        const { filter: visibilityFilter } = req.visibility;
+        const { userFilter = {} } = req.visibility || {};
         const tasksRaw = await Task.findAll({
             where: {},
             include: [
@@ -531,7 +742,7 @@ router.get('/tasks', verifyToken, isHR, applyExecutiveScope, async (req, res) =>
                   model: User, 
                   as: 'assignee', 
                   attributes: ['name', 'uid'],
-                  where: visibilityFilter,
+                  where: userFilter,
                   required: true
                 },
                 { model: User, as: 'assigner', attributes: ['name', 'uid'] }
@@ -597,17 +808,39 @@ router.post('/tasks', verifyToken, async (req, res) => {
     }
 });
 
-router.put('/leaves/:id/approve', verifyToken, isHR, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const leave = await Leave.findByPk(id, {
-            include: [{ model: User, as: 'employee' }]
-        });
-
-        if (!leave) return res.status(404).json({ error: 'Leave request not found' });
-        if (leave.status !== 'pending hr') {
-            return res.status(400).json({ error: `Cannot Step-2 approve in current status: ${leave.status}` });
+// Mid-stream resource loader for approval chain enforcement
+const loadLeaveResource = async (req, res, next) => {
+  try {
+    const leave = await Leave.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'employee',
+          attributes: ['uid', 'name', 'deptId', 'subDepartment']
         }
+      ]
+    });
+    if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+    req.resource = leave;
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load institutional resource' });
+  }
+};
+
+router.put('/leaves/:id/approve', 
+    verifyToken, 
+    checkPermissionOrRole('HR_LEAVE_S2', 'approve', ['HR Admin', 'hr']), 
+    loadLeaveResource,
+    enforceApprovalChain({ 
+      currentStatusField: 'status', 
+      validInitialStatuses: ['pending hr'], 
+      initiatorField: 'employeeId' 
+    }), 
+    async (req, res) => {
+    try {
+        const leave = req.resource;
+        // Logic already checked by middleware
 
         await leave.update({
             status: 'approved',
@@ -626,23 +859,27 @@ router.put('/leaves/:id/approve', verifyToken, isHR, async (req, res) => {
             });
 
             // 2. Notify Dept Admin / Head
-            const targetAdminUid = leave.step1By || (await User.findOne({ 
-                include: [{ model: Department, as: 'department', where: { id: leave.employee?.deptId } }] 
-            }))?.department?.adminId;
+            const employeeDepartment = leave.employee?.deptId
+              ? await Department.findByPk(leave.employee.deptId, { attributes: ['id', 'adminId'] })
+              : null;
+            const targetAdminUid = leave.step1By || employeeDepartment?.adminId;
 
             if (targetAdminUid && targetAdminUid !== req.user.uid) {
                 const targetAdmin = await User.findByPk(targetAdminUid);
-                const role = targetAdmin?.role?.toLowerCase()?.trim();
+                const role = targetAdmin?.role?.toLowerCase()?.trim() || '';
                 
                 // HR department doesn't need to be notified of their own approval actions
                 if (role !== 'hr admin') {
-                    let adminLink = '/dashboard/team/leaves'; 
+                    let adminLink = '/dashboard/tasks'; 
                     
-                    if (role === 'Sales & CRM Admin') adminLink = '/dashboard/sales/leaves';
-                    else if (role === 'Finance Admin') adminLink = '/dashboard/finance/leaves';
-                    else if (role === 'Operations Admin') adminLink = '/dashboard/operations/leaves';
-                    else if (role === 'Academic Admin') adminLink = '/dashboard/academic/leaves';
-                    else if (['Open School Admin', 'Online Department Admin', 'Skill Department Admin', 'BVoc Department Admin'].includes(role)) adminLink = `/dashboard/subdept/${role}/leaves`;
+                    if (role.includes('sales')) adminLink = '/dashboard/sales/leaves';
+                    else if (role.includes('finance')) adminLink = '/dashboard/finance/leaves';
+                    else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leaves';
+                    else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leaves';
+                    else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leaves';
+                    else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leaves';
+                    else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leaves';
+                    else if (role.includes('hr')) adminLink = '/dashboard/hr/leaves';
 
                     await createNotification(req.io, {
                         targetUid: targetAdminUid,

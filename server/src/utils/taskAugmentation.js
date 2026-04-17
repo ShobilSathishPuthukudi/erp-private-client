@@ -14,18 +14,28 @@ export const augmentTaskStatus = (task) => {
   
   // 1. Basic Overdue Status
   const isOverdue = deadlineDate < now && taskData.status !== 'completed';
-  
-  // 2. Grace Period Logic: 24 Hours after deadline
-  const gracePeriodThreshold = new Date(deadlineDate.getTime() + (24 * 60 * 60 * 1000));
-  const isEscalated = now > gracePeriodThreshold && taskData.status !== 'completed';
+  const isDeptAdminReview = taskData.escalationLevel === 'DEPT_ADMIN' && taskData.status !== 'completed';
+  const isEscalated = taskData.escalationLevel === 'CEO' && taskData.status !== 'completed';
+
+  let overdueLabel = null;
+  if (isEscalated) {
+    overdueLabel = 'CRITICAL: ESCALATED TO CEO';
+  } else if (isDeptAdminReview) {
+    if (taskData.deptAdminDecision === 'GRACE_GRANTED' && taskData.deptAdminGraceUntil) {
+      overdueLabel = 'Grace Granted By Department Admin';
+    } else {
+      overdueLabel = 'Department Admin Review Required';
+    }
+  } else if (isOverdue) {
+    overdueLabel = 'Overdue - Administrative Action Required';
+  }
 
   return {
     ...taskData,
     isOverdue,
     isEscalated,
-    overdueLabel: isEscalated 
-      ? 'CRITICAL: ESCALATED TO CEO' 
-      : (isOverdue ? 'Overdue - Administrative Action Required' : null)
+    isDeptAdminReview,
+    overdueLabel
   };
 };
 

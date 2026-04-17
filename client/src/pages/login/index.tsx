@@ -288,16 +288,16 @@ export default function LoginPage() {
                 {[
                   { role: 'Organization Admin', email: 'admin@erp.com', initial: 'OA', color: 'bg-slate-900', desc: 'Org Configuration' },
                   { role: 'CEO', email: 'ceo@erp.com', initial: 'CEO', color: 'bg-indigo-950', desc: 'Corporate HUD' },
-                  { role: 'Operations Admin', email: 'operations@erp.com', initial: 'OPS', color: 'bg-sky-600', desc: 'Academic Mgmt' },
+                  { role: 'Academic Operations Admin', email: 'operations@erp.com', initial: 'OPS', color: 'bg-sky-600', desc: 'Academic Mgmt' },
                   { role: 'Finance Admin', email: 'finance@erp.com', initial: 'FO', color: 'bg-emerald-600', desc: 'Revenue & Audit' },
                   { role: 'HR Admin', email: 'hr@erp.com', initial: 'HR', color: 'bg-rose-600', desc: 'People & Attendance' },
-                  { role: 'Sales & CRM Admin', email: 'sales@erp.com', initial: 'SL', color: 'bg-amber-600', desc: 'Lead Pipeline' },
+                  { role: 'Sales Admin', email: 'sales@erp.com', initial: 'SL', color: 'bg-amber-600', desc: 'Lead Pipeline' },
                   { role: 'Partner Centers', email: 'center@erp.com', initial: 'PC', color: 'bg-violet-600', desc: 'Center Ops' },
                   { role: 'Employee', email: 'employee@erp.com', initial: 'SP', color: 'bg-slate-500', desc: 'Personal Utility' },
                   { role: 'Open School Admin', email: 'open-school@erp.com', initial: 'OS', color: 'bg-orange-600', desc: 'Sub-Dept Portal' },
-                  { role: 'Online Department Admin', email: 'online@erp.com', initial: 'ON', color: 'bg-cyan-600', desc: 'Virtual Learning' },
-                  { role: 'Skill Department Admin', email: 'skill@erp.com', initial: 'SK', color: 'bg-lime-600', desc: 'Vocational Training' },
-                  { role: 'BVoc Department Admin', email: 'bvoc@erp.com', initial: 'BV', color: 'bg-fuchsia-600', desc: 'Degree Portal' }
+                  { role: 'Online Admin', email: 'online@erp.com', initial: 'ON', color: 'bg-cyan-600', desc: 'Virtual Learning' },
+                  { role: 'Skill Admin', email: 'skill@erp.com', initial: 'SK', color: 'bg-lime-600', desc: 'Vocational Training' },
+                  { role: 'BVoc Admin', email: 'bvoc@erp.com', initial: 'BV', color: 'bg-fuchsia-600', desc: 'Degree Portal' }
                 ].map((demo) => (
                   <button
                     key={demo.role}
@@ -507,7 +507,7 @@ export default function LoginPage() {
             <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden border border-slate-200 animate-in zoom-in-95 fade-in duration-200">
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Newly Registered Staff</h3>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Newly Registered Employees</h3>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select an institutional employee node to assume identity</p>
                 </div>
                 <button onClick={() => setShowStaffSelector(false)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-900">

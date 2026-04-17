@@ -1,47 +1,53 @@
 import { models } from './src/models/index.js';
+import { Op } from 'sequelize';
+import { getDepartmentNameAliases, getSubDepartmentNameAliases, normalizeDepartmentName, normalizeSubDepartmentName } from './src/config/institutionalStructure.js';
 
 async function seedHierarchy() {
   const { Department, Role, User } = models;
 
   console.log('--- Institutional Hierarchy Migration Initiated ---');
 
-  // 1. Unify Academic Operations Pillar
-  console.log('Unifying Operations and Academics into Academic Operations Pillar...');
-  
-  // Find or create the primary Academic Operations Department
-  const [opsDept, created] = await Department.findOrCreate({
-    where: { type: 'Academic Operations' },
-    defaults: { 
-      name: 'Academic Operations Department', 
-      type: 'Academic Operations',
-      status: 'active'
-    }
+  // 1. Unify Academic Operations Pillar without renaming existing rows.
+  console.log('Resolving Academic Operations pillar aliases...');
+  const academicOperationsAliases = getDepartmentNameAliases('Academic Operations');
+  const opsDept = await Department.findOne({
+    where: { name: { [Op.in]: academicOperationsAliases } },
+    order: [['id', 'ASC']],
+  }) || await Department.create({
+    name: normalizeDepartmentName('Academic Operations'),
+    type: 'departments',
+    status: 'active'
   });
 
-  // 2. Scale Core & Sub-Department Nomenclature in Registry
+  // 2. Scale Core & Sub-Department lookup aliases without renaming persisted data.
   const standardDepts = [
-    { type: 'Finance', name: 'Finance Department' },
-    { type: 'HR', name: 'HR Department' },
-    { type: 'Sales', name: 'Sales Department' },
-    { type: 'Admissions', name: 'Admissions Department' },
-    { type: 'bvoc', name: 'BVoc Department' },
-    { type: 'online', name: 'Online Department' },
-    { type: 'skill', name: 'Skill Department' },
-    { type: 'openschool', name: 'Open School Department' }
+    { name: 'Finance', isSubDepartment: false },
+    { name: 'HR', isSubDepartment: false },
+    { name: 'Sales', isSubDepartment: false },
+    { name: 'Admissions', isSubDepartment: false },
+    { name: 'BVoc', isSubDepartment: true },
+    { name: 'Online', isSubDepartment: true },
+    { name: 'Skill', isSubDepartment: true },
+    { name: 'Open School', isSubDepartment: true }
   ];
 
   for (const sd of standardDepts) {
-    await Department.update(
-      { name: sd.name },
-      { where: { type: sd.type } }
-    );
-  }
+    const aliases = sd.isSubDepartment ? getSubDepartmentNameAliases(sd.name) : getDepartmentNameAliases(sd.name);
+    const canonicalName = sd.isSubDepartment ? normalizeSubDepartmentName(sd.name) : normalizeDepartmentName(sd.name);
+    const existing = await Department.findOne({
+      where: { name: { [Op.in]: aliases } },
+      order: [['id', 'ASC']],
+    });
 
-  // Handle existing 'Operations' or 'Academics' units by renaming them
-  await Department.update(
-    { name: 'Academic Operations Department', type: 'Academic Operations' },
-    { where: { name: ['Operations', 'Academics', 'Operations Department'] } }
-  );
+    if (!existing) {
+      await Department.create({
+        name: canonicalName,
+        type: sd.isSubDepartment ? 'sub-departments' : 'departments',
+        parentId: sd.isSubDepartment ? opsDept.id : null,
+        status: 'active',
+      });
+    }
+  }
 
   // 3. User & Role Registry Migration (GAP-5)
   // 3.1 Reassign Users to the Unified Role Set

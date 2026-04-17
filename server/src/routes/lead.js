@@ -23,7 +23,7 @@ router.post('/public/referral', async (req, res) => {
     const center = await Department.create({
       name,
       shortName: name.substring(0, 5).toUpperCase(),
-      type: 'study-center',
+      type: 'partner centers',
       status: 'inactive',
       auditStatus: 'pending', // Awaiting Ops Team Review
       bdeId: bde.uid,
@@ -44,7 +44,7 @@ router.post('/public/referral', async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: 'study-center',
+      role: 'partner-center',
       deptId: center.id,
       status: 'active'
     }, { transaction: t });
@@ -143,8 +143,9 @@ router.post('/:id/convert', authenticate, authorize(['Sales & CRM Admin', 'Organ
     // Create a pending Center record in Department
     const center = await Department.create({
       name: lead.name,
-      type: 'study-center',
+      type: 'partner centers',
       status: 'inactive', // Pending Ops Audit
+      auditStatus: 'pending',
       sourceLeadId: lead.id,
       bdeId: lead.bdeId,
       metadata: {
@@ -154,6 +155,22 @@ router.post('/:id/convert', authenticate, authorize(['Sales & CRM Admin', 'Organ
         conversionDate: new Date().toISOString()
       }
     });
+
+    // Create a placeholder admin user so the center has credentials from the start
+    const placeholderPassword = 'provision_pending';
+    const hashedPassword = await bcrypt.hash(placeholderPassword, 10);
+    const generatedUid = `CTR-CONV-${Date.now().toString().slice(-6)}-${center.id}`;
+    await User.create({
+      uid: generatedUid,
+      name: lead.name,
+      email: lead.email || `${generatedUid.toLowerCase()}@center.erp`,
+      password: hashedPassword,
+      devPassword: placeholderPassword,
+      role: 'Partner Center',
+      deptId: center.id,
+      status: 'active'
+    });
+    await center.update({ adminId: generatedUid });
 
     lead.status = 'converted';
     await lead.save();

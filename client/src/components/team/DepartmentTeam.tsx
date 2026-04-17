@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { UserPlus, ShieldCheck, Share2, Printer, Download, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import { ShieldCheck, Share2, Printer, Download, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -17,6 +17,7 @@ interface TeamMember {
   role: string;
   status: string;
   createdAt: string;
+  avatar?: string | null;
   performance?: {
     overdueTasks: number;
     agedPendingLeaves: number;
@@ -52,9 +53,11 @@ export default function Team() {
   
   const user = useAuthStore((state) => state.user);
   const userRole = getNormalizedRole(user?.role || '');
-  const isHR = userRole === 'hr' || userRole === 'organization admin';
-  const isCEO = userRole === 'ceo';
-  const canManage = isHR; 
+  const scopedDeptId = user?.deptId || (user as any)?.departmentId;
+  const isDeptScopedRole = ['hr', 'finance', 'sales', 'operations'].includes(userRole);
+  const isSubDeptRole = ['openschool', 'online', 'skill', 'bvoc'].includes(userRole);
+  const isExecutive = userRole === 'ceo' || userRole === 'organization admin';
+  const canManage = isDeptScopedRole || isSubDeptRole;
   const [deptName, setDeptName] = useState('');
   const [suggestedEmail, setSuggestedEmail] = useState('');
   const watchedName = watch('name');
@@ -85,15 +88,26 @@ export default function Team() {
   }, [watchedName, deptName]);
 
   const fetchTeam = async () => {
-    const isGlobal = isCEO || ['organization admin', 'partner-center', 'operations'].includes(userRole);
-    if (!user?.deptId && !isGlobal) {
+    if (isExecutive) {
+      setTeam([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!scopedDeptId) {
       setIsLoading(false);
       return;
     }
     
     try {
       setIsLoading(true);
-      const res = await api.get('/dept-admin/team');
+      const res = await api.get('/dept-admin/team', {
+        params: {
+          deptId: scopedDeptId,
+          subDepartment: user?.subDepartment,
+          strictSubDepartment: isSubDeptRole
+        }
+      });
       setTeam(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('[TEAM-FETCH-ERROR]:', error);
@@ -105,7 +119,7 @@ export default function Team() {
 
   useEffect(() => {
     fetchTeam();
-  }, []);
+  }, [scopedDeptId, user?.subDepartment, userRole]);
 
   const handleAccept = async (uid: string) => {
     if (!canManage) return;
@@ -147,7 +161,24 @@ export default function Team() {
     { 
       accessorKey: 'name', 
       header: 'Staff Name',
-      cell: ({ row }) => <span className="font-semibold text-slate-800">{row.original.name}</span>
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">
+            {row.original.avatar ? (
+              <img
+                src={row.original.avatar}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xs font-black text-slate-500">
+                {row.original.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
+            )}
+          </div>
+          <span className="font-semibold text-slate-800">{row.original.name}</span>
+        </div>
+      )
     },
     { accessorKey: 'email', header: 'Email Address' },
     {
@@ -251,10 +282,30 @@ export default function Team() {
     }
   ];
 
-  if (isCEO) {
-    // Hide 'Jurisdiction' column for CEO
+  if (!canManage) {
     columns.pop();
   }
+
+  if (isExecutive) {
+    return (
+      <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem] p-10">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="w-5 h-5 text-blue-600" />
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Team View Not Available</h1>
+          </div>
+          <p className="text-slate-500 text-sm font-medium">
+            Use the institutional structure view for organization-wide personnel visibility.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const title = isSubDeptRole ? 'Sub-Department Team' : 'Department Team';
+  const description = isSubDeptRole
+    ? 'Employees assigned to your sub-department'
+    : 'Employees assigned to your department';
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
@@ -262,13 +313,9 @@ export default function Team() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="w-5 h-5 text-blue-600" />
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              {isCEO ? 'Institutional Roster' : 'Departmental Roster'}
-            </h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{title}</h1>
           </div>
-          <p className="text-slate-500 text-sm font-medium">
-            {isCEO ? 'Institutional oversight and personnel status monitoring' : 'Manage personnel sanctuary and institutional enrollment'}
-          </p>
+          <p className="text-slate-500 text-sm font-medium">{description}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
@@ -292,7 +339,7 @@ export default function Team() {
              <button 
                onClick={() => {
                  downloadCSV(team, 'institutional_roster');
-                 toast.success('Institutional roster exported successfully');
+                 toast.success('Institutional structure exported successfully');
                }}
                className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
                title="Export Data"
@@ -362,8 +409,8 @@ export default function Team() {
               <div className="space-y-1 col-span-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role</label>
                 <select {...register('role')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none">
-                  <option value="employee">Employee</option>
-                  <option value="dept-admin">Dept Admin</option>
+                  <option value="Employee">Employee</option>
+                  <option value="Dept Admin">Dept Admin</option>
                 </select>
               </div>
            </div>

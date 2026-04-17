@@ -3,6 +3,7 @@ import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import { authenticate, authorize } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
+import { checkPermission } from '../middleware/rbac.js';
 
 const router = express.Router();
 const { Lead, Department, Student, Payment, User, Referral, Program, AdmissionSession, ProgramFee, Invoice } = models;
@@ -10,16 +11,11 @@ const { Lead, Department, Student, Payment, User, Referral, Program, AdmissionSe
 const Center = Department; // Alias for consistency with user request
 
 // GET All Leads
-router.get('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin', 'employee']), async (req, res) => {
+router.get('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
   try {
-    const where = ['Sales & CRM Admin', 'employee'].includes(req.user.role) ? { 
-      [Op.or]: [
-        { bdeId: req.user.uid },
-        { employeeId: req.user.uid }
-      ]
-    } : {};
+    const { permissionFilter } = req;
     const leads = await Lead.findAll({
-      where,
+      where: permissionFilter,
       include: [
         {
           model: User,
@@ -43,7 +39,7 @@ router.get('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organization
 });
 
 // CREATE Lead
-router.post('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.post('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'create'), async (req, res) => {
   try {
     const lead = await Lead.create({
       ...req.body,
@@ -59,7 +55,7 @@ router.post('/leads', authenticate, authorize(['Sales & CRM Admin', 'Organizatio
 });
 
 // GET unique referral code for current BDE
-router.get('/referral-code', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.get('/referral-code', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
   try {
     const userId = req.user?.uid; // Using uid as per current architecture
 
@@ -86,17 +82,11 @@ router.get('/referral-code', authenticate, authorize(['Sales & CRM Admin', 'Orga
 });
 
 // GET Sales Performance Overview
-router.get('/performance', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin', 'Finance Admin']), async (req, res) => {
+router.get('/performance', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
   try {
-    const where = req.user.role === 'Sales & CRM Admin' ? { 
-      [Op.or]: [
-        { bdeId: req.user.uid },
-        { employeeId: req.user.uid }
-      ]
-    } : {};
-
+    const { permissionFilter } = req;
     const leads = await Lead.findAll({
-      where,
+      where: permissionFilter,
       attributes: ['id', 'name', 'status', 'createdAt', 'expectedValue']
     });
 
@@ -134,8 +124,11 @@ router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 
     const salesDeptIds = salesDepts.map(d => d.id);
 
     // 2. Fetch all personnel associated with Sales (Admins + Employees/BDEs)
-    const [programs, salesStaff] = await Promise.all([
-      Program.findAll({ attributes: ['id', 'name', 'shortName', 'type'] }),
+    const [programs, salesStaff, universities] = await Promise.all([
+      Program.findAll({ 
+        where: { status: { [Op.in]: ['active', 'staged'] } }, 
+        attributes: ['id', 'name', 'shortName', 'type'] 
+      }),
       User.findAll({ 
         where: { 
           [Op.or]: [
@@ -145,12 +138,14 @@ router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 
           status: 'active'
         }, 
         attributes: ['uid', 'name', 'role'] 
-      })
+      }),
+      Department.findAll({ where: { type: 'universities', status: { [Op.in]: ['active', 'staged'] } }, attributes: ['id'] })
     ]);
 
     return res.json({
       programs: programs || [],
-      salesStaff: salesStaff || []
+      salesStaff: salesStaff || [],
+      hasUniversities: universities.length > 0
     });
   } catch (error) {
     console.error("SALES ERROR (Conversion Options):", error);
@@ -161,7 +156,7 @@ router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 
 });
 
 // CONVERT Lead to Center
-router.post('/leads/:id/convert-to-center', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.post('/leads/:id/convert-to-center', authenticate, checkPermission('SALES_CONV', 'approve'), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -170,15 +165,19 @@ router.post('/leads/:id/convert-to-center', authenticate, authorize(['Sales & CR
     const lead = await Lead.findByPk(id);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
 
+    if (!programIds || !Array.isArray(programIds) || programIds.length === 0) {
+      return res.status(400).json({ error: 'Governance Violation: A center cannot be established without configuring at least one academic program and its associated university.' });
+    }
+
     // 1. Create Department (Study Center)
     const center = await Department.create({
       name: lead.name,
       shortName: shortName || lead.name.substring(0, 5).toUpperCase(),
-      type: 'partner-center',
+      type: 'partner centers',
       status: 'inactive',
       auditStatus: 'pending',
       sourceLeadId: lead.id,
-      bdeId: lead.bdeId || lead.employeeId, // Fallback to captured employee if BDE is null
+      bdeId: lead.bdeId || lead.employeeId || req.user.uid, // Fallback to converting user if lead has no BDE
       metadata: {
         convertedAt: new Date(),
         conversionNotes: notes

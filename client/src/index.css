@@ -93,6 +93,19 @@
     @apply bg-background text-foreground;
   }
 
+  button:not(:disabled),
+  a[href],
+  summary,
+  label[for],
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="link"]:not([aria-disabled="true"]),
+  [data-clickable-cursor="true"] {
+    cursor: pointer;
+  }
+
   /* Global Immersive Focus: Blur entire app shell when modal is open */
   body.modal-open-blur #root {
     filter: blur(12px) grayscale(0.2);

@@ -30,7 +30,11 @@ interface Task {
   createdAt: string;
   isOverdue?: boolean;
   isEscalated?: boolean;
+  isDeptAdminReview?: boolean;
   overdueLabel?: string | null;
+  escalationLevel?: 'EMPLOYEE' | 'DEPT_ADMIN' | 'CEO';
+  deptAdminDecision?: 'PENDING_REVIEW' | 'GRACE_GRANTED' | 'ESCALATED_TO_CEO' | null;
+  deptAdminGraceUntil?: string | null;
 }
 
 export default function Tasks() {
@@ -46,16 +50,17 @@ export default function Tasks() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'received' | 'issued'>('issued');
+  const [activeTab, setActiveTab] = useState<'received' | 'issued'>(isCEO ? 'issued' : 'issued');
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
   const watchAllFields = watch();
 
-  const isFormValid = 
+  const isFormValid =
     !!watchAllFields.title?.trim() &&
-    !!watchAllFields.assignedTo &&
+    (editingTask ? true : !!watchAllFields.assignedTo) &&
     !!watchAllFields.deadline &&
-    !!watchAllFields.priority;
+    !!watchAllFields.priority &&
+    (!editingTask || !!watchAllFields.remarks?.trim());
 
   const fetchData = async () => {
     // Oversight Logic: Only restrict if non-global role lacks department.
@@ -67,6 +72,7 @@ export default function Tasks() {
 
     try {
       setIsLoading(true);
+      const teamEndpoint = isCEO ? '/ceo/roster' : '/dept-admin/team';
       const [tasksRes, teamRes] = await Promise.all([
         api.get('/dept-admin/tasks', {
           params: {
@@ -74,10 +80,16 @@ export default function Tasks() {
             subDepartmentId: user?.subDepartment // Mapping to subDepartment scope
           }
         }),
-        api.get('/dept-admin/team')
+        api.get(teamEndpoint).catch(() => ({ data: [] }))
       ]);
+      
+      let teamData = teamRes.data;
+      if (isCEO && teamRes.data?.users) {
+        teamData = teamRes.data.users;
+      }
+      
       setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
-      setTeam(Array.isArray(teamRes.data) ? teamRes.data : []);
+      setTeam(Array.isArray(teamData) ? teamData : []);
     } catch (error) {
       console.error('[TASKS-FETCH-ERROR]:', error);
       setTasks([]);
@@ -93,9 +105,10 @@ export default function Tasks() {
 
   const openCreateModal = () => {
     setEditingTask(null);
+    const hrAdmin = isCEO ? team.find(t => t.role?.toLowerCase()?.includes('hr admin') || t.role?.toLowerCase()?.includes('human resources')) : null;
     reset({ 
       title: '', 
-      assignedTo: '', 
+      assignedTo: hrAdmin?.uid || (isCEO ? 'HR-SYSTEM' : ''), 
       deadline: new Date().toISOString().split('T')[0], 
       priority: 'medium',
       status: 'pending'
@@ -105,12 +118,13 @@ export default function Tasks() {
 
   const openEditModal = (task: Task) => {
     setEditingTask(task);
-    reset({ 
-      title: task.title, 
-      assignedTo: task.assignedTo, 
-      deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '', 
+    reset({
+      title: task.title,
+      assignedTo: task.assignedTo,
+      deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
       priority: task.priority,
-      status: task.status
+      status: task.status,
+      remarks: ''
     });
     setIsModalOpen(true);
   };
@@ -121,7 +135,8 @@ export default function Tasks() {
       const payload = {
           ...data,
           departmentId: user?.deptId,
-          subDepartmentId: user?.subDepartment
+          subDepartmentId: user?.subDepartment,
+          ...(editingTask ? { remarks: data.remarks } : {})
       };
 
       if (editingTask) {
@@ -140,6 +155,16 @@ export default function Tasks() {
 
   const handleDelete = (id: number) => {
     setTaskToDelete(id);
+  };
+
+  const handleDeptAction = async (id: number, action: 'grace' | 'escalate') => {
+    try {
+      await api.put(`/dept-admin/tasks/${id}/${action}`);
+      toast.success(action === 'grace' ? '24-hour grace period granted' : 'Task escalated to CEO');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || `Failed to ${action} task`);
+    }
   };
 
   const confirmDelete = async () => {
@@ -214,6 +239,9 @@ export default function Tasks() {
         if (isEscalated) {
           color = 'bg-purple-100 text-purple-700 font-black ring-2 ring-purple-500/20';
           label = 'ESCALATED TO CEO';
+        } else if (row.original.isDeptAdminReview) {
+          color = 'bg-amber-100 text-amber-700 font-black ring-2 ring-amber-500/20';
+          label = row.original.deptAdminDecision === 'GRACE_GRANTED' ? 'GRACE GRANTED' : 'DEPT ADMIN REVIEW';
         } else if (isOverdue) {
           color = 'bg-red-100 text-red-700 font-black ring-2 ring-red-500/20';
           label = 'OVERDUE (RED FLAG)';
@@ -230,7 +258,9 @@ export default function Tasks() {
             </span>
             {isOverdue && !isEscalated && (
               <span className="text-[8px] text-red-400 font-bold uppercase tracking-tighter text-center">
-                Grace Period: 24H
+                {row.original.deptAdminDecision === 'GRACE_GRANTED' && row.original.deptAdminGraceUntil
+                  ? `Grace Until ${new Date(row.original.deptAdminGraceUntil).toLocaleString()}`
+                  : 'Dept Admin Window: 24H'}
               </span>
             )}
           </div>
@@ -242,8 +272,27 @@ export default function Tasks() {
       header: 'Actions',
       cell: ({ row }) => {
         const task = row.original;
+        const canReviewEscalation = task.isOverdue && !task.isEscalated;
         return (
           <div className="flex items-center space-x-2">
+            {canReviewEscalation && (
+              <>
+                <button
+                  onClick={() => handleDeptAction(task.id, 'grace')}
+                  className="px-2 py-1 text-[10px] font-black uppercase rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                  title="Grant 24-hour grace"
+                >
+                  Grace 24H
+                </button>
+                <button
+                  onClick={() => handleDeptAction(task.id, 'escalate')}
+                  className="px-2 py-1 text-[10px] font-black uppercase rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                  title="Escalate directly to CEO"
+                >
+                  CEO
+                </button>
+              </>
+            )}
             <button onClick={() => openEditModal(task)} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
               <Edit2 className="w-4 h-4" />
             </button>
@@ -325,39 +374,41 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Modern Tab Bar */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl w-fit shrink-0 border border-slate-200/50">
-        <button
-          onClick={() => setActiveTab('received')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 ${
-            activeTab === 'received'
-              ? 'bg-white text-slate-900 shadow-lg shadow-slate-200 border border-slate-200'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-          }`}
-        >
-          Institutional Directives
-          <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${
-            activeTab === 'received' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
-          }`}>
-            {receivedTasks.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('issued')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 ${
-            activeTab === 'issued'
-              ? 'bg-white text-slate-900 shadow-lg shadow-slate-200 border border-slate-200'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-          }`}
-        >
-          Team Assignments
-          <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${
-            activeTab === 'issued' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
-          }`}>
-            {issuedTasks.length}
-          </span>
-        </button>
-      </div>
+      {/* Modern Tab Bar - Hidden for CEO as only one tab exists */}
+      {!isCEO && (
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl w-fit shrink-0 border border-slate-200/50">
+          <button
+            onClick={() => setActiveTab('received')}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 ${
+              activeTab === 'received'
+                ? 'bg-white text-slate-900 shadow-lg shadow-slate-200 border border-slate-200'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+            }`}
+          >
+            Institutional Directives
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${
+              activeTab === 'received' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {receivedTasks.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('issued')}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 ${
+              activeTab === 'issued'
+                ? 'bg-white text-slate-900 shadow-lg shadow-slate-200 border border-slate-200'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+            }`}
+          >
+            Team Assignments
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${
+              activeTab === 'issued' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {issuedTasks.length}
+            </span>
+          </button>
+        </div>
+      )}
 
       {filteredTasks.length === 0 && !isLoading ? (
         <div className="flex-1 flex items-center justify-center bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-[2rem]">
@@ -435,49 +486,40 @@ export default function Tasks() {
 
           {!editingTask && (
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
-                 {isCEO ? 'Assign To (HR Administrators Only)' : 
-                  isHR ? 'Assign To (HR Personnel Only)' :
-                  isOpsOrAcad ? 'Assign To (Sub-Dept Admins & Team)' : 
-                  'Assign To (Department Personnel)'}
-              </label>
-              <select
-                {...register('assignedTo', { required: 'Assignee is required' })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-              >
-                <option value="">-- Select {isCEO ? 'HR Admin' : 'Assignee'} --</option>
-                {team.filter(t => {
-                  // 1. RBAC Guard: Exclude self
-                  if (t.uid === user?.uid) return false;
-                  
-                  // 2. RBAC Guard: Exclude inactive/suspended
-                  if (t.status !== 'active') return false;
-
-                  const role = getNormalizedRole(user?.role || '');
-                  const isCEO = role === 'ceo';
-                  
-                  if (isCEO) {
-                    const DEPT_ADMIN_ROLES = [
-                      "HR Admin",
-                      "Finance Admin",
-                      "Academic Ops Admin",
-                      "Sales & CRM Admin",
-                      "BVoc Dept Admin",
-                      "Online Dept Admin",
-                      "Open School Admin",
-                      "Skill Dept Admin"
-                    ];
-                    // CEO can ONLY assign to these exact roles
-                    return DEPT_ADMIN_ROLES.includes(t.role || '');
-                  }
-
-                  // 3. Dept Admin Branch: Exact 'Employee' match + department isolation
-                  // Note: System/Org admins are excluded as they don't match 'Employee' role.
-                  return t.role === "Employee" && String(t.deptId) === String(user?.deptId);
-                }).map((t) => (
-                  <option key={t.uid} value={t.uid}>{t.name} ({t.role || 'Personnel'})</option>
-                ))}
-              </select>
+              {isCEO ? (
+                <>
+                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                     Assign To (Locked by Executive Policy)
+                   </label>
+                   <div className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-400 flex items-center justify-between opacity-80 cursor-not-allowed">
+                     <span>Human Resources Administration</span>
+                     <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-sm uppercase tracking-widest text-slate-500">System Routed</span>
+                   </div>
+                   {/* Ghost input to satisfy React Hook Form validation seamlessly */}
+                   <input type="hidden" {...register('assignedTo', { required: 'HR Assignee could not be resolved from DB roster' })} />
+                </>
+              ) : (
+                <>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                     {isHR ? 'Assign To (HR Personnel Only)' :
+                      isOpsOrAcad ? 'Assign To (Sub-Dept Admins & Team)' : 
+                      'Assign To (Department Personnel)'}
+                  </label>
+                  <select
+                    {...register('assignedTo', { required: 'Assignee is required' })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                  >
+                    <option value="">-- Select Assignee --</option>
+                    {team.filter(t => {
+                      if (t.uid === user?.uid) return false;
+                      if (t.status !== 'active') return false;
+                      return t.role === "Employee" && String(t.deptId) === String(user?.deptId);
+                    }).map((t) => (
+                      <option key={t.uid} value={t.uid}>{t.name} ({t.role || 'Personnel'})</option>
+                    ))}
+                  </select>
+                </>
+              )}
               {errors.assignedTo && <p className="text-red-500 text-xs mt-1 ml-1">{errors.assignedTo.message as string}</p>}
             </div>
           )}
@@ -508,18 +550,31 @@ export default function Tasks() {
           </div>
 
           {editingTask && (
-            <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Task Status</label>
-              <select
-                {...register('status')}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
-              >
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Task Status</label>
+                <select
+                  {...register('status')}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                  Status Remarks <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  {...register('remarks', { required: 'Remarks are required when updating status' })}
+                  rows={2}
+                  placeholder="Describe the status change reason..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900 resize-none"
+                />
+                {errors.remarks && <p className="text-red-500 text-xs mt-1 ml-1">{errors.remarks.message as string}</p>}
+              </div>
+            </>
           )}
           </div>
 

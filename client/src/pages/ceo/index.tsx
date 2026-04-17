@@ -4,7 +4,7 @@ import Escalations from './Escalations';
 import PayoutApproval from './PayoutApproval';
 import EmployeePerformance from './EmployeePerformance';
 import Announcements from './Announcements';
-import DepartmentTeam from '@/components/team/DepartmentTeam';
+import InstitutionalRoster from '@/components/team/InstitutionalRoster';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 
 export default function CEODashboard() {
@@ -24,7 +24,7 @@ export default function CEODashboard() {
             <Route path="announcements" element={<Announcements />} />
             
             {/* Team Management Integration */}
-            <Route path="team" element={<DepartmentTeam />} />
+            <Route path="team" element={<InstitutionalRoster />} />
             <Route path="tasks" element={<DepartmentTasks />} />
           </Routes>
         </div>

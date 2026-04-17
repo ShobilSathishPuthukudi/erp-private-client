@@ -53,7 +53,7 @@ export default function AddEmployee() {
           api.get('/org-admin/roles')
         ]);
         setDepartments(deptRes.data);
-        setRoles(roleRes.data);
+        setRoles(roleRes.data.filter((role: any) => role.name === 'Employee'));
       } catch (error) {
         toast.error('Failed to load institutional configuration');
       }
@@ -218,7 +218,7 @@ export default function AddEmployee() {
                 className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium appearance-none"
               >
                 <option value="">-- No Sub-Dept (Universal) --</option>
-                <option value="OpenSchool">OpenSchool</option>
+                <option value="Open School">Open School</option>
                 <option value="Online">Online</option>
                 <option value="Skill">Skill</option>
                 <option value="BVoc">BVoc</option>
@@ -240,7 +240,7 @@ export default function AddEmployee() {
                 <option value="">-- Targeted Role --</option>
                 {roles.map((role: any) => (
                   <option key={role.id} value={role.name}>
-                    {role.name} {role.isAdminEligible ? '(Admin Eligible)' : ''}
+                    {role.name}
                   </option>
                 ))}
               </select>

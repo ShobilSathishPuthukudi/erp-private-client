@@ -1,25 +1,34 @@
 import { models } from './src/models/index.js';
+import { Op } from 'sequelize';
+import { getSubDepartmentNameAliases, normalizeSubDepartmentName } from './src/config/institutionalStructure.js';
 
 async function seedSubDepts() {
   const { Department, User, Program, Student } = models;
 
   const subDepts = [
     { name: 'Open School', role: 'openschool', adminUid: 'OS-001' },
-    { name: 'Online Education', role: 'online', adminUid: 'ON-001' },
-    { name: 'Skill Development', role: 'skill', adminUid: 'SK-001' },
+    { name: 'Online', role: 'online', adminUid: 'ON-001' },
+    { name: 'Skill', role: 'skill', adminUid: 'SK-001' },
     { name: 'BVoc', role: 'bvoc', adminUid: 'BV-001' }
   ];
 
   for (const sd of subDepts) {
-    console.log(`Processing ${sd.name}...`);
+    const canonicalName = normalizeSubDepartmentName(sd.name);
+    console.log(`Processing ${canonicalName}...`);
     
-    // 1. Create or find department
-    const [dept, created] = await Department.findOrCreate({
-      where: { name: sd.name },
-      defaults: { status: 'active', type: sd.role }
+    // Reuse a matching legacy row if it already exists so reruns do not create replicas.
+    const existingDepartment = await Department.findOne({
+      where: { name: { [Op.in]: getSubDepartmentNameAliases(canonicalName) } },
+      order: [['id', 'ASC']],
+    });
+    const created = !existingDepartment;
+    const dept = existingDepartment || await Department.create({
+      name: canonicalName,
+      status: 'active',
+      type: 'sub-departments',
     });
 
-    console.log(`${sd.name} Department ID: ${dept.id} (Created: ${created})`);
+    console.log(`${canonicalName} Department ID: ${dept.id} (Created: ${created})`);
 
     // 2. Link Admin User
     const user = await User.findOne({ where: { uid: sd.adminUid } });

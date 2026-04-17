@@ -34,6 +34,7 @@ export default function Leaves() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [confirmModal, setConfirmModal] = useState<{id: number, action: 'approve' | 'reject'} | null>(null);
+  const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
 
   const fetchLeaves = async () => {
     try {
@@ -164,6 +165,7 @@ export default function Leaves() {
           isLoading={isLoading} 
           searchKey="employee.name" 
           searchPlaceholder="Search by employee name..." 
+          onRowClick={(leave) => setSelectedLeave(leave)}
         />
       </div>
 
@@ -213,6 +215,122 @@ export default function Leaves() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Details Modal */}
+      <Modal
+        isOpen={!!selectedLeave}
+        onClose={() => setSelectedLeave(null)}
+        title="Institutional Leave Oversight"
+        maxWidth="lg"
+      >
+        {selectedLeave && (
+          <div className="space-y-8 py-2">
+            {/* Main Header / Status Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {toSentenceCase(selectedLeave.type)}
+                </h3>
+                <p className="text-sm text-slate-500 font-medium">Request Reference: LV-{selectedLeave.id}</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</p>
+                <span className={clsx(
+                  "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm",
+                  selectedLeave.status === 'approved' ? "bg-emerald-500 text-white shadow-emerald-100" :
+                  selectedLeave.status.includes('rejected') ? "bg-rose-500 text-white shadow-rose-100" : "bg-amber-500 text-white shadow-amber-100"
+                )}>
+                  {selectedLeave.status.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column: Personnel & Context */}
+              <div className="space-y-6">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Personnel Profile</p>
+                  <div className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center font-bold text-white text-lg ring-4 ring-slate-50">
+                      {selectedLeave.employee?.name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-base">{toSentenceCase(selectedLeave.employee?.name || 'Unknown')}</p>
+                      <p className="text-xs text-slate-500 font-mono tracking-tighter">{selectedLeave.employeeId}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 italic">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Department</p>
+                    <p className="text-xs font-bold text-slate-700">{selectedLeave.employee?.department?.name || 'Unassigned'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 italic">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Email Alias</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">{selectedLeave.employee?.email || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Temporal Alignment */}
+              <div className="space-y-6">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Temporal Window</p>
+                  <div className="relative p-6 bg-slate-50 rounded-3xl border border-dashed border-slate-200 overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-10">
+                      <Calendar size={64} className="text-slate-900" />
+                    </div>
+                    <div className="relative flex items-center justify-between text-center">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Commencement</p>
+                        <p className="text-sm font-black text-slate-900">{selectedLeave.fromDate}</p>
+                      </div>
+                      <div className="flex flex-col items-center px-4">
+                        <div className="h-px w-8 bg-slate-300"></div>
+                        <p className="text-[8px] font-bold text-slate-300 py-1">TO</p>
+                        <div className="h-px w-8 bg-slate-300"></div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Conclusion</p>
+                        <p className="text-sm font-black text-slate-900">{selectedLeave.toDate}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50">
+                  <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Filing Record</p>
+                  <p className="text-xs text-emerald-800 font-medium lowercase italic">
+                    Submitted on {new Date(selectedLeave.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Rationale */}
+            <div className="p-6 bg-slate-50/30 border border-slate-100 rounded-3xl relative overflow-hidden">
+               <div className="absolute top-2 right-4 opacity-5 pointer-events-none">
+                 <CheckCircle size={120} />
+               </div>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Detailed Rationale</p>
+               <p className="text-slate-700 text-sm leading-relaxed font-medium relative z-10">
+                 {selectedLeave.reason ? toSentenceCase(selectedLeave.reason) : 'No institutional rationale provided for this filing.'}
+               </p>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex pt-4">
+              <button
+                onClick={() => setSelectedLeave(null)}
+                className="flex-1 py-4 px-6 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-[0.98]"
+              >
+                Acknowledge & Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

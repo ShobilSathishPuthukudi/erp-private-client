@@ -8,6 +8,7 @@ import { paymentSchema } from '../lib/schemas.js';
 import { logAction } from '../lib/audit.js';
 import { requireMandatoryRemarks } from '../middleware/auditMiddleware.js';
 import erpEvents from '../lib/events.js';
+import { checkPermission } from '../middleware/rbac.js';
 
 const router = express.Router();
 const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution } = models;
@@ -127,15 +128,19 @@ router.put('/academic-action-requests/:id/reject', verifyToken, isFinanceOrAdmin
   }
 });
 
-router.get('/payments', verifyToken, isFinanceOrAdmin, async (req, res) => {
+router.get('/payments', verifyToken, checkPermission('FIN_PAY_VERIFY', 'read'), async (req, res) => {
   try {
+    const { permissionFilter } = req;
+    
+    // Joint filter: Apply scope restrictions via student relationship if scoped
     const payments = await Payment.findAll({
       include: [
         { 
           model: Student, 
           as: 'student', 
-          attributes: ['id', 'name', 'email', 'uid', 'enrollStatus'],
-          required: false,
+          attributes: ['id', 'name', 'email', 'uid', 'enrollStatus', 'deptId', 'centerId'],
+          required: true, // Enforcement: Must have student data for scope check
+          where: permissionFilter, // Apply scope filter here (deptId/centerId mapping)
           include: [
             { model: Program, attributes: ['id', 'name', 'shortName'] },
             { model: Department, as: 'center', attributes: ['id', 'name', 'shortName'] }
@@ -151,7 +156,7 @@ router.get('/payments', verifyToken, isFinanceOrAdmin, async (req, res) => {
   }
 });
 
-router.post('/payments', verifyToken, isFinanceOrAdmin, validate(paymentSchema), async (req, res) => {
+router.post('/payments', verifyToken, checkPermission('FIN_PAY_VERIFY', 'create'), validate(paymentSchema), async (req, res) => {
   try {
     const { studentId, amount, mode, status } = req.body;
     
@@ -179,7 +184,7 @@ router.post('/payments', verifyToken, isFinanceOrAdmin, validate(paymentSchema),
 });
 
 // --- Center-Program Fee Assignment (Phase 3) ---
-router.post('/centers/:centerId/programs/:programId/assign-fee', verifyToken, isFinanceOrAdmin, async (req, res) => {
+router.post('/centers/:centerId/programs/:programId/assign-fee', verifyToken, checkPermission('FIN_FEE_MAP', 'create'), async (req, res) => {
   try {
     const { centerId, programId } = req.params;
     const { feeSchemaId, remarks } = req.body;
@@ -213,7 +218,7 @@ router.post('/centers/:centerId/programs/:programId/assign-fee', verifyToken, is
   }
 });
 
-router.post('/payments/:id/verify', verifyToken, isFinanceOrAdmin, async (req, res) => {
+router.post('/payments/:id/verify', verifyToken, checkPermission('FIN_PAY_VERIFY', 'approve'), async (req, res) => {
   try {
     const { id } = req.params;
     const payment = await Payment.findByPk(id);
@@ -597,9 +602,9 @@ router.get('/approvals/centers', verifyToken, isFinanceOrAdmin, async (req, res)
     else if (status === 'rejected') auditStatus = 'rejected';
 
     const centers = await Department.findAll({
-      where: { 
-        type: { [Op.in]: ['partner center', 'partner centers', 'partner-center'] },
-        auditStatus 
+      where: {
+        type: { [Op.in]: ['partner center', 'partner centers', 'partner-center', 'study-center'] },
+        auditStatus
       },
       attributes: ['id', 'name', 'shortName', 'type', 'auditStatus', 'centerStatus', 'description', 'metadata', 'bdeId', 'createdAt', 'financeRemarks'],
       include: [
@@ -623,7 +628,7 @@ router.put('/centers/:id/verify-audit', verifyToken, isFinanceOrAdmin, async (re
     }
 
     const center = await Department.findByPk(id);
-    if (!center || !['partner center', 'partner centers', 'partner-center'].includes(center.type)) {
+    if (!center || !['partner center', 'partner centers', 'partner-center', 'study-center'].includes(center.type)) {
       return res.status(404).json({ error: 'Study center not located in registry' });
     }
 
@@ -976,6 +981,7 @@ router.post('/approvals/students/:id/approve', verifyToken, isFinanceOrAdmin, as
 
         await student.update({
             status: 'FINANCE_APPROVED',
+            enrollStatus: 'finance_approved',
             remarks: remarks
         });
 
@@ -1142,13 +1148,12 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
       return res.status(400).json({ error: 'Student is not in finance verification phase' });
     }
 
-    const nextStatus = status === 'approved' ? 'active' : 'rejected_finance';
-    
     const logs = student.verificationLogs || [];
     logs.push({ step: 'Finance', time: new Date(), status, by: req.user.uid, remarks });
 
     await student.update({
-      enrollStatus: nextStatus,
+      status: status === 'approved' ? 'ENROLLED' : 'REJECTED',
+      enrollStatus: status === 'approved' ? 'active' : 'rejected_finance',
       verificationLogs: logs,
       feeStatus: status === 'approved' ? 'verified' : 'discrepancy',
       remarks: remarks || student.remarks
@@ -1158,7 +1163,7 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
       userId: req.user.uid,
       action: 'UPDATE',
       entity: 'Student',
-      details: `Finance fee verification ${status} for ${student.name}. Next status: ${nextStatus}`,
+      details: `Finance fee verification ${status} for ${student.name}. New status: ${status === 'approved' ? 'ENROLLED' : 'REJECTED'}`,
       module: 'Finance'
     });
 
