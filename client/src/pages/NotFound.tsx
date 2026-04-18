@@ -1,15 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
-  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
   const handleReturn = () => {
     logout();
-    navigate('/login');
+    window.location.replace('/login');
   };
 
   return (

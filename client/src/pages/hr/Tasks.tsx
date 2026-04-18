@@ -7,7 +7,7 @@ import { Plus, ShieldAlert, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
-import { getNormalizedRole } from '@/App';
+import { getNormalizedRole } from '@/lib/roles';
 import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Task {

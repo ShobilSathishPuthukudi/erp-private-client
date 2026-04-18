@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import MyTasks from './MyTasks';
 import LeaveRequests from './LeaveRequests';
 import Announcements from './Announcements';
+import HRContact from './HRContact';
 import CRM from '../sales/CRM';
 import MyCenters from './MyCenters';
 import InstitutionalUniversities from './InstitutionalUniversities';
@@ -24,8 +25,8 @@ import {
   Building2,
   GraduationCap,
   Users,
-  Search,
-  ExternalLink
+  ExternalLink,
+  LifeBuoy
 } from 'lucide-react';
 
 export default function EmployeePortal() {
@@ -349,6 +350,20 @@ export default function EmployeePortal() {
                  </div>
               </div>
            </Link>
+
+           <Link to="hr-contact" className="bg-white p-10 rounded-[3rem] border-2 border-slate-100 shadow-xl shadow-slate-100/50 relative overflow-hidden group hover:scale-[1.02] transition-all hover:border-emerald-100">
+              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform text-emerald-600">
+                 <LifeBuoy className="w-32 h-32" />
+              </div>
+              <div className="relative z-10">
+                 <h2 className="text-3xl font-black mb-2 text-slate-900">Contact HR</h2>
+                 <p className="text-slate-500 font-medium max-w-xs">Send payroll, attendance, leave, document, or policy questions directly to Human Resources.</p>
+                 <div className="mt-8 flex items-center gap-3 text-emerald-600 font-black uppercase text-xs tracking-[0.2em]">
+                    <span>Open HR Desk</span>
+                    <ArrowRight className="w-4 h-4" />
+                 </div>
+              </div>
+           </Link>
         </div>
 
         {/* Sales Link & CRM for BDEs - Visible if Role is Sales OR Department is Sales */}
@@ -429,6 +444,7 @@ export default function EmployeePortal() {
       <Route path="/" element={<Dashboard />} />
       <Route path="tasks" element={<MyTasks />} />
       <Route path="leaves" element={<LeaveRequests />} />
+      <Route path="hr-contact" element={<HRContact />} />
       <Route path="announcements" element={<Announcements />} />
       {(user?.role === 'Sales & CRM Admin' || user?.departmentName?.toLowerCase().includes('sales')) && (
         <>

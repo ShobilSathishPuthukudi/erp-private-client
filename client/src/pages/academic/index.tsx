@@ -13,6 +13,7 @@ import SecurityControl from './SecurityControl';
 import AcademicStaff from './AcademicStaff';
 import ReferredLeads from './ReferredLeads';
 import FinanceRequests from './FinanceRequests';
+import HRBroadcasts from './HRBroadcasts';
 import Exams from './Exams';
 import MarksEntry from './MarksEntry';
 import CenterAudit from './CenterAudit';
@@ -245,6 +246,7 @@ export default function AcademicDashboard() {
       <Route path="tasks" element={<DepartmentTasks />} />
       <Route path="leaves" element={<DepartmentLeaves />} />
       <Route path="announcements" element={<InternalAnnouncements />} />
+      <Route path="hr-broadcasts" element={<HRBroadcasts />} />
       <Route path="referrals" element={<ReferredLeads />} />
       <Route path="finance-requests" element={<FinanceRequests />} />
 

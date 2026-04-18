@@ -62,6 +62,7 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
   });
 
   const getIcon = () => {
+    if (type.includes('university')) return Building;
     if (type.includes('student')) return Users;
     if (type.includes('center')) return Building;
     if (type.includes('program')) return GraduationCap;
@@ -81,7 +82,7 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
       isOpen={isOpen} 
       onClose={onClose} 
       title={title} 
-      maxWidth="5xl"
+      maxWidth="2xl"
     >
       <div className="space-y-6">
         {/* Search & Stats Header */}

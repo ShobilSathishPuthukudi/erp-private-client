@@ -9,6 +9,7 @@ import { logAction } from '../lib/audit.js';
 import { requireMandatoryRemarks } from '../middleware/auditMiddleware.js';
 import erpEvents from '../lib/events.js';
 import { checkPermission } from '../middleware/rbac.js';
+import { clearNotifications } from './notifications.js';
 
 const router = express.Router();
 const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution } = models;
@@ -580,7 +581,7 @@ router.get('/approvals/students', verifyToken, isFinanceOrAdmin, async (req, res
         include: [
           { model: Program, attributes: ['name'], required: false },
           { model: ProgramFee, as: 'feeSchema', required: false },
-          { model: Invoice, as: 'invoice', where: { status: 'paid' }, required: false },
+          { model: Invoice, as: 'invoice', required: false },
           { model: Payment, as: 'payments', required: false }
         ],
         order: [['createdAt', 'DESC']]
@@ -606,7 +607,7 @@ router.get('/approvals/centers', verifyToken, isFinanceOrAdmin, async (req, res)
         type: { [Op.in]: ['partner center', 'partner centers', 'partner-center', 'study-center'] },
         auditStatus
       },
-      attributes: ['id', 'name', 'shortName', 'type', 'auditStatus', 'centerStatus', 'description', 'metadata', 'bdeId', 'createdAt', 'financeRemarks'],
+      attributes: ['id', 'name', 'shortName', 'type', 'auditStatus', 'centerStatus', 'description', 'metadata', 'bdeId', 'createdAt', 'financeRemarks', 'rejectionReason'],
       include: [
         { model: User, as: 'referringBDE', attributes: ['name', 'uid'] }
       ]
@@ -631,6 +632,14 @@ router.put('/centers/:id/verify-audit', verifyToken, isFinanceOrAdmin, async (re
     if (!center || !['partner center', 'partner centers', 'partner-center', 'study-center'].includes(center.type)) {
       return res.status(404).json({ error: 'Study center not located in registry' });
     }
+
+    const financeRecipients = await User.findAll({
+      where: {
+        role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+        status: 'active'
+      },
+      attributes: ['uid']
+    });
 
     if (status === 'approved') {
         const preferredId = (center.shortName || `CTR-${center.id}`).toUpperCase();
@@ -783,6 +792,15 @@ router.put('/centers/:id/verify-audit', verifyToken, isFinanceOrAdmin, async (re
         module: 'Finance'
     });
 
+    await clearNotifications({
+      userUids: financeRecipients.map((user) => user.uid),
+      links: ['/dashboard/finance/center-verification?tab=pending'],
+      messagePatterns: [
+        `%${center.name}%requires finance ratification%`,
+        `%New Center Pending Verification:%${center.name}%`
+      ]
+    });
+
     res.json({ 
         message: `Center ${status} and institutional boundaries established.`, 
         center: center.get({ plain: true }),
@@ -931,6 +949,23 @@ router.post('/approvals/students/:id/finalize', verifyToken, isFinanceOrAdmin, a
       ipAddress: req.ip
     });
 
+    const financeRecipients = await User.findAll({
+      where: {
+        role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+        status: 'active'
+      },
+      attributes: ['uid']
+    });
+
+    await clearNotifications({
+      userUids: financeRecipients.map((user) => user.uid),
+      links: ['/dashboard/finance/approvals'],
+      messagePatterns: [
+        `Finance Review Required: ${student.name}:%`,
+        `%${student.name}%finance verification%`
+      ]
+    });
+
     // --- Institutional Identity Provisioning (Student Portal Access) ---
     // Check if a User account already exists for this student identity node
     const studentUid = `STU${student.id}`;
@@ -994,6 +1029,23 @@ router.post('/approvals/students/:id/approve', verifyToken, isFinanceOrAdmin, as
             remarks
         });
 
+        const financeRecipients = await User.findAll({
+            where: {
+                role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+                status: 'active'
+            },
+            attributes: ['uid']
+        });
+
+        await clearNotifications({
+            userUids: financeRecipients.map((user) => user.uid),
+            links: ['/dashboard/finance/approvals'],
+            messagePatterns: [
+                `Finance Review Required: ${student.name}:%`,
+                `%${student.name}%finance verification%`
+            ]
+        });
+
         res.json({ message: 'Finance clearance recorded. Student moved to FINANCE_APPROVED.', student });
     } catch (error) {
         res.status(500).json({ error: 'Finance approval protocol failed.' });
@@ -1025,6 +1077,23 @@ router.post('/approvals/students/:id/reject', verifyToken, isFinanceOrAdmin, asy
             details: `Finance rejection issued for ${student.name}`,
             module: 'Finance',
             remarks
+        });
+
+        const financeRecipients = await User.findAll({
+            where: {
+                role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+                status: 'active'
+            },
+            attributes: ['uid']
+        });
+
+        await clearNotifications({
+            userUids: financeRecipients.map((user) => user.uid),
+            links: ['/dashboard/finance/approvals'],
+            messagePatterns: [
+                `Finance Review Required: ${student.name}:%`,
+                `%${student.name}%finance verification%`
+            ]
         });
 
         res.json({ message: 'Student application rejected by Finance.', student });

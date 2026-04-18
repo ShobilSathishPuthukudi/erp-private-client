@@ -17,7 +17,7 @@ import { handleAuthoritySuccession } from '../utils/governance/singletonEnforcem
 import { validateTaskAssignment } from '../utils/rbac/validateTaskAssignment.js';
 
 const router = express.Router();
-const { User, Vacancy, Task, Department, Leave, Attendance, Lead, Referral, AuditLog, ReregRequest, Role } = models;
+const { User, Vacancy, Task, Department, Leave, Attendance, Lead, Referral, AuditLog, ReregRequest, Role, EmployeeHRRequest } = models;
 
 const isHR = roleGuard(['HR Admin', 'Organization Admin', 'ceo', 'hr']);
 
@@ -808,6 +808,129 @@ router.post('/tasks', verifyToken, async (req, res) => {
     }
 });
 
+router.get('/employee-communications', verifyToken, isHR, async (req, res) => {
+  try {
+    const requests = await EmployeeHRRequest.findAll({
+      order: [['createdAt', 'DESC']]
+    });
+
+    let enrichedRequests = requests.map((request) => ({
+      ...request.toJSON(),
+      employee: {
+        uid: request.employeeId,
+        name: 'Unknown Employee',
+        email: null,
+        deptId: null,
+        department: null
+      },
+      responder: null
+    }));
+
+    try {
+      const employeeIds = [...new Set(requests.map((request) => request.employeeId).filter(Boolean))];
+      const responderIds = [...new Set(requests.map((request) => request.respondedBy).filter(Boolean))];
+
+      const employees = employeeIds.length
+        ? await User.findAll({
+            where: { uid: { [Op.in]: employeeIds } },
+            attributes: ['uid', 'name', 'email', 'deptId']
+          })
+        : [];
+
+      const departmentIds = [...new Set(employees.map((employee) => employee.deptId).filter(Boolean))];
+      const departments = departmentIds.length
+        ? await Department.findAll({
+            where: { id: { [Op.in]: departmentIds } },
+            attributes: ['id', 'name']
+          })
+        : [];
+
+      const responders = responderIds.length
+        ? await User.findAll({
+            where: { uid: { [Op.in]: responderIds } },
+            attributes: ['uid', 'name']
+          })
+        : [];
+
+      const departmentMap = new Map(departments.map((department) => [String(department.id), department]));
+      const employeeMap = new Map(employees.map((employee) => [employee.uid, employee]));
+      const responderMap = new Map(responders.map((responder) => [responder.uid, responder]));
+
+      enrichedRequests = requests.map((request) => {
+        const requestJson = request.toJSON();
+        const employee = employeeMap.get(request.employeeId);
+        const responder = request.respondedBy ? responderMap.get(request.respondedBy) : null;
+        const department = employee?.deptId ? departmentMap.get(String(employee.deptId)) : null;
+
+        return {
+          ...requestJson,
+          employee: employee ? {
+            uid: employee.uid,
+            name: employee.name,
+            email: employee.email,
+            deptId: employee.deptId,
+            department: department ? { name: department.name } : null
+          } : {
+            uid: request.employeeId,
+            name: 'Unknown Employee',
+            email: null,
+            deptId: null,
+            department: null
+          },
+          responder: responder ? {
+            uid: responder.uid,
+            name: responder.name
+          } : null
+        };
+      });
+    } catch (enrichmentError) {
+      console.error('Employee communication enrichment fallback activated:', enrichmentError);
+    }
+
+    res.json(enrichedRequests);
+  } catch (error) {
+    console.error('Fetch employee HR communications error:', error);
+    res.json([]);
+  }
+});
+
+router.put('/employee-communications/:id', verifyToken, isHR, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, hrResponse } = req.body;
+
+    const request = await EmployeeHRRequest.findByPk(id, {
+      include: [{ model: User, as: 'employee', attributes: ['uid', 'name'] }]
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Communication request not found' });
+    }
+
+    const nextStatus = ['open', 'in_review', 'resolved'].includes(status) ? status : request.status;
+
+    await request.update({
+      status: nextStatus,
+      hrResponse: hrResponse?.trim() || request.hrResponse,
+      respondedBy: req.user.uid,
+      respondedAt: new Date()
+    });
+
+    await createNotification(req.io, {
+      targetUid: request.employeeId,
+      title: 'HR Response Update',
+      message: `HR updated your request "${request.subject}" to ${nextStatus.replace('_', ' ')}.`,
+      type: nextStatus === 'resolved' ? 'success' : 'info',
+      link: '/dashboard/employee/hr-contact'
+    });
+
+    res.json({ message: 'Employee communication updated successfully', request });
+  } catch (error) {
+    console.error('Update employee HR communication error:', error);
+    res.status(500).json({ error: 'Failed to update employee communication' });
+  }
+});
+
 // Mid-stream resource loader for approval chain enforcement
 const loadLeaveResource = async (req, res, next) => {
   try {
@@ -874,7 +997,7 @@ router.put('/leaves/:id/approve',
                     
                     if (role.includes('sales')) adminLink = '/dashboard/sales/leaves';
                     else if (role.includes('finance')) adminLink = '/dashboard/finance/leaves';
-                    else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leaves';
+                    else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/team';
                     else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leaves';
                     else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leaves';
                     else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leaves';

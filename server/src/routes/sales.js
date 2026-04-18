@@ -3,7 +3,7 @@ import { models, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import { authenticate, authorize } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
-import { checkPermission } from '../middleware/rbac.js';
+import { checkPermission, checkPermissionOrRole } from '../middleware/rbac.js';
 
 const router = express.Router();
 const { Lead, Department, Student, Payment, User, Referral, Program, AdmissionSession, ProgramFee, Invoice } = models;
@@ -55,7 +55,7 @@ router.post('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'create'),
 });
 
 // GET unique referral code for current BDE
-router.get('/referral-code', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
+router.get('/referral-code', authenticate, checkPermissionOrRole('SALES_LEAD_CAP', 'read', ['Sales Admin', 'Sales & CRM Admin', 'sales']), async (req, res) => {
   try {
     const userId = req.user?.uid; // Using uid as per current architecture
 
@@ -82,7 +82,7 @@ router.get('/referral-code', authenticate, checkPermission('SALES_LEAD_CAP', 're
 });
 
 // GET Sales Performance Overview
-router.get('/performance', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
+router.get('/performance', authenticate, checkPermissionOrRole('SALES_LEAD_CAP', 'read', ['Sales Admin', 'Sales & CRM Admin', 'sales']), async (req, res) => {
   try {
     const { permissionFilter } = req;
     const leads = await Lead.findAll({

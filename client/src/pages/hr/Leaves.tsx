@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, Mail, Building2, Clock, FileText, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '@/components/shared/Modal';
 import { clsx } from 'clsx';
@@ -33,6 +33,7 @@ interface Leave {
 export default function Leaves() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'requested' | 'pending' | 'approved' | 'rejected'>('pending');
   const [confirmModal, setConfirmModal] = useState<{id: number, action: 'approve' | 'reject'} | null>(null);
   const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
 
@@ -56,7 +57,10 @@ export default function Leaves() {
     try {
       await api.put(`/hr/leaves/${id}/${action}`);
       toast.success(`Leave request ${action}d successfully`);
-      fetchLeaves();
+      await fetchLeaves();
+      if (action === 'approve') {
+        setActiveTab('approved');
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.error || `Failed to ${action} leave`);
     } finally {
@@ -64,6 +68,23 @@ export default function Leaves() {
     }
   };
 
+  const filteredLeaves = useMemo(() => {
+    return leaves.filter(leave => {
+      const s = leave.status;
+      if (activeTab === 'requested') return ['pending_step1', 'pending admin'].includes(s);
+      if (activeTab === 'pending') return ['pending_step2', 'pending hr'].includes(s);
+      if (activeTab === 'approved') return s === 'approved';
+      if (activeTab === 'rejected') return s.includes('rejected');
+      return false;
+    });
+  }, [leaves, activeTab]);
+
+  const tabCounts = useMemo(() => ({
+    requested: leaves.filter(l => ['pending_step1', 'pending admin'].includes(l.status)).length,
+    pending: leaves.filter(l => ['pending_step2', 'pending hr'].includes(l.status)).length,
+    approved: leaves.filter(l => l.status === 'approved').length,
+    rejected: leaves.filter(l => l.status.includes('rejected')).length,
+  }), [leaves]);
 
   const columns: ColumnDef<Leave>[] = [
     { 
@@ -109,7 +130,7 @@ export default function Leaves() {
         if (s.includes('pending')) color = 'bg-orange-100 text-orange-700';
         
         return (
-          <span className={`px-2 py-1 text-[10px] rounded-full font-bold ${color}`}>
+          <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
             {['pending_step1', 'pending admin'].includes(s) ? 'Pending admin' : 
              (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'Forwarded to workforce control' : 'Pending hr') : 
              toSentenceCase(s.replace('_', ' ')))}
@@ -150,6 +171,13 @@ export default function Leaves() {
     }
   ];
 
+  const tabs = [
+    { id: 'requested' as const, name: 'Requested', count: tabCounts.requested },
+    { id: 'pending' as const, name: 'Pending', count: tabCounts.pending },
+    { id: 'approved' as const, name: 'Approved', icon: CheckCircle, count: tabCounts.approved },
+    { id: 'rejected' as const, name: 'Rejected', icon: XCircle, count: tabCounts.rejected }
+  ];
+
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
@@ -158,10 +186,38 @@ export default function Leaves() {
         icon={Calendar}
       />
 
+      <div className="flex bg-slate-100/60 p-1 rounded-2xl border border-slate-200 w-fit flex-wrap">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={clsx(
+              'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200',
+              activeTab === tab.id
+                ? 'bg-white text-rose-600 shadow-lg shadow-rose-100 ring-1 ring-slate-200'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+            )}
+          >
+            {tab.icon && (
+              <tab.icon className={clsx('w-3.5 h-3.5', activeTab === tab.id ? 'text-rose-600' : 'text-slate-400')} />
+            )}
+            {tab.name}
+            <span
+              className={clsx(
+                'ml-1 px-1.5 py-0.5 rounded-md text-[9px]',
+                activeTab === tab.id ? 'bg-rose-50 text-rose-700' : 'bg-slate-200 text-slate-600'
+              )}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
         <DataTable 
           columns={columns} 
-          data={leaves} 
+          data={filteredLeaves} 
           isLoading={isLoading} 
           searchKey="employee.name" 
           searchPlaceholder="Search by employee name..." 
@@ -221,116 +277,229 @@ export default function Leaves() {
       <Modal
         isOpen={!!selectedLeave}
         onClose={() => setSelectedLeave(null)}
-        title="Institutional Leave Oversight"
+        title="Leave request"
         maxWidth="lg"
       >
-        {selectedLeave && (
-          <div className="space-y-8 py-2">
-            {/* Main Header / Status Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
-              <div>
-                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-                  {toSentenceCase(selectedLeave.type)}
-                </h3>
-                <p className="text-sm text-slate-500 font-medium">Request Reference: LV-{selectedLeave.id}</p>
-              </div>
-              <div className="flex flex-col items-end">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</p>
+        {selectedLeave && (() => {
+          const status = selectedLeave.status;
+          const statusLabel = status === 'approved'
+            ? 'Approved'
+            : status.includes('rejected')
+              ? 'Rejected'
+              : ['pending_step1', 'pending admin'].includes(status)
+                ? 'Pending admin'
+                : ['pending_step2', 'pending hr'].includes(status)
+                  ? 'Pending HR'
+                  : toSentenceCase(status.replace('_', ' '));
+          const statusTone = status === 'approved'
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : status.includes('rejected')
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : 'bg-amber-50 text-amber-700 border-amber-200';
+
+          const from = new Date(selectedLeave.fromDate);
+          const to = new Date(selectedLeave.toDate);
+          const days = Number.isFinite(from.getTime()) && Number.isFinite(to.getTime())
+            ? Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1)
+            : null;
+          const dateFmt = (d: string) => {
+            const parsed = new Date(d);
+            return Number.isFinite(parsed.getTime())
+              ? parsed.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+              : d;
+          };
+
+          const step1Approved = !!selectedLeave.step1Approver;
+          const pendingStep2 = ['pending_step2', 'pending hr'].includes(status);
+          const canAct = pendingStep2;
+          const empName = toSentenceCase(selectedLeave.employee?.name || selectedLeave.employeeId);
+
+          return (
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    LV-{selectedLeave.id} · {toSentenceCase(selectedLeave.type)}
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900 truncate">
+                    {empName}
+                  </h3>
+                </div>
                 <span className={clsx(
-                  "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm",
-                  selectedLeave.status === 'approved' ? "bg-emerald-500 text-white shadow-emerald-100" :
-                  selectedLeave.status.includes('rejected') ? "bg-rose-500 text-white shadow-rose-100" : "bg-amber-500 text-white shadow-amber-100"
+                  'shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium',
+                  statusTone
                 )}>
-                  {selectedLeave.status.replace('_', ' ')}
+                  {statusLabel}
                 </span>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column: Personnel & Context */}
-              <div className="space-y-6">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Personnel Profile</p>
-                  <div className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                    <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center font-bold text-white text-lg ring-4 ring-slate-50">
-                      {selectedLeave.employee?.name?.charAt(0) || '?'}
+              {/* Employee card */}
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white text-sm font-semibold">
+                  {selectedLeave.employee?.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-500">Employee ID</p>
+                    <p className="font-mono text-xs text-slate-800 truncate">{selectedLeave.employeeId}</p>
+                  </div>
+                  <div className="min-w-0 flex items-start gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-slate-500">Department</p>
+                      <p className="text-xs text-slate-800 truncate">
+                        {selectedLeave.employee?.department?.name || 'Unassigned'}
+                      </p>
                     </div>
+                  </div>
+                  <div className="min-w-0 flex items-start gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-slate-500">Email</p>
+                      <p className="text-xs text-slate-800 truncate">{selectedLeave.employee?.email || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Duration + submitted */}
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Duration
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-bold text-slate-900 text-base">{toSentenceCase(selectedLeave.employee?.name || 'Unknown')}</p>
-                      <p className="text-xs text-slate-500 font-mono tracking-tighter">{selectedLeave.employeeId}</p>
+                      <p className="text-xs text-slate-500">From</p>
+                      <p className="text-sm font-medium text-slate-900">{dateFmt(selectedLeave.fromDate)}</p>
                     </div>
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">To</p>
+                      <p className="text-sm font-medium text-slate-900">{dateFmt(selectedLeave.toDate)}</p>
+                    </div>
+                    {days !== null && (
+                      <div className="ml-2 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 tabular-nums">
+                        {days} {days === 1 ? 'day' : 'days'}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 italic">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Department</p>
-                    <p className="text-xs font-bold text-slate-700">{selectedLeave.employee?.department?.name || 'Unassigned'}</p>
-                  </div>
-                  <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 italic">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Email Alias</p>
-                    <p className="text-xs font-bold text-slate-700 truncate">{selectedLeave.employee?.email || 'N/A'}</p>
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 flex items-center gap-2 sm:flex-col sm:items-start">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <div>
+                    <p className="text-[11px] text-slate-500">Submitted</p>
+                    <p className="text-xs font-medium text-slate-800">
+                      {new Date(selectedLeave.createdAt).toLocaleDateString(undefined, {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Temporal Alignment */}
-              <div className="space-y-6">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Temporal Window</p>
-                  <div className="relative p-6 bg-slate-50 rounded-3xl border border-dashed border-slate-200 overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-10">
-                      <Calendar size={64} className="text-slate-900" />
-                    </div>
-                    <div className="relative flex items-center justify-between text-center">
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Commencement</p>
-                        <p className="text-sm font-black text-slate-900">{selectedLeave.fromDate}</p>
-                      </div>
-                      <div className="flex flex-col items-center px-4">
-                        <div className="h-px w-8 bg-slate-300"></div>
-                        <p className="text-[8px] font-bold text-slate-300 py-1">TO</p>
-                        <div className="h-px w-8 bg-slate-300"></div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Conclusion</p>
-                        <p className="text-sm font-black text-slate-900">{selectedLeave.toDate}</p>
-                      </div>
-                    </div>
-                  </div>
+              {/* Reason */}
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  Reason
                 </div>
-
-                <div className="p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50">
-                  <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Filing Record</p>
-                  <p className="text-xs text-emerald-800 font-medium lowercase italic">
-                    Submitted on {new Date(selectedLeave.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
-                  </p>
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 leading-relaxed">
+                  {selectedLeave.reason
+                    ? toSentenceCase(selectedLeave.reason)
+                    : <span className="text-slate-400">No reason provided.</span>}
                 </div>
               </div>
-            </div>
 
-            {/* Detailed Rationale */}
-            <div className="p-6 bg-slate-50/30 border border-slate-100 rounded-3xl relative overflow-hidden">
-               <div className="absolute top-2 right-4 opacity-5 pointer-events-none">
-                 <CheckCircle size={120} />
-               </div>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Detailed Rationale</p>
-               <p className="text-slate-700 text-sm leading-relaxed font-medium relative z-10">
-                 {selectedLeave.reason ? toSentenceCase(selectedLeave.reason) : 'No institutional rationale provided for this filing.'}
-               </p>
-            </div>
+              {/* Approval chain */}
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Approvals
+                </div>
+                <ol className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+                  <li className="flex items-center justify-between px-4 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={clsx(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+                        step1Approved
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : status.includes('rejected') ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                      )}>
+                        {step1Approved ? <CheckCircle className="w-3 h-3" /> : '1'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-slate-800">Department admin</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {selectedLeave.step1Approver
+                            ? `Approved by ${toSentenceCase(selectedLeave.step1Approver.name)}`
+                            : status.includes('rejected') ? 'Rejected' : 'Awaiting review'}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                  <li className="flex items-center justify-between px-4 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={clsx(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+                        status === 'approved'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : status.includes('rejected') ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+                      )}>
+                        {status === 'approved' ? <CheckCircle className="w-3 h-3" /> : '2'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-slate-800">HR</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {selectedLeave.step2Approver
+                            ? `${status === 'approved' ? 'Approved' : 'Reviewed'} by ${toSentenceCase(selectedLeave.step2Approver.name)}`
+                            : pendingStep2 ? 'Awaiting your review' : 'Pending'}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
 
-            {/* Footer Actions */}
-            <div className="flex pt-4">
-              <button
-                onClick={() => setSelectedLeave(null)}
-                className="flex-1 py-4 px-6 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-[0.98]"
-              >
-                Acknowledge & Close
-              </button>
+              {/* Footer actions */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setSelectedLeave(null)}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Close
+                </button>
+                {canAct && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setConfirmModal({ id: selectedLeave.id, action: 'reject' });
+                        setSelectedLeave(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 transition"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmModal({ id: selectedLeave.id, action: 'approve' });
+                        setSelectedLeave(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Approve
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
     </div>
   );

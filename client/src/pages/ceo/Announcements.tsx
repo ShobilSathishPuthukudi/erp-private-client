@@ -59,7 +59,11 @@ export default function CEOAnnouncements() {
     setIsSubmitting(true);
     
     try {
-      const res = await api.post('/announcements/ceo/hr', formData);
+      const payload = {
+        ...formData,
+        expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : ''
+      };
+      const res = await api.post('/announcements/ceo/hr', payload);
       setAnnouncements([res.data, ...announcements]);
       toast.success('Institutional Directive issued to HR');
       setIsModalOpen(false);

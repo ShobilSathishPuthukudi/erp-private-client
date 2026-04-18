@@ -2,6 +2,7 @@ import express from 'express';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
+import { normalizeInstitutionRoleName, normalizeDepartmentName, normalizeSubDepartmentName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { Survey, SurveyResponse, User, Department } = models;
@@ -14,20 +15,63 @@ const isAdmin = (req, res, next) => {
   res.status(403).json({ error: 'Access denied' });
 };
 
-const getTargetedUsersQuery = (targetRole) => {
-  const tr = targetRole.toLowerCase();
-  if (tr === 'ceo') return { role: 'CEO' };
-  if (tr === 'hr') return { role: 'HR Admin' };
-  if (tr === 'finance') return { role: 'Finance Admin' };
-  if (tr === 'sales') return { role: 'Sales & CRM Admin' };
-  if (tr === 'academic') return { role: 'Academic Operations Admin' };
-  if (tr === 'center') return { role: 'Partner Center' };
-  if (tr === 'openschool') return { role: 'Open School Admin' };
-  if (tr === 'online') return { role: 'Online Department Admin' };
-  if (tr === 'skill') return { role: 'Skill Department Admin' };
-  if (tr === 'bvoc') return { role: 'BVoc Department Admin' };
-  if (tr === 'all') return {};
-  return { role: 'unknown' }; // Safeguard
+const normalizeSurveyTargetRole = (targetRole = '') => {
+  const tr = String(targetRole).toLowerCase().trim();
+  if (tr === 'ops' || tr === 'operations') return 'academic';
+  if (tr === 'partner center' || tr === 'partner centers') return 'center';
+  if (tr === 'open school') return 'openschool';
+  return tr;
+};
+
+const buildUserSurveySlugs = (user) => {
+  const normalizedRole = normalizeInstitutionRoleName(user?.role || '').toLowerCase();
+  const normalizedDeptName = normalizeDepartmentName(user?.department?.name || '').toLowerCase();
+  const normalizedSubDept = normalizeSubDepartmentName(user?.subDepartment || '').toLowerCase();
+
+  const slugs = new Set(['all']);
+
+  if (normalizedRole.includes('hr') || normalizedDeptName.includes('hr')) slugs.add('hr');
+  if (normalizedRole.includes('finance') || normalizedDeptName.includes('finance')) slugs.add('finance');
+  if (
+    normalizedRole.includes('academic operations') ||
+    normalizedRole.includes('operations') ||
+    normalizedDeptName.includes('academic operations') ||
+    normalizedDeptName.includes('operations')
+  ) {
+    slugs.add('academic');
+    slugs.add('ops');
+  }
+  if (normalizedRole.includes('sales') || normalizedDeptName.includes('sales')) slugs.add('sales');
+  if (normalizedRole.includes('ceo') || normalizedDeptName.includes('executive')) slugs.add('ceo');
+  if (normalizedRole.includes('student')) slugs.add('student');
+  if (normalizedRole.includes('partner center') || normalizedDeptName.includes('partner center')) slugs.add('center');
+
+  if (normalizedSubDept) {
+    if (normalizedSubDept.includes('open school')) slugs.add('openschool');
+    if (normalizedSubDept.includes('online')) slugs.add('online');
+    if (normalizedSubDept.includes('skill')) slugs.add('skill');
+    if (normalizedSubDept.includes('bvoc')) slugs.add('bvoc');
+  }
+
+  return [...slugs];
+};
+
+const normalizeSurveyExpiryDate = (rawExpiryDate) => {
+  if (!rawExpiryDate) return null;
+  const parsed = new Date(rawExpiryDate);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getTargetedUsers = async (targetRole) => {
+  const normalizedTarget = normalizeSurveyTargetRole(targetRole);
+  const users = await User.unscoped().findAll({
+    where: { status: 'active' },
+    include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'], required: false }]
+  });
+
+  if (normalizedTarget === 'all') return users;
+
+  return users.filter((user) => buildUserSurveySlugs(user).includes(normalizedTarget));
 };
 
 // Create a new Survey
@@ -42,40 +86,14 @@ router.post('/surveys', verifyToken, isAdmin, async (req, res) => {
     const survey = await Survey.create({
       title,
       description,
-      targetRole,
+      targetRole: normalizeSurveyTargetRole(targetRole),
       questions,
-      expiryDate: expiryDate || null,
+      expiryDate: normalizeSurveyExpiryDate(expiryDate),
       createdBy: req.user.uid
     });
 
     // Notify targeted users
-    let userQuery = {};
-    const tr = targetRole.toLowerCase();
-    
-    // Exact mapping to baseline roles in seed/index.js
-    if (tr === 'ceo') {
-      userQuery = { role: 'CEO' };
-    } else if (tr === 'hr') {
-      userQuery = { role: 'HR Admin' };
-    } else if (tr === 'finance') {
-      userQuery = { role: 'Finance Admin' };
-    } else if (tr === 'sales') {
-      userQuery = { role: 'Sales & CRM Admin' };
-    } else if (tr === 'academic') {
-      userQuery = { role: 'Academic Operations Admin' };
-    } else if (tr === 'center') {
-      userQuery = { role: 'Partner Center' };
-    } else if (tr === 'openschool') {
-      userQuery = { role: 'Open School Admin' };
-    } else if (tr === 'online') {
-      userQuery = { role: 'Online Department Admin' };
-    } else if (tr === 'skill') {
-      userQuery = { role: 'Skill Department Admin' };
-    } else if (tr === 'bvoc') {
-      userQuery = { role: 'BVoc Department Admin' };
-    }
-
-    const users = await User.findAll({ where: userQuery });
+    const users = await getTargetedUsers(targetRole);
     const io = req.io;
 
     // Create persistent notifications and emit socket events
@@ -84,7 +102,7 @@ router.post('/surveys', verifyToken, isAdmin, async (req, res) => {
         try {
           await models.Notification.create({
             userUid: user.uid,
-            type: 'SURVEY',
+            type: 'info',
             message: `INSTITUTIONAL SURVEY: ${title}`,
             isRead: false,
             link: '/dashboard/shared/surveys'
@@ -116,36 +134,18 @@ router.post('/surveys', verifyToken, isAdmin, async (req, res) => {
 // Get active surveys for current user
 router.get('/active', verifyToken, async (req, res) => {
   try {
-    const role = req.user.role?.toLowerCase() || '';
-    const subDept = req.user.subDepartment?.toLowerCase() || '';
-
-    // Fetch user's department for deeper targeting (e.g., matching 'Sales Department' to 'sales' slug)
     const userWithDept = await User.unscoped().findByPk(req.user.uid, {
       include: [{ model: Department, as: 'department', attributes: ['name'] }]
     });
-    const deptName = userWithDept?.department?.name?.toLowerCase() || '';
-
-    // Map institutional roles to survey slugs
-    const userSlugs = ['all'];
-    if (role.includes('hr') || deptName.includes('hr')) userSlugs.push('hr');
-    if (role.includes('finance') || deptName.includes('finance')) userSlugs.push('finance');
-    if (role.includes('ops') || role.includes('operations') || deptName.includes('ops') || deptName.includes('operations')) userSlugs.push('ops');
-    if (role.includes('sales') || deptName.includes('sales')) userSlugs.push('sales');
-    if (role.includes('ceo') || deptName.includes('executive')) userSlugs.push('ceo');
-    if (role.includes('student')) userSlugs.push('student');
-    
-    // Fallback for direct matches
-    if (subDept) userSlugs.push(subDept);
+    const userSlugs = buildUserSurveySlugs(userWithDept || req.user);
 
     const surveys = await Survey.findAll({
       where: {
         status: 'active',
-        expiryDate: {
-          [Op.or]: [
-            { [Op.gt]: new Date() },
-            { [Op.eq]: null }
-          ]
-        },
+        [Op.or]: [
+          { expiryDate: { [Op.gt]: new Date() } },
+          { expiryDate: null }
+        ],
         targetRole: { [Op.in]: userSlugs }
       },
       include: [
@@ -213,14 +213,16 @@ router.get('/results/:id', verifyToken, isAdmin, async (req, res) => {
     if (!survey) return res.status(404).json({ error: 'Survey not found' });
 
     // Fetch targeted users to show "Whom Assigned"
-    const targetedUsers = await User.findAll({
-      where: getTargetedUsersQuery(survey.targetRole),
-      attributes: ['uid', 'name', 'email', 'role']
-    });
+    const targetedUsers = await getTargetedUsers(survey.targetRole);
 
     res.json({
       ...survey.toJSON(),
-      targetedUsers
+      targetedUsers: targetedUsers.map((user) => ({
+        uid: user.uid,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }))
     });
   } catch (error) {
     console.error('Fetch survey results error:', error);

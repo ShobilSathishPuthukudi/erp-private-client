@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { isSeededAdminPanelRole, getNormalizedRole } from './lib/roles';
+
 import Login from './pages/login';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/shared/ErrorBoundary';
@@ -25,9 +27,11 @@ import ChangePassword from './pages/profile/ChangePassword';
 import Preferences from './pages/profile/Preferences';
 import ThemeSelector from './pages/profile/Theme';
 import Notifications from './pages/shared/Notifications';
+import SharedAnnouncements from './pages/shared/Announcements';
 import SurveyHub from './pages/shared/SurveyHub';
 import SurveyCreator from './pages/org-admin/SurveyCreator';
 
+// System Pages
 // System Pages
 import SystemHealth from './pages/org-admin/SystemHealth';
 import DataManagement from './pages/org-admin/DataManagement';
@@ -37,25 +41,7 @@ import CenterRegistration from './pages/public/CenterRegistration';
 import NotFound from './pages/NotFound';
 import ServerError from './pages/ServerError';
 
-// Internal Handlers & Protected Routes
-export const getNormalizedRole = (rawRole: string): string => {
-  if (!rawRole) return 'guest';
-  const r = rawRole.toLowerCase().trim();
-  
-  if (r.includes('hr')) return 'hr';
-  if (r.includes('finance')) return 'finance';
-  if (r.includes('sales')) return 'sales';
-  if (r.includes('operations') || r.includes('academic')) return 'operations';
-  if (r.includes('open school') || r.includes('openschool')) return 'openschool';
-  if (r.includes('online')) return 'online';
-  if (r.includes('skill')) return 'skill';
-  if (r.includes('bvoc')) return 'bvoc';
-  if (r === 'ceo') return 'ceo';
-  if (r.includes('organization admin') || r === 'admin') return 'organization admin';
-  if (r.includes('center')) return 'partner-center';
-  
-  return r;
-};
+// Internal Handlers & Protected Routes moved to @/lib/roles
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const user = useAuthStore((state) => state.user);
@@ -79,6 +65,14 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     }
   }
   
+  return <>{children}</>;
+};
+
+const ChangePasswordGuard = ({ children }: { children: React.ReactNode }) => {
+  const user = useAuthStore(state => state.user);
+  if (user && isSeededAdminPanelRole(user.role)) {
+    return <Navigate to="/dashboard/profile" replace />;
+  }
   return <>{children}</>;
 };
 
@@ -108,6 +102,46 @@ const TasksRedirect = () => {
   return <Navigate to={`/dashboard/${rolePath}/tasks`} replace />;
 };
 
+const LegacyLeaveRedirect = () => {
+  const user = useAuthStore(state => state.user);
+  const location = useLocation();
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  const role = getNormalizedRole(user.role);
+  const isHrStep2Path = location.pathname.includes('/hr/leaves') && !location.pathname.includes('/hr/dept-leaves');
+
+  if (['openschool', 'online', 'skill', 'bvoc'].includes(role)) {
+    return <Navigate to={`/dashboard/subdept/${role}/leaves`} replace />;
+  }
+
+  if (role === 'employee') {
+    return <Navigate to="/dashboard/employee/leaves" replace />;
+  }
+
+  if (role === 'hr') {
+    return <Navigate to={isHrStep2Path ? '/dashboard/hr/leaves' : '/dashboard/hr/dept-leaves'} replace />;
+  }
+
+  if (role === 'finance') {
+    return <Navigate to="/dashboard/finance/leaves" replace />;
+  }
+
+  if (role === 'sales') {
+    return <Navigate to="/dashboard/sales/leaves" replace />;
+  }
+
+  if (role === 'operations' || role === 'organization admin') {
+    return <Navigate to="/dashboard/operations/leaves" replace />;
+  }
+
+  if (role === 'ceo') {
+    return <Navigate to="/dashboard/ceo/escalations" replace />;
+  }
+
+  return <Navigate to="/404" replace />;
+};
+
 export default function App() {
   const user = useAuthStore(state => state.user);
 
@@ -117,6 +151,20 @@ export default function App() {
       useAuthStore.getState().updateUser({ role: 'partner-center' });
     }
   }, [user]);
+
+  useEffect(() => {
+    // If the browser restores a dashboard page from bfcache after logout,
+    // the React tree is frozen and ProtectedRoute never re-runs. Force a
+    // reload when the page is shown from cache without an authenticated user
+    // so the login redirect fires cleanly.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && !useAuthStore.getState().user) {
+        window.location.replace('/login');
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -158,8 +206,18 @@ export default function App() {
             <Route path="study-center/*" element={<Navigate to="/dashboard/partner-center" replace />} />
             
             <Route path="tasks" element={<ProtectedRoute><TasksRedirect /></ProtectedRoute>} />
+            <Route path="hr/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="hr/dept-leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="academic/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="operations/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="finance/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="sales/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="subdept/openschool/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="subdept/online/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="subdept/skill/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="subdept/bvoc/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+            <Route path="change-password" element={<ProtectedRoute><ChangePasswordGuard><ChangePassword /></ChangePasswordGuard></ProtectedRoute>} />
             <Route path="profile/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />
             <Route path="profile/theme" element={<ProtectedRoute><ThemeSelector /></ProtectedRoute>} />
             
@@ -170,13 +228,14 @@ export default function App() {
             <Route path="org-admin/surveys" element={<ProtectedRoute allowedRoles={['organization admin', 'operations']}><SurveyCreator /></ProtectedRoute>} />
             
             <Route path="shared/surveys" element={<ProtectedRoute><SurveyHub /></ProtectedRoute>} />
+            <Route path="announcements" element={<ProtectedRoute><SharedAnnouncements /></ProtectedRoute>} />
             <Route path="notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             
-            <Route path="ceo/*" element={<ProtectedRoute allowedRoles={['ceo']}><CEODashboard /></ProtectedRoute>} />
+            <Route path="ceo/*" element={<ProtectedRoute allowedRoles={['ceo', 'organization admin']}><CEODashboard /></ProtectedRoute>} />
             
             {/* Unified Academic & Operations Pillar dashboards */}
-            <Route path="academic/*" element={<ProtectedRoute allowedRoles={['operations', 'organization admin']}><AcademicDashboard /></ProtectedRoute>} />
-            <Route path="operations/*" element={<ProtectedRoute allowedRoles={['operations', 'organization admin']}><AcademicDashboard /></ProtectedRoute>} />
+            <Route path="academic/*" element={<ProtectedRoute allowedRoles={['operations', 'organization admin', 'sales']}><AcademicDashboard /></ProtectedRoute>} />
+            <Route path="operations/*" element={<ProtectedRoute allowedRoles={['operations', 'organization admin', 'sales']}><AcademicDashboard /></ProtectedRoute>} />
             
             <Route path="finance/*" element={<ProtectedRoute allowedRoles={['finance', 'operations']}><FinanceDashboard /></ProtectedRoute>} />
             <Route path="hr/*" element={<ProtectedRoute allowedRoles={['hr']}><HRDashboard /></ProtectedRoute>} />

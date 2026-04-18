@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { BookOpen, Users, ChevronRight, GraduationCap, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 interface Program {
   id: number;
@@ -165,7 +166,10 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
       toast.success(`Published assessments for ${selectedSubject}`);
       fetchRoster(); // Refresh to confirm persistence
     } catch (error) {
-      toast.error('Institutional ledger synchronization failure');
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error || 'Institutional ledger synchronization failure'
+        : 'Institutional ledger synchronization failure';
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }

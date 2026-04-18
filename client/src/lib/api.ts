@@ -27,7 +27,10 @@ api.interceptors.response.use(
     // 2. Authentication Failure (Unauthorized)
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
-      window.location.href = '/login';
+      // replace (not href) so the stale /dashboard/* entry is evicted from
+      // history — otherwise back-press restores a bfcache snapshot of the
+      // previous panel without any auth check.
+      window.location.replace('/login');
     }
     
     return Promise.reject(error);

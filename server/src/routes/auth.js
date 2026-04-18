@@ -73,30 +73,61 @@ const upload = multer({
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    const user = await User.unscoped().findOne({ 
-      where: { 
+
+    const user = await User.unscoped().findOne({
+      where: {
         [Op.or]: [
           { email: email },
           { uid: email }
         ]
       },
-      include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
+      include: [
+        { model: Department.unscoped(), as: 'department', attributes: ['name'] },
+        { model: Role, as: 'assignedAdminRoles', required: false }
+      ]
     });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
-    // User credentials remain primary so mapped admins can log in with their own email/password.
+
+    // A user can hold two credential pairs:
+    //   1. Self password (user.password) → employee panel for HR-created employees,
+    //      or their own admin panel for seeded admin accounts / non-employee roles.
+    //   2. An admin rolePassword on one of their assignedAdminRoles → admin panel.
+    // The matched credential determines which panel they enter; no picker needed.
     let isMatch = await bcrypt.compare(password, user.password);
+    let matchedVia = isMatch ? 'self' : null;
+    let matchedAdminRole = null;
     let matchedWithRolePassword = false;
+
+    if (!isMatch && Array.isArray(user.assignedAdminRoles)) {
+      for (const adminRole of user.assignedAdminRoles) {
+        if (!adminRole?.rolePassword) continue;
+        const roleMatch = await bcrypt.compare(password, adminRole.rolePassword);
+        if (roleMatch) {
+          isMatch = true;
+          matchedVia = 'admin';
+          matchedAdminRole = adminRole;
+          matchedWithRolePassword = true;
+          break;
+        }
+      }
+    }
+
     if (!isMatch) {
+      // Backward-compat: seeded admin account (e.g. bvoc@erp.com) whose own
+      // user.role is the admin role name and whose rolePassword lives on the
+      // Role row rather than via an admin-role mapping.
       const roleDetails = await Role.findOne({ where: { name: user.role } });
       if (roleDetails?.rolePassword) {
         isMatch = await bcrypt.compare(password, roleDetails.rolePassword);
-        matchedWithRolePassword = isMatch;
+        if (isMatch) {
+          matchedVia = 'seeded';
+          matchedWithRolePassword = true;
+        }
       }
     }
+
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -122,6 +153,22 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     let effectiveUser = user;
     let sessionRole = normalizeInstitutionRoleName(user.role || '');
+
+    // Admin-panel password matched directly against an assigned admin role.
+    if (matchedVia === 'admin' && matchedAdminRole) {
+      sessionRole = normalizeInstitutionRoleName(matchedAdminRole.name);
+    }
+
+    // Self-password match: route HR-created employees who also hold an admin
+    // mapping to their Employee panel (their admin panel requires the admin password).
+    if (matchedVia === 'self') {
+      const isHrCreatedEmployee = Boolean(user.vacancyId) || user.uid?.startsWith('EMP-');
+      const holdsAdminMapping = Array.isArray(user.assignedAdminRoles) && user.assignedAdminRoles.length > 0;
+      if (isHrCreatedEmployee && holdsAdminMapping) {
+        sessionRole = 'Employee';
+      }
+    }
+
     const canonicalRole = normalizeInstitutionRoleName(user.role || '');
     const seededRole = await Role.findOne({
       where: {
@@ -133,7 +180,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     // If a seeded shortcut account (e.g. bvoc@erp.com) was used and that seeded role
     // is currently assigned to a real employee, switch the session identity to that employee.
-    if (seededRole?.assignedUserUid && seededRole.assignedUserUid !== user.uid) {
+    if (seededRole?.assignedUserUid && seededRole.assignedUserUid !== user.uid && sessionRole !== 'Employee') {
       const assignedUser = await User.unscoped().findOne({
         where: { uid: seededRole.assignedUserUid },
         include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
@@ -397,7 +444,7 @@ router.get('/demo-ceos', async (req, res) => {
       include: [{ 
         model: User.unscoped(), 
         as: 'ceoUser', 
-        attributes: ['uid', 'name', 'email'] 
+        attributes: ['uid', 'name', 'email', 'status', 'devPassword'] 
       }],
       order: [['name', 'ASC']],
       raw: false // Need instances for associated access or use nested attributes
@@ -405,14 +452,14 @@ router.get('/demo-ceos', async (req, res) => {
 
     // Map to the standard identity payload used by the login quick-panel
     const formatted = panels
-      .filter(panel => panel.ceoUser) // Strictly ensure identity exists in user registry
+      .filter(panel => panel.status === 'Active' && panel.ceoUser?.status === 'active')
       .map(panel => {
         const user = panel.ceoUser;
         return {
           uid: user.uid,
           name: panel.name, // Use panel name for better identification
           email: user.email,
-          password: panel.devCredential || 'password123'
+          password: panel.devCredential || user.devPassword || 'password123'
         };
       });
 

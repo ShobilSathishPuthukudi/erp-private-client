@@ -7,7 +7,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Calendar, CheckCircle2, Clock, AlertCircle, ClipboardCheck, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
 interface Exam {
@@ -28,8 +28,10 @@ interface Program {
 
 export default function Exams() {
   const user = useAuthStore(state => state.user);
+  const { unit } = useParams();
   const userRole = user?.role?.toLowerCase().trim() || '';
   const isPartnerCenter = ['partner-center', 'partner center', 'partner centers'].includes(userRole);
+  const isSubDept = ['open school admin', 'online admin', 'skill admin', 'bvoc admin'].includes(userRole);
   const isReadOnly = ['operations admin', 'operations administrator', 'academic operations admin', 'academic operations administrator', 'academic operations'].includes(userRole);
 
   const [exams, setExams] = useState<Exam[]>([]);
@@ -37,7 +39,14 @@ export default function Exams() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('all');
   const navigate = useNavigate();
+
+  const examBasePath = isPartnerCenter
+    ? '/dashboard/partner-center'
+    : isSubDept && unit
+      ? `/dashboard/subdept/${unit}`
+      : '/dashboard/academic';
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm();
   const watchAllFields = watch();
@@ -81,6 +90,15 @@ export default function Exams() {
       toast.error(error.response?.data?.error || 'Scheduling protocol failure');
     }
   };
+
+  const filteredExams = exams.filter((exam) => {
+    if (selectedProgramId === 'all') return true;
+    return exam.programId.toString() === selectedProgramId;
+  });
+
+  const programOptions = programs.filter((program, index, arr) =>
+    arr.findIndex((item) => item.id === program.id) === index
+  );
 
   const columns: ColumnDef<Exam>[] = [
     { 
@@ -141,7 +159,7 @@ export default function Exams() {
       cell: ({ row }) => !isReadOnly && (
         <div className="flex justify-end pr-2 min-w-[220px]">
           <button 
-            onClick={() => navigate(`${isPartnerCenter ? '/dashboard/partner-center' : '/dashboard/academic'}/exams/${row.original.id}/marks`)}
+            onClick={() => navigate(`${examBasePath}/exams/${row.original.id}/marks`)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20 whitespace-nowrap"
           >
             <ClipboardCheck className="w-3.5 h-3.5" />
@@ -174,6 +192,30 @@ export default function Exams() {
            </button>
         )}
       </div>
+
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Program</span>
+            <select
+              value={selectedProgramId}
+              onChange={(e) => setSelectedProgramId(e.target.value)}
+              className="bg-transparent text-sm font-bold text-slate-900 border-none outline-none focus:ring-0 p-0"
+            >
+              <option value="all">All Programs</option>
+              {programOptions.map((program) => (
+                <option key={program.id} value={program.id}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          Showing {filteredExams.length} of {exams.length} exam nodes
+        </div>
+      </div>
  
       {!isLoading && programs.length === 0 ? (
         <div className="max-w-xl mx-auto py-20">
@@ -189,7 +231,7 @@ export default function Exams() {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
           <DataTable 
             columns={columns} 
-            data={exams} 
+            data={filteredExams} 
             isLoading={isLoading} 
             searchKey="name" 
             searchPlaceholder="Locate assessment node..." 

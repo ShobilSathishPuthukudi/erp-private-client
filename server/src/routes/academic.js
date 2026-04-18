@@ -8,11 +8,33 @@ import { logAction } from '../lib/audit.js';
 import express from 'express';
 import erpEvents from '../lib/events.js';
 import { checkPermission, checkPermissionOrRole } from '../middleware/rbac.js';
-import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
+import {
+  getSubDepartmentNameAliases,
+  normalizeInstitutionRoleName,
+  normalizeSubDepartmentName,
+} from '../config/institutionalStructure.js';
 import { syncProgramLifecycle, syncUniversityLifecycle } from '../utils/academicLifecycle.js';
+import { clearNotifications, createNotification } from './notifications.js';
 
 const router = express.Router();
 const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept, CenterProgram, AcademicActionRequest, Lead } = models;
+
+const LEGACY_SUB_DEPARTMENT_IDS = {
+  'Open School': 8,
+  'Online': 9,
+  'Skill': 10,
+  'BVoc': 11,
+};
+
+const getLegacySubDeptId = (input) => {
+  if (!input) return null;
+  const unitStr = (typeof input === 'string' ? input : (input.subDepartment || input.role || '')).toLowerCase();
+  if (unitStr.includes('open school')) return 8;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
+  return null;
+};
 
 /**
  * GAP-7: Automated Financial Logic Provisioning
@@ -101,12 +123,60 @@ async function autoSeedFees(program, userUid) {
 
 const getSubDeptId = (input) => {
   if (!input) return null;
-  const unitStr = (typeof input === 'string' ? input : (input.subDepartment || input.role || '')).toLowerCase();
-  if (unitStr.includes('open school')) return 8;
-  if (unitStr.includes('online department')) return 9;
-  if (unitStr.includes('skill department')) return 10;
-  if (unitStr.includes('bvoc department')) return 11;
-  return input.deptId || input.departmentId || null;
+  if (typeof input !== 'string' && (input.deptId || input.departmentId)) {
+    return input.deptId || input.departmentId;
+  }
+  return getLegacySubDeptId(input);
+};
+
+const getSubDeptScopeIds = (input) => {
+  const ids = [];
+  const primaryId = getSubDeptId(input);
+  const legacyId = getLegacySubDeptId(input);
+
+  [primaryId, legacyId]
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .forEach((value) => {
+      if (!ids.includes(value)) ids.push(value);
+    });
+
+  return ids;
+};
+
+const resolveSubDepartmentScopeIds = async (identifier) => {
+  if (identifier === null || identifier === undefined || identifier === '') return [];
+
+  const numericId = Number(identifier);
+  const ids = [];
+  let canonicalName = null;
+
+  if (Number.isInteger(numericId) && numericId > 0) {
+    ids.push(numericId);
+    const department = await Department.findByPk(numericId, { attributes: ['id', 'name'] });
+    if (department?.name) {
+      canonicalName = normalizeSubDepartmentName(department.name);
+    }
+  } else {
+    canonicalName = normalizeSubDepartmentName(String(identifier));
+  }
+
+  if (canonicalName && LEGACY_SUB_DEPARTMENT_IDS[canonicalName]) {
+    ids.push(LEGACY_SUB_DEPARTMENT_IDS[canonicalName]);
+
+    const aliases = getSubDepartmentNameAliases(canonicalName);
+    const matchingDepartments = await Department.findAll({
+      where: { name: { [Op.in]: aliases } },
+      attributes: ['id'],
+      raw: true
+    });
+
+    matchingDepartments.forEach(({ id }) => {
+      if (Number.isInteger(id) && id > 0) ids.push(id);
+    });
+  }
+
+  return [...new Set(ids)];
 };
 
 // ==========================================
@@ -197,14 +267,16 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
     const { restricted, filter: visibilityFilter } = req.visibility;
     const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isSubDeptAdmin = subDeptAdminRoles.includes(normalizeInstitutionRoleName(req.user.role));
-    const sid = getSubDeptId(req.user);
+    const scopeIds = getSubDeptScopeIds(req.user);
+    const hasScopedIds = isSubDeptAdmin && scopeIds.length > 0;
+    const sqlScope = hasScopedIds ? scopeIds.join(',') : '';
 
     const totalUniversities = await Department.count({ 
       where: { type: 'universities', ...visibilityFilter } 
     });
     const activePrograms = await Program.count({ 
       where: { 
-        ...(isSubDeptAdmin ? { subDeptId: sid } : {}),
+        ...(hasScopedIds ? { subDeptId: { [Op.in]: scopeIds } } : {}),
         ...visibilityFilter
       } 
     });
@@ -214,7 +286,7 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
           { status: 'PENDING_REVIEW' },
           { enrollStatus: { [Op.in]: ['pending', 'pending_ops', 'pending_subdept'] } }
         ],
-        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
+        ...(hasScopedIds ? { subDepartmentId: { [Op.in]: scopeIds } } : {}),
         ...visibilityFilter
       } 
     });
@@ -223,8 +295,8 @@ router.get('/stats', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async 
     const paymentsRow = await Payment.findAll({
       attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'total']],
       where: {
-        ...(isSubDeptAdmin ? {
-          studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE subDepartmentId = ${sid})`) }
+        ...(hasScopedIds ? {
+          studentId: { [Op.in]: sequelize.literal(`(SELECT id FROM students WHERE subDepartmentId IN (${sqlScope}))`) }
         } : {}),
         ...visibilityFilter
       },
@@ -248,7 +320,7 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
     const { filter: visibilityFilter } = req.visibility;
     const subDeptAdminRoles = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isSubDeptAdmin = subDeptAdminRoles.includes(normalizeInstitutionRoleName(req.user.role));
-    const sid = getSubDeptId(req.user);
+    const scopeIds = getSubDeptScopeIds(req.user);
 
     // 1. Center Verification Stats (Canonical Mapping)
     const centersRaw = await Department.findAll({
@@ -291,7 +363,7 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
           { status: { [Op.ne]: 'DRAFT' } },
           { enrollStatus: { [Op.and]: [{ [Op.ne]: 'draft' }, { [Op.ne]: null }] } }
         ],
-        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
+        ...(isSubDeptAdmin && scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : {}),
         ...visibilityFilter
       },
       group: ['canonical_status'],
@@ -309,7 +381,7 @@ router.get('/onboarding/stats', verifyToken, isAcademicOrAdmin, applyExecutiveSc
       }],
       where: { 
         status: { [Op.ne]: 'DRAFT' },
-        ...(isSubDeptAdmin ? { subDepartmentId: sid } : {}),
+        ...(isSubDeptAdmin && scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : {}),
         ...visibilityFilter
       },
       order: [['updatedAt', 'DESC']],
@@ -466,7 +538,8 @@ router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asyn
     const { restricted, filter: visibilityFilter } = req.visibility;
     const rolesWithIsolation = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'];
     const isIsolated = rolesWithIsolation.includes(normalizeInstitutionRoleName(req.user.role));
-    const sid = getSubDeptId(req.user);
+    const scopeIds = getSubDeptScopeIds(req.user);
+    const sqlScope = scopeIds.join(',');
 
     const { status } = req.query;
     const whereClause = { 
@@ -476,9 +549,9 @@ router.get('/centers', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asyn
     };
     
     // Multi-Sub-Dept Visibility: A center is visible if it has at least one program in the admin's unit
-    if (isIsolated && sid) {
+    if (isIsolated && scopeIds.length > 0) {
       whereClause.id = {
-        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId = ${sid} AND isActive = true)`)
+        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${sqlScope}) AND isActive = true)`)
       };
     }
 
@@ -501,9 +574,15 @@ router.get('/programs', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     const whereClause = { ...visibilityFilter };
     
     if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role))) {
-      whereClause.subDeptId = getSubDeptId(req.user);
-    } else if (subDeptId) {
-      whereClause.subDeptId = subDeptId;
+      const scopeIds = getSubDeptScopeIds(req.user);
+      if (scopeIds.length > 0) {
+        whereClause.subDeptId = { [Op.in]: scopeIds };
+      }
+    } else {
+      const requestedScopeIds = await resolveSubDepartmentScopeIds(subDeptId);
+      if (requestedScopeIds.length > 0) {
+        whereClause.subDeptId = { [Op.in]: requestedScopeIds };
+      }
     }
 
     const programs = await Program.findAll({
@@ -816,11 +895,17 @@ router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
     }
     if (programId) whereClause.programId = programId;
     if (stage) whereClause.reviewStage = stage;
-    if (subDeptId) whereClause.subDepartmentId = subDeptId;
+    const requestedScopeIds = await resolveSubDepartmentScopeIds(subDeptId);
+    if (requestedScopeIds.length > 0) {
+      whereClause.subDepartmentId = { [Op.in]: requestedScopeIds };
+    }
 
     // Isolation: Sub-Dept Admin only sees their unit's students
     if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role))) {
-      whereClause.subDepartmentId = getSubDeptId(req.user);
+      const scopeIds = getSubDeptScopeIds(req.user);
+      if (scopeIds.length > 0) {
+        whereClause.subDepartmentId = { [Op.in]: scopeIds };
+      }
     }
 
     // CEO Visibility Guard
@@ -891,6 +976,22 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
         if (student.reviewStage !== 'OPS' && student.reviewStage !== 'SUB_DEPT') {
             return res.status(400).json({ error: 'Governance Conflict: Student must be in OPS or SUB_DEPT stage for operational clearance.' });
         }
+
+        const opsNotificationRoles = [
+            'Academic Operations',
+            'Academic Operations Admin',
+            'Academic Operations Administrator',
+            'Operations Admin',
+            'Operations Administrator',
+            'Organization Admin'
+        ];
+        const opsRecipients = await User.findAll({
+            where: {
+                role: { [Op.in]: opsNotificationRoles },
+                status: 'active'
+            },
+            attributes: ['uid']
+        });
         
         const nextStage = status === 'approved' ? 'FINANCE' : 'OPS';
         await student.update({
@@ -901,6 +1002,40 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             reviewedAt: new Date(),
             remarks: remarks || student.remarks
         });
+
+        await clearNotifications({
+            userUids: opsRecipients.map((user) => user.uid),
+            links: ['/dashboard/operations/pending-reviews?tab=pending'],
+            messagePatterns: [
+                `New Enrollment: ${student.name}:%`,
+                `%${student.name}%submitted a new enrollment application for review%`
+            ]
+        });
+
+        if (status === 'approved') {
+            try {
+                const financeRecipients = await User.findAll({
+                    where: {
+                        role: {
+                            [Op.in]: ['Finance Admin', 'Organization Admin']
+                        },
+                        status: 'active'
+                    }
+                });
+
+                for (const financeUser of financeRecipients) {
+                    await createNotification(req.io, {
+                        targetUid: financeUser.uid,
+                        title: `Finance Review Required: ${student.name}`,
+                        message: `Academic Operations has cleared ${student.name} for finance verification.`,
+                        type: 'info',
+                        link: '/dashboard/finance/approvals'
+                    });
+                }
+            } catch (notificationError) {
+                console.error('[FINANCE_NOTIFY_ERROR]:', notificationError);
+            }
+        }
 
         await logAction({
             userId: req.user.uid,
@@ -964,9 +1099,11 @@ router.get('/sessions', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const whereClause = {};
     const role = req.user.role?.toLowerCase().trim();
+    const canonicalRole = normalizeInstitutionRoleName(req.user.role || '');
+    const scopeIds = getSubDeptScopeIds(req.user);
     
-    if (['sub_dept_admin', 'open school admin', 'online department admin', 'skill department admin', 'bvoc department admin', 'openschool', 'online', 'skill', 'bvoc'].includes(role)) {
-        whereClause.subDeptId = getSubDeptId(req.user);
+    if (['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(canonicalRole) && scopeIds.length > 0) {
+        whereClause.subDeptId = { [Op.in]: scopeIds };
     } else if (['partner-center', 'partner center', 'partner centers'].includes(role)) {
         const centerId = req.user.deptId;
         if (centerId) {
@@ -1009,10 +1146,10 @@ router.post('/sessions', verifyToken, checkPermission('ACAD_BATCH_INIT', 'create
     if (!program) return res.status(404).json({ error: 'Program core not found' });
 
     const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
+    const scopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
+    const subDeptId = isSubDeptAdmin ? program.subDeptId : program.subDeptId;
 
-    const subDeptId = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role)) ? getSubDeptId(req.user) : program.subDeptId;
-
-    if (isSubDeptAdmin && program.subDeptId !== subDeptId) {
+    if (isSubDeptAdmin && scopeIds.length > 0 && !scopeIds.includes(program.subDeptId)) {
         return res.status(403).json({ error: 'Jurisdictional Violation: Program does not belong to your academic unit.' });
     }
 
@@ -1028,7 +1165,7 @@ router.post('/sessions', verifyToken, checkPermission('ACAD_BATCH_INIT', 'create
     const mapping = await CenterProgram.findOne({ 
       where: { 
         centerId, 
-        subDeptId, 
+        ...(isSubDeptAdmin && scopeIds.length > 0 ? { subDeptId: { [Op.in]: scopeIds } } : { subDeptId }), 
         isActive: true 
       } 
     });

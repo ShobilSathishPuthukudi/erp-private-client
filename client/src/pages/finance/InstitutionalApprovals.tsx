@@ -14,8 +14,22 @@ interface StudentApproval {
   center: { name: string };
   program: { name: string };
   feeSchema?: { name: string, type: string };
-  payments?: any[];
-  invoice?: { status: string, invoiceNo: string };
+  payments?: Array<{
+    id: number;
+    amount: string | number;
+    mode: string;
+    transactionId?: string;
+    receiptUrl?: string;
+    status?: string;
+    date?: string;
+  }>;
+  invoice?: {
+    status?: string;
+    invoiceNo?: string;
+    total?: string | number;
+    amount?: string | number;
+    gst?: string | number;
+  };
   status: string;
 }
 
@@ -31,6 +45,7 @@ interface CredentialAudit {
 
 export default function InstitutionalApprovals() {
   const [activeTab, setActiveTab] = useState<'enrollment' | 'enrolled' | 'credential_audit'>('enrollment');
+  const [counts, setCounts] = useState({ enrollment: 0, enrolled: 0, credential_audit: 0 });
   const [students, setStudents] = useState<StudentApproval[]>([]);
   const [credentialRequests, setCredentialRequests] = useState<CredentialAudit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +55,12 @@ export default function InstitutionalApprovals() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [remarks, setRemarks] = useState('');
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+
+  const getAssetUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '')}${path}`;
+  };
 
   const fetchData = async () => {
     try {
@@ -61,9 +82,30 @@ export default function InstitutionalApprovals() {
     }
   };
 
+  const fetchCounts = async () => {
+    try {
+      const [enrollmentRes, enrolledRes] = await Promise.all([
+        api.get('/finance/approvals/students'),
+        api.get('/finance/approvals/students', { params: { type: 'approved' } })
+      ]);
+
+      setCounts({
+        enrollment: enrollmentRes.data?.length || 0,
+        enrolled: enrolledRes.data?.length || 0,
+        credential_audit: 0
+      });
+    } catch (error) {
+      console.error('Finance approval count sync failure', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
 
   const handleAction = async () => {
     if (remarks.length < 15) return toast.error('Audit remarks must be at least 15 characters');
@@ -84,7 +126,7 @@ export default function InstitutionalApprovals() {
       toast.success(`Institutional action executed successfully`);
       setIsModalOpen(false);
       setRemarks('');
-      fetchData();
+      await Promise.all([fetchData(), fetchCounts()]);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Approval protocol failure');
     }
@@ -192,8 +234,8 @@ export default function InstitutionalApprovals() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex flex-col gap-6 shrink-0">
         <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Institutional Audit & Approvals</h1>
-           <p className="text-slate-500 text-sm font-medium">Review affiliation changes and academic session guardrails.</p>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Student Audit & Approvals</h1>
+           <p className="text-slate-500 text-sm font-medium">Review finance-bound student verification and final enrollment decisions.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit">
             <button 
@@ -201,12 +243,18 @@ export default function InstitutionalApprovals() {
                 className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrollment' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
                 Enrollment
+                <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === 'enrollment' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {counts.enrollment}
+                </span>
             </button>
             <button 
                 onClick={() => setActiveTab('enrolled')}
                 className={`cursor-pointer px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'enrolled' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
                 Enrolled Students
+                <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === 'enrolled' ? 'bg-blue-50 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {counts.enrolled}
+                </span>
             </button>
         </div>
       </div>
@@ -219,7 +267,7 @@ export default function InstitutionalApprovals() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Institutional Audit Decision"
+        title="Student Audit Decision"
       >
         <div className="space-y-6">
             <div className={`p-4 rounded-2xl border flex gap-4 ${actionType === 'approve' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
@@ -253,15 +301,56 @@ export default function InstitutionalApprovals() {
                     <div className="pt-4 border-t border-slate-200 grid grid-cols-2 gap-6">
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Details</p>
-                            <div className="space-y-1">
-                                {selectedItem.payments?.map((p: any, idx: number) => (
-                                    <div key={idx} className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-black text-slate-900 uppercase">{p.mode}</span>
-                                            <span className="text-[10px] font-bold text-emerald-600 bg-white px-2 py-0.5 rounded border border-emerald-100">₹{p.amount}</span>
+                            <div className="space-y-3">
+                                {selectedItem.payments?.length ? selectedItem.payments.map((p, idx) => (
+                                    <div key={p.id || idx} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-xs font-black text-slate-900 uppercase">{p.mode || 'Unknown Mode'}</span>
+                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                              ₹{p.amount}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                            <span>Status: {p.status || 'Pending'}</span>
+                                            <span>Txn ID: {p.transactionId || 'Not Provided'}</span>
+                                            <span>Date: {p.date ? new Date(p.date).toLocaleString() : 'Not Recorded'}</span>
+                                            <span>
+                                              Receipt:
+                                              {p.receiptUrl ? (
+                                                <a
+                                                  href={getAssetUrl(p.receiptUrl) || '#'}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="ml-1 text-blue-600 hover:text-blue-700"
+                                                >
+                                                  View Uploaded Proof
+                                                </a>
+                                              ) : ' Not Uploaded'}
+                                            </span>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                        No payment records submitted yet.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Invoice Context</p>
+                            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                                <div className="grid grid-cols-1 gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    <span>Invoice No: {selectedItem.invoice?.invoiceNo || 'Not Generated'}</span>
+                                    <span>Invoice Status: {selectedItem.invoice?.status || 'Pending'}</span>
+                                    <span>Base Amount: ₹{selectedItem.invoice?.amount ?? '0.00'}</span>
+                                    <span>GST: ₹{selectedItem.invoice?.gst ?? '0.00'}</span>
+                                    <span>Total: ₹{selectedItem.invoice?.total ?? '0.00'}</span>
+                                    {selectedItem.invoice?.invoiceNo && (
+                                        <span className="text-blue-600 normal-case tracking-normal">
+                                            Student payment packet is ready for finance verification.
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

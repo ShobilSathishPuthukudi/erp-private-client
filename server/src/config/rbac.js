@@ -37,8 +37,6 @@ export const USER_TYPES = [
 
 // SINGLETON ROLES (Enforced 1 active user)
 export const SINGLETON_ROLES = [
-  'CEO',
-  'ceo',
   'Organization Admin',
   'Organization Administrator',
   'HR Admin',

@@ -183,7 +183,7 @@ export default function PipelineTracking() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         title={`Institutional Node Details — ${activeStageLabel}`}
-        maxWidth="3xl"
+        maxWidth="xl"
       >
         <div className="space-y-6">
             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center justify-between">

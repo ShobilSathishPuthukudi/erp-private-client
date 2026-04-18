@@ -54,6 +54,7 @@ import Role from './Role.js';
 import AcademicActionRequest from './AcademicActionRequest.js';
 import PermissionVersion from './PermissionVersion.js';
 import RolePermissionShadow from './RolePermissionShadow.js';
+import EmployeeHRRequest from './EmployeeHRRequest.js';
 
 // Department -> User (Admin)
 Department.belongsTo(User, { as: 'admin', foreignKey: 'adminId' });
@@ -273,6 +274,10 @@ User.hasMany(SurveyResponse, { foreignKey: 'userUid', sourceKey: 'uid' });
 User.hasMany(Notification, { foreignKey: 'userUid', sourceKey: 'uid' });
 Notification.belongsTo(User, { foreignKey: 'userUid', targetKey: 'uid' });
 
+User.hasMany(EmployeeHRRequest, { foreignKey: 'employeeId', sourceKey: 'uid', as: 'hrRequests' });
+EmployeeHRRequest.belongsTo(User, { foreignKey: 'employeeId', targetKey: 'uid', as: 'employee' });
+EmployeeHRRequest.belongsTo(User, { foreignKey: 'respondedBy', targetKey: 'uid', as: 'responder' });
+
 // Exam -> Program
 Exam.belongsTo(Program, { foreignKey: 'programId' });
 Program.hasMany(Exam, { foreignKey: 'programId' });
@@ -391,7 +396,8 @@ const models = {
   Role,
   AcademicActionRequest,
   PermissionVersion,
-  RolePermissionShadow
+  RolePermissionShadow,
+  EmployeeHRRequest
 };
 
 // GAP-5: Global Audit Interceptor

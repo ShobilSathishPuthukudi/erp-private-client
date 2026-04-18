@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -22,6 +23,7 @@ interface Student {
   id: number;
   name: string;
   enrollStatus: string;
+  remarks?: string;
   subDepartment?: { name: string };
   program?: { name: string };
   university?: { name: string };
@@ -39,7 +41,9 @@ export default function PendingReviews() {
   const [activeTab, setActiveTab] = useState<'pending' | 'finance' | 'approved' | 'rejected'>(initialTab);
   const [counts, setCounts] = useState({ pending: 0, finance: 0, approved: 0, rejected: 0 });
 
-  const isReadOnly = activeTab !== 'pending';
+  const user = useAuthStore(state => state.user);
+  const isSales = user?.role?.toLowerCase().trim().includes('sales');
+  const isReadOnly = activeTab !== 'pending' || isSales;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +52,25 @@ export default function PendingReviews() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [remarks, setRemarks] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+
+  const fetchCounts = async () => {
+    try {
+      const [p, f, a, r] = await Promise.all([
+        api.get('/academic/students?status=PENDING_REVIEW'),
+        api.get('/academic/students?status=FINANCE_PENDING,FINANCE_APPROVED'),
+        api.get('/academic/students?status=ENROLLED'),
+        api.get('/academic/students?status=REJECTED')
+      ]);
+      setCounts({
+        pending: p.data.length,
+        finance: f.data.length,
+        approved: a.data.length,
+        rejected: r.data.length
+      });
+    } catch (error) {
+      console.error('Status telemetry sync failure', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -72,24 +95,6 @@ export default function PendingReviews() {
   }, [activeTab]);
 
   useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const [p, f, a, r] = await Promise.all([
-          api.get('/academic/students?status=PENDING_REVIEW'),
-          api.get('/academic/students?status=FINANCE_PENDING,FINANCE_APPROVED'),
-          api.get('/academic/students?status=ENROLLED'),
-          api.get('/academic/students?status=REJECTED')
-        ]);
-        setCounts({
-          pending: p.data.length,
-          finance: f.data.length,
-          approved: a.data.length,
-          rejected: r.data.length
-        });
-      } catch (error) {
-        console.error('Status telemetry sync failure', error);
-      }
-    };
     fetchCounts();
   }, []);
 
@@ -112,7 +117,7 @@ export default function PendingReviews() {
       });
       toast.success(res.data.message || 'Application approved and routed to Finance');
       setIsReviewModalOpen(false);
-      fetchData();
+      await Promise.all([fetchData(), fetchCounts()]);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Authorization protocol failure');
     }
@@ -132,7 +137,7 @@ export default function PendingReviews() {
       });
       toast.success('Enrollment Rejected: Study Center Notified');
       setIsReviewModalOpen(false);
-      fetchData();
+      await Promise.all([fetchData(), fetchCounts()]);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Rejection protocol failure');
     }
@@ -424,6 +429,25 @@ export default function PendingReviews() {
                         ))}
                     </div>
                 </div>
+
+                {activeTab === 'finance' && (
+                    <div className="border border-slate-200 rounded-3xl p-6 bg-white">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-900 uppercase tracking-tight">Operations Remarks</p>
+                                <p className="text-[10px] text-slate-500 font-medium tracking-widest uppercase">Transferred to finance with the following note</p>
+                            </div>
+                        </div>
+                        <div className="min-h-[96px] rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                {selectedStudent?.remarks?.trim() || 'No operations remarks were recorded before finance transfer.'}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {!isReadOnly && (
                     <div className="space-y-4">

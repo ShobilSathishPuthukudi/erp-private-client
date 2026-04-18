@@ -16,13 +16,20 @@ export default function DashboardLayout() {
   }, [fetchOrgConfig]);
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen flex" style={{ background: 'var(--layout-chrome-bg)' }}>
       <Sidebar isOpen={isSidebarOpen} />
       
-      <div className="flex-1 flex flex-col ml-[290px] max-[1200px]:ml-0 min-w-0 transition-all duration-300">
+      <div className="flex-1 flex flex-col ml-[290px] max-[1200px]:ml-0 min-w-0 transition-all duration-300" style={{ background: 'var(--layout-chrome-bg)' }}>
         <TopBar toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-white p-6 border-l border-t border-slate-200 rounded-tl-[32px] max-[1200px]:border-l-0 max-[1200px]:rounded-tl-none shadow-sm relative z-10">
+        <main 
+          className="flex-1 overflow-x-hidden overflow-y-auto p-6 border-l border-t rounded-tl-[32px] max-[1200px]:border-l-0 max-[1200px]:rounded-tl-none shadow-sm relative z-10 transition-colors duration-300"
+          style={{ 
+            background: 'var(--page-bg)', 
+            color: 'var(--page-text)',
+            borderColor: 'var(--shell-border)' 
+          }}
+        >
           <Outlet />
         </main>
       </div>

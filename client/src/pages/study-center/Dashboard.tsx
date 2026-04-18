@@ -8,7 +8,8 @@ import {
   ArrowRight, 
   UserPlus, 
   Bell,
-  Sparkles 
+  Sparkles,
+  Building2 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AnnouncementBoard from '@/components/shared/AnnouncementBoard';
@@ -22,7 +23,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     totalStudents: 0,
     pendingAdmissions: 0,
-    activePrograms: 0
+    activePrograms: 0,
+    totalUniversities: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -48,10 +50,14 @@ export default function Dashboard() {
         const students = studentRes.data || [];
         const programs = programRes.data || [];
         
+        // Extract unique universities from programs
+        const universityIds = new Set(programs.map((p: any) => p.program?.universityId).filter(Boolean));
+
         setStats({
           totalStudents: students.filter((s:any) => s.status === 'ENROLLED').length,
           pendingAdmissions: students.filter((s:any) => s.status !== 'ENROLLED' && s.status !== 'REJECTED').length,
-          activePrograms: programs.length
+          activePrograms: programs.length,
+          totalUniversities: universityIds.size
         });
       } catch (error) {
         console.error('Failed to fetch dashboard telemetry:', error);
@@ -61,6 +67,20 @@ export default function Dashboard() {
     };
     fetchDashboardData();
   }, []);
+
+  const kpis = [
+    { label: 'Enrolled Students', value: stats.totalStudents, icon: Users, color: 'blue', type: 'totalStudents', trend: 'Live Active' },
+    { label: 'In Review', value: stats.pendingAdmissions, icon: Clock, color: 'amber', type: 'pendingAdmissions', trend: 'Pipeline' },
+    { label: 'Sanctioned Progs', value: stats.activePrograms, icon: Layout, color: 'emerald', type: 'programs', trend: 'Authorized' },
+    { label: 'Universities', value: stats.totalUniversities, icon: Building2, color: 'rose', type: 'universities', trend: 'Sanctioned' },
+  ];
+
+  const colorThemes: Record<string, { bg: string, text: string, border: string, icon: string }> = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100', icon: 'text-blue-600' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', icon: 'text-amber-600' },
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', icon: 'text-emerald-600' },
+    rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100', icon: 'text-rose-600' }
+  };
 
   return (
     <div className="space-y-8 p-6 lg:p-10 animate-in fade-in duration-700">
@@ -103,78 +123,37 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div 
-            onClick={() => openDrillDown('totalStudents', 'Enrolled Students')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-          >
-              <div className="absolute -right-6 -bottom-6 text-blue-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
-                  <Users className="w-40 h-40" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 transition-transform group-hover:scale-110 shadow-sm">
-                        <Users className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">Enrolled Students</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Successfully onboarded</p>
-                    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpis.map((kpi, idx) => {
+          const theme = colorThemes[kpi.color];
+          return (
+            <div 
+              key={idx} 
+              onClick={() => openDrillDown(kpi.type, kpi.label)}
+              style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
+              className={`bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm group transition-all duration-300 relative overflow-hidden cursor-pointer hover:shadow-lg hover:border-slate-200 hover:scale-[1.02] active:scale-[0.98] animate-in fade-in slide-in-from-bottom-4`}
+            >
+                <div className={`absolute -right-6 -bottom-6 ${theme.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+                    <kpi.icon className="w-40 h-40" />
                 </div>
-                <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.totalStudents}</span>
-                   <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Live Active</span>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-4 mb-6">
+                      <div className={`w-14 h-14 ${theme.bg} rounded-2xl flex items-center justify-center ${theme.icon} border ${theme.border} transition-transform group-hover:scale-110 shadow-sm`}>
+                          <kpi.icon className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">{kpi.label}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Real-time Data</p>
+                      </div>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                     <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : kpi.value}</span>
+                     <span className={`${theme.text} text-[10px] font-black uppercase tracking-widest ${theme.bg} px-2 py-0.5 rounded-md border ${theme.border}`}>{kpi.trend}</span>
+                  </div>
                 </div>
-              </div>
-          </div>
-
-          <div 
-            onClick={() => openDrillDown('pendingAdmissions', 'Students in Review')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-          >
-              <div className="absolute -right-6 -bottom-6 text-amber-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
-                  <Clock className="w-40 h-40" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 transition-transform group-hover:scale-110 shadow-sm">
-                        <Clock className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">In Review</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Pending clearance</p>
-                    </div>
-                </div>
-                <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.pendingAdmissions}</span>
-                   <span className="text-amber-500 text-[10px] font-black uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Pipeline</span>
-                </div>
-              </div>
-          </div>
-
-          <div 
-            onClick={() => openDrillDown('programs', 'Sanctioned Programs')}
-            className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group transition-all duration-300 relative overflow-hidden cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-          >
-              <div className="absolute -right-6 -bottom-6 text-emerald-600 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none">
-                  <Layout className="w-40 h-40" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 border border-emerald-100 transition-transform group-hover:scale-110 shadow-sm">
-                        <Layout className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">Sanctioned Progs</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Frameworks assigned</p>
-                    </div>
-                </div>
-                <div className="flex items-baseline gap-2">
-                   <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : stats.activePrograms}</span>
-                   <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Authorized</span>
-                </div>
-              </div>
-          </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Announcements Section */}

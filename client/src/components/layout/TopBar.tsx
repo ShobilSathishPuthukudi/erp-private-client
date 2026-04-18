@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, User as UserIcon, LogOut, Search, ChevronDown, Lock, Palette } from 'lucide-react';
+import { Menu, User as UserIcon, LogOut, Search, ChevronDown, Lock, Palette, Hexagon } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useOrgStore } from '@/store/orgStore';
 import { api } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/shared/Modal';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import { getNormalizedRole, isSeededAdminPanelRole } from '@/lib/roles';
+import { findPanelByPath } from '@/lib/themes';
 import './Topbar.css';
 
 export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void }) {
@@ -13,7 +16,15 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
   const userMenuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
+  const { orgName, orgLogo } = useOrgStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Seeded dept/sub-dept admin panels (BVoc, HR, Finance, etc.) use a shared
+  // rolePassword rotated only by Org Admin, so self-service change-password is
+  // hidden for those sessions. Org Admin / Employee / CEO / Partner Center /
+  // Student keep their self-service option because their login uses user.password.
+  const canChangeOwnPassword = !isSeededAdminPanelRole(user?.role);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,8 +43,46 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
       console.error(e);
     } finally {
       logout();
-      navigate('/login');
+      // Hard replace so the browser drops bfcache/history for /dashboard/*;
+      // a soft navigate would let back-press restore the previous panel snapshot.
+      window.location.replace('/login');
     }
+  };
+
+  const resolveDashboardPath = () => {
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    const currentPanel = pathParts[1];
+
+    if (currentPanel === 'org-admin') return '/dashboard/org-admin/overview';
+    if (currentPanel === 'operations') return '/dashboard/operations/overview';
+    if (currentPanel === 'academic') return '/dashboard/academic';
+    if (currentPanel === 'finance') return '/dashboard/finance';
+    if (currentPanel === 'hr') return '/dashboard/hr';
+    if (currentPanel === 'sales') return '/dashboard/sales';
+    if (currentPanel === 'ceo') return '/dashboard/ceo/kpis';
+    if (currentPanel === 'partner-center') return '/dashboard/partner-center';
+    if (currentPanel === 'student') return '/dashboard/student';
+    if (currentPanel === 'employee') return '/dashboard/employee';
+    if (currentPanel === 'subdept') {
+      const subPanel = pathParts[2] || getNormalizedRole(user?.role || '');
+      return `/dashboard/subdept/${subPanel}/portal`;
+    }
+
+    const normalizedRole = getNormalizedRole(user?.role || '');
+    if (normalizedRole === 'organization admin') return '/dashboard/org-admin/overview';
+    if (normalizedRole === 'operations') return '/dashboard/operations/overview';
+    if (['openschool', 'online', 'skill', 'bvoc'].includes(normalizedRole)) {
+      return `/dashboard/subdept/${normalizedRole}/portal`;
+    }
+    if (normalizedRole === 'ceo') return '/dashboard/ceo/kpis';
+    if (normalizedRole === 'partner-center') return '/dashboard/partner-center';
+    if (normalizedRole === 'academic') return '/dashboard/academic';
+    if (normalizedRole === 'hr') return '/dashboard/hr';
+    if (normalizedRole === 'finance') return '/dashboard/finance';
+    if (normalizedRole === 'sales') return '/dashboard/sales';
+    if (normalizedRole === 'employee') return '/dashboard/employee';
+    if (normalizedRole === 'student') return '/dashboard/student';
+    return '/dashboard';
   };
 
   return (
@@ -42,6 +91,7 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
         <button onClick={toggleSidebar} className="menu-toggle-glow mobile-only">
           <Menu className="w-5 h-5" />
         </button>
+
 
         <div className="search-box-pill">
           <Search size={16} className="search-icon-dim" />
@@ -116,8 +166,16 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
                     </div>
                     <div className="popover-actions">
                         <button onClick={() => { navigate('/dashboard/profile'); setShowUserMenu(false); }}><UserIcon size={16} /> My Profile</button>
-                        <button onClick={() => { navigate('/dashboard/change-password'); setShowUserMenu(false); }}><Lock size={16} /> Change Password</button>
-                        <button onClick={() => { navigate('/dashboard/profile/theme'); setShowUserMenu(false); }}><Palette size={16} /> Theme</button>
+                        {canChangeOwnPassword && (
+                          <button onClick={() => { navigate('/dashboard/change-password'); setShowUserMenu(false); }}><Lock size={16} /> Change Password</button>
+                        )}
+                        <button onClick={() => { 
+                          const currentPanel = findPanelByPath(location.pathname)?.key;
+                          navigate(`/dashboard/profile/theme${currentPanel ? `?panel=${currentPanel}` : ''}`); 
+                          setShowUserMenu(false); 
+                        }}>
+                          <Palette size={16} /> Theme
+                        </button>
                         <div className="popover-divider"></div>
                         <button className="logout-btn-red" onClick={() => { setShowUserMenu(false); setIsLogoutModalOpen(true); }}><LogOut size={16} /> Logout</button>
                     </div>

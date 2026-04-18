@@ -75,6 +75,14 @@ const isRoleMappingManager = (req, res, next) => {
   next();
 };
 
+const isPrimaryOrgAdmin = (req, res, next) => {
+  const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
+  if (role !== 'organization admin') {
+    return res.status(403).json({ error: 'Access denied: Organization Admin privileges required' });
+  }
+  next();
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(process.cwd(), 'uploads', 'branding');
@@ -684,7 +692,8 @@ router.get('/admin-role-mappings', verifyToken, isRoleMappingManager, async (req
         ? `${role.scopeDepartment?.name || role.department} / ${role.scopeSubDepartment}`
         : (role.scopeDepartment?.name || role.department),
       departmentId: role.scopeDepartmentId,
-      assignedUser: role.assignedUser
+      assignedUser: role.assignedUser,
+      adminPanelPassword: role.devRolePassword || null
     }));
 
     res.json(payload);
@@ -835,7 +844,10 @@ router.post('/admin-role-mappings/:id/assign', verifyToken, isRoleMappingManager
     }, { transaction });
 
     await transaction.commit();
-    res.json({ message: 'Administrative role assigned successfully' });
+    res.json({
+      message: 'Administrative role assigned successfully',
+      adminPanelPassword: role.devRolePassword || null
+    });
   } catch (error) {
     if (transaction && !transaction.finished) await transaction.rollback();
     console.error('Assign admin role error:', error);
@@ -1001,6 +1013,129 @@ router.get('/verified-admins', verifyToken, isOrgAdmin, async (req, res) => {
   } catch (error) {
     console.error('Fetch Verified Admins Error:', error);
     res.status(500).json({ error: 'Failed to fetch verified institutional administrators' });
+  }
+});
+
+router.get('/admin-credentials', verifyToken, isPrimaryOrgAdmin, async (req, res) => {
+  try {
+    const adminRoles = await Role.findAll({
+      where: { isAdminEligible: true },
+      attributes: ['name']
+    });
+
+    const normalizedAdminRoles = new Set(
+      adminRoles.map((role) => normalizeInstitutionRoleName(role.name)?.toLowerCase()?.trim()).filter(Boolean)
+    );
+
+    normalizedAdminRoles.add('organization admin');
+    normalizedAdminRoles.add('ceo');
+
+    const users = await User.findAll({
+      where: { status: 'active' },
+      attributes: ['uid', 'name', 'email', 'role', 'status', 'createdAt'],
+      order: [['name', 'ASC']]
+    });
+
+    const adminUsers = users
+      .filter((user) => {
+        const normalizedRole = normalizeInstitutionRoleName(user.role)?.toLowerCase()?.trim();
+        return normalizedRole && normalizedAdminRoles.has(normalizedRole);
+      })
+      .map((user) => ({
+        uid: user.uid,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt
+      }));
+
+    res.json(adminUsers);
+  } catch (error) {
+    console.error('Fetch Admin Credentials List Error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin credentials list' });
+  }
+});
+
+router.get('/admin-credentials/:uid', verifyToken, isPrimaryOrgAdmin, async (req, res) => {
+  try {
+    const adminRoles = await Role.findAll({
+      where: { isAdminEligible: true },
+      attributes: ['name']
+    });
+
+    const normalizedAdminRoles = new Set(
+      adminRoles.map((role) => normalizeInstitutionRoleName(role.name)?.toLowerCase()?.trim()).filter(Boolean)
+    );
+
+    normalizedAdminRoles.add('organization admin');
+    normalizedAdminRoles.add('ceo');
+
+    const user = await User.findByPk(req.params.uid, {
+      attributes: ['uid', 'name', 'email', 'role', 'status', 'devPassword', 'createdAt'],
+      include: [
+        {
+          model: Role,
+          as: 'assignedAdminRoles',
+          attributes: ['id', 'name', 'devRolePassword'],
+          required: false
+        }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    const normalizedRole = normalizeInstitutionRoleName(user.role)?.toLowerCase()?.trim();
+    if (!normalizedRole || !normalizedAdminRoles.has(normalizedRole)) {
+      return res.status(404).json({ error: 'Admin credentials not available for this user' });
+    }
+
+    const directRole = await Role.findOne({
+      where: { name: normalizeInstitutionRoleName(user.role) },
+      attributes: ['name', 'devRolePassword']
+    });
+
+    const ceoPanel = await CEOPanel.findOne({
+      where: { userId: user.uid },
+      attributes: ['id', 'devCredential', 'status']
+    });
+
+    const mappedRolePassword = Array.isArray(user.assignedAdminRoles)
+      ? user.assignedAdminRoles.find((role) => role?.devRolePassword)?.devRolePassword || ''
+      : '';
+
+    const resolvedPassword =
+      ceoPanel?.devCredential ||
+      mappedRolePassword ||
+      directRole?.devRolePassword ||
+      user.devPassword ||
+      '';
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'ADMIN_CREDENTIAL_VIEW',
+      entity: `User:${user.uid}`,
+      module: 'ORG_ADMIN',
+      remarks: `Viewed stored admin credentials for ${user.name || user.uid}`,
+      ipAddress: req.ip || '0.0.0.0',
+      timestamp: new Date()
+    });
+
+    res.json({
+      uid: user.uid,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      password: resolvedPassword,
+      hasStoredPassword: Boolean(resolvedPassword),
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Reveal Admin Credentials Error:', error);
+    res.status(500).json({ error: 'Failed to reveal admin credentials' });
   }
 });
 

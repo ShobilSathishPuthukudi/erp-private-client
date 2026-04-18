@@ -1,6 +1,7 @@
 import express from 'express';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
+import { Op } from 'sequelize';
 
 const router = express.Router();
 const { Notification } = models;
@@ -76,16 +77,22 @@ router.patch('/read-all', verifyToken, async (req, res) => {
 // This is not an endpoint, but a helper logic we could export or use
 export const createNotification = async (io, data) => {
   try {
+    const targetUid = data.targetUid || data.userId || data.userUid;
+    if (!targetUid) {
+      throw new Error('Notification recipient is required');
+    }
+
     const notification = await Notification.create({
-      userUid: data.targetUid,
+      userUid: targetUid,
       type: data.type || 'info',
-      message: data.message,
+      message: data.title ? `${data.title}: ${data.message}` : data.message,
       link: data.link || null
     });
 
     if (io) {
       io.emit('notification', {
         ...data,
+        targetUid,
         id: notification.id // Include DB ID for frontend handling
       });
     }
@@ -93,6 +100,34 @@ export const createNotification = async (io, data) => {
   } catch (error) {
     console.error('Create persistent notification error:', error);
   }
+};
+
+export const clearNotifications = async ({ userUids = [], links = [], messagePatterns = [] }) => {
+  if (!userUids.length) return 0;
+
+  const where = {
+    userUid: { [Op.in]: userUids }
+  };
+
+  const filters = [];
+  if (links.length) {
+    filters.push({ link: { [Op.in]: links } });
+  }
+  if (messagePatterns.length) {
+    filters.push({
+      [Op.or]: messagePatterns.map((pattern) => ({
+        message: { [Op.like]: pattern }
+      }))
+    });
+  }
+
+  if (filters.length === 1) {
+    Object.assign(where, filters[0]);
+  } else if (filters.length > 1) {
+    where[Op.and] = filters;
+  }
+
+  return Notification.destroy({ where });
 };
 
 export default router;

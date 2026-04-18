@@ -30,6 +30,7 @@ interface Center {
   status: 'active' | 'inactive';
   auditStatus: 'pending' | 'approved' | 'rejected' | 'finance_pending';
   rejectionReason?: string;
+  financeRemarks?: string;
   infrastructureDetails?: any;
   createdAt: string;
   websiteUrl?: string;
@@ -68,7 +69,8 @@ export default function CenterAudit() {
 
   const user = useAuthStore(state => state.user);
   const isReadOnly = useMemo(() => {
-    return user?.role?.toLowerCase()?.includes('organization admin') || activeTab !== 'pending';
+    const isSales = user?.role?.toLowerCase()?.trim().includes('sales');
+    return user?.role?.toLowerCase()?.includes('organization admin') || activeTab !== 'pending' || isSales;
   }, [user, activeTab]);
 
   const fetchCenters = async () => {
@@ -216,7 +218,14 @@ export default function CenterAudit() {
             onClick={() => {
               setSelectedCenter(row.original);
               setIsReviewModalOpen(true);
-              setRejectionReason(activeTab !== 'pending' ? (row.original.rejectionReason || '') : '');
+              setSelectedCenter(row.original);
+              setIsReviewModalOpen(true);
+              // Logic: Approved/Rejected tabs show Finance remarks. Finance Pending shows Ops remarks.
+              const targetRemarks = (activeTab === 'approved' || activeTab === 'rejected') 
+                ? (row.original.financeRemarks || '') 
+                : (row.original.rejectionReason || '');
+              
+              setRejectionReason(activeTab !== 'pending' ? targetRemarks : '');
               setProvisioningPassword('');
               const requestedIds = row.original.metadata?.primaryInterest?.programIds || [];
               const legacyId = row.original.metadata?.primaryInterest?.programId;
@@ -369,46 +378,91 @@ export default function CenterAudit() {
               </div>
             )}
 
-            {activeTab === 'pending' && (
+            {(activeTab === 'pending' || (selectedCenter as any)?.mappedPrograms?.length > 0) && (
               <div className="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-sm">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-2">Program Authorization</h4>
-                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                  {programs
-                    .filter(prog => {
-                      const requestedIds = selectedCenter?.metadata?.primaryInterest?.programIds || [];
-                      const legacyId = Number(selectedCenter?.metadata?.primaryInterest?.programId);
-                      return requestedIds.includes(prog.id) || (legacyId && prog.id === legacyId);
-                    })
-                    .map(prog => (
-                      <div key={prog.id} className="flex items-start gap-3 p-3 border rounded-xl bg-slate-50 border-slate-100">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-2">
+                  {activeTab === 'pending' ? 'Program Authorization' : 'Ratified Academic Domains'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                  {activeTab === 'pending' ? (
+                    programs
+                      .filter(prog => {
+                        const requestedIds = selectedCenter?.metadata?.primaryInterest?.programIds || [];
+                        const legacyId = Number(selectedCenter?.metadata?.primaryInterest?.programId);
+                        return requestedIds.includes(prog.id) || (legacyId && prog.id === legacyId);
+                      })
+                      .map(prog => (
+                        <div key={prog.id} className="flex items-start gap-3 p-3 border rounded-xl bg-slate-50 border-slate-100">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-slate-900">{prog.name}</p>
+                              <span className="text-[7px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Requested</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 uppercase">{prog.type}</p>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    (selectedCenter as any)?.mappedPrograms?.map((mp: any) => (
+                      <div key={mp.program?.id} className="flex items-start gap-3 p-3 border rounded-xl bg-indigo-50/50 border-indigo-100">
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-slate-900">{prog.name}</p>
-                            <span className="text-[7px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Requested</span>
+                            <p className="text-xs font-bold text-indigo-900">{mp.program?.name}</p>
+                            <span className="text-[7px] font-black bg-green-600 text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Authorized</span>
                           </div>
-                          <p className="text-[10px] text-slate-500 uppercase">{prog.type}</p>
+                          <p className="text-[10px] text-indigo-600 uppercase">{mp.program?.type}</p>
                         </div>
                       </div>
-                    ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="space-y-4">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-2">
-                    {activeTab === 'pending' ? 'Audit Decision Remarks' : 'Protocol History Remarks'}
-                    {!isReadOnly && <span className="text-[8px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full">Mandatory</span>}
-                </label>
-                <textarea 
-                    value={rejectionReason}
-                    onChange={(e) => {
-                        setRejectionReason(e.target.value);
-                        if (e.target.value.trim()) setTriedSubmit(false);
-                    }}
-                    placeholder={activeTab === 'pending' ? "Enter detailed audit notes for protocol clearance..." : "No additional remarks recorded."}
-                    readOnly={isReadOnly}
-                    className={`w-full bg-slate-50 border rounded-xl p-4 text-sm font-bold outline-none transition-all min-h-[100px] text-slate-900 ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : (triedSubmit && !rejectionReason.trim() ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 shadow-sm')}`}
-                />
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    {activeTab === 'pending' 
+                      ? 'Audit Decision Remarks' 
+                      : (activeTab === 'approved' || activeTab === 'rejected')
+                        ? 'Finance Department Remarks'
+                        : 'Academic Operations Remarks'
+                    }
+                  </h4>
+                </div>
+
+                {activeTab === 'pending' ? (
+                  <div className="space-y-2">
+                    <textarea 
+                      value={rejectionReason}
+                      onChange={(e) => {
+                          setRejectionReason(e.target.value);
+                          if (e.target.value.trim()) setTriedSubmit(false);
+                      }}
+                      placeholder="Enter detailed audit notes for protocol clearance..."
+                      className={`w-full bg-slate-50 border rounded-xl p-4 text-sm font-bold outline-none transition-all min-h-[120px] text-slate-900 ${triedSubmit && !rejectionReason.trim() ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 shadow-sm'}`}
+                    />
+                    <div className="flex items-center gap-2 pl-1">
+                      <span className="text-[7px] font-black bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full uppercase">Mandatory</span>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">These remarks will be permanently recorded in the institutional ledger.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 border-dashed">
+                      <p className="text-sm text-slate-600 font-medium leading-relaxed italic">
+                        "{rejectionReason || 'No additional departmental commentary recorded.'}"
+                      </p>
+                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200/50">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase ${activeTab === 'finance_pending' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                          {activeTab === 'finance_pending' ? 'OP' : 'FI'}
+                        </div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                          {activeTab === 'finance_pending' ? 'Recorded by Operations Audit Board' : 'Ratified by Finance Audit Department'}
+                        </p>
+                      </div>
+                  </div>
+                )}
             </div>
 
             {activeTab === 'pending' && !isReadOnly && (

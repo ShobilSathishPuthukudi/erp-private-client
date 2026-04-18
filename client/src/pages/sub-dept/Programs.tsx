@@ -23,8 +23,7 @@ export default function Programs() {
   const fetchPrograms = async () => {
     try {
       setIsLoading(true);
-      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
-      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
+      const subDeptId = unit || null;
       
       const res = await api.get('/academic/programs', { 
         params: { subDeptId } 

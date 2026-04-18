@@ -18,7 +18,10 @@ import {
   XCircle,
   ExternalLink,
   FileText,
-  Terminal
+  Terminal,
+  Activity,
+  Landmark,
+  History
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -43,6 +46,7 @@ interface Program {
 export default function AccreditationRequests() {
   const { unit } = useParams();
   const [activeTab, setActiveTab] = useState<'pending'|'finance_pending'|'approved'>('pending');
+  const [counts, setCounts] = useState({ pending: 0, finance_pending: 0, approved: 0 });
   const [requests, setRequests] = useState<AccreditationRequest[]>([]);
   const [entities, setEntities] = useState<{universities: {id:number, name:string}[], subDepts: {id:number, name:string}[]}>({ universities: [], subDepts: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -74,9 +78,31 @@ export default function AccreditationRequests() {
     }
   };
 
+  const fetchCounts = async () => {
+    try {
+      const [p, f, a] = await Promise.all([
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'pending' } }),
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'finance_pending' } }),
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'approved' } })
+      ]);
+      setCounts({
+        pending: p.data.length,
+        finance_pending: f.data.length,
+        approved: a.data.length
+      });
+    } catch (error) {
+      console.error('Accreditation telemetry sync failure', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchCounts();
   }, [unit, activeTab]);
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
 
   const openApproveModal = (request: AccreditationRequest) => {
     setSelectedRequest(request);
@@ -166,35 +192,42 @@ export default function AccreditationRequests() {
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Accreditation Audit Queue</h1>
-            <p className="text-slate-500 font-medium text-sm">Review center interest requests, assign architectural routing, and transfer to Finance.</p>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">Accreditation Audit Queue</h1>
+              <p className="text-slate-500 font-medium text-sm mt-1">Review center interest requests, assign architectural routing, and transfer to Finance.</p>
+            </div>
           </div>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
-            <button 
-              onClick={() => setActiveTab('pending')} 
-              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Request Pending
-            </button>
-            <button 
-              onClick={() => setActiveTab('finance_pending')} 
-              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'finance_pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Finance Pending
-            </button>
-            <button 
-              onClick={() => setActiveTab('approved')} 
-              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'approved' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Approved
-            </button>
+
+        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit gap-1">
+           {[
+             { id: 'pending', name: 'Request Pending', icon: Clock, color: 'text-indigo-600' },
+             { id: 'finance_pending', name: 'Finance Pending', icon: Landmark, color: 'text-blue-600' },
+             { id: 'approved', name: 'Approved', icon: CheckCircle2, color: 'text-emerald-600' }
+           ].map(tab => (
+             <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`
+                  flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
+                  ${activeTab === tab.id 
+                    ? `bg-white ${tab.color} shadow-lg shadow-slate-200 ring-1 ring-slate-200` 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
+                `}
+             >
+                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? tab.color : 'text-slate-400'}`} />
+                {tab.name}
+                <span className={`static ml-2 px-2 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-slate-100' : 'bg-slate-200/50 text-slate-500'}`}>
+                  {counts[tab.id as keyof typeof counts] || 0}
+                </span>
+             </button>
+           ))}
         </div>
       </div>
 
@@ -205,55 +238,61 @@ export default function AccreditationRequests() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`Institutional Accreditation Review: ${selectedRequest?.courseName}`}
+        title={`Accreditation Review: ${selectedRequest?.courseName}`}
       >
-        <div className="flex flex-col h-[70vh] -mx-6 -my-5">
+        <div className="flex flex-col h-[75vh] -mx-6 -my-5">
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             
-            <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 space-y-4">
-               <h4 className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                  <ShieldCheck className="w-4 h-4" />
-                  Request Telemetry
-               </h4>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white px-4 py-3 rounded-xl border border-indigo-100">
-                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Center Identity</p>
-                     <p className="text-sm font-black text-slate-900">{selectedRequest?.center?.name}</p>
-                  </div>
-                  <div className="bg-white px-4 py-3 rounded-xl border border-indigo-100">
-                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Requested Program</p>
-                     <p className="text-sm font-black text-indigo-600">{selectedRequest?.courseName}</p>
-                  </div>
-               </div>
-               <div className="bg-white px-4 py-3 rounded-xl border border-indigo-100">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stated University Preference</p>
-                  <p className="text-sm font-black text-slate-900">{selectedRequest?.universityName}</p>
-               </div>
+            {/* Dark telemetry HUD */}
+            <div className="bg-slate-900 p-6 rounded-3xl shadow-xl shadow-slate-900/20">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="text-amber-400 w-5 h-5" />
+                <h3 className="text-white font-black text-sm uppercase tracking-widest leading-none">Request Telemetry</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
+                  <p className="text-[10px] font-bold text-white/40 uppercase mb-1 tracking-widest">Center Identity</p>
+                  <p className="text-sm font-black text-white truncate">{selectedRequest?.center?.name}</p>
+                </div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
+                  <p className="text-[10px] font-bold text-white/40 uppercase mb-1 tracking-widest">Requested Program</p>
+                  <p className="text-sm font-black text-indigo-400">{selectedRequest?.courseName}</p>
+                  <p className="text-[9px] text-white/40 uppercase tracking-tighter mt-1">{selectedRequest?.type || 'Standard'}</p>
+                </div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/5 flex flex-col justify-center min-h-[80px]">
+                  <p className="text-[10px] font-bold text-white/40 uppercase mb-1 tracking-widest">Target University</p>
+                  <p className="text-sm font-black text-white italic">{selectedRequest?.universityName}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3">
-                  <Info className="w-4 h-4 text-slate-400" />
-                  Audit Guidance
-               </h4>
-               <p className="text-[11px] font-bold text-slate-500 leading-relaxed uppercase tracking-tighter">
-                  Review the center's academic interest, assign the appropriate architectural routing (University and Sub-Department), and certify the request for Finance review.
-               </p>
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-100">
+                    <Info className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Audit Guidance</h4>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-1">
+                      Determine architectural routing and certify for Finance ratification.
+                    </p>
+                  </div>
+               </div>
             </div>
 
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                        <Terminal className="w-3.5 h-3.5" />
-                       Target University
+                       Routing: Target University
                     </label>
                     <select 
                         value={assignedUniversityId}
                         disabled={isReadOnly}
                         onChange={(e) => setAssignedUniversityId(e.target.value)}
-                        className={`w-full bg-slate-100 border rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : 'border-slate-100 focus:border-slate-900 focus:bg-white'}`}
+                        className={`w-full bg-slate-50 border-2 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : 'border-slate-100 focus:border-slate-900 focus:bg-white'}`}
                     >
                         <option value="">Select University...</option>
                         {entities.universities.map(p => (
@@ -262,16 +301,16 @@ export default function AccreditationRequests() {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                        <LinkIcon className="w-3.5 h-3.5" />
-                       Operating Unit
+                       Routing: Operating Unit
                     </label>
                     <select 
                         value={assignedSubDeptId}
                         disabled={isReadOnly}
                         onChange={(e) => setAssignedSubDeptId(e.target.value)}
-                        className={`w-full bg-slate-100 border rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : 'border-slate-100 focus:border-slate-900 focus:bg-white'}`}
+                        className={`w-full bg-slate-50 border-2 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : 'border-slate-100 focus:border-slate-900 focus:bg-white'}`}
                     >
                         <option value="">Select Unit...</option>
                         {entities.subDepts.map(p => (
@@ -281,19 +320,40 @@ export default function AccreditationRequests() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-2">
-                        <FileText className="w-3.5 h-3.5" />
-                        Institutional Audit Remarks
-                        {!isReadOnly && <span className="text-[8px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full">Mandatory</span>}
-                    </label>
-                    <textarea 
-                        value={remarks}
-                        readOnly={isReadOnly}
-                        onChange={(e) => setRemarks(e.target.value)}
-                        className={`w-full bg-slate-50 border rounded-xl p-4 text-sm font-bold outline-none transition-all min-h-[100px] text-slate-900 ${isReadOnly ? 'opacity-70 cursor-not-allowed border-slate-200' : 'border-slate-200 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 shadow-sm'}`}
-                        placeholder={isReadOnly ? "No additional remarks recorded." : "Enter detailed audit notes for protocol clearance..."}
-                    />
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-sm transition-all duration-300">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                      <History className="w-4 h-4 text-indigo-600" />
+                      Institutional Audit Remarks
+                    </h4>
+                  </div>
+                  
+                  {isReadOnly ? (
+                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
+                      <p className="text-sm text-slate-600 font-bold leading-relaxed italic">
+                        "{remarks || 'No detailed audit notes recorded for this request.'}"
+                      </p>
+                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200">
+                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-black">
+                           AD
+                        </div>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Permanent Protocol Record</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <textarea 
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-bold outline-none focus:border-slate-900 focus:bg-white transition-all min-h-[120px] text-slate-900 shadow-sm"
+                          placeholder="Enter detailed audit notes for protocol clearance..."
+                      />
+                      <div className="flex items-center gap-2 pl-1">
+                        <span className="text-[7px] font-black bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full uppercase">Mandatory</span>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Remarks are required to transition request to Finance.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
             </div>
           </div>
@@ -303,7 +363,7 @@ export default function AccreditationRequests() {
                 <div className="flex justify-end gap-3">
                     <button 
                         onClick={() => setIsModalOpen(false)}
-                        className="px-6 py-3 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
+                        className="px-6 py-3 text-slate-500 font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
                     >
                         Abort Review
                     </button>
@@ -319,7 +379,7 @@ export default function AccreditationRequests() {
                 <div className="flex justify-end">
                     <button 
                         onClick={() => setIsModalOpen(false)}
-                        className="px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                        className="px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
                     >
                         Close Registry
                     </button>

@@ -55,8 +55,7 @@ export default function DashboardLanding() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const subDeptMap: Record<string, number> = { 'openschool': 8, 'online': 9, 'skill': 10, 'bvoc': 11 };
-      const subDeptId = unit ? subDeptMap[unit.toLowerCase()] : null;
+      const subDeptId = unit || null;
 
       const [statsRes, centersRes] = await Promise.all([
         api.get('/operations/stats/academic-overview', { params: { subDeptId } }),
@@ -77,6 +76,26 @@ export default function DashboardLanding() {
   }, [unit]);
 
   const kpis = [
+    { 
+      label: 'Assigned Universities', 
+      value: stats.totalUniversities || 0, 
+      icon: Building2, 
+      color: 'bg-rose-500', 
+      trend: 'Institutional Partners',
+      path: '../programs',
+      type: 'universities',
+      details: 'Comprehensive registry of partner universities assigned to this unit.'
+    },
+    { 
+      label: 'Academic Programs', 
+      value: stats.activePrograms || 0, 
+      icon: BookOpen, 
+      color: 'bg-violet-600', 
+      trend: 'Syllabus Registry',
+      path: '../programs',
+      type: 'activePrograms',
+      details: 'Total active degree and certificate programs within the jurisdictional syllabus.'
+    },
     { 
       label: 'Pending Student Reviews', 
       value: stats.pendingReviews || 0, 
@@ -123,13 +142,15 @@ export default function DashboardLanding() {
     'bg-amber-500': { bg: 'bg-amber-50', text: 'text-amber-600' },
     'bg-blue-500': { bg: 'bg-blue-50', text: 'text-blue-600' },
     'bg-indigo-600': { bg: 'bg-indigo-50', text: 'text-indigo-600' },
-    'bg-emerald-500': { bg: 'bg-emerald-50', text: 'text-emerald-600' }
+    'bg-emerald-500': { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    'bg-rose-500': { bg: 'bg-rose-50', text: 'text-rose-600' },
+    'bg-violet-600': { bg: 'bg-violet-50', text: 'text-violet-600' }
   };
 
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Syncing Jurisdictional Hub...</div>;
 
   return (
-    <div className="space-y-10 pb-12 animate-in fade-in duration-700">
+    <div className="space-y-10 pb-12 animate-in fade-in duration-300">
       {/* Identity Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
@@ -164,7 +185,8 @@ export default function DashboardLanding() {
             <div 
               key={idx} 
               onClick={() => openDrillDown(kpi.type || 'students', kpi.label)}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 hover:border-blue-200 hover:scale-[1.01]"
+              style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 hover:border-blue-200 hover:scale-[1.01]"
             >
               <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                 <kpi.icon className="w-40 h-40" />

@@ -211,6 +211,41 @@ router.post('/register-center', async (req, res) => {
       link: '/dashboard/sales/referrals'
     }, { transaction: t });
 
+    // 7. Broadcast notifications to Academic Operations & Institutional Admins
+    try {
+      const adminRoles = [
+        'Academic Operations',
+        'Academic Operations Admin',
+        'Academic Operations Administrator',
+        'Operations Admin',
+        'Operations Administrator',
+        'Organization Admin',
+        'academic operations admin',
+        'operations admin',
+        'organization admin'
+      ];
+      
+      const opsAdmins = await User.findAll({
+        where: { 
+          role: { [Op.in]: adminRoles }
+        }
+      });
+
+      console.log(`[OPS_BROADCAST]: Identified ${opsAdmins.length} administrative recipients for center: ${name}`);
+
+      for (const admin of opsAdmins) {
+        await Notification.create({
+          userUid: admin.uid,
+          type: 'info',
+          message: `Institutional Alert: New Center Pending Verification - "${name}" requires audit.`,
+          link: '/dashboard/operations/center-audit?tab=pending'
+        }, { transaction: t });
+      }
+    } catch (notifyError) {
+      console.error('[OPS_NOTIFY_ERROR]:', notifyError);
+      // Non-blocking for the main registration flow
+    }
+
     await t.commit();
     res.status(201).json({ 
       success: true, 

@@ -19,13 +19,41 @@ interface Leave {
   createdAt: string;
 }
 
+interface LeaveFormData {
+  type: string;
+  fromDate: string;
+  toDate: string;
+  reason: string;
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object' &&
+    'error' in error.response.data &&
+    typeof error.response.data.error === 'string'
+  ) {
+    return error.response.data.error;
+  }
+
+  return fallback;
+};
+
 export default function LeaveRequests() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<LeaveFormData>();
   const fromDate = watch('fromDate');
+  const today = new Date();
+  const minStartDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
   // Calculate minimum selectable end date (must be at least one day after start date)
   const getMinEndDate = (startDate: string) => {
@@ -40,7 +68,7 @@ export default function LeaveRequests() {
       setIsLoading(true);
       const res = await api.get('/portals/employee/leaves');
       setLeaves(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch your leave requests');
     } finally {
       setIsLoading(false);
@@ -53,8 +81,8 @@ export default function LeaveRequests() {
       await api.delete(`/portals/employee/leaves/${id}`);
       toast.success('Leave request deleted successfully');
       fetchLeaves();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to delete leave request');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to delete leave request'));
     }
   };
 
@@ -64,7 +92,7 @@ export default function LeaveRequests() {
 
   const openCreateModal = () => {
     reset({ 
-      type: 'Annual Leave', 
+      type: '', 
       fromDate: '', 
       toDate: '',
       reason: '' 
@@ -72,14 +100,14 @@ export default function LeaveRequests() {
     setIsModalOpen(true);
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: LeaveFormData) => {
     try {
       await api.post('/portals/employee/leaves', data);
       toast.success('Leave request submitted successfully');
       setIsModalOpen(false);
       fetchLeaves();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to submit leave request');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to submit leave request'));
     }
   };
 
@@ -176,14 +204,16 @@ export default function LeaveRequests() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Leave Category</label>
             <select
-              {...register('type')}
+              {...register('type', { required: 'Leave category is required' })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
             >
+              <option value="">Select Category</option>
               <option value="Annual Leave">Annual Leave</option>
               <option value="Sick Leave">Sick Leave</option>
               <option value="Maternity / Paternity">Maternity / Paternity</option>
               <option value="Unpaid Leave">Unpaid Leave</option>
             </select>
+            {errors.type && <p className="text-red-500 text-xs mt-1">{errors.type.message as string}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -191,7 +221,11 @@ export default function LeaveRequests() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
               <input
                 type="date"
-                {...register('fromDate', { required: 'Start date is required' })}
+                min={minStartDate}
+                {...register('fromDate', {
+                  required: 'Start date is required',
+                  validate: (value) => value >= minStartDate || 'Past dates are not allowed'
+                })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
               />
               {errors.fromDate && <p className="text-red-500 text-xs mt-1">{errors.fromDate.message as string}</p>}
@@ -205,8 +239,11 @@ export default function LeaveRequests() {
                 min={getMinEndDate(fromDate)}
                 {...register('toDate', { 
                   required: 'End date is required',
-                  validate: (value) => 
-                    !fromDate || value > fromDate || 'End date must be after start date'
+                  validate: (value) => {
+                    if (value < minStartDate) return 'Past dates are not allowed';
+                    if (fromDate && value <= fromDate) return 'End date must be after start date';
+                    return true;
+                  }
                 })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
               />
@@ -217,7 +254,11 @@ export default function LeaveRequests() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Reason / Details</label>
             <textarea
-              {...register('reason', { required: 'Please provide a reason for your leave' })}
+              {...register('reason', { 
+                required: 'Please provide a reason for your leave',
+                minLength: { value: 6, message: 'Reason must be at least 6 characters' },
+                maxLength: { value: 30, message: 'Reason must not exceed 30 characters' }
+              })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm h-24"
               placeholder="Provide a brief explanation for your absence..."
             />

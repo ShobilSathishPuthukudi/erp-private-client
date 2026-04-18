@@ -1,3 +1,5 @@
+import { normalizeInstitutionRoleName } from '../../config/institutionalStructure.js';
+
 /**
  * Senior Backend Architecture: Strict RBAC Task Validation
  * Ensures hierarchical task flow and departmental isolation.
@@ -21,24 +23,31 @@ export const validateTaskAssignment = (assigner, assignee) => {
     throw new Error("Invalid task assignment: role hierarchy violation");
   }
 
-  const assignerRole = (assigner.role || "").trim().toLowerCase();
-  const assigneeRole = (assignee.role || "").trim().toLowerCase();
+  const assignerRole = normalizeInstitutionRoleName(assigner.role || "").trim().toLowerCase();
+  const assigneeRole = normalizeInstitutionRoleName(assignee.role || "").trim().toLowerCase();
 
   const DEPT_ADMIN_WHITELIST = [
     "hr admin",
     "finance admin",
     "academic operations admin",
     "operations admin",
-    "academic ops admin",
-    "sales & crm admin",
-    "bvoc dept admin",
-    "bvoc department admin",
-    "online dept admin",
-    "online department admin",
+    "sales admin",
+    "bvoc admin",
+    "online admin",
     "open school admin",
-    "skill dept admin",
-    "skill department admin"
+    "skill admin"
   ];
+
+  const ASSIGNABLE_NON_ADMIN_ROLES = new Set([
+    "employee",
+    "sales",
+    "finance",
+    "hr",
+    "operations",
+    "academic"
+  ]);
+
+  const assigneeIsAdmin = DEPT_ADMIN_WHITELIST.includes(assigneeRole) || assigneeRole === "organization admin" || assigneeRole === "ceo";
 
   // 3. CEO Branch: strictly HR Admin only
   if (assignerRole === "ceo") {
@@ -50,17 +59,27 @@ export const validateTaskAssignment = (assigner, assignee) => {
 
   // 4. Departmental Admin Branch
   if (DEPT_ADMIN_WHITELIST.includes(assignerRole)) {
-    // Only allow assignment to 'Employee'
-    if (assigneeRole !== "employee") {
-      throw new Error("Invalid task assignment: role hierarchy violation");
-    }
-
     // Strict Department Validation
     if (!assigner.deptId || !assignee.deptId || String(assigner.deptId) !== String(assignee.deptId)) {
       throw new Error("Invalid task assignment: role hierarchy violation");
     }
 
-    return true; // Valid Admin → Dept Employee assignment
+    const isDirectReport = assignee.reportingManagerUid && assignee.reportingManagerUid === assigner.uid;
+    const isAssignableNonAdmin = ASSIGNABLE_NON_ADMIN_ROLES.has(assigneeRole);
+
+    if (assigneeIsAdmin && !isDirectReport) {
+      throw new Error("Invalid task assignment: role hierarchy violation");
+    }
+
+    if (!assigneeIsAdmin && (isAssignableNonAdmin || isDirectReport)) {
+      return true;
+    }
+
+    if (isDirectReport) {
+      return true;
+    }
+
+    throw new Error("Invalid task assignment: role hierarchy violation");
   }
 
   // 5. Default: Reject (Employee or unknown roles cannot assign tasks)

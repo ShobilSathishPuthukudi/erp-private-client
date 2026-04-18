@@ -8,6 +8,19 @@ const router = express.Router();
 const { Announcement, AnnouncementRead, User, Program, Department } = models;
 import { createNotification } from './notifications.js';
 
+const normalizeExpiryDate = (rawExpiryDate) => {
+    if (!rawExpiryDate) return null;
+
+    const parsed = new Date(rawExpiryDate);
+    if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+    }
+
+    // Fallback for malformed datetime-local payloads: keep the notice visible
+    // rather than silently excluding it from the institutional board.
+    return null;
+};
+
 // HR: Get all announcements (including CEO directives)
 router.get('/hr', verifyToken, async (req, res) => {
     try {
@@ -36,10 +49,27 @@ router.post('/hr', verifyToken, async (req, res) => {
             title,
             message,
             priority: priority || 'normal',
-            expiryDate: expiryDate || null,
+            expiryDate: normalizeExpiryDate(expiryDate),
             authorId: req.user.uid,
             targetChannel: 'all_employees'
         });
+
+        const activeUsers = await User.findAll({
+            where: {
+                status: 'active',
+                uid: { [Op.ne]: req.user.uid },
+                role: { [Op.notIn]: ['Partner Center', 'partner center', 'Partner Centers', 'partner centers'] }
+            },
+            attributes: ['uid']
+        });
+
+        await Promise.all(activeUsers.map((user) => createNotification(req.io, {
+            targetUid: user.uid,
+            type: priority === 'urgent' ? 'warning' : 'info',
+            message: `HR Broadcast: ${announcement.title}`,
+            link: '/dashboard/announcements'
+        })));
+
         await logAction({
             userId: req.user.uid,
             action: 'CREATE_ANNOUNCEMENT',
@@ -77,7 +107,7 @@ router.post('/ceo/hr', verifyToken, isCEO, async (req, res) => {
             title,
             message,
             priority: priority || 'normal',
-            expiryDate: expiryDate || null,
+            expiryDate: normalizeExpiryDate(expiryDate),
             authorId: req.user.uid,
             targetChannel: 'hr_directives'
         });
@@ -141,6 +171,7 @@ router.post('/ops', verifyToken, async (req, res) => {
 
         const announcement = await Announcement.create({
             ...req.body,
+            expiryDate: normalizeExpiryDate(req.body.expiryDate),
             authorId: req.user.uid,
             universityId: req.user.deptId || null, // Capture issuing department for categorization
             targetChannel: 'centers_only'
@@ -178,7 +209,7 @@ router.get('/feed', verifyToken, async (req, res) => {
     const { role, deptId, uid } = req.user;
     try {
         const now = new Date();
-        const baseWhere = {
+        const activeWhere = {
             [Op.and]: [
                 {
                     [Op.or]: [
@@ -193,9 +224,19 @@ router.get('/feed', verifyToken, async (req, res) => {
         const isCenter = ['partner center', 'partner centers', 'center'].includes(roleLower);
 
         if (isCenter && deptId) {
-            // Centers see Ops announcements matching their parameters or global ones
-            baseWhere[Op.and].push({
-                targetChannel: { [Op.in]: ['all_employees', 'centers_only'] }
+            // Centers should not see HR broadcasts. They see center directives,
+            // plus non-HR institutional broadcasts when globally applicable.
+            const hrAuthorUids = sequelize.literal(`(SELECT uid FROM Users WHERE LOWER(role) IN ('hr admin', 'hr administrator', 'hr'))`);
+            activeWhere[Op.and].push({
+                [Op.or]: [
+                    { targetChannel: 'centers_only' },
+                    {
+                        [Op.and]: [
+                            { targetChannel: 'all_employees' },
+                            { authorId: { [Op.notIn]: hrAuthorUids } }
+                        ]
+                    }
+                ]
             });
             
             const centerFilters = [
@@ -215,14 +256,20 @@ router.get('/feed', verifyToken, async (req, res) => {
                 console.warn('[ANNOUNCEMENTS FEED] Literal subquery expansion skipped:', litErr.message);
             }
 
-            baseWhere[Op.and].push({ [Op.or]: centerFilters });
+            activeWhere[Op.and].push({ [Op.or]: centerFilters });
         } else {
             // Internal staff/Admins see global announcements
-            baseWhere[Op.and].push({ targetChannel: 'all_employees' });
+            activeWhere[Op.and].push({ targetChannel: 'all_employees' });
         }
 
-        const announcements = await Announcement.findAll({
-            where: baseWhere,
+        const scopeConditions = activeWhere[Op.and].filter((condition) => {
+            if (!condition || !condition[Op.or]) return true;
+            return !condition[Op.or].some((item) => Object.prototype.hasOwnProperty.call(item, 'expiryDate'));
+        });
+        const fallbackWhere = { [Op.and]: scopeConditions };
+
+        let announcements = await Announcement.findAll({
+            where: activeWhere,
             include: [
                 { 
                     model: AnnouncementRead, 
@@ -233,6 +280,25 @@ router.get('/feed', verifyToken, async (req, res) => {
             ],
             order: [['createdAt', 'DESC']]
         });
+
+        // Fallback for legacy broadcasts with stale/malformed expiry values:
+        // if no active rows survive the time filter, still surface the latest
+        // role-visible announcements instead of leaving the board empty.
+        if (!announcements.length) {
+            announcements = await Announcement.findAll({
+                where: fallbackWhere,
+                include: [
+                    { 
+                        model: AnnouncementRead, 
+                        as: 'reads', 
+                        where: { userId: uid || 'GUEST' }, 
+                        required: false 
+                    }
+                ],
+                order: [['createdAt', 'DESC']],
+                limit: 20
+            });
+        }
 
         // Map read status
         const formatted = announcements.map(a => ({

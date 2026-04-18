@@ -34,8 +34,12 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
     const [marksProof, setMarksProof] = useState<string | null>(null);
     const [paymentReceipt, setPaymentReceipt] = useState<string | null>(null);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
+    const [marksProofName, setMarksProofName] = useState<string | null>(null);
+    const [paymentReceiptName, setPaymentReceiptName] = useState<string | null>(null);
 
-    const { register, handleSubmit, reset, watch } = useForm();
+    const { register, handleSubmit, reset, watch, formState: { errors, isValid }, trigger } = useForm({
+        mode: "onChange"
+    });
 
     useEffect(() => {
         const fetchAuthorizedPrograms = async () => {
@@ -59,6 +63,13 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             }
             if (initialData.activationInvoice?.payment?.receiptUrl) {
                 setPaymentReceipt(initialData.activationInvoice.payment.receiptUrl);
+                const name = initialData.activationInvoice.payment.receiptUrl.split('/').pop();
+                setPaymentReceiptName(name || 'Existing Receipt');
+            }
+            if (initialData.marks?.marksProof) {
+                setMarksProof(initialData.marks.marksProof);
+                const name = initialData.marks.marksProof.split('/').pop();
+                setMarksProofName(name || 'Existing Proof');
             }
             // If editing, start at the data step if program/session are already set
             if (initialData.programId && initialData.sessionId && initialData.feeSchemaId) {
@@ -106,12 +117,25 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
         // We don't auto-advance anymore, let user see the breakdown
     };
 
-    const handleFinalStep = () => {
+    const handleFinalStep = async () => {
         if (!selectedFee) {
             toast.error('Select a payment plan to continue');
             return;
         }
         setStep(4);
+    };
+
+    const handleDataStep = async () => {
+        const result = await trigger(['name', 'email', 'lastExam', 'lastExamScore']);
+        if (result) {
+            if (!marksProof) {
+                toast.error('Credential proof (marksheet) is required for verification');
+                return;
+            }
+            setStep(5);
+        } else {
+            toast.error('Resolve validation errors in the candidate profile');
+        }
     };
 
     const onFinalSubmit = async (data: any) => {
@@ -295,26 +319,44 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Legal Name</label>
                             <input 
-                                {...register('name', { required: true })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                {...register('name', { 
+                                    required: "Full name is required",
+                                    minLength: { value: 3, message: "Name must be at least 3 characters" },
+                                    maxLength: { value: 25, message: "Name cannot exceed 25 characters" }
+                                })}
+                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.name ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                 placeholder="As per 10th certificate"
                             />
+                            {errors.name && (
+                                <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    {errors.name.message as string}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Institutional Email Address</label>
                             <input 
                                 type="email"
-                                {...register('email', { required: true })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                {...register('email', { 
+                                    required: "Institutional email is required",
+                                    pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid institutional email format" },
+                                    maxLength: { value: 50, message: "Email must be under 50 characters" }
+                                })}
+                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.email ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                 placeholder="student@example.com"
                             />
+                            {errors.email && (
+                                <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    {errors.email.message as string}
+                                </p>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className={watch('lastExam') === 'Custom' ? 'col-span-2' : ''}>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Qualified Exam</label>
                                 <select 
-                                    {...register('lastExam', { required: true })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                    {...register('lastExam', { required: "Academic qualification is required" })}
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.lastExam ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                 >
                                     <option value="">-- Choose Qualification --</option>
                                     <option value="10th">10th Standard</option>
@@ -339,10 +381,11 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                 <div className="col-span-2 animate-in slide-in-from-top-2 duration-300">
                                     <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Specify Custom Qualification</label>
                                     <input 
-                                        {...register('customExamName', { required: watch('lastExam') === 'Custom' })}
-                                        className="w-full px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-slate-900 shadow-sm shadow-blue-100/50"
+                                        {...register('customExamName', { required: { value: watch('lastExam') === 'Custom', message: "Enter qualification name" } })}
+                                        className={`w-full px-4 py-3 bg-blue-50 border rounded-xl outline-none transition-all font-bold text-slate-900 shadow-sm shadow-blue-100/50 ${errors.customExamName ? 'border-rose-400' : 'border-blue-100 focus:ring-blue-500/10 focus:border-blue-500'}`}
                                         placeholder="Enter the full name of the qualification..."
                                     />
+                                    {errors.customExamName && <p className="text-[9px] font-black text-rose-600 uppercase mt-1 ml-1">{errors.customExamName.message as string}</p>}
                                 </div>
                             )}
 
@@ -351,10 +394,15 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                 <input 
                                     type="number"
                                     step="0.01"
-                                    {...register('lastExamScore', { required: true })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                    {...register('lastExamScore', { required: "Last aggregate score is required" })}
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.lastExamScore ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                     placeholder="0.00"
                                 />
+                                {errors.lastExamScore && (
+                                    <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        {errors.lastExamScore.message as string}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="col-span-2">
@@ -369,6 +417,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                             
                                             try {
                                                 setUploading(true);
+                                                setMarksProofName(file.name);
                                                 const formData = new FormData();
                                                 formData.append('document', file);
                                                 const res = await api.post('/upload', formData, {
@@ -377,6 +426,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                                 setMarksProof(res.data.filePath);
                                                 toast.success('Certificate uploaded successfully');
                                             } catch (error) {
+                                                setMarksProofName(null);
                                                 toast.error('Failed to upload certificate');
                                             } finally {
                                                 setUploading(false);
@@ -384,6 +434,13 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                         }}
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900 text-xs file:hidden cursor-pointer"
                                     />
+                                    {marksProofName && !uploading && (
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight truncate max-w-[200px] block">
+                                                {marksProofName}
+                                            </span>
+                                        </div>
+                                    )}
                                     {uploading && (
                                         <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center">
                                             <span className="text-[10px] font-black text-blue-600 animate-pulse uppercase tracking-widest">Uploading Proof...</span>
@@ -403,8 +460,8 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                     <div className="flex flex-col gap-3">
                         <button 
                             type="button" 
-                            onClick={() => setStep(5)}
-                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-xs"
+                            onClick={handleDataStep}
+                            className={`w-full py-4 rounded-xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${marksProof && watch('name') && watch('email') ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                         >
                             Continue to Payment <DollarSign className="w-4 h-4" />
                         </button>
@@ -427,8 +484,8 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Collection Mode</label>
                                 <select 
-                                    {...register('paymentMode', { required: true })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                    {...register('paymentMode', { required: "Select a payment collection mode" })}
+                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.paymentMode ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                 >
                                     <option value="">-- Select Mode --</option>
                                     <option value="Cash">Cash at Center</option>
@@ -443,59 +500,94 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Transaction / UTR Number</label>
                                         <input 
-                                            {...register('transactionId', { required: true })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900"
+                                            {...register('transactionId', { 
+                                                required: { value: watch('paymentMode') !== 'Cash', message: "Transaction ID is required for digital payments" },
+                                                minLength: { value: 3, message: "UTR must be at least 3 characters" },
+                                                maxLength: { value: 20, message: "UTR cannot exceed 20 characters" }
+                                            })}
+                                            className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.transactionId ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
                                             placeholder="Enter reference ID..."
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Receipt (Image/PDF)</label>
-                                        <div className="relative">
-                                            <input 
-                                                type="file"
-                                                accept=".pdf,.jpg,.jpeg,.png"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file) return;
-                                                    try {
-                                                        setUploadingReceipt(true);
-                                                        const formData = new FormData();
-                                                        formData.append('document', file);
-                                                        const res = await api.post('/upload', formData, {
-                                                            headers: { 'Content-Type': 'multipart/form-data' }
-                                                        });
-                                                        setPaymentReceipt(res.data.filePath);
-                                                        toast.success('Receipt virtualized');
-                                                    } catch (error) {
-                                                        toast.error('Digitization failed');
-                                                    } finally {
-                                                        setUploadingReceipt(false);
-                                                    }
-                                                }}
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900 text-xs file:hidden cursor-pointer"
-                                            />
-                                            {uploadingReceipt && (
-                                                <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center">
-                                                    <span className="text-[10px] font-black text-blue-600 animate-pulse uppercase tracking-widest">Processing...</span>
-                                                </div>
-                                            )}
-                                            {paymentReceipt && !uploadingReceipt && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-1 rounded-full">
-                                                    <Check className="w-3 h-3" />
-                                                </div>
-                                            )}
-                                        </div>
+                                        {errors.transactionId && (
+                                            <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                {errors.transactionId.message as string}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             )}
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                     Payment Receipt / Deposit Proof (Image/PDF)
+                                </label>
+                                <div className="relative">
+                                    <input 
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            try {
+                                                setUploadingReceipt(true);
+                                                setPaymentReceiptName(file.name);
+                                                const formData = new FormData();
+                                                formData.append('document', file);
+                                                const res = await api.post('/upload', formData, {
+                                                    headers: { 'Content-Type': 'multipart/form-data' }
+                                                });
+                                                setPaymentReceipt(res.data.filePath);
+                                                toast.success('Receipt uploaded successfully');
+                                            } catch (error) {
+                                                setPaymentReceiptName(null);
+                                                toast.error('Receipt upload failed');
+                                            } finally {
+                                                setUploadingReceipt(false);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-slate-900 text-xs file:hidden cursor-pointer"
+                                    />
+                                    {paymentReceiptName && !uploadingReceipt && (
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight truncate max-w-[240px] block">
+                                                {paymentReceiptName}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {uploadingReceipt && (
+                                        <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center">
+                                            <span className="text-[10px] font-black text-blue-600 animate-pulse uppercase tracking-widest">Processing...</span>
+                                        </div>
+                                    )}
+                                    {paymentReceipt && !uploadingReceipt && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-1 rounded-full">
+                                            <Check className="w-3 h-3" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-2 flex items-center justify-between gap-3">
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
+                                        Upload the collected receipt, challan, cash slip, or transfer proof for Finance review.
+                                    </p>
+                                    {paymentReceipt && !uploadingReceipt && (
+                                        <a
+                                            href={paymentReceipt.startsWith('http') ? paymentReceipt : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '')}${paymentReceipt}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 whitespace-nowrap"
+                                        >
+                                            View Proof
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex flex-col gap-3">
                         <button 
                             type="submit" 
-                            disabled={isLoading || uploadingReceipt}
-                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 text-xs"
+                            disabled={isLoading || uploadingReceipt || !isValid || !paymentReceipt}
+                            className={`w-full py-4 rounded-xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${isValid && paymentReceipt ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                         >
                             {isLoading ? "Provisioning..." : <><Check className="w-4 h-4" /> Finalize Enrollment & Billing</>}
                         </button>

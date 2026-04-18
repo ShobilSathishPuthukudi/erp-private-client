@@ -160,9 +160,10 @@ export default function LoginPage() {
       const response = await api.post('/auth/login', data);
       const { user, token } = response.data;
       setAuth(user, token);
-      const roleData = user.role.toLowerCase().trim();
-      const dashboardPath = (['partner-center', 'partner center', 'partner centers'].includes(roleData)) ? 'partner-center' : (user.role === 'Organization Admin' ? 'org-admin' : roleData);
-      navigate(`/dashboard/${dashboardPath}`);
+      // /dashboard has an index route that normalizes the role and redirects
+      // to the correct panel (handles multi-word admin roles like "BVoc Admin"
+      // that don't map cleanly to `/dashboard/<role>`).
+      navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
     }

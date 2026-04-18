@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getNormalizedRole } from '@/lib/roles';
 import {
   Home,
   Users,
@@ -43,7 +44,7 @@ type MenuGroup = {
 type MenuLink = MenuItem | MenuGroup;
 
 const menus: Record<string, MenuLink[]> = {
-  'Organization Admin': [
+  'organization admin': [
     {
       name: 'Overview',
       path: '/dashboard/org-admin/overview',
@@ -99,6 +100,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Institutional Roles', path: '/dashboard/org-admin/permissions/roles' },
         { name: 'Permission Matrix', path: '/dashboard/org-admin/permissions/matrix' },
         { name: 'Audit Log', path: '/dashboard/org-admin/permissions/audit' },
+        { name: 'Admin Credentials', path: '/dashboard/org-admin/permissions/admin-credentials' },
       ]
     },
     {
@@ -215,7 +217,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Security Audit', path: '/dashboard/finance/audit/security' },
-        { name: 'Institutional Audit', path: '/dashboard/finance/approvals' },
+        { name: 'Student Audit', path: '/dashboard/finance/approvals' },
         { name: 'Accreditation Audits', path: '/dashboard/finance/accreditation-queue' },
         { name: 'Admission Sessions', path: '/dashboard/finance/sessions-queue' },
         { name: 'Center Verification', path: '/dashboard/finance/center-verification' },
@@ -268,6 +270,7 @@ const menus: Record<string, MenuLink[]> = {
         { name: 'Internal Notices', path: '/dashboard/hr/announcements' },
         { name: 'Holiday Calendar', path: '/dashboard/hr/holidays' },
         { name: 'Manage Surveys', path: '/dashboard/hr/surveys' },
+        { name: 'Employee Requests', path: '/dashboard/hr/employee-communications' },
       ]
     },
     {
@@ -353,6 +356,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: Bell,
       isGroup: true,
       items: [
+        { name: 'HR Broadcasts', path: '/dashboard/operations/hr-broadcasts' },
         { name: 'Center Announcements', path: '/dashboard/operations/announcements' },
       ]
     },
@@ -641,6 +645,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'My Tasks', path: '/dashboard/employee/tasks' },
         { name: 'My Leaves', path: '/dashboard/employee/leaves' },
+        { name: 'Contact HR', path: '/dashboard/employee/hr-contact' },
         { name: 'My Centers', path: '/dashboard/employee/centers' },
       ]
     },
@@ -657,13 +662,21 @@ const menus: Record<string, MenuLink[]> = {
   'sales': [
     { name: 'Dashboard', path: '/dashboard/sales', icon: Home },
     {
+      name: 'Onboarding',
+      icon: ShieldCheck,
+      isGroup: true,
+      items: [
+        { name: 'Onboarding Hub', path: '/dashboard/operations/onboarding-hub' },
+        { name: 'Onboarding Pulse', path: '/dashboard/operations/onboarding-pulse' },
+        { name: 'Student Status', path: '/dashboard/operations/pending-reviews' },
+        { name: 'Center Audit Status', path: '/dashboard/operations/center-audit' },
+      ]
+    },
+    {
       name: 'Sales Ops',
       icon: Users,
       isGroup: true,
       items: [
-        { name: 'Active Pipeline', path: '/dashboard/sales/crm/pipeline' },
-        { name: 'Strategic Outcome', path: '/dashboard/sales/crm/outcome' },
-        { name: 'Student Prospects', path: '/dashboard/sales/prospects' },
         { name: 'Institutional Nodes', path: '/dashboard/sales/nodes' },
       ]
     },
@@ -720,33 +733,6 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const getNormalizedRole = (rawRole: string) => {
-    if (!rawRole) return 'default';
-    const r = rawRole.toLowerCase().trim();
-    
-    // Pillar Mappings
-    if (r.includes('hr')) return 'hr';
-    if (r.includes('finance')) return 'finance';
-    if (r.includes('sales')) return 'sales';
-    if (r.includes('operations') || r.includes('academic')) return 'operations';
-    
-    // Unit Mappings
-    if (r.includes('open school') || r.includes('openschool')) return 'openschool';
-    if (r.includes('online')) return 'online';
-    if (r.includes('skill')) return 'skill';
-    if (r.includes('bvoc')) return 'bvoc';
-    
-    // Executive Mappings
-    if (r === 'ceo') return 'ceo';
-    if (r.includes('organization admin') || r === 'admin') return 'Organization Admin';
-    
-    // Specialized Mappings
-    if (['partner-center', 'partner center', 'partner centers', 'center', 'centers'].includes(r)) return 'partner-center';
-    if (r === 'student') return 'student';
-    if (r === 'employee') return 'employee';
-    
-    return rawRole; // Fallback to raw if no match
-  };
 
   const role = useMemo(() => getNormalizedRole(user?.role || ''), [user?.role]);
 
@@ -759,6 +745,23 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   
   const links = useMemo(() => {
     let rawLinks = [...(menus[role as keyof typeof menus] || menus['default'])];
+
+    // My Centers is a sales-only affordance on the Employee portal; hide it
+    // for employees belonging to any other department.
+    if (role === 'employee') {
+      const isSalesEmployee = (user?.departmentName || '').toLowerCase().includes('sales');
+      if (!isSalesEmployee) {
+        rawLinks = rawLinks.map(link => {
+          if (link.isGroup && link.name === 'Workplace') {
+            return {
+              ...link,
+              items: link.items.filter((it: any) => it.name !== 'My Centers')
+            };
+          }
+          return link;
+        });
+      }
+    }
 
     // Inject individual CEO monitors if Role is Org Admin
     if (role === 'Organization Admin' && summary?.ceoPanels) {
@@ -810,7 +813,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
          path: link.path.replace(':unit', unit)
       } as any;
     });
-  }, [role, unit]);
+  }, [role, unit, user?.departmentName]);
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -835,7 +838,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     }
   }, [location.pathname, links]);
 
-  const toggleGroup = (groupName: string) => {
+  const toggleGroup = (event: React.MouseEvent, groupName: string) => {
     const currentPath = location.pathname;
     let activeGroupName: string | null = null;
     
@@ -847,6 +850,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
         }
       }
     });
+
+    const willExpand = !expandedGroups[groupName];
 
     setExpandedGroups(prev => {
       const newState: Record<string, boolean> = {
@@ -860,6 +865,14 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
       
       return newState;
     });
+
+    // Automatically scroll to ensure sub-menu is visible
+    if (willExpand) {
+      const target = event.currentTarget.parentElement;
+      setTimeout(() => {
+        target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
+    }
   };
 
   return (
@@ -872,10 +885,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
           <div 
             className="sidebar-logo-modern cursor-pointer"
             onClick={() => {
-              const role = user?.role;
-              const dashboardPath = (role === 'partner-center') ? 'partner-center' : (role?.toLowerCase() || 'default');
-              const finalPath = role === 'Organization Admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
-              navigate(finalPath);
+              const dashboardPath = role === 'organization admin' ? 'org-admin/overview' : role;
+              navigate(`/dashboard/${dashboardPath}`);
             }}
           >
             <div className="logo-icon bg-white overflow-hidden">
@@ -899,10 +910,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 <div 
                   className="sidebar-logo-modern cursor-pointer"
                   onClick={() => {
-                    const role = user?.role;
-                    const dashboardPath = (role === 'partner-center') ? 'partner-center' : (role?.toLowerCase() || 'default');
-                    const finalPath = role === 'Organization Admin' ? '/dashboard/org-admin/overview' : `/dashboard/${dashboardPath}`;
-                    navigate(finalPath);
+                    const dashboardPath = role === 'organization admin' ? 'org-admin/overview' : role;
+                    navigate(`/dashboard/${dashboardPath}`);
                   }}
                 >
                   <div className="logo-icon bg-white overflow-hidden">
@@ -927,7 +936,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 return (
                   <li key={link.name} className="sidebar-item-modern">
                     <button
-                      onClick={() => toggleGroup(link.name)}
+                      onClick={(e) => toggleGroup(e, link.name)}
                       className={clsx("sidebar-link-modern has-submenu", isExpanded && "open")}
                     >
                       <span className="sidebar-icon-modern">

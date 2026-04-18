@@ -1,38 +1,100 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { 
-  Building2, 
-  Search, 
-  Globe, 
-  CheckCircle2, 
+import {
+  Building2,
+  Search,
+  Globe,
   Loader2,
-  GraduationCap
+  GraduationCap,
+  ShieldCheck,
+  BookOpen,
+  Activity,
+  ArrowUpRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 
+type University = {
+  id: number;
+  name: string;
+  shortName?: string;
+  status?: 'active' | 'staged' | 'proposed' | string;
+  accreditation?: string;
+  websiteUrl?: string;
+  totalPrograms?: number;
+  activePrograms?: number;
+  openPrograms?: number;
+};
+
+const STATUS_STYLES: Record<string, { dot: string; chip: string; label: string }> = {
+  active: {
+    dot: 'bg-emerald-500',
+    chip: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    label: 'Active',
+  },
+  staged: {
+    dot: 'bg-sky-500',
+    chip: 'bg-sky-50 text-sky-700 ring-sky-200',
+    label: 'Staged',
+  },
+  proposed: {
+    dot: 'bg-amber-500',
+    chip: 'bg-amber-50 text-amber-700 ring-amber-200',
+    label: 'Proposed',
+  },
+};
+
+const getInitials = (name?: string, shortName?: string) => {
+  if (shortName) return shortName.substring(0, 2).toUpperCase();
+  if (!name) return 'UN';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
+type FilterKey = 'all' | 'active' | 'staged' | 'proposed';
+
 export default function InstitutionalUniversities() {
-  const [unis, setUnis] = useState<any[]>([]);
+  const [unis, setUnis] = useState<University[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<FilterKey>('all');
 
   useEffect(() => {
+    const fetchUnis = async () => {
+      try {
+        const res = await api.get('/academic/universities');
+        setUnis(res.data);
+      } catch (error) {
+        console.error('Failed to fetch institutional universities');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchUnis();
   }, []);
 
-  const fetchUnis = async () => {
-    try {
-      const res = await api.get('/academic/universities');
-      setUnis(res.data);
-    } catch (error) {
-      console.error('Failed to fetch institutional universities');
-    } finally {
-      setLoading(false);
+  const counts = useMemo(() => {
+    const base = { all: unis.length, active: 0, staged: 0, proposed: 0 };
+    for (const uni of unis) {
+      const key = (uni.status || '').toLowerCase();
+      if (key === 'active') base.active++;
+      else if (key === 'staged') base.staged++;
+      else if (key === 'proposed') base.proposed++;
     }
-  };
+    return base;
+  }, [unis]);
 
-  const filteredUnis = unis.filter(uni => 
-    uni.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    uni.shortName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUnis = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    return unis.filter((uni) => {
+      const matchesTerm =
+        !term ||
+        uni.name?.toLowerCase().includes(term) ||
+        uni.shortName?.toLowerCase().includes(term);
+      const matchesFilter = filter === 'all' || (uni.status || '').toLowerCase() === filter;
+      return matchesTerm && matchesFilter;
+    });
+  }, [unis, searchTerm, filter]);
 
   if (loading) {
     return (
@@ -43,93 +105,193 @@ export default function InstitutionalUniversities() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional Universities</h1>
-          <p className="text-slate-500 font-medium mt-1">Authorized list of partnered academic institutions for enrollment.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold ring-1 ring-blue-100 mb-3">
+            <Building2 className="w-3.5 h-3.5" />
+            Institutional directory
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+            Institutional Universities
+          </h1>
+          <p className="text-slate-500 text-sm mt-1.5 max-w-xl">
+            Authorized partner institutions you can reference during recruitment and
+            enrollment conversations.
+          </p>
         </div>
-        <div className="relative max-w-sm w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
+        <div className="relative w-full lg:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
             type="text"
-            placeholder="Search institutions..."
-            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm font-medium"
+            placeholder="Search by name or short code"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUnis.map((uni) => (
-          <div key={uni.id} className="bg-white rounded-[2.5rem] border border-slate-200 p-8 hover:border-blue-500 transition-all group relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform">
-               <Building2 className="w-32 h-32" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+        {(['all', 'active', 'staged', 'proposed'] as FilterKey[]).map((key) => {
+          const active = filter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ring-1 ${
+                active
+                  ? 'bg-slate-900 text-white ring-slate-900 shadow-sm'
+                  : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span className="capitalize">{key}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {counts[key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {filteredUnis.map((uni) => {
+          const statusKey = (uni.status || 'proposed').toLowerCase();
+          const statusStyle = STATUS_STYLES[statusKey] || STATUS_STYLES.proposed;
+          const total = uni.totalPrograms || 0;
+          const active = uni.activePrograms || 0;
+          const open = uni.openPrograms || 0;
+
+          return (
+            <div
+              key={uni.id}
+              className="group relative bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-[0_20px_40px_-15px_rgba(30,58,138,0.2)] hover:-translate-y-1.5 transition-all duration-500 overflow-hidden"
+            >
+              <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-500 transition-all duration-500 group-hover:h-1.5" />
+
+              <div className="p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 relative">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 group-hover:from-blue-600 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                      {getInitials(uni.name, uni.shortName)}
+                    </div>
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${statusStyle.dot}`}
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ring-1 ${statusStyle.chip}`}
+                      >
+                        {statusStyle.label}
+                      </span>
+                      {uni.shortName && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {uni.shortName}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 leading-snug line-clamp-2">
+                      {uni.name}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                      <BookOpen className="w-3 h-3" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">
+                        Programs
+                      </span>
+                    </div>
+                    <p className="text-base font-bold text-slate-900 leading-none">{total}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                    <div className="flex items-center gap-1 text-emerald-600 mb-0.5">
+                      <Activity className="w-3 h-3" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-base font-bold text-emerald-700 leading-none">{active}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-sky-50/60 border border-sky-100">
+                    <div className="flex items-center gap-1 text-sky-600 mb-0.5">
+                      <GraduationCap className="w-3 h-3" />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">Open</span>
+                    </div>
+                    <p className="text-base font-bold text-sky-700 leading-none">{open}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/60 border border-slate-100">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      Accreditation
+                    </p>
+                    <p className="text-xs font-semibold text-slate-800 truncate">
+                      {uni.accreditation || 'UGC Approved'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  {uni.websiteUrl ? (
+                    <a
+                      href={uni.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-semibold text-xs group/link"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Visit portal
+                      <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
+                    </a>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      No portal linked
+                    </span>
+                  )}
+                  <span className="text-[10px] font-semibold text-slate-400 font-mono">
+                    #{uni.id}
+                  </span>
+                </div>
+              </div>
             </div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl group-hover:bg-blue-600 transition-colors">
-                  <span className="text-xl font-black italic">{uni.shortName?.substring(0, 2)}</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      uni.status === 'active' ? 'bg-emerald-500' : 
-                      uni.status === 'staged' ? 'bg-blue-500' : 
-                      'bg-amber-500'
-                    }`}></span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{uni.status}</span>
-                  </div>
-                  <h3 className="text-lg font-black text-slate-900 leading-tight mt-1">{uni.name}</h3>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3 text-slate-500">
-                    <GraduationCap className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Programs</span>
-                  </div>
-                  <span className="text-sm font-black text-slate-900">{uni.totalPrograms || 0} Catalog</span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3 text-slate-500">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Accreditation</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-900">{uni.accreditation || 'UGC Approved'}</span>
-                </div>
-              </div>
-
-              <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-100">
-                {uni.websiteUrl ? (
-                  <a 
-                    href={uni.websiteUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="flex items-center gap-2 text-blue-600 font-black uppercase text-[10px] tracking-widest hover:underline"
-                  >
-                    <Globe className="w-4 h-4" />
-                    Portal
-                  </a>
-                ) : <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">No Portal Linked</span>}
-                
-                <div className="flex items-center gap-1 text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-widest">ID: {uni.id}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {filteredUnis.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
-            <Building2 className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-            <h3 className="text-xl font-black text-slate-900 uppercase italic">No Institutions Located</h3>
-            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-2">Adjust your search telemetry to find registered nodes.</p>
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-6 h-6 text-slate-400" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">No institutions found</h3>
+            <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
+              {searchTerm || filter !== 'all'
+                ? 'Try clearing your search or filter to see all partner institutions.'
+                : 'No partner institutions are registered yet.'}
+            </p>
+            {(searchTerm || filter !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilter('all');
+                }}
+                className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800"
+              >
+                Reset filters
+              </button>
+            )}
           </div>
         )}
       </div>

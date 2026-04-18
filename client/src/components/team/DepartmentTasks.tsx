@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, ClipboardList, X, Share2, Printer, Download } from
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
-import { getNormalizedRole } from '@/App';
+import { getNormalizedRole } from '@/lib/roles';
 import { downloadCSV } from '@/lib/exportUtils';
 
 interface TeamMember {

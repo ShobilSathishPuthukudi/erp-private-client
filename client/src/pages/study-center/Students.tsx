@@ -12,9 +12,17 @@ interface Student {
   id: number;
   name: string;
   status: string;
+  enrollStatus?: string;
   invoiceId?: number;
   program?: { name: string, duration: number, type: string };
 }
+
+const canCenterEditStudent = (student: Student) => {
+  const lockedStatuses = ['OPS_APPROVED', 'FINANCE_PENDING', 'PAYMENT_VERIFIED', 'FINANCE_APPROVED', 'ENROLLED'];
+  const lockedEnrollStatuses = ['pending_finance', 'rejected'];
+
+  return !lockedStatuses.includes(student.status) && !lockedEnrollStatuses.includes(student.enrollStatus || '');
+};
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -88,18 +96,31 @@ export default function Students() {
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => activeTab === 'pending' && (
-        <button 
-          onClick={() => {
-            setEditingStudent(row.original);
-            setIsModalOpen(true);
-          }}
-          className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all active:scale-95 group"
-          title="Edit Student Data"
-        >
-          <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
-        </button>
-      )
+      cell: ({ row }) => {
+        if (activeTab !== 'pending') return null;
+
+        const canEdit = canCenterEditStudent(row.original);
+
+        return (
+          <button 
+            onClick={() => {
+              if (!canEdit) return;
+              setEditingStudent(row.original);
+              setIsModalOpen(true);
+            }}
+            disabled={!canEdit}
+            className={clsx(
+              "p-2 rounded-lg transition-all group",
+              canEdit
+                ? "hover:bg-blue-50 text-blue-600 active:scale-95"
+                : "text-slate-300 cursor-not-allowed"
+            )}
+            title={canEdit ? "Edit Student Data" : "Editing locked after Academic Operations verification"}
+          >
+            <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          </button>
+        );
+      }
     }
   ];
 
@@ -123,22 +144,38 @@ export default function Students() {
         <button
           onClick={() => setActiveTab('pending')}
           className={clsx(
-            "flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-            activeTab === 'pending' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            activeTab === 'pending' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:text-slate-700"
           )}
         >
-          <Clock className="w-4 h-4" />
-          Pending Admissions
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Pending Admissions
+          </div>
+          <span className={clsx(
+            "px-2 py-0.5 rounded-md text-[10px] font-black",
+            activeTab === 'pending' ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-slate-200 text-slate-500"
+          )}>
+            {students.filter(s => s.status !== 'ENROLLED' && s.status !== 'REJECTED').length}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('enrolled')}
           className={clsx(
-            "flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-            activeTab === 'enrolled' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            activeTab === 'enrolled' ? "bg-white text-emerald-600 shadow-sm border border-slate-100" : "text-slate-500 hover:text-slate-700"
           )}
         >
-          <CheckCircle className="w-4 h-4" />
-          Enrolled Roster
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Enrolled Roster
+          </div>
+          <span className={clsx(
+            "px-2 py-0.5 rounded-md text-[10px] font-black",
+            activeTab === 'enrolled' ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200" : "bg-slate-200 text-slate-500"
+          )}>
+            {students.filter(s => s.status === 'ENROLLED').length}
+          </span>
         </button>
       </div>
 

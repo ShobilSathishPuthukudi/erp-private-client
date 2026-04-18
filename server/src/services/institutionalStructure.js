@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import bcrypt from 'bcryptjs';
 import {
   CORE_DEPARTMENTS,
   INSTITUTIONAL_ROLES,
@@ -7,6 +8,11 @@ import {
   getDepartmentNameAliases,
   getSubDepartmentNameAliases,
 } from '../config/institutionalStructure.js';
+
+// Default admin-panel password seeded onto every admin role. A promoted
+// employee keeps their own password for the employee panel and uses this
+// for the admin panel.
+const DEFAULT_ADMIN_PANEL_PASSWORD = 'admin123';
 
 export const syncInstitutionalStructure = async (models) => {
   const { Department, Role } = models;
@@ -177,4 +183,24 @@ export const syncInstitutionalStructure = async (models) => {
     { isCustom: false, isSeeded: true },
     { where: { name: { [Op.in]: SEEDED_ADMIN_ROLE_NAMES } } }
   );
+
+  // Seed the default admin-panel password onto every seeded admin role that
+  // doesn't already have one. Kept idempotent so pre-existing custom passwords
+  // are preserved across restarts.
+  const rolesMissingPassword = await Role.findAll({
+    where: {
+      name: { [Op.in]: SEEDED_ADMIN_ROLE_NAMES },
+      [Op.or]: [{ rolePassword: null }, { rolePassword: '' }],
+    },
+  });
+
+  if (rolesMissingPassword.length > 0) {
+    const hashed = await bcrypt.hash(DEFAULT_ADMIN_PANEL_PASSWORD, 10);
+    for (const role of rolesMissingPassword) {
+      await role.update({
+        rolePassword: hashed,
+        devRolePassword: DEFAULT_ADMIN_PANEL_PASSWORD,
+      });
+    }
+  }
 };

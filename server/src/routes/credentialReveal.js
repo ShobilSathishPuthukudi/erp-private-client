@@ -5,7 +5,7 @@ import { verifyToken, roleGuard, isAcademicOrAdmin, isSystemAdmin } from '../mid
 import { createNotification } from './notifications.js';
 
 const router = express.Router();
-const { CredentialRequest, Department, User, AuditLog } = models;
+const { CredentialRequest, Department, User, AuditLog, Role } = models;
 
 const REVEAL_WINDOW_MINS = 30;
 
@@ -43,18 +43,29 @@ router.post('/request', verifyToken, isAcademicOrAdmin, async (req, res) => {
     const center = await Department.findByPk(centerId);
     const financeAdmins = await User.findAll({
       where: {
-        role: { [Op.or]: ['Finance Admin', 'Organization Admin'] }
+        role: { [Op.in]: ['Finance Admin', 'Organization Admin'] }
       }
     });
+    const assignedFinanceRoles = await Role.findAll({
+      where: {
+        name: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+        assignedUserUid: { [Op.ne]: null }
+      },
+      attributes: ['assignedUserUid']
+    });
 
-    for (const admin of financeAdmins) {
-      await createNotification({
-        userId: admin.uid,
+    const recipientUids = [...new Set([
+      ...financeAdmins.map((admin) => admin.uid),
+      ...assignedFinanceRoles.map((role) => role.assignedUserUid).filter(Boolean)
+    ])];
+
+    for (const recipientUid of recipientUids) {
+      await createNotification(null, {
+        targetUid: recipientUid,
         title: 'New Credential Reveal Request',
         message: `Forensic ${type} request initiated for ${center ? center.name : 'Center #'+centerId} by ${req.user.name || req.user.uid}`,
         type: 'warning',
-        link: '/dashboard/finance/credentials',
-        metadata: { requestId: request.id, centerId }
+        link: '/dashboard/finance/credentials'
       });
     }
 
@@ -101,13 +112,12 @@ router.post('/approve/:id', verifyToken, roleGuard(['Finance Admin', 'Organizati
     await t.commit();
 
     // 4. Notify Requester
-    await createNotification({
-      userId: request.requesterId,
+    await createNotification(null, {
+      targetUid: request.requesterId,
       title: 'Credential Request Approved',
       message: `Your request to ${request.type} credentials for ${request.center.name} has been approved. Reveal window active for ${REVEAL_WINDOW_MINS} mins.`,
       type: 'success',
-      link: '/dashboard/academic/credentials',
-      metadata: { requestId: request.id }
+      link: '/dashboard/academic/credentials'
     });
 
     res.json(request);

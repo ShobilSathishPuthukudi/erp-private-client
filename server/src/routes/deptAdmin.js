@@ -11,6 +11,22 @@ const router = express.Router();
 const { User, Task, Leave, Department, AuditLog, CEOPanel, Notification, Lead } = models;
 
 const DEPT_GRACE_HOURS = 24;
+const ACADEMIC_PARENT_ADMIN_ROLES = ['academic operations admin', 'operations admin', 'operations', 'academic'];
+
+const resolveManagedDepartmentIds = async (deptId, role) => {
+  if (!deptId) return [];
+
+  if (!ACADEMIC_PARENT_ADMIN_ROLES.includes(role)) {
+    return [deptId];
+  }
+
+  const childDepartments = await Department.findAll({
+    attributes: ['id'],
+    where: { parentId: deptId }
+  });
+
+  return [deptId, ...childDepartments.map((department) => department.id)];
+};
 
 const getTaskScope = async (task) => {
   const assignee = task.assignee || await User.findOne({
@@ -132,7 +148,10 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
         ]
       });
     } else {
-      queryWhere.deptId = req.user.deptId;
+      const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
+      queryWhere.deptId = scopedDeptIds.length === 1
+        ? scopedDeptIds[0]
+        : { [Op.in]: scopedDeptIds };
     }
 
     const teamRaw = await User.findAll({
@@ -564,7 +583,12 @@ router.get('/leaves', verifyToken, isDeptAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Department scope missing' });
     }
 
-    const employeeWhere = { deptId: req.user.deptId };
+    const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
+    const employeeWhere = {
+      deptId: scopedDeptIds.length === 1
+        ? scopedDeptIds[0]
+        : { [Op.in]: scopedDeptIds }
+    };
 
     if (unitRoles.includes(role)) {
       if (!req.user.subDepartment) {
@@ -602,7 +626,8 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     });
 
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
-    if (leave.employee.deptId !== req.user.deptId) {
+    const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
+    if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only approve leaves for your department' });
     }
     if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {
@@ -616,6 +641,21 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
       status: 'pending hr',
       step1By: req.user.uid
     });
+
+    const hrUsers = await User.findAll({
+      where: { role: 'HR Admin', status: 'active' },
+      attributes: ['uid']
+    });
+
+    for (const hr of hrUsers) {
+      await createNotification(req.io, {
+        targetUid: hr.uid,
+        title: 'Leave Request Ready For Step-2',
+        message: `${leave.employee?.name || leave.employeeId} has a ${leave.type} request awaiting HR approval (${leave.fromDate} to ${leave.toDate}).`,
+        type: 'info',
+        link: '/dashboard/hr/leaves'
+      });
+    }
     
     // Notify employee of Step 1 approval (Persistent Alert)
     await createNotification(req.io, {
@@ -643,7 +683,8 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     });
 
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
-    if (leave.employee.deptId !== req.user.deptId) {
+    const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
+    if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only reject leaves for your department' });
     }
     if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {

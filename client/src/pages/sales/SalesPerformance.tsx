@@ -4,6 +4,7 @@ import { Building, Users, DollarSign, TrendingUp, Copy, Search, ShieldCheck } fr
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
+import { getNormalizedRole } from '@/lib/roles';
 
 interface Referral {
   id: number;
@@ -18,7 +19,9 @@ export default function SalesPerformance() {
   const [performance, setPerformance] = useState<any>(null);
   const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const isAdmin = ['Organization Admin', 'finance', 'ceo', 'sales & crm admin'].includes(user?.role?.toLowerCase().trim() || '');
+  const normalizedRole = getNormalizedRole(user?.role || '');
+  const isAdmin = ['organization admin', 'finance', 'ceo', 'sales'].includes(normalizedRole);
+  const shouldLoadReferralCode = normalizedRole === 'employee' || normalizedRole === 'bde';
   const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
     isOpen: false,
     type: '',
@@ -32,12 +35,23 @@ export default function SalesPerformance() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [perfRes, codeRes] = await Promise.all([
+      const requests = [
         api.get('/sales/performance'),
-        api.get('/sales/referral-code')
-      ]);
-      setPerformance(perfRes.data);
-      setReferralCode(codeRes.data.referralCode);
+        shouldLoadReferralCode ? api.get('/sales/referral-code') : Promise.resolve(null)
+      ] as const;
+      const [perfRes, codeRes] = await Promise.allSettled(requests);
+
+      if (perfRes.status !== 'fulfilled') {
+        throw perfRes.reason;
+      }
+
+      setPerformance(perfRes.value.data);
+
+      if (codeRes.status === 'fulfilled' && codeRes.value) {
+        setReferralCode(codeRes.value.data.referralCode || '');
+      } else {
+        setReferralCode('');
+      }
     } catch (error) {
       console.error('Sales performance load error:', error);
       toast.error('Failed to load sales performance data');
@@ -97,7 +111,7 @@ export default function SalesPerformance() {
         title={drillDown.title}
       />
 
-      {!isAdmin && (user?.role?.toLowerCase().trim() === 'employee' || user?.role?.toLowerCase().trim() === 'bde') && (
+      {!isAdmin && shouldLoadReferralCode && (
         <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-200 group">
           <div className="absolute -top-24 -right-24 p-12 opacity-10 group-hover:opacity-20 transition-opacity duration-1000">
               <Building className="w-96 h-96 text-blue-500" />

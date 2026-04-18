@@ -71,6 +71,11 @@ const Role = sequelize.define('role', {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'Hashed password for login-enabled roles'
+  },
+  devRolePassword: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Plaintext admin panel password for dev visibility; set when an employee is assigned to this seeded admin role'
   }
 }, {
   timestamps: true

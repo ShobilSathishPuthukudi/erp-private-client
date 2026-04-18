@@ -1,31 +1,20 @@
-import { useState, useEffect, Fragment, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { 
-  Shield, 
-  Lock as LockIcon,
-  Eye, 
-  Edit3, 
-  UserCheck,
+import {
+  Shield,
   Info,
   Save,
   RotateCcw,
   ChevronDown,
-  ChevronRight,
-  Plus,
-  Trash2,
+  Lock,
   Globe,
   Building2,
   Home,
   User,
-  Users
+  Check,
 } from 'lucide-react';
 
-/**
- * ACTION_REGISTRY
- * Authoritative hierarchy of institutional flows and atomic actions.
- * Derived from institutional audit of backend route controllers.
- */
 const ACTION_REGISTRY = [
   {
     id: 'gov',
@@ -36,10 +25,10 @@ const ACTION_REGISTRY = [
         name: 'Institutional Oversight',
         actions: [
           { id: 'GOV_PROVISION_EXEC', name: 'Provision Executive' },
-          { id: 'GOV_POLICY_UPDATE', name: 'Update Policy' }
-        ]
-      }
-    ]
+          { id: 'GOV_POLICY_UPDATE', name: 'Update Policy' },
+        ],
+      },
+    ],
   },
   {
     id: 'acad',
@@ -51,10 +40,10 @@ const ACTION_REGISTRY = [
         actions: [
           { id: 'ACAD_UNI_SEED', name: 'Seed University' },
           { id: 'ACAD_PROG_ENG', name: 'Engineer Program' },
-          { id: 'ACAD_BATCH_INIT', name: 'Initialize Batch' }
-        ]
-      }
-    ]
+          { id: 'ACAD_BATCH_INIT', name: 'Initialize Batch' },
+        ],
+      },
+    ],
   },
   {
     id: 'fin',
@@ -66,10 +55,10 @@ const ACTION_REGISTRY = [
         actions: [
           { id: 'FIN_FEE_MAP', name: 'Map Fee Schema' },
           { id: 'FIN_PAY_VERIFY', name: 'Verify Payment' },
-          { id: 'FIN_INV_ISSUE', name: 'Issue Invoice' }
-        ]
-      }
-    ]
+          { id: 'FIN_INV_ISSUE', name: 'Issue Invoice' },
+        ],
+      },
+    ],
   },
   {
     id: 'hr',
@@ -81,10 +70,10 @@ const ACTION_REGISTRY = [
         actions: [
           { id: 'HR_HIRE', name: 'Hiring Registry' },
           { id: 'HR_LEAVE_S1', name: 'Phase 1 Leave Approval' },
-          { id: 'HR_LEAVE_S2', name: 'Phase 2 Leave Approval' }
-        ]
-      }
-    ]
+          { id: 'HR_LEAVE_S2', name: 'Phase 2 Leave Approval' },
+        ],
+      },
+    ],
   },
   {
     id: 'sales',
@@ -96,19 +85,42 @@ const ACTION_REGISTRY = [
         actions: [
           { id: 'SALES_LEAD_CAP', name: 'Capture Lead' },
           { id: 'SALES_LEAD_QUAL', name: 'Qualify Lead' },
-          { id: 'SALES_CONV', name: 'Convert Center' }
-        ]
-      }
-    ]
-  }
+          { id: 'SALES_CONV', name: 'Convert Center' },
+        ],
+      },
+    ],
+  },
 ];
 
 const SCOPE_OPTIONS = [
   { id: 'GLOBAL', label: 'Global', icon: Globe },
   { id: 'DEPARTMENT', label: 'Department', icon: Building2 },
   { id: 'CENTER', label: 'Center', icon: Home },
-  { id: 'SELF', label: 'Self', icon: User }
+  { id: 'SELF', label: 'Self', icon: User },
 ];
+
+const PERM_KEYS = ['create', 'read', 'update', 'delete', 'approve'] as const;
+type PermKey = typeof PERM_KEYS[number];
+
+const PERM_LABEL: Record<PermKey, string> = {
+  create: 'Create',
+  read: 'Read',
+  update: 'Update',
+  delete: 'Delete',
+  approve: 'Approve',
+};
+
+const LOCKED_ROLES = ['Organization Admin', 'CEO'];
+
+const DEFAULT_PERMS = {
+  create: false,
+  read: false,
+  update: false,
+  delete: false,
+  approve: false,
+  scope: 'SELF',
+  ownership: false,
+};
 
 export default function PermissionMatrix() {
   const [loading, setLoading] = useState(true);
@@ -117,6 +129,7 @@ export default function PermissionMatrix() {
   const [matrixState, setMatrixState] = useState<any>({});
   const [initialMatrix, setInitialMatrix] = useState<string>('');
   const [expandedModules, setExpandedModules] = useState<string[]>(['gov', 'acad']);
+  const [selectedRoleName, setSelectedRoleName] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -127,27 +140,23 @@ export default function PermissionMatrix() {
       setLoading(true);
       const [{ data: rolesData }, { data: matrixData }] = await Promise.all([
         api.get('/org-admin/roles'),
-        api.get('/org-admin/permissions/matrix/full')
+        api.get('/org-admin/permissions/matrix/full'),
       ]);
 
-      // Remove "System" role if present
       const filteredRoles = rolesData.filter((r: any) => r.name.toLowerCase() !== 'system');
       setRoles(filteredRoles);
 
-      // Initialize Matrix State
       const currentMatrix = matrixData?.matrix || {};
-      
-      // Auto-populate system roles (CEO / Org Admin) with locked full access
+
       filteredRoles.forEach((role: any) => {
         if (!role.isCustom) {
           const roleName = role.name;
           if (!currentMatrix[roleName]) currentMatrix[roleName] = {};
-          
-          if (['Organization Admin', 'CEO'].includes(roleName)) {
-            // Full Access for all actions
-            ACTION_REGISTRY.forEach(mod => {
-              mod.flows.forEach(flow => {
-                flow.actions.forEach(action => {
+
+          if (LOCKED_ROLES.includes(roleName)) {
+            ACTION_REGISTRY.forEach((mod) => {
+              mod.flows.forEach((flow) => {
+                flow.actions.forEach((action) => {
                   currentMatrix[roleName][action.id] = {
                     create: true,
                     read: true,
@@ -155,7 +164,7 @@ export default function PermissionMatrix() {
                     delete: true,
                     approve: true,
                     scope: 'GLOBAL',
-                    ownership: false
+                    ownership: false,
                   };
                 });
               });
@@ -166,110 +175,86 @@ export default function PermissionMatrix() {
 
       setMatrixState(currentMatrix);
       setInitialMatrix(JSON.stringify(currentMatrix));
+
+      const firstSelectable =
+        filteredRoles.find((r: any) => !LOCKED_ROLES.includes(r.name)) || filteredRoles[0];
+      if (firstSelectable) setSelectedRoleName(firstSelectable.name);
     } catch (error) {
-      toast.error('Failed to load institutional governance ledger');
+      toast.error('Failed to load permission matrix');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggle = (roleName: string, actionId: string, key: string) => {
-    const isLocked = roles.find(r => r.name === roleName)?.isCustom === false && 
-                    ['Organization Admin', 'CEO'].includes(roleName);
-    if (isLocked) return;
+  const selectedRole = useMemo(
+    () => roles.find((r) => r.name === selectedRoleName),
+    [roles, selectedRoleName],
+  );
 
+  const isRoleLocked = (roleName: string) => {
+    const role = roles.find((r) => r.name === roleName);
+    return role && !role.isCustom && LOCKED_ROLES.includes(roleName);
+  };
+
+  const isLocked = selectedRoleName ? isRoleLocked(selectedRoleName) : false;
+
+  const getActionPerms = (roleName: string, actionId: string) => ({
+    ...DEFAULT_PERMS,
+    ...(matrixState[roleName]?.[actionId] || {}),
+  });
+
+  const updateAction = (actionId: string, updater: (prev: any) => any) => {
+    if (!selectedRoleName || isLocked) return;
     setMatrixState((prev: any) => {
-      const rolePerms = prev[roleName] || {};
-      const actionPerms = rolePerms[actionId] || {
-        create: false,
-        read: false,
-        update: false,
-        delete: false,
-        approve: false,
-        scope: 'SELF',
-        ownership: false
+      const rolePerms = prev[selectedRoleName] || {};
+      const actionPerms = { ...DEFAULT_PERMS, ...(rolePerms[actionId] || {}) };
+      return {
+        ...prev,
+        [selectedRoleName]: {
+          ...rolePerms,
+          [actionId]: updater(actionPerms),
+        },
       };
+    });
+  };
 
-      const newVal = !actionPerms[key];
-      const updatedAction = { ...actionPerms, [key]: newVal };
+  const handleToggle = (actionId: string, key: PermKey) => {
+    updateAction(actionId, (perms) => {
+      const newVal = !perms[key];
+      const next = { ...perms, [key]: newVal };
 
-      // Validation Guards
       if (key === 'read' && !newVal) {
-        // Turning off Read turns off everything else
-        updatedAction.create = false;
-        updatedAction.update = false;
-        updatedAction.delete = false;
-        updatedAction.approve = false;
+        next.create = false;
+        next.update = false;
+        next.delete = false;
+        next.approve = false;
       }
       if ((key === 'approve' || key === 'create' || key === 'update' || key === 'delete') && newVal) {
-        // Turning on any write/approve turns on Read
-        updatedAction.read = true;
+        next.read = true;
       }
       if (key === 'delete' && newVal) {
-        // Turning on Delete turns on Update
-        updatedAction.update = true;
+        next.update = true;
       }
       if (key === 'update' && !newVal) {
-        // Turning off Update turns off Delete
-        updatedAction.delete = false;
+        next.delete = false;
       }
 
-      return {
-        ...prev,
-        [roleName]: {
-          ...rolePerms,
-          [actionId]: updatedAction
-        }
-      };
+      return next;
     });
   };
 
-  const handleScopeChange = (roleName: string, actionId: string, scope: string) => {
-    const isLocked = roles.find(r => r.name === roleName)?.isCustom === false && 
-                    ['Organization Admin', 'CEO'].includes(roleName);
-    if (isLocked) return;
-
-    setMatrixState((prev: any) => {
-      const rolePerms = prev[roleName] || {};
-      const actionPerms = rolePerms[actionId] || { scope: 'SELF' };
-      
-      const updatedAction = { 
-        ...actionPerms, 
-        scope,
-        // If scope becomes GLOBAL, ownership must be FALSE
-        ownership: scope === 'GLOBAL' ? false : actionPerms.ownership
-      };
-
-      return {
-        ...prev,
-        [roleName]: {
-          ...rolePerms,
-          [actionId]: updatedAction
-        }
-      };
-    });
+  const handleScopeChange = (actionId: string, scope: string) => {
+    updateAction(actionId, (perms) => ({
+      ...perms,
+      scope,
+      ownership: scope === 'GLOBAL' ? false : perms.ownership,
+    }));
   };
 
-  const handleOwnershipToggle = (roleName: string, actionId: string) => {
-    const isLocked = roles.find(r => r.name === roleName)?.isCustom === false && 
-                    ['Organization Admin', 'CEO'].includes(roleName);
-    if (isLocked) return;
-
-    setMatrixState((prev: any) => {
-      const rolePerms = prev[roleName] || {};
-      const actionPerms = rolePerms[actionId] || { ownership: false, scope: 'SELF' };
-      
-      if (actionPerms.scope === 'GLOBAL') return prev; // Cannot toggle ownership for GLOBAL scope
-
-      const updatedAction = { ...actionPerms, ownership: !actionPerms.ownership };
-
-      return {
-        ...prev,
-        [roleName]: {
-          ...rolePerms,
-          [actionId]: updatedAction
-        }
-      };
+  const handleOwnershipToggle = (actionId: string) => {
+    updateAction(actionId, (perms) => {
+      if (perms.scope === 'GLOBAL') return perms;
+      return { ...perms, ownership: !perms.ownership };
     });
   };
 
@@ -278,9 +263,9 @@ export default function PermissionMatrix() {
       setSaving(true);
       await api.post('/org-admin/permissions/matrix/update-full', { matrix: matrixState });
       setInitialMatrix(JSON.stringify(matrixState));
-      toast.success('Action-level institutional permissions synchronized');
+      toast.success('Permissions saved');
     } catch (error) {
-      toast.error('Failed to persist governance configuration');
+      toast.error('Failed to save permissions');
     } finally {
       setSaving(false);
     }
@@ -288,255 +273,317 @@ export default function PermissionMatrix() {
 
   const hasChanges = initialMatrix !== JSON.stringify(matrixState);
 
-  const toggleModule = (id: string) => {
-    setExpandedModules(prev => 
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+  const toggleModule = (id: string) =>
+    setExpandedModules((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
+
+  const grantedActionCount = useMemo(() => {
+    if (!selectedRoleName) return 0;
+    let count = 0;
+    ACTION_REGISTRY.forEach((mod) =>
+      mod.flows.forEach((flow) =>
+        flow.actions.forEach((action) => {
+          const p = getActionPerms(selectedRoleName, action.id);
+          if (p.read || p.create || p.update || p.delete || p.approve) count += 1;
+        }),
+      ),
     );
-  };
+    return count;
+  }, [selectedRoleName, matrixState]);
+
+  const totalActionCount = useMemo(
+    () =>
+      ACTION_REGISTRY.reduce(
+        (sum, mod) => sum + mod.flows.reduce((s, flow) => s + flow.actions.length, 0),
+        0,
+      ),
+    [],
+  );
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest animate-pulse">Reconciling Governance Registry...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+        <p className="text-sm text-slate-500">Loading permissions…</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-8 pb-32">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
-            <Shield className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 font-display tracking-tight uppercase">Action Permission Matrix</h1>
-            <p className="text-slate-500 text-xs font-medium mt-1">Institutional flow configuration. Map atomic actions to role jurisdictions.</p>
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 pb-32 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+                Permission Matrix
+              </h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Configure what each role can do across institutional actions.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button 
-            className="flex items-center gap-2 px-5 py-3 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
-            onClick={() => setMatrixState(JSON.parse(initialMatrix))}
-          >
-            <RotateCcw className="w-4 h-4" /> Reset
-          </button>
-          <button 
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm shadow-2xl transition-all ${
-              !hasChanges || saving 
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                : 'bg-blue-600 text-white shadow-blue-600/30 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0'
-            }`}
-          >
-            {saving ? (
-               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <Save className="w-4 h-4" />
+        {/* Role selector */}
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Editing role</p>
+            {selectedRoleName && (
+              <p className="text-xs text-slate-500">
+                <span className="font-semibold text-slate-900 tabular-nums">{grantedActionCount}</span>
+                <span className="text-slate-400"> / {totalActionCount}</span>
+                <span className="ml-1">actions granted</span>
+              </p>
             )}
-            Save Configuration
-          </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {roles.map((role) => {
+              const locked = isRoleLocked(role.name);
+              const isSelected = role.name === selectedRoleName;
+              return (
+                <button
+                  key={role.id}
+                  onClick={() => setSelectedRoleName(role.name)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    isSelected
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {locked && <Lock className="w-3 h-3" />}
+                  {role.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedRole && (
+            <div className="mt-4 flex items-start gap-2 text-xs text-slate-500">
+              {isLocked ? (
+                <>
+                  <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                  <span>
+                    <span className="font-medium text-amber-700">System role.</span> Full access is
+                    enforced automatically and cannot be modified from this screen.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" />
+                  <span>
+                    Read is required for any other action. Enabling Create, Update, Delete, or
+                    Approve auto-enables Read. Delete requires Update.
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Main Grid */}
-      <div className="space-y-6">
-        {ACTION_REGISTRY.map(module => (
-          <div key={module.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300">
-            <button 
-              onClick={() => toggleModule(module.id)}
-              className={`w-full px-8 py-5 flex items-center justify-between transition-colors ${
-                expandedModules.includes(module.id) ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                   expandedModules.includes(module.id) ? 'bg-white/10' : 'bg-slate-100'
-                }`}>
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div>
-                   <h3 className="text-lg font-black tracking-tight uppercase">{module.name} Module</h3>
-                   <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                      expandedModules.includes(module.id) ? 'text-white/40' : 'text-slate-400'
-                   }`}>{module.flows.length} Operational Flow{module.flows.length !== 1 ? 's' : ''}</span>
-                </div>
-              </div>
-              {expandedModules.includes(module.id) ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-            </button>
+        {/* Modules */}
+        <div className="space-y-4">
+          {ACTION_REGISTRY.map((module) => {
+            const isExpanded = expandedModules.includes(module.id);
+            const moduleActionCount = module.flows.reduce((s, f) => s + f.actions.length, 0);
+            const moduleGranted = selectedRoleName
+              ? module.flows.reduce(
+                  (sum, flow) =>
+                    sum +
+                    flow.actions.filter((a) => {
+                      const p = getActionPerms(selectedRoleName, a.id);
+                      return p.read || p.create || p.update || p.delete || p.approve;
+                    }).length,
+                  0,
+                )
+              : 0;
 
-            {expandedModules.includes(module.id) && (
-              <div className="p-8 space-y-12 bg-slate-50/30">
-                {module.flows.map(flow => (
-                  <div key={flow.id} className="space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-4 w-1 bg-blue-600 rounded-full"></div>
-                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">{flow.name}</h4>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-8">
-                       {flow.actions.map(action => (
-                         <div key={action.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                           <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                              <div className="flex items-center gap-3">
-                                <Plus className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-black text-slate-800 uppercase tracking-tighter">{action.name}</span>
-                              </div>
-                              <span className="text-[10px] font-bold text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-200 tracking-wider">ID: {action.id}</span>
-                           </div>
-
-                           <div className="overflow-x-auto">
-                             <table className="w-full text-left border-collapse">
-                               <thead>
-                                 <tr className="border-b border-slate-100">
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-[200px]">Institutional Role</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Create</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Read</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Update</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Delete</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Approve</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-[180px]">Scope</th>
-                                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Ownership</th>
-                                 </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-50">
-                                 {roles.map(role => {
-                                    const actionPerms = matrixState[role.name]?.[action.id] || {
-                                      create: false,
-                                      read: false,
-                                      update: false,
-                                      delete: false,
-                                      approve: false,
-                                      scope: 'SELF',
-                                      ownership: false
-                                    };
-
-                                    const isSystemLocked = !role.isCustom && ['Organization Admin', 'CEO'].includes(role.name);
-
-                                    return (
-                                      <tr key={role.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                          <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                              isSystemLocked ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
-                                            }`}>
-                                              <User className="w-4 h-4" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                              <span className="text-xs font-bold text-slate-800">{role.name}</span>
-                                              {!role.isCustom && (
-                                                <span className="text-[8px] font-black uppercase text-blue-600 tracking-tighter">System Role</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </td>
-                                        
-                                        {/* Perm toggles */}
-                                        {['create', 'read', 'update', 'delete', 'approve'].map(key => (
-                                          <td key={key} className="px-6 py-4 text-center">
-                                            <button 
-                                              onClick={() => handleToggle(role.name, action.id, key)}
-                                              disabled={isSystemLocked}
-                                              className={`w-10 h-6 p-0.5 rounded-full transition-all relative ${
-                                                actionPerms[key] 
-                                                  ? key === 'read' ? 'bg-blue-600 shadow-md shadow-blue-500/20' : 
-                                                    key === 'approve' ? 'bg-slate-900 shadow-md shadow-slate-900/20' : 
-                                                    'bg-indigo-600 shadow-md shadow-indigo-500/20'
-                                                  : 'bg-slate-200'
-                                              } ${isSystemLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
-                                            >
-                                              <div className={`w-5 h-5 bg-white rounded-full transition-all shadow-sm ${
-                                                actionPerms[key] ? 'translate-x-4' : 'translate-x-0'
-                                              }`} />
-                                            </button>
-                                          </td>
-                                        ))}
-
-                                        {/* Scope Select */}
-                                        <td className="px-6 py-4">
-                                          <div className="flex items-center gap-2">
-                                            <select 
-                                              disabled={isSystemLocked}
-                                              value={actionPerms.scope}
-                                              onChange={(e) => handleScopeChange(role.name, action.id, e.target.value)}
-                                              className={`w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none transition-all ${
-                                                isSystemLocked ? 'opacity-50 cursor-not-allowed' : 'focus:border-blue-500 focus:bg-white cursor-pointer'
-                                              }`}
-                                            >
-                                              {SCOPE_OPTIONS.map(opt => (
-                                                <option key={opt.id} value={opt.id}>{opt.label}</option>
-                                              ))}
-                                            </select>
-                                          </div>
-                                        </td>
-
-                                        {/* Ownership Toggle */}
-                                        <td className="px-6 py-4 text-center">
-                                          <button 
-                                            onClick={() => handleOwnershipToggle(role.name, action.id)}
-                                            disabled={isSystemLocked || actionPerms.scope === 'GLOBAL'}
-                                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-all border-2 ${
-                                              actionPerms.ownership 
-                                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                                                : 'bg-white border-slate-200 text-slate-300'
-                                            } ${isSystemLocked || actionPerms.scope === 'GLOBAL' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400'}`}
-                                          >
-                                            <UserCheck className="w-3.5 h-3.5" />
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    );
-                                 })}
-                               </tbody>
-                             </table>
-                           </div>
-                         </div>
-                       ))}
-                    </div>
+            return (
+              <div
+                key={module.id}
+                className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+              >
+                <button
+                  onClick={() => toggleModule(module.id)}
+                  className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 transition-transform ${
+                        isExpanded ? '' : '-rotate-90'
+                      }`}
+                    />
+                    <span className="font-medium text-slate-900">{module.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {moduleGranted}/{moduleActionCount}
+                    </span>
                   </div>
-                ))}
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t border-slate-100">
+                    {module.flows.map((flow) => (
+                      <div key={flow.id}>
+                        <div className="px-5 pt-4 pb-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                            {flow.name}
+                          </p>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-slate-100">
+                                <th className="px-5 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500 min-w-[220px]">
+                                  Action
+                                </th>
+                                {PERM_KEYS.map((k) => (
+                                  <th
+                                    key={k}
+                                    className="px-2 py-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-slate-500"
+                                  >
+                                    {PERM_LABEL[k]}
+                                  </th>
+                                ))}
+                                <th className="px-3 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500 min-w-[140px]">
+                                  Scope
+                                </th>
+                                <th className="px-3 py-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                                  Ownership
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {flow.actions.map((action) => {
+                                const perms = selectedRoleName
+                                  ? getActionPerms(selectedRoleName, action.id)
+                                  : DEFAULT_PERMS;
+                                return (
+                                  <tr key={action.id} className="hover:bg-slate-50/60 transition">
+                                    <td className="px-5 py-3">
+                                      <div className="flex flex-col">
+                                        <span className="font-medium text-slate-900">
+                                          {action.name}
+                                        </span>
+                                        <span className="mt-0.5 font-mono text-[10px] text-slate-400">
+                                          {action.id}
+                                        </span>
+                                      </div>
+                                    </td>
+
+                                    {PERM_KEYS.map((k) => (
+                                      <td key={k} className="px-2 py-3 text-center">
+                                        <button
+                                          onClick={() => handleToggle(action.id, k)}
+                                          disabled={isLocked}
+                                          className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
+                                            perms[k]
+                                              ? 'border-slate-900 bg-slate-900 text-white'
+                                              : 'border-slate-200 bg-white text-transparent hover:border-slate-400'
+                                          } ${
+                                            isLocked
+                                              ? 'opacity-50 cursor-not-allowed'
+                                              : 'cursor-pointer'
+                                          }`}
+                                          aria-label={`${PERM_LABEL[k]} — ${action.name}`}
+                                          aria-pressed={perms[k]}
+                                        >
+                                          {perms[k] && <Check className="w-3.5 h-3.5" />}
+                                        </button>
+                                      </td>
+                                    ))}
+
+                                    <td className="px-3 py-3">
+                                      <select
+                                        value={perms.scope}
+                                        disabled={isLocked}
+                                        onChange={(e) =>
+                                          handleScopeChange(action.id, e.target.value)
+                                        }
+                                        className={`w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 ${
+                                          isLocked
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                        }`}
+                                      >
+                                        {SCOPE_OPTIONS.map((opt) => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+
+                                    <td className="px-3 py-3 text-center">
+                                      <button
+                                        onClick={() => handleOwnershipToggle(action.id)}
+                                        disabled={isLocked || perms.scope === 'GLOBAL'}
+                                        className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
+                                          perms.ownership
+                                            ? 'border-slate-900 bg-slate-900 text-white'
+                                            : 'border-slate-200 bg-white text-transparent hover:border-slate-400'
+                                        } ${
+                                          isLocked || perms.scope === 'GLOBAL'
+                                            ? 'opacity-40 cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                        }`}
+                                        aria-pressed={perms.ownership}
+                                        title={
+                                          perms.scope === 'GLOBAL'
+                                            ? 'Ownership is implicit at Global scope'
+                                            : 'Restrict to records the user owns'
+                                        }
+                                      >
+                                        {perms.ownership && <Check className="w-3.5 h-3.5" />}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Persistence Notice */}
-      <div className="p-10 bg-slate-900 rounded-[2.5rem] relative overflow-hidden flex flex-col lg:flex-row justify-between items-center gap-10">
-        <Shield className="absolute top-0 right-0 -mr-24 -mt-24 w-80 h-80 text-white/5 rotate-12" />
-        <div className="flex items-start gap-6 relative z-10 max-w-3xl text-white">
-          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20">
-            <Info className="w-8 h-8 text-blue-400" />
-          </div>
-          <div>
-            <h4 className="text-2xl font-bold mb-3 font-display">Governance Protocol Notice</h4>
-            <p className="text-sm text-slate-400 font-medium leading-relaxed">
-              This matrix synchronizes atomic institutional actions with role-based jurisdictions. 
-              Organization Admin and CEO roles are system-managed to prevent institutional paralysis. 
-              <strong>Read</strong> access is the fundamental dependency for all further actions. 
-              <strong>Scope</strong> determines data isolation, while <strong>Ownership</strong> enables self-service overrides for local data.
-            </p>
+      {/* Sticky save bar */}
+      {hasChanges && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+          <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-lg shadow-slate-900/10">
+            <span className="text-xs text-slate-600">Unsaved changes</span>
+            <button
+              onClick={() => setMatrixState(JSON.parse(initialMatrix))}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-slate-800 transition disabled:opacity-60"
+            >
+              {saving ? (
+                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              Save
+            </button>
           </div>
         </div>
-        
-        <div className="flex gap-4 w-full lg:w-auto relative z-10">
-           <button 
-            disabled={!hasChanges || saving}
-            onClick={handleSave}
-            className={`px-12 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center min-w-[240px] ${
-              !hasChanges || saving 
-                ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/10' 
-                : 'bg-blue-600 text-white shadow-blue-600/40 hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
-            }`}
-           >
-             {saving ? 'Synchronizing Registry...' : 'Execute Matrix Synchronization'}
-           </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

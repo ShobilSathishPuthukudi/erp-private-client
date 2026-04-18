@@ -1,22 +1,92 @@
 import express from 'express';
 import { models, sequelize } from '../models/index.js';
-import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
+import {
+  getSubDepartmentNameAliases,
+  normalizeInstitutionRoleName,
+  normalizeSubDepartmentName,
+} from '../config/institutionalStructure.js';
 import { verifyToken, isOpsOrAdmin } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { syncProgramLifecycle } from '../utils/academicLifecycle.js';
+import { clearNotifications } from './notifications.js';
 
 const router = express.Router();
 const { Department, Student, Program, Subject, Module, User, Payment, CenterSubDept, AdmissionSession, AuditLog, CenterProgram, Notification, Lead } = models;
 
-const getSubDeptId = (user) => {
+const LEGACY_SUB_DEPARTMENT_IDS = {
+  'Open School': 8,
+  'Online': 9,
+  'Skill': 10,
+  'BVoc': 11,
+};
+
+const CANONICAL_SUB_DEPARTMENTS = ['Open School', 'Online', 'Skill', 'BVoc'];
+
+const getLegacySubDeptId = (user) => {
   if (!user) return null;
   const unitStr = (user.subDepartment || user.role || '').toLowerCase();
   if (unitStr.includes('open school')) return 8;
-  if (unitStr.includes('online department')) return 9;
-  if (unitStr.includes('skill department')) return 10;
-  if (unitStr.includes('bvoc department')) return 11;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
   return null;
+};
+
+const getSubDeptId = (user) => {
+  if (!user) return null;
+  if (user.deptId || user.departmentId) return user.deptId || user.departmentId;
+  return getLegacySubDeptId(user);
+};
+
+const getSubDeptScopeIds = (user) => {
+  const ids = [];
+  const primaryId = getSubDeptId(user);
+  const legacyId = getLegacySubDeptId(user);
+
+  [primaryId, legacyId]
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .forEach((value) => {
+      if (!ids.includes(value)) ids.push(value);
+    });
+
+  return ids;
+};
+
+const resolveSubDepartmentScopeIds = async (identifier) => {
+  if (identifier === null || identifier === undefined || identifier === '') return [];
+
+  const numericId = Number(identifier);
+  const ids = [];
+  let canonicalName = null;
+
+  if (Number.isInteger(numericId) && numericId > 0) {
+    ids.push(numericId);
+    const department = await Department.findByPk(numericId, { attributes: ['id', 'name'] });
+    if (department?.name) {
+      canonicalName = normalizeSubDepartmentName(department.name);
+    }
+  } else {
+    canonicalName = normalizeSubDepartmentName(String(identifier));
+  }
+
+  if (canonicalName && LEGACY_SUB_DEPARTMENT_IDS[canonicalName]) {
+    ids.push(LEGACY_SUB_DEPARTMENT_IDS[canonicalName]);
+
+    const aliases = getSubDepartmentNameAliases(canonicalName);
+    const matchingDepartments = await Department.findAll({
+      where: { name: { [Op.in]: aliases } },
+      attributes: ['id'],
+      raw: true
+    });
+
+    matchingDepartments.forEach(({ id }) => {
+      if (Number.isInteger(id) && id > 0) ids.push(id);
+    });
+  }
+
+  return [...new Set(ids)];
 };
 
 // ==========================================
@@ -40,16 +110,17 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
     };
     
     // Isolation: Sub-Dept Admin only sees centers mapped to their unit or seeking affiliation
-    const subDeptId = getSubDeptId(req.user);
-    if (subDeptId) {
+    const scopeIds = getSubDeptScopeIds(req.user);
+    if (scopeIds.length > 0) {
+      const sqlScope = scopeIds.join(',');
       // 1. Existing mappings (Approved centers already operational in the unit)
       const mappedCenterIds = await CenterProgram.findAll({
-        where: { subDeptId: subDeptId, isActive: true },
+        where: { subDeptId: { [Op.in]: scopeIds }, isActive: true },
         attributes: ['centerId']
       }).then(res => [...new Set(res.map(c => c.centerId))]);
       
       // 2. Interest-based discovery (Proposed/Approved centers seeking entry into this unit)
-      const unitPrograms = await Program.findAll({ where: { subDeptId }, attributes: ['id'] });
+      const unitPrograms = await Program.findAll({ where: { subDeptId: { [Op.in]: scopeIds } }, attributes: ['id'] });
       const unitProgIds = unitPrograms.map(p => p.id);
 
       whereClause[Op.or] = [
@@ -68,8 +139,15 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
 
     const centers = await Department.findAll({
       where: whereClause,
+      attributes: { include: ['rejectionReason', 'financeRemarks'] },
       include: [
         { model: User, as: 'referringBDE', attributes: ['name', 'uid'], required: false },
+        {
+          model: CenterProgram,
+          as: 'mappedPrograms',
+          required: false,
+          include: [{ model: Program, attributes: ['id', 'name', 'type'] }]
+        },
         {
           model: Lead,
           as: 'sourceLead',
@@ -110,13 +188,32 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
       return res.status(404).json({ error: 'Study center not found' });
     }
 
+    const opsNotificationRoles = [
+      'Academic Operations',
+      'Academic Operations Admin',
+      'Academic Operations Administrator',
+      'Operations Admin',
+      'Operations Administrator',
+      'Organization Admin',
+      'academic operations admin',
+      'operations admin',
+      'organization admin'
+    ];
+    const opsRecipients = await User.findAll({
+      where: {
+        role: { [Op.in]: opsNotificationRoles },
+        status: 'active'
+      },
+      attributes: ['uid']
+    });
+
     // Institutional Audit Stage 1: Academic/Operations
     // Transition to PENDING_FINANCE if approved by Ops
     const nextAuditStatus = status === 'approved' ? 'PENDING_FINANCE' : 'rejected';
 
     await center.update({
       auditStatus: nextAuditStatus,
-      rejectionReason: status === 'rejected' ? reason : null,
+      rejectionReason: reason || center.rejectionReason,
       infrastructureDetails: infrastructureDetails || center.infrastructureDetails,
       status: status === 'approved' ? 'draft' : 'inactive', // Transition to Draft upon Ops clearance
     });
@@ -179,9 +276,80 @@ router.put('/centers/:id/audit', verifyToken, isOpsOrAdmin, async (req, res) => 
         }
     }
 
+    // Explicit Governance Log
+    await AuditLog.create({
+        userId: req.user.uid,
+        entity: 'Department',
+        action: status === 'approved' ? 'OPS_VERIFIED' : 'OPS_REJECTED',
+        module: 'Academic Operations',
+        remarks: reason,
+        before: { auditStatus: center._previousDataValues.auditStatus },
+        after: { 
+            id: center.id,
+            name: center.name,
+            auditStatus: nextAuditStatus,
+            remarks: reason
+        },
+        timestamp: new Date()
+    });
+
+    await center.reload({
+        attributes: { include: ['rejectionReason'] },
+        include: [
+            { model: User, as: 'referringBDE', attributes: ['name', 'uid'] },
+            { 
+                model: CenterProgram, 
+                as: 'mappedPrograms',
+                include: [{ model: Program, attributes: ['id', 'name', 'type'] }]
+            }
+        ]
+    });
+
+    await clearNotifications({
+      userUids: opsRecipients.map((user) => user.uid),
+      links: ['/dashboard/operations/center-audit?tab=pending'],
+      messagePatterns: [
+        `%${center.name}%requires audit%`,
+        `%New Center Pending Verification%${center.name}%`
+      ]
+    });
+
     res.json({ message: `Center audit ${status} successfully and jurisdictional boundaries synchronized.`, center });
   } catch (error) {
     res.status(500).json({ error: 'Audit protocol failure' });
+  }
+});
+
+// GET /operations/centers/:id/audit-history
+router.get('/centers/:id/audit-history', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = await AuditLog.findAll({
+      where: {
+        entity: 'Department',
+        [Op.or]: [
+          { 'after.id': Number(id) },
+          { remarks: { [Op.like]: `%ID: ${id}%` } }, // Fallback for some log formats
+          { module: 'Academic Operations' } // We will filter further in memory or use JSON operator
+        ]
+      },
+      order: [['timestamp', 'DESC']],
+      limit: 20
+    });
+
+    // Precision filter for JSON after.id
+    const filteredLogs = logs.filter(log => {
+        try {
+            const after = typeof log.after === 'string' ? JSON.parse(log.after) : log.after;
+            return after?.id === Number(id);
+        } catch (e) {
+            return false;
+        }
+    });
+
+    res.json(filteredLogs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch institutional history' });
   }
 });
 
@@ -287,10 +455,13 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
   try {
     const { subDeptId: querySubDeptId } = req.query;
     const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
-    const subDeptId = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
+    const subDeptScopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
+    const requestedScopeIds = !isSubDeptAdmin ? await resolveSubDepartmentScopeIds(querySubDeptId) : [];
     
     // Base stats
-    const whereClause = subDeptId ? { subDepartmentId: subDeptId } : {};
+    const whereClause = isSubDeptAdmin
+      ? (subDeptScopeIds.length > 0 ? { subDepartmentId: { [Op.in]: subDeptScopeIds } } : {})
+      : (requestedScopeIds.length > 0 ? { subDepartmentId: { [Op.in]: requestedScopeIds } } : {});
 
     const [totalStudents, pendingReviews, rejections, statusData] = await Promise.all([
       Student.count({ where: whereClause }),
@@ -307,46 +478,56 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
       })
     ]);
 
-    // Global Institutional Totals (Metric Globalization)
-    const [totalActiveCenters, totalActivePrograms] = await Promise.all([
-      Department.count({ 
-        where: { 
-          type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] }, 
-          status: 'active', 
-          auditStatus: 'approved' 
-        } 
+    // Scoped Institutional Totals (Jurisdictional Telemetry)
+    const subDeptFilter = isSubDeptAdmin 
+      ? (subDeptScopeIds.length > 0 ? { subDeptId: { [Op.in]: subDeptScopeIds } } : {})
+      : (requestedScopeIds.length > 0 ? { subDeptId: { [Op.in]: requestedScopeIds } } : {});
+
+    const [totalUniversities, activePrograms] = await Promise.all([
+      Program.count({ 
+        distinct: true,
+        col: 'universityId',
+        where: subDeptFilter
       }),
       Program.count({ 
         where: { 
+          ...subDeptFilter,
           status: { [Op.in]: ['active', 'staged'] } 
         } 
       })
     ]);
+
+    // Global Institutional Totals for Centers (Metric Globalization)
+    const totalActiveCenters = await Department.count({ 
+      where: { 
+        type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] }, 
+        status: 'active', 
+        auditStatus: 'approved' 
+      } 
+    });
     
     const stats = {
       totalStudents,
       pendingReviews,
       totalActiveCenters,
-      totalActivePrograms,
+      totalUniversities,
+      activePrograms,
       approvalRate: totalStudents > 0 ? (((totalStudents - rejections) / totalStudents) * 100).toFixed(1) : 0,
       statusDistribution: statusData.map(s => ({ name: s.status, value: parseInt(s.count) }))
     };
 
     // If Ops Admin, add breakdown
     if (!isSubDeptAdmin) {
-      const subDeptIds = [8, 9, 10, 11];
-      const subDeptNames = ['Open School', 'Online', 'Skill', 'BVoc'];
-      const subDeptKeys = ['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'];
-
-      const breakdown = await Promise.all(subDeptIds.map(async (id, index) => {
-        const key = subDeptKeys[index];
-        const name = subDeptNames[index];
+      const breakdown = await Promise.all(CANONICAL_SUB_DEPARTMENTS.map(async (name) => {
+        const scopeIds = await resolveSubDepartmentScopeIds(name);
+        const studentWhere = scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : { id: null };
+        const subDeptWhere = scopeIds.length > 0 ? { subDeptId: { [Op.in]: scopeIds } } : { id: null };
         
         const [studentCount, batchCount, centerCount, programCount] = await Promise.all([
-          Student.count({ where: { subDepartmentId: id } }),
-          AdmissionSession.count({ where: { subDeptId: id } }),
+          Student.count({ where: studentWhere }),
+          AdmissionSession.count({ where: subDeptWhere }),
           CenterProgram.count({ 
-            where: { subDeptId: id },
+            where: subDeptWhere,
             distinct: true,
             col: 'centerId',
             include: [{
@@ -355,11 +536,11 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
               where: { status: 'active', auditStatus: 'approved' }
             }]
           }),
-          Program.count({ where: { subDeptId: id } })
+          Program.count({ where: subDeptWhere })
         ]);
 
         return {
-          id,
+          id: scopeIds[0] || LEGACY_SUB_DEPARTMENT_IDS[name],
           name,
           studentCount,
           batchCount,
@@ -408,7 +589,11 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     stats.recentActions = recentLogs;
 
     // Global Batch Count
-    const totalBatches = await AdmissionSession.count({ where: subDeptId ? { subDeptId } : {} });
+    const totalBatches = await AdmissionSession.count({
+      where: isSubDeptAdmin
+        ? (subDeptScopeIds.length > 0 ? { subDeptId: { [Op.in]: subDeptScopeIds } } : {})
+        : (requestedScopeIds.length > 0 ? { subDeptId: { [Op.in]: requestedScopeIds } } : {})
+    });
     stats.totalBatches = totalBatches;
 
     res.json(stats);
@@ -425,11 +610,13 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
        type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] } 
     };
     const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
-    const sid = isSubDeptAdmin ? getSubDeptId(req.user) : querySubDeptId;
+    const scopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
+    const effectiveIds = isSubDeptAdmin ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
+    const sqlScope = effectiveIds.length > 0 ? effectiveIds.join(',') : '';
 
-    if (sid) {
+    if (effectiveIds.length > 0) {
       whereClause.id = {
-        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId = ${sid} AND isActive = true)`)
+        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${sqlScope}) AND isActive = true)`)
       };
     }
 
@@ -437,17 +624,54 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
       where: whereClause,
       attributes: [
         'id', 'name', 'status', 'shortName',
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'studentCount'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.status = 'REJECTED' ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'rejectedCount'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY) ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'velocity'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.attemptCount > 1 ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'reAttemptCount'],
-        [sequelize.literal(`(SELECT AVG(TIMESTAMPDIFF(HOUR, students.createdAt, students.reviewedAt)) FROM students WHERE students.centerId = department.id AND students.reviewedAt IS NOT NULL ${sid ? `AND students.subDepartmentId = ${sid}` : ''})`), 'avgReviewTime'],
-        [sequelize.literal(`(SELECT COUNT(*) FROM center_programs WHERE center_programs.centerId = department.id AND center_programs.isActive = true ${sid ? `AND center_programs.subDeptId = ${sid}` : ''})`), 'activePrograms']
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id ${effectiveIds.length > 0 ? `AND students.subDepartmentId IN (${sqlScope})` : ''})`), 'studentCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.status = 'REJECTED' ${effectiveIds.length > 0 ? `AND students.subDepartmentId IN (${sqlScope})` : ''})`), 'rejectedCount'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY) ${effectiveIds.length > 0 ? `AND students.subDepartmentId IN (${sqlScope})` : ''})`), 'velocity'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM students WHERE students.centerId = department.id AND students.attemptCount > 1 ${effectiveIds.length > 0 ? `AND students.subDepartmentId IN (${sqlScope})` : ''})`), 'reAttemptCount'],
+        [sequelize.literal(`(SELECT AVG(TIMESTAMPDIFF(HOUR, students.createdAt, students.reviewedAt)) FROM students WHERE students.centerId = department.id AND students.reviewedAt IS NOT NULL ${effectiveIds.length > 0 ? `AND students.subDepartmentId IN (${sqlScope})` : ''})`), 'avgReviewTime'],
+        [sequelize.literal(`(SELECT COUNT(*) FROM center_programs WHERE center_programs.centerId = department.id AND center_programs.isActive = true ${effectiveIds.length > 0 ? `AND center_programs.subDeptId IN (${sqlScope})` : ''})`), 'activePrograms']
       ]
     });
     res.json(centers);
   } catch (error) {
     res.status(500).json({ error: 'Failed to aggregate performance data' });
+  }
+});
+
+router.get('/performance/centers/:id/details', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subDeptId: querySubDeptId } = req.query;
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
+    const scopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
+    const effectiveIds = isSubDeptAdmin ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
+
+    const center = await Department.findOne({
+      where: { id, type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] } },
+      attributes: ['id', 'name', 'status', 'email', 'phone', 'address', 'city', 'state']
+    });
+
+    if (!center) return res.status(404).json({ error: 'Center not found' });
+
+    const mappings = await CenterProgram.findAll({
+      where: { 
+        centerId: id,
+        isActive: true,
+        ...(effectiveIds.length > 0 ? { subDeptId: { [Op.in]: effectiveIds } } : {})
+      },
+      include: [
+        { 
+          model: Program, 
+          attributes: ['id', 'name', 'shortName'],
+          include: [{ model: Department, as: 'university', attributes: ['id', 'name'] }]
+        }
+      ]
+    });
+
+    res.json({ center, mappings });
+  } catch (error) {
+    console.error('Center details error:', error);
+    res.status(500).json({ error: 'Failed to fetch center forensic details' });
   }
 });
 
@@ -458,8 +682,8 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
 router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
-    const subDeptId = getSubDeptId(req.user);
-    const whereClause = isSubDeptAdmin ? { subDepartmentId: subDeptId } : {};
+    const scopeIds = getSubDeptScopeIds(req.user);
+    const whereClause = isSubDeptAdmin && scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : {};
 
     const stats = await Student.findAll({
       where: whereClause,
@@ -482,7 +706,7 @@ router.get('/pipeline/details', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { reviewStage, enrollStatus, subDepartmentId } = req.query;
     const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(req.user.role));
-    const adminSubDeptId = getSubDeptId(req.user);
+    const adminScopeIds = getSubDeptScopeIds(req.user);
 
     const whereClause = {};
     if (reviewStage) whereClause.reviewStage = reviewStage;
@@ -505,8 +729,8 @@ router.get('/pipeline/details', verifyToken, isOpsOrAdmin, async (req, res) => {
     }
     
     // Authorization & Filter Logic
-    if (isSubDeptAdmin) {
-      whereClause.subDepartmentId = adminSubDeptId;
+    if (isSubDeptAdmin && adminScopeIds.length > 0) {
+      whereClause.subDepartmentId = { [Op.in]: adminScopeIds };
     } else if (subDepartmentId && subDepartmentId !== 'all') {
       whereClause.subDepartmentId = subDepartmentId;
     }

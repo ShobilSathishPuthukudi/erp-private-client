@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -28,6 +28,7 @@ interface Leave {
 export default function Leaves() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'requested' | 'pending' | 'approved' | 'rejected'>('requested');
 
   const fetchLeaves = async () => {
     try {
@@ -49,12 +50,26 @@ export default function Leaves() {
     if (!window.confirm(`Are you sure you want to ${action} this leave request at Step-1?`)) return;
     try {
       await api.put(`/dept-admin/leaves/${id}/${action}`);
-      toast.success(`Leave request ${action}d successfully and escalated if needed.`);
-      fetchLeaves();
+      toast.success(`Leave request ${action}d successfully.`);
+      await fetchLeaves();
+      if (action === 'approve') {
+        setActiveTab('pending');
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.error || `Failed to ${action} leave`);
     }
   };
+
+  const filteredLeaves = useMemo(() => {
+    return leaves.filter(leave => {
+      const s = leave.status;
+      if (activeTab === 'requested') return ['pending_step1', 'pending admin'].includes(s);
+      if (activeTab === 'pending') return ['pending_step2', 'pending hr'].includes(s);
+      if (activeTab === 'approved') return s === 'approved';
+      if (activeTab === 'rejected') return s.includes('rejected');
+      return false;
+    });
+  }, [leaves, activeTab]);
 
   const generateTestLeave = async () => {
     try {
@@ -174,10 +189,26 @@ export default function Leaves() {
         </button>
       </div>
 
+      <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
+        {(['requested', 'pending', 'approved', 'rejected'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${
+              activeTab === tab
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
         <DataTable 
           columns={columns} 
-          data={leaves} 
+          data={filteredLeaves} 
           isLoading={isLoading} 
           searchKey="employee.name" 
           searchPlaceholder="Search by team member name..." 

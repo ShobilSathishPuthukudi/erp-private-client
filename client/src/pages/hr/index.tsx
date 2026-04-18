@@ -13,6 +13,7 @@ import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import EmployeeCards from './EmployeeCards';
+import EmployeeCommunications from './EmployeeCommunications';
 import RemapEmployees from './RemapEmployees';
 import RoleMapping from '../org-admin/RoleMapping';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
@@ -239,6 +240,7 @@ export default function HRDashboard() {
       <Route path="dept-tasks" element={<DepartmentTasks />} />
       <Route path="dept-leaves" element={<DepartmentLeaves />} />
       <Route path="employee-cards" element={<EmployeeCards />} />
+      <Route path="employee-communications" element={<EmployeeCommunications />} />
     </Routes>
   );
 }

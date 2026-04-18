@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuthStore } from '@/store/authStore';
-import { getNormalizedRole } from '@/App';
+import { getNormalizedRole } from '@/lib/roles';
 import { toSentenceCase } from '@/lib/utils';
 
 type RosterUser = {

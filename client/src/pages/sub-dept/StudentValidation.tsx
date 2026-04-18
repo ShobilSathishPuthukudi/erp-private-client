@@ -47,6 +47,21 @@ export default function StudentValidation() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [counts, setCounts] = useState({
+    pending: 0,
+    validated: 0,
+    approved: 0,
+    rejected: 0
+  });
+
+  const fetchCounts = async () => {
+    try {
+      const res = await api.get('/sub-dept/students/counts');
+      setCounts(res.data);
+    } catch (error) {
+      console.error('Failed to load validation counts');
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -66,6 +81,7 @@ export default function StudentValidation() {
 
   useEffect(() => {
     fetchStudents();
+    fetchCounts();
   }, [activeTab, unit]);
 
   useEffect(() => {
@@ -184,8 +200,8 @@ export default function StudentValidation() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="p-8 space-y-10 max-w-[1600px] mx-auto">
+      <div className="flex flex-col gap-8">
         <div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
@@ -194,38 +210,50 @@ export default function StudentValidation() {
           <p className="text-slate-500 font-medium tracking-tight">Multi-stage review and routing terminal for institutional admissions.</p>
         </div>
 
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 w-fit">
           <button 
             onClick={() => setActiveTab('PENDING')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'PENDING' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Pending
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] ${activeTab === 'PENDING' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+              {counts.pending}
+            </span>
           </button>
           <button 
             onClick={() => setActiveTab('VALIDATED')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'VALIDATED' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Validated
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] ${activeTab === 'VALIDATED' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+              {counts.validated}
+            </span>
           </button>
           <button 
             onClick={() => setActiveTab('APPROVED')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'APPROVED' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Approved
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] ${activeTab === 'APPROVED' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+              {counts.approved}
+            </span>
           </button>
           <button 
             onClick={() => setActiveTab('REJECTED')}
-            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'REJECTED' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Rejected
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] ${activeTab === 'REJECTED' ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+              {counts.rejected}
+            </span>
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Clock, Check, ShieldAl
 import { formatDistanceToNow } from 'date-fns';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
+import { getNormalizedRole } from '@/lib/roles';
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,6 +16,60 @@ export default function NotificationCenter() {
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
 
+  const hasDedicatedNotification = (announcement: any) =>
+    ['all_employees', 'centers_only', 'hr_directives'].includes(announcement?.targetChannel);
+
+  const resolveNotificationLink = (link?: string, notification?: any) => {
+    if (!link) return '/dashboard/notifications';
+
+    const normalizedRole = getNormalizedRole(user?.role || '');
+
+    if (link === '/dashboard/announcements') {
+      if (normalizedRole === 'employee') return '/dashboard/employee/announcements';
+      if (normalizedRole === 'partner-center') return '/dashboard/partner-center/announcements';
+      if (normalizedRole === 'operations') {
+        if (notification?.message?.startsWith('HR Broadcast:')) {
+          return '/dashboard/operations/hr-broadcasts';
+        }
+        return '/dashboard/operations/announcements';
+      }
+      if (normalizedRole === 'hr') return '/dashboard/hr/announcements';
+      if (normalizedRole === 'ceo') return '/dashboard/ceo/announcements';
+      return '/dashboard/announcements';
+    }
+
+    if (normalizedRole === 'operations') {
+      if (link === '/dashboard/academic/credentials') {
+        return '/dashboard/operations/credential-requests';
+      }
+      if (link === '/dashboard/hr/leaves' || link === '/dashboard/hr/dept-leaves' || link === '/dashboard/academic/leaves') {
+        return '/dashboard/operations/leaves';
+      }
+      if (link === '/dashboard/academic/team' || link === '/dashboard/operations/team') {
+        return '/dashboard/operations/team';
+      }
+    }
+
+    if (normalizedRole === 'employee') {
+      if (
+        link === '/dashboard/hr/leaves' ||
+        link === '/dashboard/hr/dept-leaves' ||
+        link === '/dashboard/academic/leaves' ||
+        link === '/dashboard/operations/leaves' ||
+        link === '/dashboard/finance/leaves' ||
+        link === '/dashboard/sales/leaves' ||
+        link === '/dashboard/subdept/openschool/leaves' ||
+        link === '/dashboard/subdept/online/leaves' ||
+        link === '/dashboard/subdept/skill/leaves' ||
+        link === '/dashboard/subdept/bvoc/leaves'
+      ) {
+        return '/dashboard/employee/leaves';
+      }
+    }
+
+    return link;
+  };
+
   const fetchNotifications = async () => {
     try {
       const [notifRes, announceRes] = await Promise.all([
@@ -24,6 +79,7 @@ export default function NotificationCenter() {
 
       const standardNotifs = notifRes.data.notifications || [];
       const urgentAnnouncements = (announceRes.data || [])
+        .filter((a: any) => !hasDedicatedNotification(a))
         .filter((a: any) => a.priority === 'urgent')
         .map((a: any) => ({
           id: `ann-${a.id}`,
@@ -92,7 +148,7 @@ export default function NotificationCenter() {
 
     // 2. Navigate if link exist
     if (n.link) {
-      navigate(n.link);
+      navigate(resolveNotificationLink(n.link, n));
     }
 
     // 3. Close the dropdown

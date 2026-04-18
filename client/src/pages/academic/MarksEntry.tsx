@@ -12,17 +12,20 @@ import {
   Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 
 interface StudentMark {
   id: number;
   name: string;
   enrollId: string;
-  theory: string | number;
-  practical: string | number;
-  internal: string | number;
-  total: number;
-  isSaved: boolean;
   centerId?: number;
+  subjectMarks: Record<string, {
+    theory: string | number;
+    practical: string | number;
+    internal: string | number;
+    total: number;
+    isSaved: boolean;
+  }>;
 }
 
 interface ExamData {
@@ -33,8 +36,12 @@ interface ExamData {
 }
 
 export default function MarksEntry() {
-  const { id } = useParams();
+  const { id, unit } = useParams();
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
+  const userRole = user?.role?.toLowerCase().trim() || '';
+  const isPartnerCenter = ['partner-center', 'partner center', 'partner centers'].includes(userRole);
+  const isSubDept = ['open school admin', 'online admin', 'skill admin', 'bvoc admin'].includes(userRole);
   const [exam, setExam] = useState<ExamData | null>(null);
   const [students, setStudents] = useState<StudentMark[]>([]);
   const [subjectName, setSubjectName] = useState('Core Subject 1');
@@ -42,6 +49,13 @@ export default function MarksEntry() {
   const [isSaving, setIsSaving] = useState(false);
   const [centers, setCenters] = useState<any[]>([]);
   const [selectedCenterId, setSelectedCenterId] = useState<string>('all');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
+
+  const examsBasePath = isPartnerCenter
+    ? '/dashboard/partner-center/exams'
+    : isSubDept && unit
+      ? `/dashboard/subdept/${unit}/exams`
+      : '/dashboard/academic/exams';
 
   const fetchData = async () => {
     try {
@@ -54,17 +68,24 @@ export default function MarksEntry() {
       setCenters(centersRes.data);
       
       const mappedStudents = res.data.students.map((s: any) => {
-        const existingMark = s.examMarks?.[0] || {};
+        const subjectMarks = (s.examMarks || []).reduce((acc: StudentMark['subjectMarks'], mark: any) => {
+          const key = mark.subjectName || 'Core Subject 1';
+          acc[key] = {
+            theory: mark.theoryMarks || '',
+            practical: mark.practicalMarks || '',
+            internal: mark.internalMarks || '',
+            total: mark.totalMarks || 0,
+            isSaved: !!mark.id
+          };
+          return acc;
+        }, {});
+
         return {
           id: s.id,
           name: s.name,
           enrollId: `ST-${s.id.toString().padStart(4, '0')}`,
-          theory: existingMark.theoryMarks || '',
-          practical: existingMark.practicalMarks || '',
-          internal: existingMark.internalMarks || '',
-          total: existingMark.totalMarks || 0,
-          isSaved: !!existingMark.id,
-          centerId: s.centerId
+          centerId: s.centerId,
+          subjectMarks
         };
       });
       setStudents(mappedStudents);
@@ -82,12 +103,26 @@ export default function MarksEntry() {
   const handleMarkChange = (studentId: number, field: 'theory' | 'practical' | 'internal', value: string) => {
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
-        const updated = { ...s, [field]: value };
-        const t = parseFloat(updated.theory as string) || 0;
-        const p = parseFloat(updated.practical as string) || 0;
-        const i = parseFloat(updated.internal as string) || 0;
-        updated.total = t + p + i;
-        updated.isSaved = false;
+        const currentSubjectMarks = s.subjectMarks[subjectName] || {
+          theory: '',
+          practical: '',
+          internal: '',
+          total: 0,
+          isSaved: false
+        };
+        const updatedSubjectMarks = { ...currentSubjectMarks, [field]: value };
+        const t = parseFloat(updatedSubjectMarks.theory as string) || 0;
+        const p = parseFloat(updatedSubjectMarks.practical as string) || 0;
+        const i = parseFloat(updatedSubjectMarks.internal as string) || 0;
+        updatedSubjectMarks.total = t + p + i;
+        updatedSubjectMarks.isSaved = false;
+        const updated = {
+          ...s,
+          subjectMarks: {
+            ...s.subjectMarks,
+            [subjectName]: updatedSubjectMarks
+          }
+        };
         return updated;
       }
       return s;
@@ -100,9 +135,9 @@ export default function MarksEntry() {
       const payload = students.map(s => ({
         studentId: s.id,
         subjectName,
-        theory: s.theory,
-        practical: s.practical,
-        internal: s.internal
+        theory: s.subjectMarks[subjectName]?.theory || '',
+        practical: s.subjectMarks[subjectName]?.practical || '',
+        internal: s.subjectMarks[subjectName]?.internal || ''
       }));
 
       await api.post(`/academic/exams/${id}/marks`, { marks: payload });
@@ -115,6 +150,19 @@ export default function MarksEntry() {
     }
   };
 
+  const subjectOptions = Array.from(new Set([
+    subjectName,
+    ...students.flatMap((student) => Object.keys(student.subjectMarks))
+  ].filter(Boolean)));
+
+  const visibleStudents = students.filter((student) => {
+    if (selectedCenterId !== 'all' && student.centerId?.toString() !== selectedCenterId) return false;
+    if (selectedStudentId !== 'all' && student.id.toString() !== selectedStudentId) return false;
+    return true;
+  });
+
+  const currentProgramLabel = exam?.program?.name || 'Current Program';
+
   if (isLoading) return <div className="p-8 animate-pulse text-slate-400 font-black uppercase tracking-widest text-center">Decrypting Roster...</div>;
 
   return (
@@ -124,7 +172,7 @@ export default function MarksEntry() {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div className="space-y-4">
                 <button 
-                  onClick={() => navigate('/dashboard/academic/exams')}
+                  onClick={() => navigate(examsBasePath)}
                   className="flex items-center gap-2 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
                 >
                     <ArrowLeft className="w-3 h-3" />
@@ -145,12 +193,34 @@ export default function MarksEntry() {
             </div>
 
             <div className="flex flex-wrap gap-4 pt-4 md:pt-0">
-                <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Target Subject</p>
-                    <input 
+                <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl min-w-[180px]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Program</p>
+                    <select
+                      value={currentProgramLabel}
+                      disabled
+                      className="bg-transparent text-sm font-bold border-none outline-none focus:ring-0 w-full p-0 text-white disabled:opacity-100"
+                    >
+                      <option value={currentProgramLabel}>{currentProgramLabel}</option>
+                    </select>
+                </div>
+                <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl min-w-[180px]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Subject</p>
+                    <select
                       value={subjectName}
                       onChange={(e) => setSubjectName(e.target.value)}
-                      className="bg-transparent text-sm font-bold border-none outline-none focus:ring-0 w-40 p-0 text-indigo-300"
+                      className="bg-transparent text-sm font-bold border-none outline-none focus:ring-0 w-full p-0 text-indigo-300"
+                    >
+                      {subjectOptions.map((subject) => (
+                        <option key={subject} value={subject} className="text-slate-900">
+                          {subject}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={subjectName}
+                      onChange={(e) => setSubjectName(e.target.value)}
+                      className="bg-transparent text-xs font-bold border-none outline-none focus:ring-0 w-full p-0 mt-2 text-white/80"
+                      placeholder="Add or refine subject label"
                     />
                 </div>
                 <button 
@@ -171,6 +241,16 @@ export default function MarksEntry() {
       <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Program:</span>
+                <select
+                    value={currentProgramLabel}
+                    disabled
+                    className="bg-transparent text-xs font-black text-slate-900 border-none outline-none focus:ring-0 p-0 uppercase disabled:opacity-100"
+                >
+                    <option value={currentProgramLabel}>{currentProgramLabel}</option>
+                </select>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jurisdictional Center:</span>
                 <select 
                     value={selectedCenterId}
@@ -181,10 +261,39 @@ export default function MarksEntry() {
                     {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
+            <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student:</span>
+                <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="bg-transparent text-xs font-black text-slate-900 border-none outline-none focus:ring-0 p-0 uppercase"
+                >
+                    <option value="all">All Students</option>
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}
+                      </option>
+                    ))}
+                </select>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject:</span>
+                <select
+                    value={subjectName}
+                    onChange={(e) => setSubjectName(e.target.value)}
+                    className="bg-transparent text-xs font-black text-slate-900 border-none outline-none focus:ring-0 p-0 uppercase"
+                >
+                    {subjectOptions.map((subject) => (
+                      <option key={subject} value={subject}>
+                        {subject}
+                      </option>
+                    ))}
+                </select>
+            </div>
         </div>
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <AlertCircle className="w-3.5 h-3.5" />
-            Showing {selectedCenterId === 'all' ? students.length : students.filter(s => s.centerId?.toString() === selectedCenterId).length} Total Candidates
+            Showing {visibleStudents.length} Total Candidates
         </div>
       </div>
 
@@ -196,7 +305,7 @@ export default function MarksEntry() {
                 Enrollment Roster Analysis
             </h3>
             <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg uppercase tracking-tighter">
-                {students.filter(s => s.isSaved).length} / {students.length} Synchronized
+                {students.filter((student) => student.subjectMarks[subjectName]?.isSaved).length} / {students.length} Synchronized
             </span>
         </div>
         
@@ -213,9 +322,16 @@ export default function MarksEntry() {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                    {students
-                        .filter(s => selectedCenterId === 'all' || s.centerId?.toString() === selectedCenterId)
-                        .map((s) => (
+                    {visibleStudents.map((s) => {
+                        const markSet = s.subjectMarks[subjectName] || {
+                          theory: '',
+                          practical: '',
+                          internal: '',
+                          total: 0,
+                          isSaved: false
+                        };
+
+                        return (
                         <tr key={s.id} className="hover:bg-slate-50/50 transition-all group">
                             <td className="px-10 py-6">
                                 <div className="flex items-center gap-4">
@@ -231,7 +347,7 @@ export default function MarksEntry() {
                             <td className="px-6 py-6">
                                 <input 
                                     type="number" 
-                                    value={s.theory}
+                                    value={markSet.theory}
                                     onChange={(e) => handleMarkChange(s.id, 'theory', e.target.value)}
                                     className="w-20 mx-auto block px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
@@ -239,7 +355,7 @@ export default function MarksEntry() {
                             <td className="px-6 py-6">
                                 <input 
                                     type="number" 
-                                    value={s.practical}
+                                    value={markSet.practical}
                                     onChange={(e) => handleMarkChange(s.id, 'practical', e.target.value)}
                                     className="w-20 mx-auto block px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
@@ -247,18 +363,18 @@ export default function MarksEntry() {
                             <td className="px-6 py-6">
                                 <input 
                                     type="number" 
-                                    value={s.internal}
+                                    value={markSet.internal}
                                     onChange={(e) => handleMarkChange(s.id, 'internal', e.target.value)}
                                     className="w-20 mx-auto block px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
                             </td>
                             <td className="px-6 py-6">
                                 <div className="w-20 mx-auto text-center font-black text-lg text-slate-900">
-                                    {s.total}
+                                    {markSet.total}
                                 </div>
                             </td>
                             <td className="px-10 py-6 text-right">
-                                {s.isSaved ? (
+                                {markSet.isSaved ? (
                                     <div className="flex items-center justify-end gap-1.5 text-emerald-500">
                                         <CheckCircle2 className="w-4 h-4" />
                                         <span className="text-[10px] font-black uppercase tracking-widest">Synced</span>
@@ -271,7 +387,7 @@ export default function MarksEntry() {
                                 )}
                             </td>
                         </tr>
-                    ))}
+                    )})}
                 </tbody>
             </table>
         </div>

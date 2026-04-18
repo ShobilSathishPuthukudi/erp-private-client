@@ -4,26 +4,73 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import sequelize from '../config/db.js';
 import { Op } from 'sequelize';
 import erpEvents from '../lib/events.js';
-import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
+import { getSubDepartmentNameAliases, normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
-const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam } = models;
+const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam, EmployeeHRRequest } = models;
 import { createNotification } from './notifications.js';
 
 const getSubDeptId = (user) => {
   if (!user) return null;
+  if (user.deptId || user.departmentId) return user.deptId || user.departmentId;
   const unitStr = (user.subDepartment || user.role || '').toLowerCase();
-  if (unitStr.includes('open school admin')) return 8;
-  if (unitStr.includes('online department admin')) return 9;
-  if (unitStr.includes('skill department admin')) return 10;
-  if (unitStr.includes('bvoc department admin')) return 11;
-  return user.deptId || user.departmentId;
+  if (unitStr.includes('open school')) return 8;
+  if (unitStr.includes('online')) return 9;
+  if (unitStr.includes('skill')) return 10;
+  if (unitStr.includes('bvoc')) return 11;
+  return null;
+};
+
+const isCenterEditLocked = (student) => {
+  if (!student) return true;
+
+  const lockedStatuses = ['OPS_APPROVED', 'FINANCE_PENDING', 'PAYMENT_VERIFIED', 'FINANCE_APPROVED', 'ENROLLED'];
+  const lockedEnrollStatuses = ['pending_finance', 'rejected'];
+
+  return lockedStatuses.includes(student.status) || lockedEnrollStatuses.includes(student.enrollStatus);
+};
+
+const LEGACY_SUB_DEPT_NAME_BY_ID = {
+  8: 'Open School',
+  9: 'Online',
+  10: 'Skill',
+  11: 'BVoc'
+};
+
+const resolveSubDeptDepartmentId = async ({ rawSubDeptId, programType }) => {
+  if (rawSubDeptId) {
+    const subDept = await Department.findByPk(rawSubDeptId);
+    if (subDept?.type === 'sub-departments') {
+      return subDept.id;
+    }
+  }
+
+  const normalizedProgramType = String(programType || '').toLowerCase().trim();
+  const lookupName =
+    LEGACY_SUB_DEPT_NAME_BY_ID[rawSubDeptId] ||
+    (normalizedProgramType.includes('open') ? 'Open School' :
+      normalizedProgramType.includes('online') ? 'Online' :
+      normalizedProgramType.includes('skill') ? 'Skill' :
+      normalizedProgramType.includes('bvoc') ? 'BVoc' :
+      null);
+
+  if (!lookupName) return null;
+
+  const subDept = await Department.findOne({
+    where: {
+      type: 'sub-departments',
+      name: { [Op.in]: getSubDepartmentNameAliases(lookupName) }
+    },
+    order: [['id', 'ASC']]
+  });
+
+  return subDept?.id || null;
 };
 
 const requireRole = (role) => (req, res, next) => {
-  const userRole = req.user.role?.toLowerCase()?.trim();
-  const targetRole = role.toLowerCase()?.trim();
-  
+  const userRole = normalizeInstitutionRoleName(req.user.role || '').toLowerCase().trim();
+  const targetRole = normalizeInstitutionRoleName(role || '').toLowerCase().trim();
+
   // Support legacy, plural, and alias formats (Institutional Standardization)
   const normalize = (r) => {
     if (!r) return '';
@@ -32,7 +79,14 @@ const requireRole = (role) => (req, res, next) => {
     if (res === 'study center') return 'partner center';
     return res;
   };
-  const isMatch = normalize(userRole) === normalize(targetRole);
+
+  const normalizedUserRole = normalize(userRole);
+  const normalizedTargetRole = normalize(targetRole);
+  const isEmployeeLike =
+    normalizedTargetRole === 'employee' &&
+    ['employee', 'hr', 'finance', 'sales', 'operations', 'academic operation'].includes(normalizedUserRole);
+
+  const isMatch = normalizedUserRole === normalizedTargetRole || isEmployeeLike;
 
   if (!isMatch) {
     return res.status(403).json({ error: `Access denied: Requires ${role} role` });
@@ -267,6 +321,14 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
 
     const program = await Program.findByPk(programId);
     if (!program) return res.status(404).json({ error: 'Program framework not found' });
+    const resolvedSubDeptId = await resolveSubDeptDepartmentId({
+      rawSubDeptId: mapping.subDeptId ?? program.subDeptId,
+      programType: program.type
+    });
+
+    if (!resolvedSubDeptId) {
+        return res.status(400).json({ error: 'Academic unit mapping is incomplete for this program. Please contact Academic Operations.' });
+    }
 
     // --- Step: Identify Applicable Fee Schema ---
     let effectiveFeeSchemaId = mapping.feeSchemaId || feeSchemaId;
@@ -328,7 +390,7 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
         programId,
         sessionId,
         feeSchemaId: effectiveFeeSchemaId,
-        subDepartmentId: mapping.subDeptId,
+        subDepartmentId: resolvedSubDeptId,
         status: 'PENDING_REVIEW', // Aligned with DB ENUM
         enrollStatus: 'pending_ops', // Internal legacy tag
         marks,
@@ -391,19 +453,29 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
 
     // 6. Notify Academic Operations
     try {
+      const opsNotificationRoles = [
+        'Academic Operations',
+        'Academic Operations Admin',
+        'Academic Operations Administrator',
+        'Operations Admin',
+        'Operations Administrator',
+        'Organization Admin'
+      ];
+
       const opsUsers = await User.findAll({ 
         where: { 
-          role: { [Op.or]: ['Academic Operations', 'Organization Admin'] } 
+          role: { [Op.in]: opsNotificationRoles },
+          status: 'active'
         } 
       });
       
       for (const ops of opsUsers) {
         await createNotification(req.io, {
-          userId: ops.uid,
+          targetUid: ops.uid,
           title: `New Enrollment: ${result.student.name}`,
           message: `Partner Center ${center.name} has submitted a new enrollment application for review.`,
           type: 'info',
-          link: '/dashboard/academic/students?status=PENDING_REVIEW',
+          link: '/dashboard/operations/pending-reviews?tab=pending',
           metadata: { studentId: result.student.id, centerId: result.student.centerId }
         });
       }
@@ -439,9 +511,8 @@ router.put('/partner-center/admission/:id', verifyToken, requireRole('Partner Ce
        return res.status(400).json({ error: 'Financial Integrity Error: Student record is not linked to an activation invoice.' });
     }
     
-    // Only allow editing if not already approved/enrolled
-    if (!['PENDING_REVIEW', 'DRAFT', 'REJECTED'].includes(student.status)) {
-      return res.status(400).json({ error: 'Governance Error: Cannot modify records already advanced to institutional approval phase.' });
+    if (isCenterEditLocked(student)) {
+      return res.status(400).json({ error: 'Governance Error: Center editing is locked once Academic Operations has verified this student record.' });
     }
 
     // Wrap in transaction for integrity
@@ -745,6 +816,21 @@ router.get('/employee/leaves', verifyToken, requireRole('employee'), async (req,
 router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req, res) => {
   try {
     const { type, fromDate, toDate, reason } = req.body;
+
+    const today = new Date();
+    const todayLocal = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+
+    if (fromDate < todayLocal || toDate < todayLocal) {
+      return res.status(400).json({ error: 'Previous dates are not allowed for leave requests' });
+    }
+
+    if (toDate <= fromDate) {
+      return res.status(400).json({ error: 'End date must be after start date' });
+    }
     
     // Resolve Department Head to determine workflow (Shortcut Rule: Head is Admin -> Skip Step 1)
     let initialStatus = 'pending admin';
@@ -782,22 +868,10 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
 
     // Unified Notification Logic (Phase 10 Oversight)
     try {
-      // 1. Notify HR administrators (Standard Oversight)
-      const hrUsers = await User.findAll({ where: { role: 'HR Admin' } });
       const employee = await User.findOne({ where: { uid: req.user.uid } });
       const employeeName = employee?.name || req.user.uid;
 
-      for (const hr of hrUsers) {
-        await createNotification(req.io, {
-          targetUid: hr.uid,
-          title: 'New Leave Request (HR)',
-          message: `${employeeName} submitted a ${type} request${initialStatus === 'pending hr' ? ' (Admin Shortcut)' : ''}.`,
-          type: 'info',
-          link: '/dashboard/hr/leaves'
-        });
-      }
-
-      // 2. Notify Department Head (Only if they didn't already skip Step-1)
+      // 1. Notify Department Head (Only if they didn't already skip Step-1)
       if (initialStatus === 'pending admin') {
         const dept = await Department.findByPk(employee?.deptId);
         
@@ -825,7 +899,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
         }
       }
 
-      // 3. Notify Employee (If it's an auto-forward case)
+      // 2. Notify Employee (If it's an auto-forward case)
       if (initialStatus === 'pending hr') {
         await createNotification(req.io, {
           targetUid: req.user.uid,
@@ -865,6 +939,122 @@ router.delete('/employee/leaves/:id', verifyToken, requireRole('employee'), asyn
   } catch (error) {
     console.error('Delete leave error:', error);
     res.status(500).json({ error: 'Failed to delete leave request' });
+  }
+});
+
+router.get('/employee/hr-requests', verifyToken, async (req, res) => {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: 'Access denied: Missing user identity' });
+    }
+
+    const requests = await EmployeeHRRequest.findAll({
+      where: { employeeId: req.user.uid },
+      order: [['createdAt', 'DESC']]
+    });
+
+    let enrichedRequests = requests.map((request) => ({
+      ...request.toJSON(),
+      responder: null
+    }));
+
+    try {
+      const responderIds = [...new Set(requests.map((request) => request.respondedBy).filter(Boolean))];
+      const responders = responderIds.length
+        ? await User.findAll({
+            where: { uid: { [Op.in]: responderIds } },
+            attributes: ['uid', 'name']
+          })
+        : [];
+
+      const responderMap = new Map(responders.map((responder) => [responder.uid, responder]));
+      enrichedRequests = requests.map((request) => {
+        const requestJson = request.toJSON();
+        const responder = request.respondedBy ? responderMap.get(request.respondedBy) : null;
+
+        return {
+          ...requestJson,
+          responder: responder ? {
+            uid: responder.uid,
+            name: responder.name
+          } : null
+        };
+      });
+    } catch (enrichmentError) {
+      console.error('Employee HR request enrichment fallback activated:', enrichmentError);
+    }
+
+    res.json(enrichedRequests);
+  } catch (error) {
+    console.error('Fetch employee HR requests error:', error);
+    res.json([]);
+  }
+});
+
+router.post('/employee/hr-requests', verifyToken, async (req, res) => {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: 'Access denied: Missing user identity' });
+    }
+
+    const { subject, category, message } = req.body;
+
+    if (!subject?.trim() || !message?.trim()) {
+      return res.status(400).json({ error: 'Subject and message are required' });
+    }
+
+    const requestPayload = {
+      employeeId: req.user.uid,
+      subject: subject.trim(),
+      category: category || 'general',
+      message: message.trim()
+    };
+
+    let request;
+    try {
+      request = await EmployeeHRRequest.create(requestPayload);
+    } catch (createError) {
+      console.error('Employee HR request initial create failed, attempting schema sync:', createError);
+      await EmployeeHRRequest.sync({ alter: true });
+      request = await EmployeeHRRequest.create(requestPayload);
+    }
+
+    let employee = null;
+    try {
+      employee = await User.findOne({
+        where: { uid: req.user.uid },
+        include: [{ model: Department, as: 'department', attributes: ['name'], required: false }]
+      });
+    } catch (employeeLookupError) {
+      console.error('Employee HR request employee lookup fallback activated:', employeeLookupError);
+    }
+
+    try {
+      const hrUsers = await User.findAll({
+        where: {
+          status: 'active',
+          role: 'HR Admin'
+        },
+        attributes: ['uid']
+      });
+
+      for (const hr of hrUsers) {
+        await createNotification(req.io, {
+          targetUid: hr.uid,
+          title: 'New Employee HR Request',
+          message: `${employee?.name || req.user.uid} submitted "${subject.trim()}" from ${employee?.department?.name || 'their department'}.`,
+          type: 'info',
+          link: '/dashboard/hr/employee-communications'
+        });
+      }
+    } catch (notificationError) {
+      console.error('Employee HR request notification fallback activated:', notificationError);
+    }
+
+    res.status(201).json({ message: 'Your HR request has been sent successfully', request });
+  } catch (error) {
+    console.error('Create employee HR request error:', error);
+    res.status(500).json({ error: 'Failed to send HR request' });
   }
 });
 
@@ -997,6 +1187,7 @@ router.get(['/marks/grading-roster', '/internal-marks/roster'], verifyToken, asy
     const { programId, sessionId, subjectName, subjectId, centerId: queryCenterId } = req.query;
     const subject = subjectName || subjectId;
     const role = req.user.role?.toLowerCase();
+    const canonicalRole = normalizeInstitutionRoleName(req.user.role || '');
     
     let whereClause = { 
         programId, 
@@ -1009,15 +1200,20 @@ router.get(['/marks/grading-roster', '/internal-marks/roster'], verifyToken, asy
     if (normalizedRole === 'partner center' || normalizedRole === 'study center') {
       let centerId = req.user.deptId;
       if (!centerId) {
-        const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner-center' } });
+        const center = await Department.findOne({
+          where: {
+            adminId: req.user.uid,
+            type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'study centers'] }
+          }
+        });
         if (center) centerId = center.id;
       }
       if (!centerId) return res.status(403).json({ error: 'Jurisdictional Error: Center ID not resolved' });
       whereClause.centerId = centerId;
-    } else if (['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(role)) || req.user.subDepartment) {
+    } else if (['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(canonicalRole) || req.user.subDepartment) {
       const subDeptId = getSubDeptId(req.user);
       if (subDeptId) whereClause.subDepartmentId = subDeptId;
-    } else if (['Operations Admin', 'Organization Admin'].includes(role)) {
+    } else if (['Operations Admin', 'Organization Admin', 'Academic Operations Admin'].includes(canonicalRole)) {
        // Operations/Admin: Filter by specific center if requested, otherwise global view
        if (queryCenterId && queryCenterId !== 'all') whereClause.centerId = queryCenterId;
     } else {
@@ -1052,9 +1248,35 @@ router.post('/marks/bulk', verifyToken, async (req, res) => {
   try {
     const { programId, sessionId, subjectName, marks } = req.body;
     const role = req.user.role?.toLowerCase();
+    const canonicalRole = normalizeInstitutionRoleName(req.user.role || '');
 
     // Restriction: Operations/Academic cannot edit marks (Read-only as per User Rule)
-        return res.status(403).json({ error: 'Governance Error: Central Operations retains read-only oversight for assessments.' });
+    if (['Operations Admin', 'Organization Admin', 'Academic Operations Admin'].includes(canonicalRole)) {
+      return res.status(403).json({ error: 'Governance Error: Central Operations retains read-only oversight for assessments.' });
+    }
+
+    if (!programId || !sessionId || !subjectName || !Array.isArray(marks) || marks.length === 0) {
+      return res.status(400).json({ error: 'Missing mandatory grading payload (Program/Batch/Subject/Marks).' });
+    }
+
+    let centerId = req.user.deptId;
+    if (!centerId && (role === 'partner center' || role === 'study center')) {
+      const center = await Department.findOne({
+        where: {
+          adminId: req.user.uid,
+          type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'study centers'] }
+        }
+      });
+      if (center) centerId = center.id;
+    }
+
+    const normalizedRole = role?.replace(/-/g, ' ');
+    const isCenterRole = normalizedRole === 'partner center' || normalizedRole === 'study center';
+    const isSubDeptRole = ['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(canonicalRole);
+
+    if (!isCenterRole && !isSubDeptRole) {
+      return res.status(403).json({ error: 'Access denied: Role not authorized for assessment publishing' });
+    }
 
     // 1. Identify or Create an Exam record to anchor these marks
     const [exam] = await Exam.findOrCreate({
@@ -1074,10 +1296,12 @@ router.post('/marks/bulk', verifyToken, async (req, res) => {
       for (const entry of marks) {
         // Jurisdictional Verification: Ensure the student exists within the caller's territory
         const verifyWhere = { id: entry.studentId };
-        const normalizedRole = role?.replace(/-/g, ' ');
-        if (normalizedRole === 'partner center' || normalizedRole === 'study center') {
-           verifyWhere.centerId = req.user.deptId;
-        } else if (['Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin'].includes(normalizeInstitutionRoleName(role))) {
+        if (isCenterRole) {
+           if (!centerId) {
+             throw new Error('Partner center jurisdiction could not be resolved for marks publishing');
+           }
+           verifyWhere.centerId = centerId;
+        } else if (isSubDeptRole) {
            verifyWhere.subDepartmentId = getSubDeptId(req.user);
         }
 

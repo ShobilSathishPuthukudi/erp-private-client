@@ -68,6 +68,28 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
         }
         break;
 
+      case 'universities':
+        {
+          // Forensic Logic: Retrieve unique universities linked to programs within the administrator's jurisdiction.
+          const subDeptAdminRoles = ['open school admin', 'online department admin', 'bvoc department admin', 'skill department admin'];
+          const isScoped = subDeptAdminRoles.includes(normalizedRole);
+          
+          const scopedPrograms = await Program.findAll({
+            where: isScoped ? { subDeptId: deptId } : {},
+            attributes: ['universityId'],
+            raw: true
+          });
+          
+          const universityIds = [...new Set(scopedPrograms.map(p => p.universityId).filter(Boolean))];
+
+          details = await Department.findAll({
+            where: { id: { [Op.in]: universityIds } },
+            include: [{ model: User, as: 'admin', attributes: ['name', 'email'] }],
+            limit: 100
+          });
+        }
+        break;
+
       case 'programs':
       case 'activePrograms':
         {

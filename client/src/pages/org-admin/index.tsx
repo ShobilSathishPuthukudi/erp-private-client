@@ -20,6 +20,7 @@ import DataManagement from './DataManagement';
 import CronMonitoring from './CronMonitoring';
 import SurveyCreator from './SurveyCreator';
 import DatabaseTables from './DatabaseTables';
+import AdminCredentials from './AdminCredentials';
 
 import RoleHierarchyView from './RoleHierarchyView';
 import { useAuthStore } from '@/store/authStore';
@@ -70,6 +71,7 @@ export default function OrgAdminDashboard() {
       <Route path="permissions/roles" element={<RolesList />} />
       <Route path="permissions/matrix" element={<PermissionMatrix />} />
       <Route path="permissions/audit" element={<PermissionAudit />} />
+      <Route path="permissions/admin-credentials" element={<AdminCredentials />} />
       
       {/* Audit System */}
       <Route path="audit/all" element={<AuditAllActions />} />

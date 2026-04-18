@@ -7,7 +7,7 @@ import { ShieldCheck, Share2, Printer, Download, Clock, AlertTriangle, TrendingU
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
-import { getNormalizedRole } from '@/App';
+import { getNormalizedRole } from '@/lib/roles';
 import { downloadCSV } from '@/lib/exportUtils';
 
 interface TeamMember {
