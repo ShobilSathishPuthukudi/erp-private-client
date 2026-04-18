@@ -101,7 +101,7 @@ export default function SalesPerformance() {
         <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" onClick={() => openDrillDown('centers', 'Centers Referred')} />
         <StatCard icon={Users} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" onClick={() => openDrillDown('students', 'Total Admissions')} />
         <StatCard icon={DollarSign} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" onClick={() => openDrillDown('revenue', 'Yield Revenue')} />
-        <StatCard icon={TrendingUp} label="Efficiency Rate" value={`${performance?.centerCount > 0 ? ((performance.studentCount / performance.centerCount) * 5).toFixed(1) : 0}%`} color="amber" />
+        <StatCard icon={TrendingUp} label="Avg Students / Center" value={performance?.centerCount > 0 ? (performance.studentCount / performance.centerCount).toFixed(1) : '0'} color="amber" />
       </div>
 
       <DrillDownModal 

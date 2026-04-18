@@ -241,7 +241,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Department Team', path: '/dashboard/finance/team' },
         { name: 'Tasks', path: '/dashboard/finance/tasks' },
-        { name: 'Team Leave', path: '/dashboard/finance/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/finance/leave-status' },
       ]
     }
@@ -281,7 +281,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Department Team', path: '/dashboard/hr/dept-team' },
         { name: 'Tasks', path: '/dashboard/hr/dept-tasks' },
-        { name: 'Team Leave', path: '/dashboard/hr/dept-leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/hr/dept-leave-status' },
       ]
     }
@@ -377,7 +377,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Department Team', path: '/dashboard/operations/team' },
         { name: 'Tasks', path: '/dashboard/operations/tasks' },
-        { name: 'Team Leave', path: '/dashboard/operations/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/operations/leave-status' },
       ]
     }
@@ -463,7 +463,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Department Team', path: '/dashboard/academic/team' },
         { name: 'Tasks', path: '/dashboard/academic/tasks' },
-        { name: 'Team Leave', path: '/dashboard/academic/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/academic/leave-status' },
       ]
     }
@@ -498,7 +498,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Unit Team', path: '/dashboard/subdept/openschool/team' },
         { name: 'Tasks', path: '/dashboard/subdept/openschool/tasks' },
-        { name: 'Team Leave', path: '/dashboard/subdept/openschool/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/subdept/openschool/leave-status' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
       ]
@@ -534,7 +534,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Unit Team', path: '/dashboard/subdept/online/team' },
         { name: 'Tasks', path: '/dashboard/subdept/online/tasks' },
-        { name: 'Team Leave', path: '/dashboard/subdept/online/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/subdept/online/leave-status' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
       ]
@@ -570,7 +570,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Unit Team', path: '/dashboard/subdept/skill/team' },
         { name: 'Tasks', path: '/dashboard/subdept/skill/tasks' },
-        { name: 'Team Leave', path: '/dashboard/subdept/skill/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/subdept/skill/leave-status' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
       ]
@@ -607,7 +607,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Unit Team', path: '/dashboard/subdept/bvoc/team' },
         { name: 'Tasks', path: '/dashboard/subdept/bvoc/tasks' },
-        { name: 'Team Leave', path: '/dashboard/subdept/bvoc/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/subdept/bvoc/leave-status' },
         { name: 'Unit Surveys', path: '/dashboard/shared/surveys' },
       ]
@@ -695,7 +695,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Department Team', path: '/dashboard/sales/team' },
         { name: 'Tasks', path: '/dashboard/sales/tasks' },
-        { name: 'Team Leave', path: '/dashboard/sales/leaves' },
+
         { name: 'Team Leave Status', path: '/dashboard/sales/leave-status' },
       ]
     }
@@ -802,7 +802,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
         items: [
           { name: role === 'openschool' || role === 'online' || role === 'skill' || role === 'bvoc' ? 'Unit Team' : 'Department Team', path: `/dashboard/${dashboardPath}/team` },
           { name: 'Tasks', path: `/dashboard/${dashboardPath}/tasks` },
-          { name: 'Team Leave', path: `/dashboard/${dashboardPath}/leaves` },
+
         ]
       });
     }

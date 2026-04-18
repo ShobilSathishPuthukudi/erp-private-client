@@ -68,7 +68,7 @@ export default function ProgramDetails() {
   ];
 
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto p-4 lg:p-8">
+    <div className="p-2 space-y-8">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

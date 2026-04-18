@@ -45,8 +45,8 @@ interface Program {
 
 export default function AccreditationRequests() {
   const { unit } = useParams();
-  const [activeTab, setActiveTab] = useState<'pending'|'finance_pending'|'approved'>('pending');
-  const [counts, setCounts] = useState({ pending: 0, finance_pending: 0, approved: 0 });
+  const [activeTab, setActiveTab] = useState<'pending'|'finance_pending'|'approved'|'rejected'>('pending');
+  const [counts, setCounts] = useState({ pending: 0, finance_pending: 0, approved: 0, rejected: 0 });
   const [requests, setRequests] = useState<AccreditationRequest[]>([]);
   const [entities, setEntities] = useState<{universities: {id:number, name:string}[], subDepts: {id:number, name:string}[]}>({ universities: [], subDepts: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -80,15 +80,17 @@ export default function AccreditationRequests() {
 
   const fetchCounts = async () => {
     try {
-      const [p, f, a] = await Promise.all([
+      const [p, f, a, r] = await Promise.all([
         api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'pending' } }),
         api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'finance_pending' } }),
-        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'approved' } })
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'approved' } }),
+        api.get('/sub-dept/accreditation-requests', { params: { unit, status: 'rejected' } })
       ]);
       setCounts({
         pending: p.data.length,
         finance_pending: f.data.length,
-        approved: a.data.length
+        approved: a.data.length,
+        rejected: r.data.length
       });
     } catch (error) {
       console.error('Accreditation telemetry sync failure', error);
@@ -191,25 +193,25 @@ export default function AccreditationRequests() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">Accreditation Audit Queue</h1>
-              <p className="text-slate-500 font-medium text-sm mt-1">Review center interest requests, assign architectural routing, and transfer to Finance.</p>
-            </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Accreditation audit queue</h1>
+            <p className="text-slate-500 font-medium text-sm">Review center interest requests, assign architectural routing, and transfer to Finance.</p>
           </div>
         </div>
+      </div>
 
-        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit gap-1">
+      <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit gap-1">
            {[
-             { id: 'pending', name: 'Request Pending', icon: Clock, color: 'text-indigo-600' },
+             { id: 'pending', name: 'Pending', icon: Clock, color: 'text-indigo-600' },
              { id: 'finance_pending', name: 'Finance Pending', icon: Landmark, color: 'text-blue-600' },
-             { id: 'approved', name: 'Approved', icon: CheckCircle2, color: 'text-emerald-600' }
+             { id: 'approved', name: 'Approved', icon: CheckCircle2, color: 'text-emerald-600' },
+             { id: 'rejected', name: 'Rejected', icon: XCircle, color: 'text-rose-600' }
            ].map(tab => (
              <button
                 key={tab.id}
@@ -229,9 +231,8 @@ export default function AccreditationRequests() {
              </button>
            ))}
         </div>
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+      
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
         <DataTable columns={columns} data={requests} isLoading={isLoading} searchKey="courseName" />
       </div>
 

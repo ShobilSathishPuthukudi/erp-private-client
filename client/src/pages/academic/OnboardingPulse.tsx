@@ -119,61 +119,61 @@ export default function OnboardingPulse() {
   };
 
   return (
-    <div className="space-y-10 max-w-[1400px] mx-auto p-4 lg:p-8">
-      {/* Dynamic Header */}
-      <div className="space-y-6 pb-6 border-b border-slate-100">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Activity className="w-6 h-6" />
+          </div>
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">Onboarding <span className="text-indigo-600">Traceability</span></h1>
-            <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
-              <Activity className="w-4 h-4 text-indigo-500" />
-              Institutional Audit: Verify student credentials and regional hub status.
-            </p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding <span className="text-indigo-600">traceability</span></h1>
+            <p className="text-slate-500 font-medium text-sm flex items-center gap-2">Institutional Audit: Verify student credentials and regional hub status.</p>
           </div>
         </div>
 
-        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
-          {[
-            { id: 'centers', name: 'Study Centers', icon: Building2 },
-            { id: 'students', name: 'Students', icon: Users }
-          ].map(tab => {
-            const count = tab.id === 'centers' 
-              ? Number(centerStats.proposed) + Number(centerStats.approved) + Number(centerStats.rejected)
-              : Number(studentStats.pending) + Number(studentStats.ops) + Number(studentStats.finance) + Number(studentStats.enrolled);
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as 'centers' | 'students');
-                  setSearchParams({ tab: tab.id });
-                }}
-                className={`
-                  flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
-                  ${activeTab === tab.id 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
-                `}
-              >
-                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
-                {tab.name}
-                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
-                  {count || 0}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      </div>
+
+      <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
+        {[
+          { id: 'centers', name: 'Study Centers', icon: Building2 },
+          { id: 'students', name: 'Students', icon: Users }
+        ].map(tab => {
+          const count = tab.id === 'centers' 
+            ? Number(centerStats.proposed) + Number(centerStats.approved) + Number(centerStats.rejected)
+            : Number(studentStats.pending) + Number(studentStats.ops) + Number(studentStats.finance) + Number(studentStats.enrolled);
+          
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as 'centers' | 'students');
+                setSearchParams({ tab: tab.id });
+              }}
+              className={`
+                flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
+                ${activeTab === tab.id 
+                  ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
+              `}
+            >
+              <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+              {tab.name}
+              <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                {count || 0}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
-        <div className="h-96 flex items-center justify-center bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+        <div className="h-96 flex items-center justify-center bg-white rounded-3xl border border-slate-100 shadow-sm">
            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-6">
           {/* Main Stage Timeline */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-indigo-900/5 relative overflow-hidden">
+          <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-indigo-900/5 relative overflow-hidden">
              <div className="flex items-center justify-between mb-12 relative z-10">
                 <div className="flex items-center gap-4">
                    <div className={`w-12 h-12 rounded-xl ${activeTab === 'centers' ? 'bg-slate-900' : 'bg-indigo-600'} flex items-center justify-center text-white shadow-lg shadow-indigo-600/10`}>
@@ -278,7 +278,7 @@ export default function OnboardingPulse() {
                 </div>
              </div>
 
-             <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="cursor-pointer">
                   {activeTab === 'students' ? (
                     <DataTable 

@@ -174,30 +174,35 @@ export default function Leaves() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Team Leave Requests</h1>
-          <p className="text-slate-500">Provide Step-1 structural approval for your team members' absence requests</p>
+    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+             <span className="font-black text-xl">L</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Team leave status</h1>
+            <p className="text-slate-500 font-medium text-sm">Provide Step-1 structural approval for your team members' absence requests</p>
+          </div>
         </div>
         
         <button 
           onClick={generateTestLeave}
-          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-sm font-medium transition-colors border border-slate-200"
+          className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200"
         >
           Inject Test Leave
         </button>
       </div>
 
-      <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
+      <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/60 w-fit">
         {(['requested', 'pending', 'approved', 'rejected'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${
+            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
               activeTab === tab
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
             }`}
           >
             {tab}
@@ -205,7 +210,7 @@ export default function Leaves() {
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
+      <div className="flex-1 min-h-[500px] bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
         <DataTable 
           columns={columns} 
           data={filteredLeaves} 

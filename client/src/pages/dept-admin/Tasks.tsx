@@ -187,22 +187,27 @@ export default function Tasks() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Task Management</h1>
-          <p className="text-slate-500">Assign, monitor, and update the status of your team's ongoing deliverables</p>
+    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+             <span className="font-black text-xl">T</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Task management</h1>
+            <p className="text-slate-500 font-medium text-sm">Assign, monitor, and update the status of your team's ongoing deliverables</p>
+          </div>
         </div>
         <button 
           onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+          className="flex items-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-black uppercase tracking-widest text-[10px] whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
-          <span>New Task</span>
+          <span>New Task Assignment</span>
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
+      <div className="flex-1 min-h-[500px] bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
         <DataTable 
           columns={columns} 
           data={tasks} 

@@ -310,18 +310,20 @@ export default function Tasks() {
   const filteredTasks = activeTab === 'received' ? receivedTasks : issuedTasks;
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ClipboardList className="w-5 h-5 text-blue-600" />
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Task Management</h1>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ClipboardList className="w-6 h-6" />
           </div>
-          <p className="text-slate-500 text-sm font-medium">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Task management</h1>
+            <p className="text-slate-500 font-medium text-sm">
             {activeTab === 'received' 
               ? 'Institutional directives and priority tasks assigned to you by senior management.' 
               : 'Assign, monitor, and update the status of your team\'s ongoing deliverables.'}
-          </p>
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">

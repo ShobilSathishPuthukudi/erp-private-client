@@ -91,17 +91,22 @@ export default function PipelineTracking() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-[2000px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Admission Pipeline</h1>
-          <p className="text-slate-500 font-medium tracking-tight">Visualizing institutional student flow across regulatory gateways.</p>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Compass className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Admission pipeline</h1>
+            <p className="text-slate-500 font-medium text-sm">Visualizing institutional student flow across regulatory gateways.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200">
             <select 
                 value={selectedUnit}
                 onChange={(e) => setSelectedUnit(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="bg-slate-50 border-none px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
             >
                 <option value="all">Global Architecture</option>
                 {Object.entries(unitMap).map(([id, name]) => (
@@ -126,11 +131,11 @@ export default function PipelineTracking() {
                  <span className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-black tracking-tighter shadow-lg shadow-slate-100">{count}</span>
               </div>
               
-              <div className="bg-slate-50 rounded-[2.5rem] p-4 min-h-[600px] border border-slate-200/50 space-y-4">
+              <div className="bg-slate-50 rounded-3xl p-4 min-h-[600px] border border-slate-200/50 space-y-4">
                  {isLoading ? (
                     <div className="space-y-4">
                        {[1, 2, 3].map(i => (
-                         <div key={i} className="h-24 w-full bg-white rounded-3xl animate-pulse" />
+                         <div key={i} className="h-24 w-full bg-white rounded-2xl animate-pulse" />
                        ))}
                     </div>
                  ) : stageItems.length > 0 ? (
@@ -142,7 +147,7 @@ export default function PipelineTracking() {
                             <div 
                                 key={i} 
                                 onClick={() => handleDrillDown(item, stage.label)}
-                                className="p-5 bg-white rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all group cursor-pointer border-l-4 border-l-slate-900"
+                                className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all group cursor-pointer border-l-4 border-l-slate-900"
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${cardColor}`}>

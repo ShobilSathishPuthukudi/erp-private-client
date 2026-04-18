@@ -110,9 +110,15 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // 60s poll for REST-based alerts
+    const interval = setInterval(fetchNotifications, 15000); // 15s poll for REST-based alerts
     return () => clearInterval(interval);
   }, [user]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -61,8 +61,8 @@ export function Modal({
 
         <div 
           className={clsx(
-            "relative transform flex flex-col transition-all w-full my-8 max-h-[90vh] text-left",
-            !isTransparent && "rounded-2xl bg-white shadow-2xl",
+            "relative transform flex flex-col transition-all w-full my-8 max-h-[90vh] text-left overflow-hidden",
+            !isTransparent && "rounded-lg bg-white shadow-2xl shadow-slate-900/20",
             maxWidthClasses[maxWidth]
           )}
           style={{ maxWidth: maxWidth === 'full' ? '95vw' : undefined }}

@@ -166,7 +166,7 @@ export default function MarksEntry() {
   if (isLoading) return <div className="p-8 animate-pulse text-slate-400 font-black uppercase tracking-widest text-center">Decrypting Roster...</div>;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
+    <div className="p-2 space-y-6">
       {/* Header HUD */}
       <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl shadow-slate-900/40 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">

@@ -50,16 +50,16 @@ export default function HRBroadcasts() {
       : 'bg-blue-50 text-blue-700 border-blue-200';
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-              <Bell className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">HR Broadcasts</h1>
+    <div className="p-2 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Bell className="w-6 h-6" />
           </div>
-          <p className="text-slate-500 font-medium">Review institutional HR notices relevant to Operations governance.</p>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">HR broadcasts</h1>
+            <p className="text-slate-500 font-medium text-sm">Review institutional HR notices relevant to Operations governance.</p>
+          </div>
         </div>
       </div>
 

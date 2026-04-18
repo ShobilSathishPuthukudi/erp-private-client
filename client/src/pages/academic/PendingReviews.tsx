@@ -220,21 +220,20 @@ export default function PendingReviews() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Student Status</h1>
-              <p className="text-slate-500 font-medium text-sm">Institutional Assessment: Verify academic credentials before financial activation.</p>
-            </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Student status</h1>
+            <p className="text-slate-500 font-medium text-sm">Institutional Assessment: Verify academic credentials before financial activation.</p>
           </div>
         </div>
+      </div>
 
-        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
+      <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
            {[
              { id: 'pending', name: 'Pending', icon: Clock },
              { id: 'finance', name: 'Finance Pending', icon: Briefcase },
@@ -262,9 +261,8 @@ export default function PendingReviews() {
              </button>
            ))}
         </div>
-      </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
         <DataTable
           columns={columns}
           data={students}

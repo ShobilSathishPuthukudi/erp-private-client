@@ -176,25 +176,30 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-4 min-h-screen">
       {/* Header Section */}
-      <div className="flex justify-between items-start shrink-0">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            {title}
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] uppercase font-bold rounded-md">Live Ledger</span>
-            {readOnly && (
-               <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] uppercase font-bold rounded-md">Oversight Mode</span>
-            )}
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">{subtitle}</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <GraduationCap className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase flex items-center gap-2">
+              {title}
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[9px] uppercase font-bold rounded-md">Live Ledger</span>
+              {readOnly && (
+                 <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] uppercase font-bold rounded-md">Oversight Mode</span>
+              )}
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">{subtitle}</p>
+          </div>
         </div>
       </div>
 
       {/* Configuration Hub */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 relative">
         {isLoading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-2xl">
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-3xl">
                 <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
             </div>
         )}
@@ -205,7 +210,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             <GraduationCap className="w-3 h-3" /> Select Program framework
           </label>
           <select 
-            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-slate-900/5 transition-all"
             value={selectedProgram || ''}
             onChange={(e) => {
                 setSelectedProgram(parseInt(e.target.value));
@@ -227,7 +232,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             <Calendar className="w-3 h-3" /> Admission batch
           </label>
           <select 
-            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-slate-900/5 transition-all disabled:opacity-50"
             value={selectedSession || ''}
             disabled={!selectedProgram}
             onChange={(e) => setSelectedSession(parseInt(e.target.value))}
@@ -243,7 +248,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             <BookOpen className="w-3 h-3" /> Subject context
           </label>
           <select 
-            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-slate-900/5 transition-all disabled:opacity-50"
             value={selectedSubject}
             disabled={!selectedProgram}
             onChange={(e) => setSelectedSubject(e.target.value)}
@@ -255,7 +260,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
       </div>
 
       {/* Grading Workbook */}
-      <div className="flex-1 min-h-0 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-[500px] bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 flex flex-col overflow-hidden">
         {roster.length > 0 ? (
           <>
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

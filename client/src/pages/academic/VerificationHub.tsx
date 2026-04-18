@@ -78,30 +78,21 @@ export default function VerificationHub() {
   };
 
   return (
-    <div className="space-y-10 max-w-[1600px] mx-auto p-4 lg:p-8">
-      {/* Premium Header */}
-      <div className="bg-slate-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
-        <div className="relative z-10 max-w-3xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-xl border border-white/10">
-                <ShieldCheck className="w-6 h-6 text-indigo-400" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300">Governance Command Center</span>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-none">
-            Onboarding <span className="text-indigo-400 font-outline-2">Hub</span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10 max-w-2xl">
-            Unified monitoring for institutional onboarding. Track study center audits and student enrollment statuses across the 4x4 hierarchy.
-          </p>
-          <div className="flex flex-wrap gap-4">
-               <button onClick={fetchStats} className="bg-white/10 hover:bg-white text-white hover:text-slate-900 px-8 py-4 rounded-2xl font-black text-sm flex items-center gap-3 transition-all duration-300 border border-white/10 hover:-translate-y-1 hover:shadow-xl hover:shadow-white/20 active:scale-95 group">
-                  <TrendingUp className="w-4 h-4 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
-                  Refresh Telemetry
-               </button>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding Hub</h1>
+            <p className="text-slate-500 font-medium text-sm">Unified monitoring for institutional onboarding and center audits.</p>
           </div>
         </div>
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
+        <button onClick={fetchStats} className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]">
+            <TrendingUp className="w-4 h-4" />
+            Refresh Telemetry
+        </button>
       </div>
 
       {loading ? (
@@ -110,7 +101,7 @@ export default function VerificationHub() {
         </div>
       ) : (
         <>
-          <div className="space-y-20">
+          <div className="space-y-10">
             {/* 1. Center Onboarding Section (Primary) */}
             <div className="space-y-8">
               <div className="flex items-center justify-between px-2">

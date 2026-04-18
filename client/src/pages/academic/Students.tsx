@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
+import { Users } from 'lucide-react';
 
 interface Student {
   id: number;
@@ -75,24 +76,30 @@ export default function Students() {
     },
     { accessorKey: 'feeStatus', header: 'Finance', cell: ({ row }) => <span className="uppercase text-[10px] text-slate-500 font-bold">{row.original.feeStatus}</span> }
   ];
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">Student Review Console</h1>
-          <p className="text-slate-500 mt-1">Read-only global registry. Modifications disabled for organizational visibility.</p>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Student status</h1>
+            <p className="text-slate-500 font-medium text-sm">Read-only global registry. Modifications disabled for organizational visibility.</p>
+          </div>
         </div>
       </div>
 
-      <DataTable 
-        columns={columns} 
-        data={students} 
-        isLoading={isLoading} 
-        searchKey="name" 
-        searchPlaceholder="Locate by student legal string..." 
-        exportFileName="Student_Registry_RO"
-      />
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+        <DataTable 
+          columns={columns} 
+          data={students} 
+          isLoading={isLoading} 
+          searchKey="name" 
+          searchPlaceholder="Locate by student legal string..." 
+          exportFileName="Student_Registry_RO"
+        />
+      </div>
     </div>
   );
 }

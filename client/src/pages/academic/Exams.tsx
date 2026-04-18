@@ -171,7 +171,7 @@ export default function Exams() {
   ].filter(c => c.id !== 'actions' || !isReadOnly);
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
+    <div className="p-2 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">

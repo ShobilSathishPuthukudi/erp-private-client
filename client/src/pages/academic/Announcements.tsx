@@ -92,16 +92,21 @@ export default function CenterAnnouncements() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Center Broadcasting</h1>
-           <p className="text-slate-500 text-sm font-medium">Issue targeted directives directly to Study Center dashboards.</p>
+    <div className="p-2 space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Megaphone className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Center broadcasting</h1>
+            <p className="text-slate-500 font-medium text-sm">Issue targeted directives directly to Study Center dashboards.</p>
+          </div>
         </div>
         {!isLoading && announcements.length > 0 && (
           <button 
              onClick={() => setIsModalOpen(true)}
-             className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]"
+             className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 whitespace-nowrap"
           >
              <Megaphone className="w-4 h-4" />
              New Broadcast Directive

@@ -99,23 +99,25 @@ export default function ResubmissionLogs() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-3">
-            <RotateCw className="w-8 h-8 text-rose-500" />
-            Resubmission Hub
-          </h1>
-          <p className="text-slate-500 font-medium">Tracking iterative application cycles and institutional feedback history.</p>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <RotateCw className="w-6 h-6 text-rose-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Resubmission hub</h1>
+            <p className="text-slate-500 font-medium text-sm">Tracking iterative application cycles and institutional feedback history.</p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-rose-100 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-3xl border border-rose-100 overflow-hidden shadow-sm">
         <DataTable columns={columns} data={students} isLoading={isLoading} />
       </div>
 
       {/* Explanatory Information Card */}
-      <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-8 flex flex-col md:flex-row items-start gap-6 mt-6">
+      <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 flex flex-col md:flex-row items-start gap-6">
         <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
           <Info className="w-6 h-6" />
         </div>

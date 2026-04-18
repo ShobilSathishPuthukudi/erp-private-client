@@ -161,35 +161,28 @@ export default function CredentialRequests() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto auto-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50 gap-6 relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
-              <ShieldAlert className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                Credential <span className="text-indigo-600">Reveal</span> Protocols
-              </h1>
-              <p className="text-slate-500 font-medium tracking-tight">Systematic reveal requests for study center administrative access keys.</p>
-            </div>
+    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto auto-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Credential reveal protocols</h1>
+            <p className="text-slate-500 font-medium text-sm">Securely request and audit credential reveals.</p>
           </div>
         </div>
         <button 
           onClick={() => { reset(); setIsModalOpen(true); }}
-          className="relative z-10 flex items-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-black uppercase tracking-widest text-xs"
+          className="relative z-10 flex items-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-black uppercase tracking-widest text-[10px]"
         >
-          <Key className="w-5 h-5 text-indigo-400" />
+          <Key className="w-4 h-4 text-indigo-400" />
           <span>Initialize Reveal Request</span>
         </button>
-        
-        {/* Background circuit pattern placeholder */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       </div>
 
       {revealedCreds && (
-        <div className="bg-indigo-900 text-white p-8 rounded-[2.5rem] border-4 border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-900/40 relative overflow-hidden animate-bounce-subtle">
+        <div className="bg-indigo-900 text-white p-6 rounded-3xl border-4 border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-900/40 relative overflow-hidden animate-bounce-subtle">
            <div className="flex items-center gap-6">
               <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md">
                  <Key className="w-8 h-8 text-indigo-300" />
@@ -219,12 +212,12 @@ export default function CredentialRequests() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
            <DataTable columns={columns} data={requests} isLoading={isLoading} searchKey="center.name" searchPlaceholder="Locate request by center..." />
         </div>
         
         <div className="space-y-6">
-           <div className="bg-slate-900 text-white p-8 rounded-[2.5rem] shadow-2xl space-y-4">
+           <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl space-y-4">
               <h3 className="text-lg font-black uppercase tracking-widest border-b border-white/10 pb-4 flex items-center gap-3">
                  <FileText className="w-5 h-5 text-indigo-400" />
                  Audit Protocol
@@ -245,7 +238,7 @@ export default function CredentialRequests() {
               </ul>
            </div>
            
-           <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-[2.5rem] space-y-4">
+           <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-3xl space-y-4">
               <h3 className="text-indigo-900 font-black uppercase tracking-widest text-sm">Forensic Stats</h3>
               <div className="grid grid-cols-2 gap-4">
                  <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm">

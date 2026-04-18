@@ -49,10 +49,10 @@ export default function SubDeptOverview() {
         id: item.id,
         name: item.name || `Unit ${item.id}`,
         totalStudents: item.studentCount || 0,
-        activeBatches: item.batchCount || 0, 
+        activeBatches: item.batchCount || 0,
         centersCount: item.centerCount || 0,
-        approvalRate: '100%', 
-        pendingReviews: 0
+        approvalRate: item.approvalRate ?? '0%',
+        pendingReviews: item.pendingReviews ?? 0
       }));
 
       setData(displayData);
@@ -133,14 +133,16 @@ export default function SubDeptOverview() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-3">
-            <Layers className="w-8 h-8 text-indigo-600" />
-            Sub-Department Telemetry
-          </h1>
-          <p className="text-slate-500 font-medium">Institutional monitoring hub for departmental execution layers.</p>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Layers className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase">Sub-Department Telemetry</h1>
+            <p className="text-slate-500 font-medium text-sm">Institutional monitoring hub for departmental execution layers.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200">
            <div className="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2">
@@ -153,18 +155,18 @@ export default function SubDeptOverview() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div 
           onClick={() => openDrillDown('totalStudents', 'Total Unit Students')}
-          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
         >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Unit Students</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalStudents || 0}</h3>
           <p className="text-xs font-bold text-slate-500 mt-2 flex items-center gap-1">
             <TrendingUp className="w-3 h-3 text-emerald-500" />
-            Across 4 Jurisdictions
+            Across {data.length} {data.length === 1 ? 'Jurisdiction' : 'Jurisdictions'}
           </p>
         </div>
         <div 
           onClick={() => openDrillDown('students', 'Global Approval History')}
-          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
         >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Global Approval Rate</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.approvalRate || 0}%</h3>
@@ -172,7 +174,7 @@ export default function SubDeptOverview() {
         </div>
         <div 
           onClick={() => openDrillDown('batches', 'Active Batch Matrix')}
-          className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
         >
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Active Batches</p>
           <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalBatches || 0}</h3>
@@ -180,7 +182,7 @@ export default function SubDeptOverview() {
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Departmental Matrix</h2>
             <div className="relative">
@@ -198,7 +200,7 @@ export default function SubDeptOverview() {
         />
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-[2rem] p-8 flex gap-6 items-start">
+      <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex gap-6 items-start">
          <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white flex-shrink-0">
             <ShieldCheck className="w-6 h-6" />
          </div>

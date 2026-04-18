@@ -175,17 +175,21 @@ export default function SyllabusManager() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Syllabus Management</h1>
-          <p className="text-slate-500 font-medium">Engineer and ratify academic course structures and modules.</p>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Syllabus management</h1>
+            <p className="text-slate-500 font-medium text-sm">Engineer and ratify academic course structures and modules.</p>
+          </div>
         </div>
-
       </div>
 
-      <div className="w-full bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-         <DataTable columns={columns} data={programs} isLoading={isLoading} />
+      <div className="w-full bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+        <DataTable columns={columns} data={programs} isLoading={isLoading} searchKey="shortName" searchPlaceholder="Search academic programs..." />
       </div>
 
     <Modal
@@ -336,7 +340,7 @@ export default function SyllabusManager() {
                 </button>
             </div>
         </div>
-    </Modal>\n
+    </Modal>
     <Modal
         isOpen={isSubjectModalOpen}
         onClose={() => setIsSubjectModalOpen(false)}
@@ -369,7 +373,7 @@ export default function SyllabusManager() {
                     />
                 </div>
             </div>
-            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3\">
+            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
                 <button 
                   onClick={() => setIsSubjectModalOpen(false)}
                   className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"

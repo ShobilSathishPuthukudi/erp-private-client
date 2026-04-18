@@ -849,35 +849,73 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
       const employee = await User.findOne({ where: { uid: req.user.uid } });
       const employeeName = employee?.name || req.user.uid;
 
-      // 1. Notify Department Head (Only if they didn't already skip Step-1)
-      if (initialStatus === 'pending admin') {
-        const dept = await Department.findByPk(employee?.deptId);
-        
-        if (dept?.adminId) {
-          const targetAdmin = await User.findByPk(dept.adminId);
-          const role = targetAdmin?.role?.toLowerCase()?.trim() || '';
-          let adminLink = '/dashboard/tasks'; 
-          
-          if (role.includes('hr')) adminLink = '/dashboard/hr/dept-leave-status';
-          else if (role.includes('sales')) adminLink = '/dashboard/sales/leave-status';
-          else if (role.includes('finance')) adminLink = '/dashboard/finance/leave-status';
-          else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leave-status';
-          else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leave-status';
-          else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leave-status';
-          else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leave-status';
-          else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leave-status';
+      const resolveLeaveLinkForRole = (role) => {
+        const r = (role || '').toLowerCase().trim();
+        if (r.includes('open school') || r.includes('openschool')) return '/dashboard/subdept/openschool/leave-status';
+        if (r.includes('online')) return '/dashboard/subdept/online/leave-status';
+        if (r.includes('skill')) return '/dashboard/subdept/skill/leave-status';
+        if (r.includes('bvoc')) return '/dashboard/subdept/bvoc/leave-status';
+        if (r.includes('hr')) return '/dashboard/hr/dept-leave-status';
+        if (r.includes('sales')) return '/dashboard/sales/leave-status';
+        if (r.includes('finance')) return '/dashboard/finance/leave-status';
+        if (r.includes('operations') || r.includes('academic')) return '/dashboard/operations/leave-status';
+        return '/dashboard/tasks';
+      };
 
-          await createNotification(req.io, {
-            targetUid: dept.adminId,
-            title: 'New Team Leave Request',
-            message: `${employeeName} is requesting ${type} (${fromDate} to ${toDate}).`,
-            type: 'info',
-            link: adminLink
+      const notifyAdminUid = async (uid) => {
+        const target = await User.findByPk(uid);
+        if (!target || target.status !== 'active') return;
+        await createNotification(req.io, {
+          targetUid: uid,
+          title: 'New Team Leave Request',
+          message: `${employeeName} is requesting ${type} (${fromDate} to ${toDate}).`,
+          type: 'info',
+          link: resolveLeaveLinkForRole(target.role)
+        });
+      };
+
+      if (initialStatus === 'pending admin') {
+        // Unit-level admin (BVoc/Online/Skill/Open School) whose Department row
+        // matches the employee's subDepartment takes precedence over the parent
+        // dept's admin — they are the actual Step-1 reviewer.
+        const recipientUids = new Set();
+
+        if (employee?.subDepartment) {
+          const aliases = getSubDepartmentNameAliases(employee.subDepartment);
+          if (aliases?.length) {
+            const unitDept = await Department.findOne({
+              where: { name: { [Op.in]: aliases } },
+              attributes: ['adminId']
+            });
+            if (unitDept?.adminId) recipientUids.add(unitDept.adminId);
+          }
+        }
+
+        if (!recipientUids.size && employee?.deptId) {
+          const dept = await Department.findByPk(employee.deptId, { attributes: ['adminId'] });
+          if (dept?.adminId) recipientUids.add(dept.adminId);
+        }
+
+        if (employee?.reportingManagerUid) {
+          recipientUids.add(employee.reportingManagerUid);
+        }
+
+        // Fallback: no admin/manager resolvable — ping all active HR Admins so
+        // the request isn't silently orphaned when a dept admin slot is empty.
+        if (!recipientUids.size) {
+          console.warn(`[LEAVE-NOTIFY] No dept admin/manager resolvable for employee ${req.user.uid} (deptId=${employee?.deptId}, subDept=${employee?.subDepartment}). Falling back to HR Admins.`);
+          const hrAdmins = await User.findAll({
+            where: { role: 'HR Admin', status: 'active' },
+            attributes: ['uid']
           });
+          hrAdmins.forEach((hr) => recipientUids.add(hr.uid));
+        }
+
+        for (const uid of recipientUids) {
+          await notifyAdminUid(uid);
         }
       }
 
-      // 2. Notify Employee (If it's an auto-forward case)
       if (initialStatus === 'pending hr') {
         await createNotification(req.io, {
           targetUid: req.user.uid,

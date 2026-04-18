@@ -12,6 +12,13 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Building,
+  Building2,
+  MessageSquare,
+  CheckCircle2,
+  Eye,
+  ShieldCheck,
+  Users,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Modal } from '@/components/shared/Modal';
@@ -96,7 +103,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-type ConfirmState = { record: LeaveRecord; action: 'approve' | 'reject' } | null;
+type ConfirmState = { record: LeaveRecord; action: 'approve' | 'reject' | 'view' } | null;
 
 export default function TeamLeaveStatus() {
   const [records, setRecords] = useState<LeaveRecord[]>([]);
@@ -217,12 +224,12 @@ export default function TeamLeaveStatus() {
     });
   }, [activeTab, query, records]);
 
-  const tabs: { id: LeaveTab; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'requested', label: 'Requested', count: counts.requested },
-    { id: 'pending', label: 'Pending HR', count: counts.pending },
-    { id: 'approved', label: 'Approved', count: counts.approved },
-    { id: 'rejected', label: 'Rejected', count: counts.rejected },
+  const tabs: { id: LeaveTab; label: string; count: number; icon: any }[] = [
+    { id: 'all', label: 'All', count: counts.all, icon: CalendarDays },
+    { id: 'requested', label: 'Requested', count: counts.requested, icon: AlertCircle },
+    { id: 'pending', label: 'Pending HR', count: counts.pending, icon: Clock },
+    { id: 'approved', label: 'Approved', count: counts.approved, icon: CheckCircle2 },
+    { id: 'rejected', label: 'Rejected', count: counts.rejected, icon: XCircle },
   ];
 
   const canAct = (status: string) =>
@@ -231,73 +238,48 @@ export default function TeamLeaveStatus() {
   const approveLabel = isHrView ? 'Final approve' : 'Verify & approve';
 
   return (
-    <div className="space-y-5">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
-            <CalendarDays className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-              Team Leave Status
-            </h1>
-            <p className="mt-0.5 text-sm text-slate-500">
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+              <CalendarDays className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Team leave status</h1>
+              <p className="text-slate-500 font-medium text-sm">
               {isHrView
-                ? 'HR review board for department-approved leave requests.'
-                : 'Leave requests for your team, across every stage.'}
-            </p>
+                ? 'Review finance-bound leave verification and final administrative decisions.'
+                : 'Monitor team leave requests and execute departmental approvals.'}
+              </p>
+            </div>
           </div>
         </div>
 
-        <button
-          onClick={fetchRecords}
-          disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCcw className={clsx('h-4 w-4', isLoading && 'animate-spin')} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Tabs + search */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-200 bg-white p-1">
+        {/* Tabs */}
+        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={clsx(
-                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition',
-                  isActive
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100',
-                )}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`
+                  flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
+                  ${isActive 
+                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
+                `}
               >
+                <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
                 {tab.label}
-                <span
-                  className={clsx(
-                    'rounded-full px-1.5 py-0.5 text-[10px] tabular-nums',
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600',
-                  )}
-                >
+                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
                   {tab.count}
                 </span>
               </button>
             );
           })}
-        </div>
-
-        <div className="relative lg:max-w-sm lg:flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by employee, type, status…"
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-          />
         </div>
       </div>
 
@@ -305,20 +287,50 @@ export default function TeamLeaveStatus() {
       {!isHrView && requestedCount > 0 && activeTab !== 'requested' && (
         <button
           onClick={() => setActiveTab('requested')}
-          className="flex w-full items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-sm text-amber-800 transition hover:bg-amber-100"
+          className="flex w-full items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-4 text-left text-sm text-amber-800 transition hover:bg-amber-100 shadow-sm"
         >
-          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-          <span className="flex-1">
-            <span className="font-medium">{requestedCount}</span>{' '}
-            {requestedCount === 1 ? 'request awaits' : 'requests await'} your verification.
-          </span>
-          <span className="text-xs font-medium text-amber-700">Review →</span>
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 leading-none mb-1">Attention Required</p>
+            <p className="text-sm font-bold text-amber-900">
+              {requestedCount} {requestedCount === 1 ? 'request awaits' : 'requests await'} your verification.
+            </p>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-white px-3 py-1.5 rounded-lg border border-amber-200">Review Now →</span>
         </button>
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        {isLoading ? (
+      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
+        {/* Card Header with Spacious Search */}
+        <div className="px-6 py-4 flex items-center justify-between gap-4">
+          <div className="relative w-full md:max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by employee identity, leave type or status..."
+              className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-400 sm:text-sm transition-all font-medium"
+            />
+          </div>
+          
+          <button
+            onClick={fetchRecords}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+          >
+            <RefreshCcw className={clsx('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+            Refresh Data
+          </button>
+        </div>
+
+        <div className="border-t border-slate-100 flex-1 overflow-hidden">
+          {isLoading ? (
           <div className="divide-y divide-slate-100">
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={index} className="h-14 animate-pulse bg-slate-50" />
@@ -341,25 +353,19 @@ export default function TeamLeaveStatus() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/60">
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Employee
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 hidden md:table-cell">
-                    Department
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Type
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Duration
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 hidden xl:table-cell">
-                    Reason
-                  </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Actions
                   </th>
                 </tr>
@@ -385,9 +391,6 @@ export default function TeamLeaveStatus() {
                             </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-5 py-3 text-slate-600 hidden md:table-cell">
-                        {record.employee?.department?.name || '—'}
                       </td>
                       <td className="px-5 py-3">
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
@@ -422,36 +425,33 @@ export default function TeamLeaveStatus() {
                           {getStatusLabel(record.status)}
                         </span>
                       </td>
-                      <td className="px-5 py-3 hidden xl:table-cell">
-                        <p
-                          className="line-clamp-2 max-w-xs text-xs text-slate-600"
-                          title={record.reason || ''}
-                        >
-                          {record.reason || <span className="text-slate-400">—</span>}
-                        </p>
-                      </td>
                       <td className="px-5 py-3 text-right">
                         {rowCanAct ? (
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               onClick={() => setConfirmState({ record, action: 'reject' })}
                               disabled={busy}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition disabled:opacity-50"
+                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 disabled:opacity-50"
                             >
-                              <XCircle className="h-3.5 w-3.5" />
                               Reject
                             </button>
                             <button
                               onClick={() => setConfirmState({ record, action: 'approve' })}
                               disabled={busy}
-                              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 transition disabled:opacity-60"
+                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-emerald-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95 disabled:opacity-60 flex items-center gap-2"
                             >
-                              <CheckCircle className="h-3.5 w-3.5" />
+                              {activeTab === 'requested' || !isHrView ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                               {approveLabel}
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <button
+                            onClick={() => setConfirmState({ record, action: 'view' })}
+                            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 transition-all active:scale-95 flex items-center gap-2 ml-auto"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -462,12 +462,13 @@ export default function TeamLeaveStatus() {
           </div>
         )}
       </div>
+    </div>
 
       {/* Confirm modal */}
       <Modal
         isOpen={!!confirmState}
         onClose={() => (actingId ? null : setConfirmState(null))}
-        title={confirmState?.action === 'approve' ? 'Confirm approval' : 'Confirm rejection'}
+        title={confirmState?.action === 'view' ? 'Leave Request Details' : confirmState?.action === 'approve' ? 'Confirm approval' : 'Confirm rejection'}
         maxWidth="md"
       >
         {confirmState && (
@@ -480,31 +481,84 @@ export default function TeamLeaveStatus() {
                 <p className="truncate text-sm font-medium text-slate-900">
                   {confirmState.record.employee?.name || confirmState.record.employeeId}
                 </p>
-                <p className="truncate text-xs text-slate-500">
-                  {confirmState.record.type} · {formatDate(confirmState.record.fromDate)} →{' '}
-                  {formatDate(confirmState.record.toDate)}
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {confirmState.record.employeeId}
+                  </span>
+                  <span className="text-slate-200">|</span>
+                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+                    {confirmState.record.type}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="flex items-center gap-2 mb-1.5 grayscale opacity-50">
+                  <Building className="w-3 h-3 text-slate-900" />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Org. Dept</span>
+                </div>
+                <p className="text-xs font-bold text-slate-700 truncate">
+                  {confirmState.record.employee?.department?.name || 'Institutional Staff'}
+                </p>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="flex items-center gap-2 mb-1.5 grayscale opacity-50">
+                  <Clock className="w-3 h-3 text-slate-900" />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Duration</span>
+                </div>
+                <p className="text-xs font-bold text-slate-700">
+                  {getDurationDays(confirmState.record.fromDate, confirmState.record.toDate)} Days (EST)
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {confirmState.action === 'approve'
-                ? isHrView
-                  ? 'This will finalize the approval. The employee and department head will be notified.'
-                  : 'This will verify the request and forward it to HR for final approval.'
-                : isHrView
-                  ? 'This will reject the request at the HR stage. The employee will be notified.'
-                  : 'This will reject the request and notify the employee.'}
-            </p>
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 grayscale opacity-50">
+                <MessageSquare className="w-3.5 h-3.5 text-slate-900" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Detailed Reason</span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium italic">
+                "{confirmState.record.reason || 'No specific explanation provided by the applicant.'}"
+              </p>
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                  {formatDate(confirmState.record.fromDate)} — {formatDate(confirmState.record.toDate)}
+                </span>
+              </div>
+            </div>
+
+            {confirmState.action !== 'view' && (
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {confirmState.action === 'approve'
+                  ? isHrView
+                    ? 'This will finalize the approval. The employee and department head will be notified.'
+                    : 'This will verify the request and forward it to HR for final approval.'
+                  : isHrView
+                    ? 'This will reject the request at the HR stage. The employee will be notified.'
+                    : 'This will reject the request and notify the employee.'}
+              </p>
+            )}
 
             <div className="flex justify-end gap-2 pt-1">
-              <button
-                onClick={() => setConfirmState(null)}
-                disabled={!!actingId}
-                className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
+              {confirmState.action === 'view' ? (
+                <button
+                  onClick={() => setConfirmState(null)}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Close
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setConfirmState(null)}
+                    disabled={!!actingId}
+                    className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
               <button
                 onClick={confirmAction}
                 disabled={!!actingId}
@@ -526,6 +580,8 @@ export default function TeamLeaveStatus() {
                     ? approveLabel
                     : 'Reject'}
               </button>
+              </>
+              )}
             </div>
           </div>
         )}

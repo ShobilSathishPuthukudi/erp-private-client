@@ -84,7 +84,7 @@ function DashboardLanding() {
   ];
 
   return (
-    <div className="space-y-10 max-w-[1600px] mx-auto p-4 lg:p-8">
+    <div className="p-2 space-y-10">
       {/* Header Section */}
       <div className="bg-slate-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
         <div className="relative z-10 max-w-3xl">

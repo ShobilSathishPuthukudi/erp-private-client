@@ -88,7 +88,7 @@ export default function Announcements() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
       <PageHeader 
         title="Global Announcements"
         description="Push real-time company-wide broadcasts and urgent notices."

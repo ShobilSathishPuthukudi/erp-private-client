@@ -139,6 +139,14 @@ export default function Notifications() {
     fetchNotifications();
   }, [user]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   const handleMarkRead = async (n: any) => {
     try {
       if (n.isAnnouncement) {

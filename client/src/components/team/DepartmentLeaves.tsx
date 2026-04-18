@@ -227,7 +227,7 @@ export default function DepartmentLeaves() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>

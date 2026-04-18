@@ -22,6 +22,7 @@ const LEGACY_SUB_DEPARTMENT_IDS = {
 };
 
 const CANONICAL_SUB_DEPARTMENTS = ['Open School', 'Online', 'Skill', 'BVoc'];
+const RESTRICTED_UNIT_ROLES = ['open school admin', 'online admin', 'skill admin', 'bvoc admin'];
 
 const getLegacySubDeptId = (user) => {
   if (!user) return null;
@@ -96,6 +97,7 @@ const resolveSubDepartmentScopeIds = async (identifier) => {
 router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { status } = req.query; // pending | approved | rejected
+    const normalizedRole = normalizeInstitutionRoleName(req.user.role || '').toLowerCase().trim();
     
     let queryAuditStatus = status || 'pending';
     if (status === 'finance_pending') {
@@ -109,9 +111,9 @@ router.get('/centers/audit-list', verifyToken, isOpsOrAdmin, async (req, res) =>
       auditStatus: queryAuditStatus
     };
     
-    // Isolation: Sub-Dept Admin only sees centers mapped to their unit or seeking affiliation
+    // Isolation: only specialized unit admins should be constrained to their sub-department scope.
     const scopeIds = getSubDeptScopeIds(req.user);
-    if (scopeIds.length > 0) {
+    if (RESTRICTED_UNIT_ROLES.includes(normalizedRole) && scopeIds.length > 0) {
       const sqlScope = scopeIds.join(',');
       // 1. Existing mappings (Approved centers already operational in the unit)
       const mappedCenterIds = await CenterProgram.findAll({
@@ -512,7 +514,9 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
       totalActiveCenters,
       totalUniversities,
       activePrograms,
+      totalActivePrograms: activePrograms,
       approvalRate: totalStudents > 0 ? (((totalStudents - rejections) / totalStudents) * 100).toFixed(1) : 0,
+      rejectionRate: totalStudents > 0 ? ((rejections / totalStudents) * 100).toFixed(1) : 0,
       statusDistribution: statusData.map(s => ({ name: s.status, value: parseInt(s.count) }))
     };
 
@@ -523,10 +527,10 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
         const studentWhere = scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : { id: null };
         const subDeptWhere = scopeIds.length > 0 ? { subDeptId: { [Op.in]: scopeIds } } : { id: null };
         
-        const [studentCount, batchCount, centerCount, programCount] = await Promise.all([
+        const [studentCount, batchCount, centerCount, programCount, pendingCount, rejectedCount] = await Promise.all([
           Student.count({ where: studentWhere }),
           AdmissionSession.count({ where: subDeptWhere }),
-          CenterProgram.count({ 
+          CenterProgram.count({
             where: subDeptWhere,
             distinct: true,
             col: 'centerId',
@@ -536,7 +540,9 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
               where: { status: 'active', auditStatus: 'approved' }
             }]
           }),
-          Program.count({ where: subDeptWhere })
+          Program.count({ where: subDeptWhere }),
+          Student.count({ where: { ...studentWhere, status: 'PENDING_REVIEW' } }),
+          Student.count({ where: { ...studentWhere, status: 'REJECTED' } })
         ]);
 
         return {
@@ -545,7 +551,11 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
           studentCount,
           batchCount,
           centerCount,
-          programCount
+          programCount,
+          pendingReviews: pendingCount,
+          approvalRate: studentCount > 0
+            ? `${(((studentCount - rejectedCount) / studentCount) * 100).toFixed(1)}%`
+            : '0%'
         };
       }));
       stats.unitBreakdown = breakdown;

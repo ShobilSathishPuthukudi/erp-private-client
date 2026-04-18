@@ -15,19 +15,23 @@ import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 interface FinanceStats {
   revenue: number;
+  verifiedPaymentCount: number;
   pendingApprovals: number;
   pendingFees: number;
-  riskAlerts: number;
-  recentActions: any[];
+  pendingInvoiceCount: number;
+  dormantCount: number;
+  dormantAmount: number;
 }
 
 export default function FinanceMainDashboard() {
   const [stats, setStats] = useState<FinanceStats>({
     revenue: 0,
+    verifiedPaymentCount: 0,
     pendingApprovals: 0,
     pendingFees: 0,
-    riskAlerts: 0,
-    recentActions: []
+    pendingInvoiceCount: 0,
+    dormantCount: 0,
+    dormantAmount: 0
   });
   const [loading, setLoading] = useState(true);
   const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
@@ -54,17 +58,34 @@ export default function FinanceMainDashboard() {
         const approvals = aRes?.data || [];
         const invoices = fRes?.data || [];
 
-        const revenue = payments.filter((p: any) => p.status === 'verified').reduce((acc: number, p: any) => acc + parseFloat(p.amount || 0), 0);
-        const pendingApprovalsLoad = approvals.length;
-        const pendingFees = invoices.filter((i: any) => i.status === 'issued').reduce((acc: number, i: any) => acc + parseFloat(i.total || 0), 0);
-        const riskAlerts = approvals.filter((s: any) => s.invoice?.status !== 'paid').length;
+        const verifiedPayments = payments.filter((p: any) => p.status === 'verified');
+        const revenue = verifiedPayments.reduce(
+          (acc: number, p: any) => acc + parseFloat(p.amount || 0), 0
+        );
+
+        const issuedInvoices = invoices.filter((i: any) => i.status === 'issued');
+        const pendingFees = issuedInvoices.reduce(
+          (acc: number, i: any) => acc + parseFloat(i.total || 0), 0
+        );
+
+        const now = Date.now();
+        const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+        const dormantInvoices = issuedInvoices.filter((i: any) => {
+          const created = new Date(i.createdAt).getTime();
+          return Number.isFinite(created) && now - created > NINETY_DAYS_MS;
+        });
+        const dormantAmount = dormantInvoices.reduce(
+          (acc: number, i: any) => acc + parseFloat(i.total || 0), 0
+        );
 
         setStats({
           revenue,
-          pendingApprovals: pendingApprovalsLoad,
+          verifiedPaymentCount: verifiedPayments.length,
+          pendingApprovals: approvals.length,
           pendingFees,
-          riskAlerts,
-          recentActions: []
+          pendingInvoiceCount: issuedInvoices.length,
+          dormantCount: dormantInvoices.length,
+          dormantAmount
         });
       } catch (error) {
         console.error('CRITICAL: Failed to load Finance HUD', error);
@@ -98,39 +119,39 @@ export default function FinanceMainDashboard() {
 
       {/* KPI HUD */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <StatCard 
-          title="Total Institutional Revenue" 
-          value={`₹${stats.revenue.toLocaleString()}`} 
-          icon={DollarSign} 
-          color="emerald" 
-          trend="+12% vs last batch"
+        <StatCard
+          title="Total Institutional Revenue"
+          value={`₹${stats.revenue.toLocaleString()}`}
+          icon={DollarSign}
+          color="emerald"
+          trend={`${stats.verifiedPaymentCount} verified payment${stats.verifiedPaymentCount === 1 ? '' : 's'}`}
           onClick={() => openDrillDown('revenue', 'Total Institutional Revenue')}
         />
-        <StatCard 
-          title="Pending Approvals" 
-          value={stats.pendingApprovals.toString()} 
-          icon={Users} 
-          color="blue" 
-          trend="Action Required"
+        <StatCard
+          title="Pending Approvals"
+          value={stats.pendingApprovals.toString()}
+          icon={Users}
+          color="blue"
+          trend={stats.pendingApprovals > 0 ? 'Action Required' : 'All Clear'}
           isAlert={stats.pendingApprovals > 0}
-          onClick={() => openDrillDown('students', 'Pending Academic Approvals')}
+          onClick={() => openDrillDown('students', 'Pending Finance Approvals')}
         />
-        <StatCard 
-          title="Outstanding Receivables" 
-          value={`₹${stats.pendingFees.toLocaleString()}`} 
-          icon={Clock} 
-          color="amber" 
-          trend="Awaiting Settlement"
+        <StatCard
+          title="Outstanding Receivables"
+          value={`₹${stats.pendingFees.toLocaleString()}`}
+          icon={Clock}
+          color="amber"
+          trend={`${stats.pendingInvoiceCount} invoice${stats.pendingInvoiceCount === 1 ? '' : 's'} unpaid`}
           onClick={() => openDrillDown('pendingFees', 'Outstanding Receivables')}
         />
-        <StatCard 
-          title="Risk Exposure Nodes" 
-          value={stats.riskAlerts.toString()} 
-          icon={AlertCircle} 
-          color="rose" 
-          trend="Critical Validation"
-          isAlert={stats.riskAlerts > 0}
-          onClick={() => openDrillDown('risk_alerts', 'Institutional Risk Nodes')}
+        <StatCard
+          title="Dormant Invoices > 90 Days"
+          value={stats.dormantCount.toString()}
+          icon={AlertCircle}
+          color="rose"
+          trend={stats.dormantCount > 0 ? `₹${stats.dormantAmount.toLocaleString()} aged` : 'No aged invoices'}
+          isAlert={stats.dormantCount > 0}
+          onClick={() => openDrillDown('risk_alerts', 'Dormant Invoices')}
         />
       </div>
 
@@ -144,17 +165,19 @@ export default function FinanceMainDashboard() {
                <div>
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Institutional Risk Analysis</h3>
                   <div className="space-y-6">
-                     <RiskItem 
-                        title="Unpaid activations pending" 
-                        count={stats.riskAlerts} 
-                        severity="High" 
-                        description="Students marked as OPS_APPROVED without linked payment confirmation." 
+                     <RiskItem
+                        title="Approvals awaiting finance review"
+                        count={stats.pendingApprovals}
+                        severity="High"
+                        description="Students in FINANCE_PENDING or PAYMENT_VERIFIED status awaiting final ratification."
                      />
-                     <RiskItem 
-                        title="Dormant Invoices > 90 Days" 
-                        count={5} // Placeholder
-                        severity="Critical" 
-                        description="Fee collection delays exceedinstitutional thresholds for 5 center nodes." 
+                     <RiskItem
+                        title="Dormant Invoices > 90 Days"
+                        count={stats.dormantCount}
+                        severity="Critical"
+                        description={stats.dormantCount > 0
+                          ? `₹${stats.dormantAmount.toLocaleString()} in issued invoices have been unpaid for more than 90 days.`
+                          : 'No issued invoices are older than 90 days.'}
                      />
                   </div>
                </div>
