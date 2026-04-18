@@ -151,3 +151,73 @@ NODE_ENV=development
 Sub-departments (BVoc, Online, Skill, Open School) are treated as institutional units under Academic Operations. They have their own portal routes (`/subdept/[role]/portal`) and admin roles, but share the parent department's Academic Operations oversight.
 
 `config/institutionalStructure.js` is the source of truth for sub-department → parent department mappings and role name normalization.
+
+## Default Working Behavior
+Use Caveman skill by default for all non-trivial coding requests:
+- debugging
+- architecture issues
+- refactors
+- state bugs
+- permissions
+- multi-file changes
+
+For simple edits, use normal mode.
+
+## Critical Isolation Rules
+
+Treat each portal as isolated unless explicitly connected by backend contracts.
+
+Never introduce accidental coupling between:
+CEO, Org Admin, HR, Finance, Sales, Academic, Subdept, Student, Employee, Partner Center.
+
+Check for:
+- shared Zustand leaks
+- localStorage collisions
+- React Query cache contamination
+- route guard regressions
+- permission inheritance bugs
+
+## Change Safety Rules
+
+- Read relevant files first.
+- Find root cause before editing.
+- Prefer minimal safe changes.
+- Do not modify unrelated modules.
+- Preserve existing UI consistency.
+- Preserve RBAC behavior.
+
+## Complex Task Output Format
+
+1. Root cause
+2. Safest fix
+3. Files changed
+4. Risks / regressions
+
+## Verification Rule
+
+Do not assume implementation details.
+Inspect relevant files before concluding behavior.
+
+## State Persistence Risks
+
+Check for:
+- persisted auth/session contamination
+- store rehydration edge cases
+- stale localStorage state
+
+## API Contract Rules
+
+- Preserve existing request/response shapes unless explicitly requested.
+
+## Code Consistency Rules
+
+- Reuse established patterns before introducing new abstractions.
+
+## Regression Priority
+
+A working panel must not be broken to fix another panel.
+Prefer scoped fixes over shared refactors.
+
+## UI Rules
+
+Match existing spacing, tables, cards, typography, and component patterns.
