@@ -12,6 +12,7 @@ import SurveyCreator from '../org-admin/SurveyCreator';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
+import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 import EmployeeCards from './EmployeeCards';
 import EmployeeCommunications from './EmployeeCommunications';
 import RemapEmployees from './RemapEmployees';
@@ -239,6 +240,7 @@ export default function HRDashboard() {
       <Route path="dept-team" element={<DepartmentTeam />} />
       <Route path="dept-tasks" element={<DepartmentTasks />} />
       <Route path="dept-leaves" element={<DepartmentLeaves />} />
+      <Route path="dept-leave-status" element={<TeamLeaveStatus />} />
       <Route path="employee-cards" element={<EmployeeCards />} />
       <Route path="employee-communications" element={<EmployeeCommunications />} />
     </Routes>

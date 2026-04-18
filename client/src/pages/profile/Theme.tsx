@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Palette, Check, RotateCcw, Sparkles, Layout, Monitor, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { getNormalizedRole } from '@/lib/roles';
@@ -52,16 +53,68 @@ export default function ThemeSelector() {
   const currentPanelId = activePanel ? panelThemes[activePanel.key] || DEFAULT_THEME_ID : DEFAULT_THEME_ID;
   const currentPageId = activePanel ? pageThemes[activePanel.key] || DEFAULT_THEME_ID : DEFAULT_THEME_ID;
 
-  const handleSelectPanel = (themeId: string) => {
+  const handleSelectPanel = async (themeId: string) => {
     if (!activePanel) return;
     setPanelTheme(activePanel.key, themeId);
-    toast.success(`${activePanel.label} Shell set to ${getPresetById(themeId).name}`);
+    
+    // Server-side persistence
+    try {
+      const nextPanelThemes = { ...panelThemes, [activePanel.key]: themeId };
+      await api.put('/auth/theme-preferences', { 
+        themePreferences: { panelThemes: nextPanelThemes, pageThemes } 
+      });
+      toast.success(`${activePanel.label} Shell set to ${getPresetById(themeId).name}`);
+    } catch (error) {
+      console.error('Failed to persist panel theme:', error);
+      toast.error('Local change applied, but failed to sync with server');
+    }
   };
 
-  const handleSelectPage = (themeId: string) => {
+  const handleSelectPage = async (themeId: string) => {
     if (!activePanel) return;
     setPageTheme(activePanel.key, themeId);
-    toast.success(`${activePanel.label} Workspace set to ${getPresetById(themeId).name}`);
+
+    // Server-side persistence
+    try {
+      const nextPageThemes = { ...pageThemes, [activePanel.key]: themeId };
+      await api.put('/auth/theme-preferences', { 
+        themePreferences: { panelThemes, pageThemes: nextPageThemes } 
+      });
+      toast.success(`${activePanel.label} Workspace set to ${getPresetById(themeId).name}`);
+    } catch (error) {
+      console.error('Failed to persist page theme:', error);
+      toast.error('Local change applied, but failed to sync with server');
+    }
+  };
+
+  const handleResetPanel = async () => {
+    if (!activePanel) return;
+    resetPanelTheme(activePanel.key);
+    try {
+      const nextPanelThemes = { ...panelThemes };
+      delete nextPanelThemes[activePanel.key];
+      await api.put('/auth/theme-preferences', { 
+        themePreferences: { panelThemes: nextPanelThemes, pageThemes } 
+      });
+      toast.success(`${activePanel.label} Shell reset to default`);
+    } catch (error) {
+      console.error('Failed to persist panel reset:', error);
+    }
+  };
+
+  const handleResetPage = async () => {
+    if (!activePanel) return;
+    resetPageTheme(activePanel.key);
+    try {
+      const nextPageThemes = { ...pageThemes };
+      delete nextPageThemes[activePanel.key];
+      await api.put('/auth/theme-preferences', { 
+        themePreferences: { panelThemes, pageThemes: nextPageThemes } 
+      });
+      toast.success(`${activePanel.label} Workspace reset to default`);
+    } catch (error) {
+      console.error('Failed to persist page reset:', error);
+    }
   };
 
   if (!activePanel) {

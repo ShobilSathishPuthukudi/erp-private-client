@@ -5,6 +5,7 @@ import ReferredLeads from '../academic/ReferredLeads';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
+import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 
 export default function SalesDashboard() {
   return (
@@ -20,6 +21,7 @@ export default function SalesDashboard() {
       <Route path="team" element={<DepartmentTeam />} />
       <Route path="tasks" element={<DepartmentTasks />} />
       <Route path="leaves" element={<DepartmentLeaves />} />
+      <Route path="leave-status" element={<TeamLeaveStatus />} />
     </Routes>
   );
 }

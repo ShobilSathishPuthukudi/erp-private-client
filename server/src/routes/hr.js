@@ -711,7 +711,13 @@ router.get('/leaves', verifyToken, checkPermissionOrRole('HR_LEAVE_S2', 'read', 
         const combinedFilter = { ...permissionFilter, ...userFilter };
 
         const leaves = await Leave.findAll({
-            where: { status: { [Op.ne]: 'pending admin' } },
+            where: {
+              [Op.or]: [
+                { status: { [Op.in]: ['pending hr', 'pending_step2'] } },
+                { status: 'approved', step2By: { [Op.ne]: null } },
+                { status: 'rejected', step2By: { [Op.ne]: null } }
+              ]
+            },
             include: [{ 
               model: User, 
               as: 'employee', 
@@ -995,14 +1001,14 @@ router.put('/leaves/:id/approve',
                 if (role !== 'hr admin') {
                     let adminLink = '/dashboard/tasks'; 
                     
-                    if (role.includes('sales')) adminLink = '/dashboard/sales/leaves';
-                    else if (role.includes('finance')) adminLink = '/dashboard/finance/leaves';
-                    else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/team';
-                    else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leaves';
-                    else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leaves';
-                    else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leaves';
-                    else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leaves';
-                    else if (role.includes('hr')) adminLink = '/dashboard/hr/leaves';
+                    if (role.includes('sales')) adminLink = '/dashboard/sales/leave-status';
+                    else if (role.includes('finance')) adminLink = '/dashboard/finance/leave-status';
+                    else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leave-status';
+                    else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leave-status';
+                    else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leave-status';
+                    else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leave-status';
+                    else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leave-status';
+                    else if (role.includes('hr')) adminLink = '/dashboard/hr/dept-leave-status';
 
                     await createNotification(req.io, {
                         targetUid: targetAdminUid,

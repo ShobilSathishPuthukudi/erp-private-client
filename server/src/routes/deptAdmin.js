@@ -12,6 +12,7 @@ const { User, Task, Leave, Department, AuditLog, CEOPanel, Notification, Lead } 
 
 const DEPT_GRACE_HOURS = 24;
 const ACADEMIC_PARENT_ADMIN_ROLES = ['academic operations admin', 'operations admin', 'operations', 'academic'];
+const STEP_1_PENDING_STATUSES = ['pending admin', 'pending_step1'];
 
 const resolveManagedDepartmentIds = async (deptId, role) => {
   if (!deptId) return [];
@@ -26,6 +27,26 @@ const resolveManagedDepartmentIds = async (deptId, role) => {
   });
 
   return [deptId, ...childDepartments.map((department) => department.id)];
+};
+
+const resolveUnitScope = async (reqUser) => {
+  const subDepartmentAliases = getSubDepartmentNameAliases(reqUser.subDepartment);
+  const subDepartmentUnits = await Department.findAll({
+    attributes: ['id'],
+    where: {
+      name: {
+        [Op.in]: subDepartmentAliases
+      }
+    }
+  });
+
+  return {
+    subDepartmentAliases,
+    scopedDeptIds: [
+      reqUser.deptId,
+      ...subDepartmentUnits.map((department) => department.id)
+    ].filter(Boolean)
+  };
 };
 
 const getTaskScope = async (task) => {
@@ -594,7 +615,20 @@ router.get('/leaves', verifyToken, isDeptAdmin, async (req, res) => {
       if (!req.user.subDepartment) {
         return res.status(400).json({ error: 'Sub-department scope missing for unit admin' });
       }
-      employeeWhere.subDepartment = req.user.subDepartment;
+      const { scopedDeptIds: unitScopedDeptIds, subDepartmentAliases } = await resolveUnitScope(req.user);
+      employeeWhere[Op.or] = [
+        {
+          deptId: unitScopedDeptIds.length === 1
+            ? unitScopedDeptIds[0]
+            : { [Op.in]: unitScopedDeptIds }
+        },
+        {
+          subDepartment: {
+            [Op.in]: subDepartmentAliases
+          }
+        }
+      ];
+      delete employeeWhere.deptId;
     }
 
     const leaves = await Leave.findAll({
@@ -630,10 +664,16 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only approve leaves for your department' });
     }
-    if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {
-      return res.status(403).json({ error: 'You can only approve leaves for your sub-department' });
+    if (unitRoles.includes(role)) {
+      const { scopedDeptIds: unitScopedDeptIds, subDepartmentAliases } = await resolveUnitScope(req.user);
+      const matchesScopedDept = unitScopedDeptIds.includes(leave.employee.deptId);
+      const matchesSubDepartment = subDepartmentAliases.includes(leave.employee.subDepartment);
+
+      if (!matchesScopedDept && !matchesSubDepartment) {
+        return res.status(403).json({ error: 'You can only approve leaves for your sub-department' });
+      }
     }
-    if (leave.status !== 'pending admin') {
+    if (!STEP_1_PENDING_STATUSES.includes(leave.status)) {
       return res.status(400).json({ error: `Cannot Step-1 approve in current status: ${leave.status}` });
     }
 
@@ -687,10 +727,16 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only reject leaves for your department' });
     }
-    if (unitRoles.includes(role) && leave.employee.subDepartment !== req.user.subDepartment) {
-      return res.status(403).json({ error: 'You can only reject leaves for your sub-department' });
+    if (unitRoles.includes(role)) {
+      const { scopedDeptIds: unitScopedDeptIds, subDepartmentAliases } = await resolveUnitScope(req.user);
+      const matchesScopedDept = unitScopedDeptIds.includes(leave.employee.deptId);
+      const matchesSubDepartment = subDepartmentAliases.includes(leave.employee.subDepartment);
+
+      if (!matchesScopedDept && !matchesSubDepartment) {
+        return res.status(403).json({ error: 'You can only reject leaves for your sub-department' });
+      }
     }
-    if (leave.status !== 'pending admin') {
+    if (!STEP_1_PENDING_STATUSES.includes(leave.status)) {
       return res.status(400).json({ error: `Cannot Step-1 reject in current status: ${leave.status}` });
     }
 

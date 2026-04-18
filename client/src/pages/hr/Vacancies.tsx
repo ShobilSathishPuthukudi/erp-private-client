@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { toSentenceCase } from '@/lib/utils';
+import { clsx } from 'clsx';
 
 interface Vacancy {
   id: number;
@@ -33,7 +34,7 @@ export default function Vacancies() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm();
 
   const fetchData = async () => {
     try {
@@ -179,42 +180,69 @@ export default function Vacancies() {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Position Title</label>
               <input 
-                {...register('title', { required: 'Title is required' })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                {...register('title', { 
+                  required: 'Position title is required',
+                  minLength: { value: 3, message: 'Position title must be at least 3 characters' },
+                  maxLength: { value: 24, message: 'Position title cannot exceed 24 characters' }
+                })}
+                className={clsx(
+                  "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium",
+                  errors.title ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
+                )}
                 placeholder="Senior Admissions Officer"
               />
+              {errors.title && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.title.message as string}</p>}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Department</label>
                 <select 
-                  {...register('departmentId', { required: true })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white"
+                  {...register('departmentId', { required: 'Department is required' })}
+                  className={clsx(
+                    "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white",
+                    errors.departmentId ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
+                  )}
                 >
                   <option value="">Select Department</option>
                   {departments.map(d => <option key={d.id} value={d.id}>{d.name} ({toSentenceCase(d.type || 'Department')})</option>)}
                 </select>
+                {errors.departmentId && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.departmentId.message as string}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Positions (Quota)</label>
                 <input 
                   type="number"
-                  {...register('count', { required: true, min: 1 })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                  {...register('count', { 
+                    required: 'Quota is required', 
+                    min: { value: 1, message: 'Must be at least 1' } 
+                  })}
+                  className={clsx(
+                    "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium",
+                    errors.count ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
+                  )}
                   defaultValue={1}
                 />
+                {errors.count && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.count.message as string}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Requirements / Remarks</label>
               <textarea 
-                {...register('requirements')}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                {...register('requirements', {
+                  required: 'Requirements are required',
+                  minLength: { value: 3, message: 'Requirements must be at least 3 characters' },
+                  maxLength: { value: 50, message: 'Requirements cannot exceed 50 characters' }
+                })}
+                className={clsx(
+                  "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium",
+                  errors.requirements ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
+                )}
                 rows={3}
                 placeholder="Specify key qualifications or job responsibilities..."
               />
+              {errors.requirements && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.requirements.message as string}</p>}
             </div>
           </div>
 

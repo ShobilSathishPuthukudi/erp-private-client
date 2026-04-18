@@ -11,6 +11,7 @@ import StudentValidation from './StudentValidation';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
+import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 import SubDeptInternalMarks from './InternalMarks';
 import { useAuthStore } from '@/store/authStore';
 
@@ -34,6 +35,7 @@ export default function SubDeptDashboard() {
         <Route path="team" element={<DepartmentTeam />} />
         <Route path="tasks" element={<DepartmentTasks />} />
         <Route path="leaves" element={<DepartmentLeaves />} />
+        <Route path="leave-status" element={<TeamLeaveStatus />} />
       </Route>
       
       {/* Fallback for role-specific unit landing */}

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Zap, ArrowRight, UserCircle, X, Search } from 'lucide-react';
 import { toSentenceCase } from '@/lib/utils';
@@ -159,10 +160,13 @@ export default function LoginPage() {
     try {
       const response = await api.post('/auth/login', data);
       const { user, token } = response.data;
+      
+      // Hydrate institutional branding preferences before entering dashboard
+      if (user.themePreferences) {
+        useThemeStore.getState().hydrateThemes(user.themePreferences);
+      }
+      
       setAuth(user, token);
-      // /dashboard has an index route that normalizes the role and redirects
-      // to the correct panel (handles multi-word admin roles like "BVoc Admin"
-      // that don't map cleanly to `/dashboard/<role>`).
       navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');

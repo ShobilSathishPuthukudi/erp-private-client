@@ -213,7 +213,7 @@ export default function LeaveRequests() {
               <option value="Maternity / Paternity">Maternity / Paternity</option>
               <option value="Unpaid Leave">Unpaid Leave</option>
             </select>
-            {errors.type && <p className="text-red-500 text-xs mt-1">{errors.type.message as string}</p>}
+            {errors.type && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.type.message as string}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -228,7 +228,7 @@ export default function LeaveRequests() {
                 })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
               />
-              {errors.fromDate && <p className="text-red-500 text-xs mt-1">{errors.fromDate.message as string}</p>}
+              {errors.fromDate && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.fromDate.message as string}</p>}
             </div>
             
             <div>
@@ -247,7 +247,7 @@ export default function LeaveRequests() {
                 })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
               />
-              {errors.toDate && <p className="text-red-500 text-xs mt-1">{errors.toDate.message as string}</p>}
+              {errors.toDate && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.toDate.message as string}</p>}
             </div>
           </div>
 
@@ -262,7 +262,7 @@ export default function LeaveRequests() {
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm h-24"
               placeholder="Provide a brief explanation for your absence..."
             />
-            {errors.reason && <p className="text-red-500 text-xs mt-1">{errors.reason.message as string}</p>}
+            {errors.reason && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.reason.message as string}</p>}
           </div>
 
           <div className="pt-4 flex justify-end space-x-3 border-t border-slate-100 mt-6">

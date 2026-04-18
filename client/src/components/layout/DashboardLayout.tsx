@@ -23,11 +23,10 @@ export default function DashboardLayout() {
         <TopBar toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} />
         
         <main 
-          className="flex-1 overflow-x-hidden overflow-y-auto p-6 border-l border-t rounded-tl-[32px] max-[1200px]:border-l-0 max-[1200px]:rounded-tl-none shadow-sm relative z-10 transition-colors duration-300"
+          className="flex-1 overflow-x-hidden overflow-y-auto p-6 rounded-tl-[32px] max-[1200px]:rounded-tl-none shadow-sm relative z-10 transition-colors duration-300"
           style={{ 
             background: 'var(--page-bg)', 
-            color: 'var(--page-text)',
-            borderColor: 'var(--shell-border)' 
+            color: 'var(--page-text)'
           }}
         >
           <Outlet />

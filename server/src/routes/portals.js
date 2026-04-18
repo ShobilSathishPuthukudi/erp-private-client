@@ -832,30 +832,8 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
       return res.status(400).json({ error: 'End date must be after start date' });
     }
     
-    // Resolve Department Head to determine workflow (Shortcut Rule: Head is Admin -> Skip Step 1)
-    let initialStatus = 'pending admin';
-    try {
-      const employee = await User.findOne({ where: { uid: req.user.uid } });
-      if (employee?.deptId) {
-        const dept = await Department.findByPk(employee.deptId, {
-          include: [{ model: User, as: 'department', attributes: ['role'] }]
-        });
-        
-        // Use the alias defined in models/index.js (User belongsTo Department as department)
-        // Wait, check if Head is aliased as 'admin' in Department model
-        const head = await User.findOne({ 
-          where: { uid: dept?.adminId },
-          attributes: ['role']
-        });
-
-        const headRole = head?.role?.toLowerCase()?.trim();
-        if (headRole === 'organization admin' || headRole === 'admin') {
-          initialStatus = 'pending hr';
-        }
-      }
-    } catch (err) {
-      console.error('[LEAVE-WORKFLOW] Head resolution failed, falling back to 2-step:', err);
-    }
+    // Strict two-step workflow: every employee leave starts with department admin review.
+    const initialStatus = 'pending admin';
 
     const leave = await Leave.create({
       employeeId: req.user.uid,
@@ -880,18 +858,18 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
           const role = targetAdmin?.role?.toLowerCase()?.trim() || '';
           let adminLink = '/dashboard/tasks'; 
           
-          if (role.includes('hr')) adminLink = '/dashboard/hr/dept-leaves';
-          else if (role.includes('sales')) adminLink = '/dashboard/sales/leaves';
-          else if (role.includes('finance')) adminLink = '/dashboard/finance/leaves';
-          else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leaves';
-          else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leaves';
-          else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leaves';
-          else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leaves';
-          else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leaves';
+          if (role.includes('hr')) adminLink = '/dashboard/hr/dept-leave-status';
+          else if (role.includes('sales')) adminLink = '/dashboard/sales/leave-status';
+          else if (role.includes('finance')) adminLink = '/dashboard/finance/leave-status';
+          else if (role.includes('operations') || role.includes('academic')) adminLink = '/dashboard/operations/leave-status';
+          else if (role.includes('open school') || role.includes('openschool')) adminLink = '/dashboard/subdept/openschool/leave-status';
+          else if (role.includes('online')) adminLink = '/dashboard/subdept/online/leave-status';
+          else if (role.includes('skill')) adminLink = '/dashboard/subdept/skill/leave-status';
+          else if (role.includes('bvoc')) adminLink = '/dashboard/subdept/bvoc/leave-status';
 
           await createNotification(req.io, {
             targetUid: dept.adminId,
-            title: 'Team Leave Application',
+            title: 'New Team Leave Request',
             message: `${employeeName} is requesting ${type} (${fromDate} to ${toDate}).`,
             type: 'info',
             link: adminLink

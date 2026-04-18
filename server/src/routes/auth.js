@@ -205,7 +205,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       departmentName: resolveDepartmentLabel(effectiveUser, effectiveRole),
       subDepartment: effectiveUser.subDepartment,
       name: effectiveUser.name,
-      avatar: effectiveUser.avatar
+      avatar: effectiveUser.avatar,
+      themePreferences: effectiveUser.themePreferences || {}
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
@@ -291,6 +292,30 @@ router.post('/update-profile', verifyToken, async (req, res) => {
     res.json({ message: 'Profile updated successfully', user: { name: user.name, phone: user.phone, dateOfBirth: user.dateOfBirth, bio: user.bio, address: user.address, avatar: user.avatar } });
   } catch (error) {
     console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/theme-preferences', verifyToken, async (req, res) => {
+  try {
+    const { themePreferences } = req.body;
+    const userId = req.user.uid;
+
+    if (!themePreferences || typeof themePreferences !== 'object') {
+      return res.status(400).json({ error: 'Invalid theme preferences format' });
+    }
+
+    const user = await User.unscoped().findOne({ where: { uid: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.themePreferences = themePreferences;
+    await user.save();
+
+    res.json({ message: 'Institutional branding preferences persisted successfully', themePreferences: user.themePreferences });
+  } catch (error) {
+    console.error('Update theme preferences error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -4,6 +4,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Modal } from '@/components/shared/Modal';
 import { LifeBuoy, MessageSquare, Send, CheckCircle, Clock3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useForm } from 'react-hook-form';
+import { clsx } from 'clsx';
 
 interface HRRequest {
   id: number;
@@ -30,8 +32,9 @@ export default function HRContact() {
   const [requests, setRequests] = useState<HRRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState(emptyForm);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: emptyForm
+  });
   const [selectedRequest, setSelectedRequest] = useState<HRRequest | null>(null);
 
   const fetchRequests = async () => {
@@ -51,19 +54,15 @@ export default function HRContact() {
     fetchRequests();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: typeof emptyForm) => {
     try {
-      setIsSubmitting(true);
-      await api.post('/portals/employee/hr-requests', formData);
+      await api.post('/portals/employee/hr-requests', data);
       toast.success('Your message has been sent to HR');
-      setFormData(emptyForm);
+      reset(emptyForm);
       setIsModalOpen(false);
       fetchRequests();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to send message to HR');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -213,24 +212,30 @@ export default function HRContact() {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New HR Request">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Subject *</label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Subject *</label>
             <input
               type="text"
-              required
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Payroll clarification, leave issue, document request"
+              {...register('subject', { 
+                required: 'Subject is required',
+                minLength: { value: 6, message: 'Subject must be between 6 and 30 characters' },
+                maxLength: { value: 30, message: 'Subject must be between 6 and 30 characters' }
+              })}
+              className={clsx(
+                "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 transition-all",
+                errors.subject ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-300 focus:ring-blue-500"
+              )}
+              placeholder="Payroll clarification, leave issue..."
             />
+            {errors.subject && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.subject.message as string}</p>}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category *</label>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Category *</label>
             <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              {...register('category', { required: 'Category is required' })}
+              className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="general">General</option>
               <option value="leave">Leave</option>
@@ -240,29 +245,37 @@ export default function HRContact() {
               <option value="policy">Policy</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Message *</label>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Message *</label>
             <textarea
-              required
               rows={5}
-              value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              {...register('message', { 
+                required: 'Message is required',
+                minLength: { value: 6, message: 'Message must be between 6 and 300 characters' },
+                maxLength: { value: 300, message: 'Message must be between 6 and 300 characters' }
+              })}
+              className={clsx(
+                "w-full border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 transition-all resize-none",
+                errors.message ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-300 focus:ring-blue-500"
+              )}
               placeholder="Write the details HR should review..."
             />
+            {errors.message && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.message.message as string}</p>}
           </div>
-          <div className="pt-4 border-t border-slate-200 flex justify-end space-x-3">
+
+          <div className="pt-4 border-t border-slate-100 flex justify-end space-x-3">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Sending...' : 'Send to HR'}
             </button>

@@ -319,7 +319,7 @@ export default function Employees() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="John Smith"
                 />
-                {errors.name && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.name.message as string}</p>}
+                {errors.name && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.name.message as string}</p>}
               </div>
 
               <div className="space-y-2">
@@ -330,7 +330,7 @@ export default function Employees() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="j.smith@erp.com"
                 />
-                {errors.email && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.email.message as string}</p>}
+                {errors.email && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.email.message as string}</p>}
               </div>
             </div>
 
@@ -347,7 +347,7 @@ export default function Employees() {
                       <option key={v.id} value={v.id}>{v.title}</option>
                     ))}
                   </select>
-                  {errors.vacancyId && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.vacancyId.message as string}</p>}
+                  {errors.vacancyId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.vacancyId.message as string}</p>}
                 </div>
               )}
 
@@ -408,7 +408,7 @@ export default function Employees() {
                     <option key={e.uid} value={e.uid}>{e.name} ({toSentenceCase(e.role || '')})</option>
                   ))}
                 </select>
-                {errors.reportingManagerUid && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.reportingManagerUid.message as string}</p>}
+                {errors.reportingManagerUid && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.reportingManagerUid.message as string}</p>}
               </div>
             </div>
 
@@ -432,7 +432,7 @@ export default function Employees() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase leading-none">{errors.password.message as string}</p>}
+              {errors.password && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.password.message as string}</p>}
             </div>
           </div>
 

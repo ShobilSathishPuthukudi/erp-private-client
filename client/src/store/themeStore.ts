@@ -16,6 +16,7 @@ interface ThemeState {
   getPageTheme: (panelKey: string) => string;
   setPreviewPanel: (key: string | null) => void;
   setPreviewPage: (key: string | null) => void;
+  hydrateThemes: (prefs: { panelThemes?: Record<string, string>; pageThemes?: Record<string, string> }) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -46,6 +47,10 @@ export const useThemeStore = create<ThemeState>()(
       getPageTheme: (panelKey) => get().pageThemes[panelKey] || DEFAULT_THEME_ID,
       setPreviewPanel: (key) => set({ previewPanelKey: key }),
       setPreviewPage: (key) => set({ previewPageKey: key }),
+      hydrateThemes: (prefs) => set({ 
+        panelThemes: prefs.panelThemes || {}, 
+        pageThemes: prefs.pageThemes || {} 
+      }),
     }),
     { 
       name: 'panel-theme-storage',

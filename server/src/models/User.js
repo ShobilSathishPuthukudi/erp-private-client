@@ -84,6 +84,12 @@ const User = sequelize.define('user', {
   leaveBalance: {
     type: DataTypes.INTEGER,
     defaultValue: 20,
+  },
+  themePreferences: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+    comment: 'Stores panel-specific theme mappings for Panel and Page branding'
   }
 }, {
   timestamps: true,
