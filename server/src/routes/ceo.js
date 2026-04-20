@@ -10,7 +10,7 @@ import { SUB_DEPARTMENTS } from '../config/institutionalStructure.js';
 const ACADEMIC_SUB_DEPT_NAMES = SUB_DEPARTMENTS.map(s => s.name);
 
 const router = express.Router();
-const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig, IncentivePayout } = models;
+const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig, IncentivePayout, Target } = models;
 
 const isCEO = (req, res, next) => {
   const role = req.user.role?.toLowerCase()?.trim();
@@ -24,10 +24,16 @@ router.get('/roster', verifyToken, isCEO, applyExecutiveScope, async (req, res) 
   try {
     const { restricted, deptIds = [], names = [] } = req.visibility || {};
 
+    const safeDeptIds = deptIds.length > 0 ? deptIds : [-1];
     const whereUser = restricted ? {
       [Op.or]: [
         { deptId: { [Op.in]: deptIds } },
-        { subDepartment: { [Op.in]: names } }
+        { subDepartment: { [Op.in]: names } },
+        // Partner center accounts have deptId = their center id.
+        // Include centers that are mapped to the scoped departments via center_programs
+        { deptId: { [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${safeDeptIds.join(',')}))`) } },
+        // Alternatively, include users whose role declares them as a partner center and their department's parent is in scope
+        { role: { [Op.in]: ['Partner Center', 'partner-center', 'partner center'] } } 
       ]
     } : {};
 
@@ -86,7 +92,9 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     const now = new Date();
     const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
     const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
+    const leaveGrace = parseInt(configs.find(c => c.key === 'leaveEscalationGraceHours')?.value || 48);
     const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+    const leaveDeadlockThreshold = new Date(now.getTime() - leaveGrace * 60 * 60 * 1000);
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -454,7 +462,9 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
     const now = new Date();
     const configs = await OrgConfig.findAll({ where: { group: 'governance' } });
     const taskGrace = parseInt(configs.find(c => c.key === 'taskEscalationGraceHours')?.value || 24);
+    const leaveGrace = parseInt(configs.find(c => c.key === 'leaveEscalationGraceHours')?.value || 48);
     const gracePeriodThreshold = new Date(now.getTime() - taskGrace * 60 * 60 * 1000);
+    const leaveDeadlockThreshold = new Date(now.getTime() - leaveGrace * 60 * 60 * 1000);
 
     // 1. Fetch overdue tasks that have passed the 48H grace period
     // CEO-level escalations are cross-departmental — no scope restriction on assignee
@@ -505,10 +515,11 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
       };
     });
 
-    // 2. Fetch aged leave requests (any non-final status)
+    // 2. Fetch leave deadlocks only after they exceed the governance grace window.
     const leavesRaw = await Leave.findAll({
       where: {
-        status: { [Op.notIn]: ['approved', 'rejected'] }
+        status: { [Op.notIn]: ['approved', 'rejected'] },
+        createdAt: { [Op.lte]: leaveDeadlockThreshold }
       },
       include: [
         {
@@ -1423,46 +1434,31 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
 router.get('/incentive-payouts', verifyToken, isCEO, async (req, res) => {
   try {
     const payouts = await IncentivePayout.findAll({
-      where: { status: 'pending_ceo' },
-      include: [{ model: User, as: 'employee', attributes: ['name', 'email', 'role'] }],
+      include: [
+        { model: User, as: 'employee', attributes: ['name', 'email', 'role'] },
+        { model: Target, as: 'target', attributes: ['id', 'title', 'metric', 'value', 'workflowStatus'] },
+      ],
       order: [['createdAt', 'DESC']]
     });
-    res.json(payouts);
+
+    const summary = {
+      totalPayouts: payouts.length,
+      totalProcessed: payouts.filter((payout) => payout.status === 'processed').length,
+      totalValue: payouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
+      processedValue: payouts
+        .filter((payout) => payout.status === 'processed')
+        .reduce((sum, payout) => sum + Number(payout.amount || 0), 0),
+    };
+
+    res.json({ summary, payouts });
   } catch (error) {
     console.error('Fetch incentive payouts error:', error);
-    res.status(500).json({ error: 'Failed to fetch pending incentive payouts' });
+    res.status(500).json({ error: 'Failed to fetch incentive payout oversight data' });
   }
 });
 
 router.put('/incentive-payouts/:id/approve', verifyToken, isCEO, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, remarks } = req.body;
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
-    }
-    if (!remarks?.trim()) {
-      return res.status(400).json({ error: 'Remarks are required for payout decisions.' });
-    }
-    const payout = await IncentivePayout.findByPk(id);
-    if (!payout) return res.status(404).json({ error: 'Payout record not found' });
-    if (payout.status !== 'pending_ceo') {
-      return res.status(409).json({ error: 'Payout is no longer pending CEO review' });
-    }
-    await payout.update({ status, remarks });
-    await AuditLog.create({
-      userId: req.user.uid,
-      action: `CEO_PAYOUT_${status.toUpperCase()}`,
-      entity: 'IncentivePayout',
-      module: 'Executive',
-      after: { payoutId: id, status, remarks },
-      timestamp: new Date()
-    });
-    res.json({ message: `Incentive payout ${status}`, payout });
-  } catch (error) {
-    console.error('Approve payout error:', error);
-    res.status(500).json({ error: 'Failed to process payout decision' });
-  }
+  return res.status(410).json({ error: 'CEO payout approvals are deprecated. Incentives are processed by Finance and shown here as read-only data.' });
 });
 
 export default router;

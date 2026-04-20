@@ -137,7 +137,7 @@ export default function DepartmentsList() {
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Core Departments</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Core departments</h1>
             <p className="text-slate-500 mt-1">Manage foundational organizational sectors and institutional pillars.</p>
           </div>
         </div>

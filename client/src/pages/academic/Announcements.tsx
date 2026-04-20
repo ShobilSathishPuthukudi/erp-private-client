@@ -165,7 +165,7 @@ export default function CenterAnnouncements() {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
-        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+        <div className="overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
           <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
@@ -257,7 +257,7 @@ export default function CenterAnnouncements() {
                 </div>
             </div>
             
-            <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
+            <div className="flex justify-end gap-3 p-8 border-t border-slate-200/50 shrink-0">
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -280,7 +280,7 @@ export default function CenterAnnouncements() {
       {/* Announcement Detail View Modal */}
       <Modal isOpen={!!selectedAnnouncement} onClose={() => setSelectedAnnouncement(null)} hideHeader={true}>
         {selectedAnnouncement && (
-          <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+          <div className="overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
             <div className={`p-8 ${selectedAnnouncement.priority === 'urgent' ? 'bg-red-600' : 'bg-slate-900'} text-white relative overflow-hidden`}>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 <div className="relative z-10">
@@ -341,7 +341,7 @@ export default function CenterAnnouncements() {
                 </div>
             </div>
 
-            <div className="p-8 bg-slate-50 border-t border-slate-200 shrink-0 flex justify-between items-center">
+            <div className="p-8 border-t border-slate-200/50 shrink-0 flex justify-between items-center">
                 <button 
                     onClick={() => {
                         deleteAnnouncement(selectedAnnouncement.id);

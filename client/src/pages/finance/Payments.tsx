@@ -7,6 +7,7 @@ import { CheckCircle, Clock, XCircle, FileText, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import jsPDF from 'jspdf';
+import { Link } from 'react-router-dom';
 
 interface Payment {
   id: number;
@@ -130,7 +131,13 @@ export default function Payments() {
         const student = row.original.student;
         return (
           <div>
-            <p className="font-semibold text-slate-800">{student?.name || `Anonymous Form ID: ${row.original.studentId}`}</p>
+            {student?.name ? (
+              <Link to={`/dashboard/finance/students/${row.original.studentId}`} className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
+                {student.name}
+              </Link>
+            ) : (
+              <p className="font-semibold text-slate-800">{`Anonymous Form ID: ${row.original.studentId}`}</p>
+            )}
             {student && <p className="text-xs text-slate-500 uppercase font-medium">{student.enrollStatus} enrollment</p>}
           </div>
         );
@@ -175,7 +182,7 @@ export default function Payments() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader 
-        title="Student Payment Pipelines"
+        title="Student payment pipelines"
         description="Review pending student transfers and securely generate fully tax-compliant PDF invoices instantly."
         icon={CreditCard}
       />

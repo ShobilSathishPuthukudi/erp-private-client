@@ -91,17 +91,16 @@ export default function EmployeePerformance() {
   }
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
-                <Award className="w-6 h-6" />
-             </div>
-             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Workforce Performance</h1>
+    <div className="p-2 space-y-6 flex flex-col">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Award className="w-6 h-6" />
           </div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Individual Productivity Index & Institutional contribution Telemetry</p>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Workforce performance</h1>
+            <p className="text-slate-500 font-medium text-sm">Individual Productivity Index & Institutional contribution Telemetry.</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">

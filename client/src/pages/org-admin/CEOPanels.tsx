@@ -141,7 +141,7 @@ export default function CEOPanels() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">CEO Panels</h1>
+          <h1 className="text-2xl font-bold text-slate-900">CEO panels</h1>
           <p className="text-slate-500">Manage executive CEO accounts and dashboard access</p>
         </div>
         <button 

@@ -7,7 +7,8 @@ import { createNotification } from './notifications.js';
 const router = express.Router();
 const { CredentialRequest, Department, User, AuditLog, Role } = models;
 
-const REVEAL_WINDOW_MINS = 30;
+const REVEAL_WINDOW_HOURS = 24;
+const REVEAL_WINDOW_MS = REVEAL_WINDOW_HOURS * 60 * 60 * 1000;
 
 // Ops: Request Reveal/Reset
 router.post('/request', verifyToken, isAcademicOrAdmin, async (req, res) => {
@@ -85,7 +86,7 @@ router.post('/approve/:id', verifyToken, roleGuard(['Finance Admin', 'Organizati
     });
     if (!request) return res.status(404).json({ error: 'Request not found' });
 
-    const revealUntil = new Date(new Date().getTime() + REVEAL_WINDOW_MINS * 60 * 1000);
+    const revealUntil = new Date(new Date().getTime() + REVEAL_WINDOW_MS);
     
     request.status = 'approved';
     request.revealUntil = revealUntil;
@@ -115,7 +116,7 @@ router.post('/approve/:id', verifyToken, roleGuard(['Finance Admin', 'Organizati
     await createNotification(null, {
       targetUid: request.requesterId,
       title: 'Credential Request Approved',
-      message: `Your request to ${request.type} credentials for ${request.center.name} has been approved. Reveal window active for ${REVEAL_WINDOW_MINS} mins.`,
+      message: `Your request to ${request.type} credentials for ${request.center.name} has been approved. Reveal window active for ${REVEAL_WINDOW_HOURS} hours.`,
       type: 'success',
       link: '/dashboard/academic/credentials'
     });
@@ -159,7 +160,8 @@ router.get('/reveal/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
     res.json({
        username: request.center.id.toString(), // Alias id as username/uid if needed
        password: request.center.password,
-       type: request.type
+       type: request.type,
+       revealUntil: request.revealUntil
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

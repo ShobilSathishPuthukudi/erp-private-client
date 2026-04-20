@@ -114,7 +114,7 @@ export default function CenterPerformance() {
             setSelectedCenter(row.original);
             setIsModalOpen(true);
           }}
-          className="flex items-center gap-2 text-xs font-black uppercase text-indigo-600 hover:text-slate-900 group cursor-pointer"
+          className="flex items-center gap-2 text-xs font-black uppercase text-indigo-600 hover:text-white group cursor-pointer"
         >
           Deep Stats
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -158,7 +158,7 @@ export default function CenterPerformance() {
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Center Performance</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Center performance</h1>
             <p className="text-slate-500 font-medium text-sm">Tracking academic velocity and quality across regional study nodes.</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function CenterPerformance() {
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <DataTable columns={columns} data={centers} isLoading={isLoading} />
+        <DataTable columns={columns} data={centers} isLoading={isLoading} exportFileName="Center_Performance_Analytic" />
       </div>
 
       <Modal
@@ -203,12 +203,12 @@ export default function CenterPerformance() {
                     },
                     { label: 'Avg Review Time', value: `${Number(selectedCenter?.avgReviewTime || 0).toFixed(1)}h`, icon: Calendar, color: 'text-indigo-500' }
                 ].map((stat, i) => (
-                    <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                            <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
+                    <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between h-full">
+                        <div className="flex items-start gap-2 mb-2">
+                            <stat.icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${stat.color}`} />
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest leading-tight">{stat.label}</span>
                         </div>
-                        <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                        <p className="text-2xl font-black text-slate-900 mt-auto">{stat.value}</p>
                     </div>
                 ))}
             </div>
@@ -246,7 +246,7 @@ export default function CenterPerformance() {
             <div className="flex justify-end pt-6 border-t border-slate-100">
                  <button 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20"
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:scale-[1.05] hover:-translate-y-1 transition-all duration-300 active:scale-95 active:translate-y-0 shadow-xl shadow-slate-900/20"
                 >
                     Close Analytics
                 </button>

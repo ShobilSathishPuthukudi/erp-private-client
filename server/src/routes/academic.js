@@ -17,7 +17,7 @@ import { syncProgramLifecycle, syncUniversityLifecycle } from '../utils/academic
 import { clearNotifications, createNotification } from './notifications.js';
 
 const router = express.Router();
-const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept, CenterProgram, AcademicActionRequest, Lead } = models;
+const { Department, Program, Student, ProgramFee, User, AdmissionSession, CredentialRequest, ProgramOffering, Exam, Mark, Result, Payment, Subject, Module, CenterSubDept, CenterProgram, AcademicActionRequest, Lead, Invoice, EMI, ChangeRequest } = models;
 
 const LEGACY_SUB_DEPARTMENT_IDS = {
   'Open School': 8,
@@ -452,8 +452,13 @@ router.get('/universities', verifyToken, isAcademicOrAdmin, applyExecutiveScope,
 router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
     const uni = await Department.findByPk(req.params.id, {
+      attributes: {
+        include: [
+          [sequelize.literal(`(SELECT COUNT(*) FROM programs WHERE programs.universityId = department.id)`), 'totalPrograms']
+        ]
+      },
       include: [
-        { model: Program, attributes: ['id', 'name', 'type', 'status'] }
+        { model: Program, attributes: ['id', 'name', 'type', 'status', 'duration'] }
       ]
     });
     if (!uni || uni.type !== 'universities') return res.status(404).json({ error: 'University not found' });
@@ -929,6 +934,69 @@ router.get('/students', verifyToken, isAcademicOrAdmin, applyExecutiveScope, asy
   }
 });
 
+router.get('/students/:id', verifyToken, isAcademicOrAdmin, applyExecutiveScope, async (req, res) => {
+  try {
+    const studentId = Number(req.params.id);
+    if (!studentId) {
+      return res.status(400).json({ error: 'Invalid student id' });
+    }
+
+    const visibilityFilter = req.visibility?.studentFilter || {};
+    const student = await Student.findOne({
+      where: {
+        id: studentId,
+        ...visibilityFilter
+      },
+      include: [
+        {
+          model: Program,
+          attributes: ['id', 'name', 'type', 'duration', 'universityId'],
+          include: [{ model: Department.unscoped(), as: 'university', attributes: ['id', 'name'], required: false }]
+        },
+        { model: Department.unscoped(), as: 'center', attributes: ['id', 'name'], required: false },
+        { model: Department.unscoped(), as: 'subDepartment', attributes: ['id', 'name'], required: false },
+        {
+          model: ProgramFee,
+          as: 'feeSchema',
+          attributes: ['id', 'name', 'schema', 'version', 'isDefault'],
+          required: false
+        },
+        {
+          model: Invoice,
+          as: 'activationInvoice',
+          attributes: ['id', 'invoiceNo', 'amount', 'gst', 'total', 'status', 'createdAt', 'paymentId'],
+          required: false
+        },
+        {
+          model: Payment,
+          as: 'payments',
+          attributes: ['id', 'amount', 'mode', 'transactionId', 'receiptUrl', 'status', 'verifiedBy', 'date', 'createdAt'],
+          required: false
+        },
+        {
+          model: EMI,
+          as: 'emis',
+          attributes: ['id', 'installmentNo', 'dueDate', 'amount', 'status', 'paidAt', 'remarks'],
+          required: false
+        }
+      ],
+      order: [
+        [{ model: Payment, as: 'payments' }, 'createdAt', 'DESC'],
+        [{ model: EMI, as: 'emis' }, 'installmentNo', 'ASC']
+      ]
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(student);
+  } catch (error) {
+    console.error('Student detail fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch student details' });
+  }
+});
+
 router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -977,6 +1045,10 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             return res.status(400).json({ error: 'Governance Conflict: Student must be in OPS or SUB_DEPT stage for operational clearance.' });
         }
 
+        if (!['approved', 'rejected', 'correction_requested'].includes(status)) {
+            return res.status(400).json({ error: 'Validation Error: Invalid operational decision.' });
+        }
+
         const opsNotificationRoles = [
             'Academic Operations',
             'Academic Operations Admin',
@@ -992,15 +1064,22 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             },
             attributes: ['uid']
         });
-        
-        const nextStage = status === 'approved' ? 'FINANCE' : 'OPS';
+
+        const nextStage = status === 'approved' ? 'FINANCE' : 'SUB_DEPT';
+        const nextStudentStatus = status === 'approved' ? 'FINANCE_PENDING' : status === 'correction_requested' ? 'DRAFT' : 'REJECTED';
+        const nextEnrollStatus = status === 'approved' ? 'pending_finance' : status === 'correction_requested' ? 'correction_requested' : 'rejected';
+        const decisionRemarks = remarks || student.remarks;
+
         await student.update({
             reviewStage: nextStage,
-            status: status === 'approved' ? 'FINANCE_PENDING' : 'REJECTED',
-            enrollStatus: status === 'approved' ? 'pending_finance' : 'rejected',
+            status: nextStudentStatus,
+            enrollStatus: nextEnrollStatus,
             reviewedBy: req.user.uid,
             reviewedAt: new Date(),
-            remarks: remarks || student.remarks
+            remarks: decisionRemarks,
+            lastRejectionReason: status === 'approved' ? null : decisionRemarks,
+            resubmittedTo: status === 'correction_requested' ? 'SUB_DEPT' : null,
+            resubmissionDate: status === 'correction_requested' ? null : student.resubmissionDate
         });
 
         await clearNotifications({
@@ -1037,14 +1116,64 @@ router.put('/students/:id/verify-eligibility', verifyToken, isOpsOrAdmin, async 
             }
         }
 
+        if (status === 'correction_requested') {
+            try {
+                const centerRecipientUids = new Set();
+
+                if (student.center?.adminId) {
+                    centerRecipientUids.add(student.center.adminId);
+                }
+
+                const centerUsers = await User.findAll({
+                    where: {
+                        status: 'active',
+                        [Op.or]: [
+                            { deptId: student.centerId, role: { [Op.in]: ['Partner Center', 'Partner Centers', 'partner centers'] } },
+                            { uid: student.center?.adminId || null }
+                        ]
+                    },
+                    attributes: ['uid']
+                });
+
+                for (const centerUser of centerUsers) {
+                    if (centerUser?.uid) centerRecipientUids.add(centerUser.uid);
+                }
+
+                for (const targetUid of centerRecipientUids) {
+                    await createNotification(req.io, {
+                        targetUid,
+                        title: `Correction Requested: ${student.name}`,
+                        message: `Academic Operations requested corrections for ${student.name}. Review the remarks, update the record, and resubmit the application.`,
+                        type: 'warning',
+                        link: '/dashboard/study-center/students',
+                        metadata: {
+                            studentId: student.id,
+                            centerId: student.centerId,
+                            flow: 'student_correction_request'
+                        }
+                    });
+                }
+            } catch (notificationError) {
+                console.error('[CENTER_CORRECTION_NOTIFY_ERROR]:', notificationError);
+            }
+        }
+
         await logAction({
             userId: req.user.uid,
-            action: `OPS_${status.toUpperCase()}`,
+            action: status === 'correction_requested' ? 'OPS_REQUEST_CORRECTION' : `OPS_${status.toUpperCase()}`,
             studentId: id,
             remarks: remarks
         });
 
-        return res.json({ message: `Operational clearance ${status} granted. Application moved to FINANCE.`, student });
+        if (status === 'approved') {
+            return res.json({ message: 'Operational clearance approved. Application moved to FINANCE.', student });
+        }
+
+        if (status === 'correction_requested') {
+            return res.json({ message: 'Correction requested. Partner Center has been notified to revise and resubmit the application.', student });
+        }
+
+        return res.json({ message: 'Operational clearance rejected. Application closed.', student });
     }
 
     return res.status(400).json({ error: 'Governance Conflict: Role-to-Stage mismatch.' });
@@ -1450,6 +1579,40 @@ router.post('/credentials/:id/trigger-view', verifyToken, isAcademicOrAdmin, asy
     }
 });
 
+router.post('/credentials/request/:id/cancel', verifyToken, isAcademicOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await CredentialRequest.findByPk(id, {
+      include: [{ model: Department, as: 'center' }]
+    });
+
+    if (!request) return res.status(404).json({ error: 'Request node not located in registry' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Protocol Conflict: Only pending requests can be withdrawn.' });
+    }
+
+    // Security Gate: Only the requester or an administrator can cancel
+    if (request.requesterId !== req.user.uid && req.user.role !== 'Organization Admin') {
+      return res.status(403).json({ error: 'Security Violation: Unauthorized to withdraw this institutional request.' });
+    }
+
+    await request.update({ status: 'cancelled' });
+
+    await logAction({
+       userId: req.user.uid,
+       action: 'WITHDRAW_REQUEST',
+       entity: 'CredentialReveal',
+       details: `Withdrawn credential access request for center: ${request.center?.name || 'Unknown'}`,
+       module: 'Academic'
+    });
+
+    res.json({ message: 'Credential reveal request successfully withdrawn.', request });
+  } catch (error) {
+    console.error('[ACADEMIC] Cancel Request Error:', error);
+    res.status(500).json({ error: 'Failed to execute request withdrawal protocol' });
+  }
+});
+
 // ==========================================
 // EXAMS & RESULTS (ASSESSMENTS)
 // ==========================================
@@ -1546,6 +1709,121 @@ router.post('/exams/:id/marks', verifyToken, isAcademicOrAdmin, async (req, res)
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: 'Failed to finalize marks entry' });
+  }
+});
+
+router.get('/center-university-change-requests', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const requests = await ChangeRequest.findAll({
+      where: {
+        requestType: 'center_university_change',
+        status: { [Op.in]: ['pending_ops', 'pending_finance', 'approved', 'rejected_ops', 'rejected_finance'] }
+      },
+      include: [
+        { model: Department, as: 'center', attributes: ['id', 'name'], required: false },
+        { model: Department, as: 'currentUniversity', attributes: ['id', 'name', 'status'], required: false },
+        { model: Department, as: 'requestedUniversity', attributes: ['id', 'name', 'status'], required: false },
+        { model: Program, as: 'currentProgram', attributes: ['id', 'name'], required: false },
+        { model: Program, as: 'requestedProgram', attributes: ['id', 'name'], required: false },
+        { model: ProgramFee, as: 'requestedFeeSchema', attributes: ['id', 'name'], required: false },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json(requests);
+  } catch (error) {
+    console.error('Fetch center university change requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch university change requests' });
+  }
+});
+
+router.post('/center-university-change-requests/:id/decision', verifyToken, isOpsOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be approved or rejected' });
+    }
+
+    if (!remarks || remarks.trim().length < 12) {
+      return res.status(400).json({ error: 'Operations remarks (min 12 chars) are required' });
+    }
+
+    const request = await ChangeRequest.findByPk(id, {
+      include: [
+        { model: Department, as: 'center', attributes: ['id', 'name', 'adminId'], required: false },
+        { model: Program, as: 'currentProgram', attributes: ['id', 'name'], required: false },
+        { model: Program, as: 'requestedProgram', attributes: ['id', 'name'], required: false },
+      ]
+    });
+
+    if (!request) return res.status(404).json({ error: 'University change request not found' });
+    if (request.status !== 'pending_ops') {
+      return res.status(409).json({ error: 'Only operations-pending requests can be reviewed here' });
+    }
+
+    await request.update({
+      status: status === 'approved' ? 'pending_finance' : 'rejected_ops',
+      opsRemarks: remarks.trim(),
+      opsApprovedBy: req.user.uid,
+      opsApprovedAt: new Date(),
+    });
+
+    if (status === 'approved') {
+      const financeUsers = await User.findAll({
+        where: {
+          role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+          status: 'active'
+        },
+        attributes: ['uid']
+      });
+
+      for (const financeUser of financeUsers) {
+        await createNotification(req.io, {
+          targetUid: financeUser.uid,
+          title: `University Change Awaiting Finance: ${request.center?.name || 'Center'}`,
+          message: `${request.center?.name || 'A center'} was reassigned from ${request.currentProgram?.name || 'current program'} to ${request.requestedProgram?.name || 'requested program'} by Operations and now needs finance approval.`,
+          type: 'info',
+          link: '/dashboard/finance/university-changes',
+        });
+      }
+    } else {
+      const centerUsers = await User.findAll({
+        where: {
+          status: 'active',
+          [Op.or]: [
+            { deptId: request.centerId, role: { [Op.in]: ['Partner Center', 'Partner Centers', 'partner centers'] } },
+            request.center?.adminId ? { uid: request.center.adminId } : null
+          ].filter(Boolean)
+        },
+        attributes: ['uid']
+      });
+
+      for (const centerUser of centerUsers) {
+        await createNotification(req.io, {
+          targetUid: centerUser.uid,
+          title: `University Change Rejected: ${request.center?.name || 'Center'}`,
+          message: `Operations rejected the requested change to ${request.requestedProgram?.name || 'the requested program'}. Review the remarks and submit a corrected request if needed.`,
+          type: 'warning',
+          link: '/dashboard/study-center/programs',
+        });
+      }
+    }
+
+    await logAction({
+      userId: req.user.uid,
+      action: status === 'approved' ? 'OPS_APPROVE_CENTER_UNIVERSITY_CHANGE' : 'OPS_REJECT_CENTER_UNIVERSITY_CHANGE',
+      entity: 'ChangeRequest',
+      details: `Operations ${status} university change request #${request.id}`,
+      module: 'Academic',
+      remarks: remarks.trim(),
+    });
+
+    res.json({ message: `University change request ${status} by Operations.`, request });
+  } catch (error) {
+    console.error('Process center university change request error:', error);
+    res.status(500).json({ error: 'Failed to process university change request' });
   }
 });
 

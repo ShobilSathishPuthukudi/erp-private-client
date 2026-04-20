@@ -227,6 +227,13 @@ const cleanupDuplicateIndexes = async () => {
         await sequelize.query('ALTER TABLE surveys ADD COLUMN createdBy VARCHAR(255) NULL').catch(err => console.error(err.message));
       }
     }
+
+    // 6. Ensure CredentialRequest Model status ENUM reconciliation
+    const [credCols] = await sequelize.query("SHOW COLUMNS FROM credential_requests LIKE 'status'");
+    if (credCols[0] && !credCols[0].Type.includes('cancelled')) {
+      console.log('Updating CredentialRequest status ENUM to include cancelled...');
+      await sequelize.query("ALTER TABLE credential_requests MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending'").catch(err => console.error(err.message));
+    }
   } catch (err) {
     console.warn('Index cleanup skipped:', err.message);
   }

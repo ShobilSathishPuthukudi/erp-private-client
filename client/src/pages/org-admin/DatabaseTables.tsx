@@ -101,7 +101,7 @@ export default function DatabaseTables() {
             <Database className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Data Architecture</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Data architecture</h1>
             <p className="text-slate-500 mt-1 font-medium">Review the institutional database schema and available data models.</p>
           </div>
         </div>

@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { 
   AreaChart, 
   Area, 
@@ -212,12 +213,6 @@ export default function Overview() {
     return () => clearInterval(interval);
   }, []);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
-  };
 
   const formattedDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
@@ -274,16 +269,23 @@ export default function Overview() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-6xl font-black text-slate-900 tracking-tight leading-tight">
-            {getGreeting()}, {branding.title}
-          </h1>
-          <p className="text-lg text-slate-500 mt-2 font-medium">
-            Institutional performance and telemetry overview for {formattedDate}.
-          </p>
-        </div>
-      </div>
+      <DashboardGreeting 
+        role="Chief - Institutional Intelligence"
+        name={user?.name || 'Administrator'}
+        subtitle={`Institutional performance and telemetry overview for ${formattedDate}. Governance & Monitoring protocols active.`}
+        actions={[
+          {
+            label: 'Compliance Report',
+            link: '/dashboard/org-admin/audit/compliance',
+            icon: ShieldCheck
+          },
+          {
+            label: 'Manage Roles',
+            link: '/dashboard/org-admin/permissions/roles',
+            icon: ShieldCheck
+          }
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard 

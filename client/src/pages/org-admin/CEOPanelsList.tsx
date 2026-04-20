@@ -164,7 +164,7 @@ export default function CEOPanelsList() {
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Executive Management</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Executive management</h1>
             <p className="text-slate-500 mt-1">Provision and manage CEO-level administrative dashboards.</p>
           </div>
         </div>

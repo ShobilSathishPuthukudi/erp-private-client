@@ -288,9 +288,7 @@ export default function CenterRegistration() {
         <main>
           <div className="mb-8">
             <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">Partner Registration</p>
-            <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
-              Let's get your center onboarded
-            </h1>
+            <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">Let's get your center onboarded</h1>
             <p className="text-slate-600 mt-2 max-w-2xl">
               Tell us about your institution and the programs you'd like to offer. Our team will review
               your application and follow up within 24 hours.

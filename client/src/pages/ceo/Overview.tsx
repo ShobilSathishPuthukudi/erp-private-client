@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { Users, IndianRupee, Building2, BookOpen, MapPin, TrendingUp, TrendingDown, Minus, Zap, X, ArrowRight, Activity, Clock, ShieldAlert, AlertTriangle, CheckCircle2, Wallet, PieChart, FileText, Target, Calendar } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { format } from 'date-fns';
@@ -47,6 +49,7 @@ interface Metrics {
 
 export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedBrief, setSelectedBrief] = useState<{ type: string; title: string; dId?: number; value?: string | number; icon?: any; inlineDetails?: React.ReactNode } | null>(null);
@@ -55,9 +58,8 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isInstAnalysisOpen, setIsInstAnalysisOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [trendRangeMonths, setTrendRangeMonths] = useState<3 | 6 | 12>(12);
   
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   useEffect(() => {
     setMounted(true);
@@ -352,28 +354,24 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
 
   if (view === 'kpis') {
     return (
-      <div className="space-y-6">
-        {/* Executive Header */}
-        <div className="mb-10 flex flex-col md:flex-row md:items-start justify-between gap-6 shrink-0 pt-4">
-          <div className="flex items-start gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-900/20 mt-1 relative overflow-hidden group">
-              <PieChart className="w-8 h-8 group-hover:scale-110 transition-transform" />
-              <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className="p-2 space-y-6 flex flex-col">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+              <Activity className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-4 mb-2">
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-                  {greeting}, Chief
-                </h1>
-                <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest leading-none">Active Executive Control</span>
-                </div>
-              </div>
-              <p className="text-slate-500 font-bold text-sm tracking-tight opacity-70">
-                System telemetry and institutional performance overview for {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-              </p>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Overview</h1>
+              <p className="text-slate-500 font-medium text-sm">System telemetry and institutional performance overview.</p>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+             <button onClick={() => navigate('/dashboard/ceo/performance')} className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all text-xs font-bold whitespace-nowrap">
+                <Activity className="w-4 h-4" /> Workforce Analytics
+             </button>
+             <button onClick={() => navigate('/dashboard/ceo/escalations')} className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all text-xs font-bold whitespace-nowrap">
+                <AlertTriangle className="w-4 h-4" /> Escalation Inbox
+             </button>
           </div>
         </div>
 
@@ -1229,15 +1227,30 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm">
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Growth Analytics</h3>
-        <div className="flex items-center gap-3">
-          {['3 Months', '6 Months', '12 Months'].map(range => (
-            <button key={range} className="px-4 py-1.5 rounded-full bg-slate-50 text-[10px] font-bold text-slate-500 hover:bg-slate-900 hover:text-white transition-all capitalize">
-              {range}
-            </button>
-          ))}
+    <div className="p-2 space-y-8 flex flex-col">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Growth Analytics</h1>
+            <p className="text-slate-500 font-medium text-sm">Long-term institutional expansion and revenue tracking.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+          {([3, 6, 12] as const).map(months => {
+            const isActive = trendRangeMonths === months;
+            return (
+              <button
+                key={months}
+                onClick={() => setTrendRangeMonths(months)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all capitalize ${isActive ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                {months} Months
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1246,11 +1259,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40">
           <div className="mb-8">
              <h4 className="text-lg font-black text-slate-900">Enrollment Trajectory</h4>
-             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Direct Student Acquisition • 12 Months</p>
+             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Direct Student Acquisition • {trendRangeMonths} Months</p>
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-              <AreaChart data={metrics.enrollmentTrend}>
+              <AreaChart data={(metrics.enrollmentTrend || []).slice(-trendRangeMonths)}>
                 <defs>
                   <linearGradient id="colorEnrolls" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0f172a" stopOpacity={0.1}/>
@@ -1275,7 +1288,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-              <BarChart data={metrics.revenueTrend}>
+              <BarChart data={(metrics.revenueTrend || []).slice(-trendRangeMonths)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />

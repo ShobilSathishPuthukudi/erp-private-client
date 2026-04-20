@@ -561,34 +561,73 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
       stats.unitBreakdown = breakdown;
     }
 
-    // 6-Month Admission Velocity Trend (MySQL)
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 5);
-    startDate.setDate(1);
+    // Admission Velocity Trend — daily bucketing when ?range=30|90, otherwise 6-month monthly.
+    const rangeDays = [30, 90].includes(parseInt(req.query.range)) ? parseInt(req.query.range) : null;
 
-    const admissionsByMonth = await Student.findAll({
-      where: {
-        ...whereClause,
-        createdAt: { [Op.gte]: startDate }
-      },
-      attributes: [
-        [sequelize.fn('MONTH', sequelize.col('createdAt')), 'month'],
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-      ],
-      group: [sequelize.fn('MONTH', sequelize.col('createdAt'))],
-      raw: true
-    });
+    if (rangeDays) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (rangeDays - 1));
+      startDate.setHours(0, 0, 0, 0);
 
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const mLabel = d.toLocaleString('default', { month: 'short' });
-      const mVal = d.getMonth() + 1;
-      const data = admissionsByMonth.find(a => parseInt(a.month) === mVal);
-      months.push({ month: mLabel, count: data ? data.count : 0 });
+      const admissionsByDay = await Student.findAll({
+        where: {
+          ...whereClause,
+          createdAt: { [Op.gte]: startDate }
+        },
+        attributes: [
+          [sequelize.fn('DATE', sequelize.col('createdAt')), 'day'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
+        raw: true
+      });
+
+      const toKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const countByKey = new Map(admissionsByDay.map((row) => {
+        const key = row.day instanceof Date ? toKey(row.day) : String(row.day).slice(0, 10);
+        return [key, parseInt(row.count)];
+      }));
+
+      const days = [];
+      for (let i = rangeDays - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        days.push({
+          month: d.toLocaleString('default', { month: 'short', day: '2-digit' }),
+          count: countByKey.get(toKey(d)) || 0
+        });
+      }
+      stats.trend = days;
+    } else {
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 5);
+      startDate.setDate(1);
+
+      const admissionsByMonth = await Student.findAll({
+        where: {
+          ...whereClause,
+          createdAt: { [Op.gte]: startDate }
+        },
+        attributes: [
+          [sequelize.fn('MONTH', sequelize.col('createdAt')), 'month'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: [sequelize.fn('MONTH', sequelize.col('createdAt'))],
+        raw: true
+      });
+
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mLabel = d.toLocaleString('default', { month: 'short' });
+        const mVal = d.getMonth() + 1;
+        const data = admissionsByMonth.find(a => parseInt(a.month) === mVal);
+        months.push({ month: mLabel, count: data ? data.count : 0 });
+      }
+      stats.trend = months;
     }
-    stats.trend = months;
 
     // Recent Academic Actions (Audit Logs)
     const recentLogs = await AuditLog.findAll({
@@ -705,7 +744,24 @@ router.get('/pipeline', verifyToken, isOpsOrAdmin, async (req, res) => {
       ],
       group: ['subDepartmentId', 'reviewStage', 'enrollStatus']
     });
-    res.json(stats);
+
+    const subDeptRecords = await Department.findAll({
+      where: { type: 'sub-departments' },
+      attributes: ['id', 'name'],
+      order: [['id', 'ASC']]
+    });
+
+    const subDepartments = subDeptRecords
+      .map(sd => {
+        const canonicalName = normalizeSubDepartmentName(sd.name) || sd.name;
+        const legacyId = LEGACY_SUB_DEPARTMENT_IDS[canonicalName];
+        const matchingIds = [sd.id];
+        if (legacyId && !matchingIds.includes(legacyId)) matchingIds.push(legacyId);
+        return { id: sd.id, name: canonicalName, matchingIds };
+      })
+      .filter(sd => !isSubDeptAdmin || scopeIds.length === 0 || scopeIds.includes(sd.id));
+
+    res.json({ stats, subDepartments });
   } catch (error) {
     console.error('Pipeline error:', error);
     res.status(500).json({ error: 'Pipeline visualizer failed' });

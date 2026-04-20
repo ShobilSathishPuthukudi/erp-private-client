@@ -12,6 +12,7 @@ import InstitutionalPrograms from './InstitutionalPrograms';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { 
   Trophy, 
   Target, 
@@ -226,21 +227,23 @@ export default function EmployeePortal() {
     return (
       <div className="max-w-6xl mx-auto p-6 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tight">Performance Node</h1>
-            <p className="text-slate-500 font-medium mt-2">Institutional workforce identity: <span className="text-slate-900 font-bold tracking-widest">{user?.uid}</span></p>
-          </div>
-          <div className="bg-white px-7 py-5 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex items-center gap-5">
-             <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                <Trophy className="w-7 h-7" />
-             </div>
-             <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Goal Completion</p>
-                <p className="text-3xl font-black text-slate-900">{stats?.completionRate}%</p>
-             </div>
-          </div>
-        </div>
+        <DashboardGreeting 
+          role="Staff Terminal - Performance Node"
+          name={user?.name || 'Academic Administrator'}
+          subtitle={`Institutional workforce identity: ${user?.uid}. Operational telemetry and performance analytics synchronized for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
+          actions={[
+            {
+              label: 'Execution Desk',
+              link: 'tasks',
+              icon: Briefcase
+            },
+            {
+              label: 'Presence Request',
+              link: 'leaves',
+              icon: Calendar
+            }
+          ]}
+        />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -328,7 +331,7 @@ export default function EmployeePortal() {
                  <Briefcase className="w-32 h-32" />
               </div>
               <div className="relative z-10">
-                 <h2 className="text-3xl font-black mb-2">My Desk</h2>
+                 <h2 className="text-3xl font-black mb-2">My desk</h2>
                  <p className="text-slate-400 font-medium max-w-xs">Access your assigned operational deliverables and upload execution evidence.</p>
                  <div className="mt-8 flex items-center gap-3 text-blue-400 font-black uppercase text-xs tracking-[0.2em]">
                     <span>Enter Terminal</span>
@@ -342,7 +345,7 @@ export default function EmployeePortal() {
                  <Calendar className="w-32 h-32" />
               </div>
               <div className="relative z-10">
-                 <h2 className="text-3xl font-black mb-2 text-slate-900">Leave Console</h2>
+                 <h2 className="text-3xl font-black mb-2 text-slate-900">Leave console</h2>
                  <p className="text-slate-500 font-medium max-w-xs">Manage your institutional presence and request administrative time-off.</p>
                  <div className="mt-8 flex items-center gap-3 text-blue-600 font-black uppercase text-xs tracking-[0.2em]">
                     <span>Open Requests</span>
@@ -375,7 +378,7 @@ export default function EmployeePortal() {
                     <ShieldCheck className="w-8 h-8 text-white/90" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Outreach</h2>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Institutional outreach</h2>
                     <p className="text-slate-500 font-medium">Your unique center registration link is active. Share it to capture new leads into your pipeline.</p>
                   </div>
               </div>
@@ -401,7 +404,7 @@ export default function EmployeePortal() {
                     <Building2 className="w-24 h-24" />
                   </div>
                   <div className="relative z-10">
-                    <h2 className="text-2xl font-black mb-2 text-slate-900">Partnered Universities</h2>
+                    <h2 className="text-2xl font-black mb-2 text-slate-900">Partnered universities</h2>
                     <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">View all institutional affiliations and accreditation data for partner enrollment.</p>
                     <div className="mt-6 flex items-center gap-3 text-blue-600 font-black uppercase text-[10px] tracking-widest">
                         <span>View University Roster</span>
@@ -415,7 +418,7 @@ export default function EmployeePortal() {
                     <GraduationCap className="w-24 h-24" />
                   </div>
                   <div className="relative z-10">
-                    <h2 className="text-2xl font-black mb-2 text-slate-900">Academic Catalog</h2>
+                    <h2 className="text-2xl font-black mb-2 text-slate-900">Academic catalog</h2>
                     <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">Access the full list of degree programs, vocational streams, and fee structures.</p>
                     <div className="mt-6 flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-widest">
                         <span>Search Programs</span>

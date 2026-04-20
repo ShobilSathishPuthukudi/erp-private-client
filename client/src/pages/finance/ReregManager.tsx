@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { RefreshCw, CheckCircle, XCircle, User, Calendar, CreditCard, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ReregRequest {
   id: number;
-  student: { name: string; uid: string };
+  student: { id: number; name: string; uid: string };
   targetSemester: number;
   amountPaid: number;
   paymentProof: string;
@@ -71,7 +72,7 @@ export default function ReregManager() {
                   <User className="w-6 h-6" />
                </div>
                <div className="space-y-1">
-                  <p className="font-black text-slate-900 text-lg uppercase tracking-tight">{req.student.name}</p>
+                  <Link to={`/dashboard/finance/students/${req.student.id}`} className="font-black text-slate-900 text-lg uppercase tracking-tight hover:text-blue-600 transition-colors">{req.student.name}</Link>
                   <div className="flex items-center gap-4 text-[10px] text-slate-500 font-black uppercase tracking-widest">
                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {req.cycle}</span>
                     <span className="flex items-center gap-1 text-blue-600"><CheckCircle className="w-3 h-3" /> SEMESTER {req.targetSemester}</span>

@@ -66,7 +66,7 @@ export default function SettingsStorageConfig() {
             <Cloud className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Cloud Repository</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Cloud repository</h1>
             <p className="text-slate-500 mt-1 font-medium">Centralized S3 storage controller with role-based access and signed URL policies.</p>
           </div>
         </div>

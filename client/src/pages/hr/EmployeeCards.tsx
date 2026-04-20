@@ -89,7 +89,7 @@ export default function EmployeeCards() {
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto p-4 lg:p-8 animate-in fade-in duration-700">
       <PageHeader 
-        title="Employee Identity Hub"
+        title="Employee identity hub"
         description="Unique 'Click to Fill' access nodes for institutional staff portals"
         icon={Zap}
         action={

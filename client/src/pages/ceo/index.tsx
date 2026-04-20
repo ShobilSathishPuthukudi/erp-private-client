@@ -4,12 +4,13 @@ import Escalations from './Escalations';
 import PayoutApproval from './PayoutApproval';
 import EmployeePerformance from './EmployeePerformance';
 import Announcements from './Announcements';
+import HRBroadcasts from './HRBroadcasts';
 import InstitutionalRoster from '@/components/team/InstitutionalRoster';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 
 export default function CEODashboard() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--page-bg)]">
       <div className="max-w-[1600px] mx-auto p-4 lg:p-8">
         
         {/* Dynamic Routed Content */}
@@ -22,6 +23,7 @@ export default function CEODashboard() {
             <Route path="escalations" element={<Escalations />} />
             <Route path="payouts" element={<PayoutApproval />} />
             <Route path="announcements" element={<Announcements />} />
+            <Route path="hr-broadcasts" element={<HRBroadcasts />} />
             
             {/* Team Management Integration */}
             <Route path="team" element={<InstitutionalRoster />} />

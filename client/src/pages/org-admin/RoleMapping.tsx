@@ -188,7 +188,7 @@ export default function RoleMapping() {
             <UserCog className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">Admin Role Mapping</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">Admin role mapping</h1>
             <p className="text-slate-500 mt-1 max-w-xl font-medium">HR assigns department/sub-department admin panels to eligible employees. Institutional governance excluded.</p>
           </div>
         </div>

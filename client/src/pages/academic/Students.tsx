@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
+import * as XLSX from 'xlsx';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
-import { Users } from 'lucide-react';
+import { Users, Share2, Printer, Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface Student {
   id: number;
@@ -11,10 +13,10 @@ interface Student {
   enrollStatus: string;
   status: string;
   feeStatus: string;
-  marks: any;
+  marks: Record<string, unknown> | null;
   program?: { name: string; type?: string };
   subDepartment?: { name: string };
-  verificationLogs?: any[];
+  verificationLogs?: unknown[];
 }
 
 export default function Students() {
@@ -26,7 +28,7 @@ export default function Students() {
       setIsLoading(true);
       const res = await api.get('/academic/students');
       setStudents(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to parse global student roster');
     } finally {
       setIsLoading(false);
@@ -36,9 +38,47 @@ export default function Students() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handlePrint = () => {
+    window.print();
+    toast.success('Preparing student registry for print');
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('Registry link copied to clipboard');
+  };
+
+
+  const handleExport = () => {
+    if (!students.length) return;
+    const exportData = students.map((row) => ({
+      SID: `S-${row.id}`,
+      Student: row.name,
+      'Sub-Department': row.subDepartment?.name || 'GEN-ADMIN',
+      Program: row.program?.name || 'Unassigned Core',
+      Status: row.status || 'In Review',
+      Finance: row.feeStatus || 'pending'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Student_Roster");
+    XLSX.writeFile(workbook, "Institutional_Student_Registry.xlsx");
+    toast.success('Institutional manifest generated');
+  };
+
   const columns: ColumnDef<Student>[] = [
     { accessorKey: 'id', header: 'SID', cell: ({ row }) => <span className="font-mono text-slate-500">S-{row.original.id}</span> },
-    { accessorKey: 'name', header: 'Student', cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span> },
+    {
+      accessorKey: 'name',
+      header: 'Student',
+      cell: ({ row }) => (
+        <Link to={`/dashboard/academic/students/${row.original.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">
+          {row.original.name}
+        </Link>
+      )
+    },
     { 
       id: 'subDepartment', 
       header: 'Sub-Department', 
@@ -88,6 +128,30 @@ export default function Students() {
             <p className="text-slate-500 font-medium text-sm">Read-only global registry. Modifications disabled for organizational visibility.</p>
           </div>
         </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleShare}
+            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+            title="Share Registry Link"
+          >
+            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            onClick={handlePrint}
+            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+            title="Print Registry"
+          >
+            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+          <button
+            onClick={handleExport}
+            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+            title="Export to Excel"
+          >
+            <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
@@ -97,7 +161,6 @@ export default function Students() {
           isLoading={isLoading} 
           searchKey="name" 
           searchPlaceholder="Locate by student legal string..." 
-          exportFileName="Student_Registry_RO"
         />
       </div>
     </div>

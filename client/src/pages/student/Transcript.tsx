@@ -91,7 +91,7 @@ export default function Transcript() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center shrink-0">
         <div>
-           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Academic Transcript</h1>
+           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Academic transcript</h1>
            <p className="text-slate-500 text-sm font-medium">Verified record of your institutional performance and evaluations.</p>
         </div>
         <button 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 const COLORS = ['#3b82f6', '#10b981', '#6366f1', '#f43f5e', '#f59e0b'];
 
@@ -150,32 +151,25 @@ export default function DashboardLanding() {
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Syncing Jurisdictional Hub...</div>;
 
   return (
-    <div className="space-y-10 pb-12 animate-in fade-in duration-300">
+    <div className="space-y-10 pb-12">
       {/* Identity Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2">
-            <div className="flex items-center gap-3 text-blue-600 mb-2 font-black uppercase tracking-[0.3em] text-[10px]">
-                <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                    <PieChart className="w-3 h-3" />
-                </div>
-                Academic Unit Execution
-            </div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase">
-                {portalName} <span className="text-blue-600 font-outline-2">Unit</span>
-            </h1>
-            <div className="flex items-center gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-bold text-slate-600 uppercase tracking-tighter">Assigned Universities: <span className="text-slate-900">{stats.totalUniversities || 0}</span></span>
-                </div>
-                <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
-                    <BookOpen className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-bold text-slate-600 uppercase tracking-tighter">Assigned Programs: <span className="text-slate-900">{stats.activePrograms || 0}</span></span>
-                    <span className="text-[10px] font-medium text-slate-400 ml-1">(Read-only)</span>
-                </div>
-            </div>
-        </div>
-      </div>
+      <DashboardGreeting 
+        role={`${portalName} Unit - Jurisdictional Hub`}
+        name={user?.name || 'Administrator'}
+        subtitle={`Monitoring real-time jurisdictional telemetry, institutional admission velocity, and structural academic architecture for the ${portalName} unit.`}
+        actions={[
+          {
+            label: 'Programs Catalog',
+            link: '../programs',
+            icon: BookOpen
+          },
+          {
+            label: 'Student Validation',
+            link: '../validation',
+            icon: CheckSquare
+          }
+        ]}
+      />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -186,9 +180,9 @@ export default function DashboardLanding() {
               key={idx} 
               onClick={() => openDrillDown(kpi.type || 'students', kpi.label)}
               style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 hover:border-blue-200 hover:scale-[1.01]"
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition-all hover:shadow-xl hover:-translate-y-1 h-full group cursor-pointer relative overflow-hidden hover:border-blue-200 hover:scale-[1.01]"
             >
-              <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
+              <div className={`absolute -right-6 -bottom-6 ${color.text} opacity-[0.03] transform rotate-[15deg] transition-all group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.05] pointer-events-none`}>
                 <kpi.icon className="w-40 h-40" />
               </div>
 

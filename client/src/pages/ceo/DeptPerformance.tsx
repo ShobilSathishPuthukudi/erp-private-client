@@ -51,7 +51,7 @@ export default function DeptPerformance() {
     <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
       <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Departmental Benchmarking</h2>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Departmental benchmarking</h2>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">SLA Compliance • Revenue Targets • Resource Efficiency</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">

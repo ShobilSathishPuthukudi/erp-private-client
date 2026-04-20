@@ -17,12 +17,20 @@ import {
   ExternalLink,
   Printer,
   Share2,
-  FileText,
   X
 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+
+interface Program {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  duration?: number;
+  shortName?: string;
+}
 
 interface University {
   id: number;
@@ -42,6 +50,8 @@ interface University {
   totalPrograms?: number;
   totalDepartments?: number;
   totalStudents?: number;
+  affiliationPdf?: string;
+  Programs?: Program[];
 }
 
 export default function UniversityDetails() {
@@ -51,8 +61,9 @@ export default function UniversityDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [localLogoPreview, setLocalLogoPreview] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, setValue, formState: { isSubmitting } } = useForm();
 
   const fetchUniversity = async () => {
     try {
@@ -66,7 +77,8 @@ export default function UniversityDetails() {
         affiliationDate: res.data.affiliationDate || '',
         governanceStructure: res.data.governanceStructure || '',
         operationalDomain: res.data.operationalDomain || '',
-        logoUrl: res.data.logoUrl || ''
+        logoUrl: res.data.logoUrl || '',
+        affiliationPdf: res.data.affiliationPdf || ''
       });
     } catch (error) {
       toast.error('Failed to load institutional profile');
@@ -90,24 +102,89 @@ export default function UniversityDetails() {
     }
   };
 
+  const handleLogoSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Validation Error: Logo size cannot exceed 5MB limit');
+        return;
+      }
+      
+      const localUrl = URL.createObjectURL(file);
+      setLocalLogoPreview(localUrl);
+
+      const formData = new FormData();
+      formData.append('document', file);
+
+      try {
+        const toastId = toast.loading('Uploading internal architecture asset...');
+        const res = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        const uploadedUrl = res.data.filePath;
+        setValue('logoUrl', uploadedUrl);
+
+        if (university) {
+          await api.put(`/academic/universities/${id}`, {
+            name: university.name,
+            shortName: university.shortName,
+            ugcRegistrationNumber: university.ugcRegistrationNumber,
+            affiliationDate: university.affiliationDate,
+            governanceStructure: university.governanceStructure,
+            operationalDomain: university.operationalDomain,
+            logoUrl: uploadedUrl,
+            affiliationPdf: university.affiliationPdf || ''
+          });
+          fetchUniversity();
+        }
+        
+        toast.success('Logo successfully deployed', { id: toastId });
+      } catch (error) {
+        toast.dismiss();
+        toast.error('File sync rejected via endpoint. Please try again.');
+        setLocalLogoPreview(null);
+      }
+    };
+    input.click();
+  };
+
   if (isLoading) return <div className="p-8">Loading infrastructure...</div>;
   if (!university) return <div className="p-8 text-rose-500 font-black uppercase">Institutional Node Not Found</div>;
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Layout },
-    { id: 'departments', label: `Departments (${university.totalDepartments || 0})`, icon: Building2 },
     { id: 'programs', label: `Programs (${university.totalPrograms || 0})`, icon: BookOpen },
-    { id: 'governance', label: 'Governance', icon: ShieldCheck },
-    { id: 'legal', label: 'Legal Binding', icon: FileText },
   ];
 
   return (
     <div className="p-2 space-y-6">
+      {/* Back to Registry Button */}
+      <div>
+        <button 
+          onClick={() => navigate('/dashboard/academic/universities')}
+          className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl border border-slate-800 font-bold text-sm hover:bg-slate-800 transition-all group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Registry
+        </button>
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Partner Details</h1>
-          <p className="text-slate-500 font-medium text-sm">Institutional Profile & Affiliation Governance Management</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-black border border-slate-800 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-0.5">University details</h1>
+            <p className="text-slate-400 font-medium text-sm">Institutional Profile & Affiliation Governance Management</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all border border-slate-200">
@@ -119,17 +196,6 @@ export default function UniversityDetails() {
         </div>
       </div>
 
-      {/* Back to Registry Button */}
-      <div>
-        <button 
-          onClick={() => navigate('/dashboard/academic/universities')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-white text-slate-600 rounded-xl border border-slate-200 font-bold text-sm hover:bg-slate-50 transition-all group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Registry
-        </button>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Content Area */}
         <div className="lg:col-span-8 space-y-8">
@@ -137,13 +203,16 @@ export default function UniversityDetails() {
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
               {/* Logo Placeholder */}
-              <div className="w-32 h-32 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center p-4 shadow-inner relative overflow-hidden group">
-                {university.logoUrl ? (
-                  <img src={university.logoUrl} alt={university.name} className="w-full h-full object-contain" />
+              <div 
+                className="w-32 h-32 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center p-4 shadow-inner relative overflow-hidden group cursor-pointer"
+                onClick={handleLogoSelect}
+              >
+                {(localLogoPreview || university.logoUrl) ? (
+                  <img src={localLogoPreview || university.logoUrl} alt={university.name} className="w-full h-full object-contain" />
                 ) : (
                   <Building2 className="w-12 h-12 text-slate-200" />
                 )}
-                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer">
+                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <Edit2 className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -176,7 +245,7 @@ export default function UniversityDetails() {
                 <div className="flex flex-wrap justify-center md:justify-start gap-3">
                   <button 
                     onClick={() => setIsEditModalOpen(true)}
-                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 group"
+                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-700 transition-all active:scale-95 group"
                   >
                     <Edit2 className="w-4 h-4" />
                     Edit Profile
@@ -203,7 +272,7 @@ export default function UniversityDetails() {
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
                   {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-6 right-6 h-1 bg-blue-600 rounded-t-full shadow-lg shadow-blue-200" />
+                    <div className="absolute bottom-0 left-6 right-6 h-1 bg-blue-600 rounded-t-full shadow-lg shadow-blue-900/20" />
                   )}
                 </button>
               ))}
@@ -279,11 +348,71 @@ export default function UniversityDetails() {
                   </section>
                 </div>
               )}
-              {activeTab !== 'overview' && (
-                <div className="text-center py-20 grayscale opacity-40">
-                  <Building2 className="w-20 h-20 mx-auto mb-6 text-slate-300" />
-                  <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest">Matrix Segment Pending</h3>
-                  <p className="text-sm text-slate-300 font-medium mt-2">Extended ledger integration required for deep-dive telemetry.</p>
+              {activeTab === 'programs' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-6 h-6 text-blue-600" />
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Affiliated Programs</h3>
+                    </div>
+                    <span className="px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                      {university.Programs?.length || 0} Total Routes
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {university.Programs && university.Programs.length > 0 ? (
+                      university.Programs.map((program) => (
+                        <div key={program.id} className="group p-6 bg-slate-50 border border-slate-100 rounded-3xl hover:border-blue-600/30 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                                <BookOpen className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{program.name}</h4>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{program.type}</span>
+                                  <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest line-clamp-1">Dur: {program.duration || 'N/A'} Months</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              {(() => {
+                                const s = program.status?.toLowerCase();
+                                const config = {
+                                  draft: 'bg-blue-50 text-blue-600 border-blue-100',
+                                  staged: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                                  active: 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                }[s] || 'bg-slate-50 text-slate-600 border-slate-100';
+                                
+                                return (
+                                  <span className={`px-3 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${config}`}>
+                                    {program.status}
+                                  </span>
+                                );
+                              })()}
+                              
+                              <button 
+                                onClick={() => navigate(`/dashboard/academic/programs/${program.id}`)}
+                                className="p-3 bg-white border border-slate-200 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 grayscale opacity-40">
+                        <Building2 className="w-20 h-20 mx-auto mb-6 text-slate-300" />
+                        <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest">No Programs Defined</h3>
+                        <p className="text-sm text-slate-300 font-medium mt-2">Institutional architecture requires at least one active program.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -346,7 +475,7 @@ export default function UniversityDetails() {
           {/* Academic Stats */}
           <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-slate-900/30">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Academics & Population</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Departments</p>
                 <p className="text-3xl font-black leading-none">{university.totalDepartments || 0}</p>
@@ -358,10 +487,6 @@ export default function UniversityDetails() {
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Students</p>
                 <p className="text-3xl font-black leading-none">{university.totalStudents || 0}</p>
-              </div>
-              <div className="p-6 bg-indigo-600 rounded-3xl border border-indigo-500/50">
-                <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-2">Affiliations</p>
-                <p className="text-3xl font-black leading-none">1</p>
               </div>
             </div>
           </div>
@@ -375,12 +500,12 @@ export default function UniversityDetails() {
         hideHeader={true}
         maxWidth="2xl"
       >
-        <div className="bg-white overflow-hidden flex flex-col max-h-[calc(100vh-160px)]">
-            <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Update University Profile</h2>
+        <div className="bg-slate-900 text-white overflow-hidden flex flex-col max-h-[calc(100vh-160px)]">
+            <div className="bg-slate-800 p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Update university profile</h2>
                 <button 
                   onClick={() => setIsEditModalOpen(false)}
-                  className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
+                  className="p-2 hover:bg-slate-700 rounded-xl transition-colors"
                 >
                     <X className="w-5 h-5 text-slate-400" />
                 </button>
@@ -391,71 +516,77 @@ export default function UniversityDetails() {
                     {/* Institutional Identity */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                <Building2 className="w-5 h-5 text-blue-600" />
+                            <div className="w-10 h-10 rounded-xl bg-blue-900/30 flex items-center justify-center">
+                                <Building2 className="w-5 h-5 text-blue-400" />
                             </div>
-                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Institutional Identity</h3>
+                            <h3 className="text-xs font-black text-white uppercase tracking-widest">Institutional Identity</h3>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Legal University Name *</label>
-                                <input {...register('name', { required: true })} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" />
+                                <input {...register('name', { required: true })} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">University Short Name</label>
-                                <input {...register('shortName')} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all uppercase" />
+                                <input {...register('shortName')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all uppercase" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">UGC Registration Number *</label>
-                                <input {...register('ugcRegistrationNumber', { required: true })} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" />
+                                <input {...register('ugcRegistrationNumber', { required: true })} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Affiliation Start Date</label>
                                 <div className="relative">
                                     <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input type="date" {...register('affiliationDate')} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" />
+                                    <input style={{colorScheme: 'dark'}} type="date" {...register('affiliationDate')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Governance Structure</label>
-                                <input {...register('governanceStructure')} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" placeholder="Board Managed / Private" />
+                                <input {...register('governanceStructure')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="Board Managed / Private" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Operational Domain</label>
-                                <input {...register('operationalDomain')} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" placeholder="Higher Education (HEI)" />
+                                <input {...register('operationalDomain')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="Higher Education (HEI)" />
                             </div>
                         </div>
                     </div>
 
                     {/* Institutional Branding */}
-                    <div className="space-y-6 pt-6 border-t border-slate-100">
+                    <div className="space-y-6 pt-6 border-t border-slate-700">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                                <Layout className="w-5 h-5 text-indigo-600" />
+                            <div className="w-10 h-10 rounded-xl bg-indigo-900/30 flex items-center justify-center">
+                                <Layout className="w-5 h-5 text-indigo-400" />
                             </div>
-                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Institutional Branding</h3>
+                            <h3 className="text-xs font-black text-white uppercase tracking-widest">Institutional Branding & Documents</h3>
                         </div>
                         
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Logo External URL</label>
-                            <input {...register('logoUrl')} className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/5 focus:border-blue-600 text-sm font-bold text-slate-900 transition-all" placeholder="https://..." />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Logo External URL</label>
+                                <input {...register('logoUrl')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="https://..." />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Affiliated PDF URL (Optional)</label>
+                                <input {...register('affiliationPdf')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="https://..." />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                <div className="p-8 border-t border-slate-700 flex justify-end gap-3 shrink-0">
                     <button 
                       type="button"
                       onClick={() => setIsEditModalOpen(false)}
-                      className="px-8 py-3.5 bg-white text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200 hover:bg-slate-100 transition-all"
+                      className="px-8 py-3.5 bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-700 hover:bg-slate-700 transition-all"
                     >
                         Cancel
                     </button>
                     <button 
                       type="submit"
                       disabled={isSubmitting}
-                      className="px-10 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
+                      className="px-10 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-700 transition-all disabled:opacity-50"
                     >
                         {isSubmitting ? 'Synchronizing...' : 'Save Changes'}
                     </button>

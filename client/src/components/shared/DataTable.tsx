@@ -67,9 +67,15 @@ export function DataTable<TData, TValue>({
       const entry: any = {};
       columns.forEach((col: any) => {
         if (col.header && typeof col.header === 'string') {
-          const value = typeof col.accessor === 'function' 
-            ? col.accessor(row) 
-            : row[col.accessor || ''];
+          // Fix: Handle accessorKey or accessorFn correctly
+          let value = '';
+          if (col.accessorKey) {
+            value = row[col.accessorKey];
+          } else if (col.accessorFn) {
+            value = col.accessorFn(row);
+          } else if (col.id) {
+            value = row[col.id];
+          }
           entry[col.header] = value;
         }
       });
@@ -92,7 +98,7 @@ export function DataTable<TData, TValue>({
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 sm:text-sm transition duration-150 ease-in-out font-medium"
+              className="block w-full pl-10 pr-3 py-2 border border-[var(--card-border)] rounded-xl leading-5 bg-[var(--theme-soft)] text-[var(--page-text)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-[var(--theme-accent)] sm:text-sm transition duration-150 ease-in-out font-medium"
               placeholder={searchPlaceholder}
               value={globalFilter ?? ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
@@ -116,14 +122,14 @@ export function DataTable<TData, TValue>({
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-200 tracking-wider">
+            <thead className="text-xs text-slate-500 bg-[var(--theme-soft)] border-b border-[var(--card-border)] tracking-wider">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
                       <th 
                         key={header.id} 
-                        className="px-4 py-4 font-medium whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors"
+                        className="px-4 py-4 font-medium whitespace-nowrap cursor-pointer hover:bg-slate-400/10 transition-colors duration-200"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className="flex items-center space-x-1">
@@ -157,7 +163,7 @@ export function DataTable<TData, TValue>({
                   <tr 
                     key={row.id} 
                     onClick={() => onRowClick?.(row.original)}
-                    className={`hover:bg-slate-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                    className={`hover:bg-slate-400/10 transition-colors duration-200 ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-4 text-slate-600">
@@ -170,7 +176,7 @@ export function DataTable<TData, TValue>({
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                      <div className="w-16 h-16 mb-4 rounded-full bg-[var(--theme-soft)] flex items-center justify-center">
                         <Search className="w-8 h-8 text-slate-400" />
                       </div>
                       <p className="text-base font-medium">{emptyMessage}</p>
@@ -184,7 +190,7 @@ export function DataTable<TData, TValue>({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--card-border)] bg-[var(--theme-soft)]">
           <div className="text-sm text-slate-500">
             Page <span className="font-medium text-slate-900">{table.getState().pagination.pageIndex + 1}</span> of{' '}
             <span className="font-medium text-slate-900">{table.getPageCount() || 1}</span>
@@ -193,14 +199,14 @@ export function DataTable<TData, TValue>({
             <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="p-1 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1 rounded-md text-slate-500 hover:bg-[var(--card-border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="p-1 rounded-md text-slate-500 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1 rounded-md text-slate-500 hover:bg-[var(--card-border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
             </button>

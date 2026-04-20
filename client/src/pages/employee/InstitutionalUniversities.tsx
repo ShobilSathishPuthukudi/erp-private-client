@@ -112,9 +112,7 @@ export default function InstitutionalUniversities() {
             <Building2 className="w-3.5 h-3.5" />
             Institutional directory
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Institutional Universities
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Institutional universities</h1>
           <p className="text-slate-500 text-sm mt-1.5 max-w-xl">
             Authorized partner institutions you can reference during recruitment and
             enrollment conversations.

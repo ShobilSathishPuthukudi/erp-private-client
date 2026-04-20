@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Programs from './Programs';
 import Students from './Students';
+import StudentDetails from '../academic/StudentDetails';
 import Centers from './Centers';
 import Sessions from './Sessions';
 import Exams from '../academic/Exams';
@@ -25,6 +26,7 @@ export default function SubDeptDashboard() {
         <Route path="portal" element={<DashboardLanding />} />
         <Route path="programs" element={<Programs />} />
         <Route path="students" element={<Students />} />
+        <Route path="students/:id" element={<StudentDetails />} />
         <Route path="validation" element={<StudentValidation />} />
         <Route path="centers" element={<Centers />} />
         <Route path="sessions" element={<Sessions />} />

@@ -210,7 +210,7 @@ export default function SettingsGeneral() {
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional Profile Card</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional profile card</h1>
             <p className="text-slate-500 mt-1 font-medium">Global institutional configuration and primary branch branding hub.</p>
           </div>
         </div>
@@ -454,7 +454,7 @@ export default function SettingsGeneral() {
                 <Building2 className="w-7 h-7" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">Identity Configuration</h2>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Identity configuration</h2>
                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-0.5">Primary institutional Hub Management</p>
               </div>
             </div>
@@ -647,7 +647,7 @@ export default function SettingsGeneral() {
           <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner border border-rose-100">
             <AlertTriangle className="w-12 h-12 text-rose-500" />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-sm">Archive Branch?</h2>
+          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-sm">Archive branch?</h2>
           <p className="text-sm font-bold text-slate-500 mb-10 leading-relaxed px-4">
             Are you sure you want to archive this branch? All data will be preserved but the branch will be deactivated.
           </p>

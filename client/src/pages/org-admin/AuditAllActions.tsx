@@ -65,7 +65,7 @@ export default function AuditAllActions() {
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System-Wide Audit Trail</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System-wide audit trail</h1>
             <p className="text-slate-500 mt-1 font-medium">Immutable history of every entity state change across all modules.</p>
           </div>
         </div>

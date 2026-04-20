@@ -89,7 +89,7 @@ export default function SettingsGovernance() {
           <Shield className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Governance & Security Policies</h1>
+          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Governance & security policies</h1>
           <p className="text-slate-500 mt-1 text-sm">Select a policy framework to review or modify institutional oversight protocols.</p>
         </div>
       </div>

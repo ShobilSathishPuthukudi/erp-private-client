@@ -18,9 +18,12 @@ import EmployeeCommunications from './EmployeeCommunications';
 import RemapEmployees from './RemapEmployees';
 import RoleMapping from '../org-admin/RoleMapping';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
+import { Modal } from '@/components/shared/Modal';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { Link } from 'react-router-dom';
 import { 
   Users, 
@@ -33,10 +36,12 @@ import {
   ShieldCheck,
   Zap,
   Briefcase,
-  Shuffle
+  Shuffle,
+  Activity
 } from 'lucide-react';
 
 function DashboardLanding() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState({
     employeeCount: 0,
     vacancyCount: 0,
@@ -85,37 +90,23 @@ function DashboardLanding() {
 
   return (
     <div className="space-y-10 max-w-none mx-auto p-4 lg:p-8">
-      {/* Premium Header Section */}
-      <div className="bg-slate-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
-        <div className="relative z-10 max-w-3xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-xl border border-white/10">
-                <Briefcase className="w-6 h-6 text-rose-400" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-300">Workforce Control v3</span>
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-none">
-            Institutional <span className="text-rose-400 font-outline-2">Human</span> Resources.
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10 max-w-2xl">
-            Command Center for vacancy-driven recruitment, hierarchical personnel governance, and real-time performance audit protocols.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <Link 
-              to="vacancies"
-              className="flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-sm hover:bg-rose-400 transition-all active:scale-95 group"
-            >
-              <Zap className="w-5 h-5" />
-              Initiate Hiring
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </div>
-        
-        {/* Abstract shapes */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-rose-500/10 to-transparent pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-rose-600/20 rounded-full blur-[100px] pointer-events-none" />
-      </div>
+      <DashboardGreeting 
+        role="Director - Human Capital"
+        name={user?.name || 'Academic Administrator'}
+        subtitle={`Workforce identity and institutional performance overview for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Human Capital protocols active.`}
+        actions={[
+          {
+            label: 'Adjudicate Leaves',
+            link: '/dashboard/hr/leaves',
+            icon: Calendar
+          },
+          {
+            label: 'Staff Performance',
+            link: '/dashboard/hr/performance',
+            icon: Activity
+          }
+        ]}
+      />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

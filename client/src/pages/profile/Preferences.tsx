@@ -28,7 +28,7 @@ export default function Preferences() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Account Preferences</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Account preferences</h1>
         <p className="text-slate-500 text-sm">Manage how you receive communications and how your profile appears.</p>
       </div>
 

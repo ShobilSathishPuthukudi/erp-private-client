@@ -58,7 +58,7 @@ export default function AcademicTasks() {
     reset({ 
       title: '', 
       assignedTo: '', 
-      deadline: new Date().toISOString().split('T')[0], 
+      deadline: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], 
       priority: 'medium',
       status: 'pending',
       description: ''
@@ -184,7 +184,7 @@ export default function AcademicTasks() {
             <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/20">
               <CheckSquare className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase ">Operations Bureau</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase ">Operations bureau</h1>
           </div>
           <p className="text-slate-500 font-medium ml-15">Deploy institutional directives and monitor execution compliance across units.</p>
         </div>

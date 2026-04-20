@@ -11,6 +11,7 @@ import {
   Info
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
 
 interface Student {
   id: number;
@@ -53,7 +54,7 @@ export default function ResubmissionLogs() {
              <UserCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="font-bold text-slate-900">{row.original.name}</p>
+            <Link to={`/dashboard/academic/students/${row.original.id}`} className="font-bold text-slate-900 hover:text-blue-600 transition-colors">{row.original.name}</Link>
             <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Attm: {row.original.attemptCount}</p>
           </div>
         </div>

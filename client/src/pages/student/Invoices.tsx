@@ -89,7 +89,7 @@ export default function Invoices() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center shrink-0">
         <div>
-           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional Billing</h1>
+           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional billing</h1>
            <p className="text-slate-500 text-sm font-medium">Access and download your academic fee invoices issued by the institution.</p>
         </div>
       </div>

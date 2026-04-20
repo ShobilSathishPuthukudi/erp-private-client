@@ -109,7 +109,7 @@ export default function PermissionAudit() {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Permission Change Audit</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Permission change audit</h1>
             <p className="text-slate-500 mt-1 font-medium">Historic records of every modification made to the institutional permission matrix.</p>
           </div>
         </div>

@@ -56,7 +56,7 @@ export default function Tasks() {
   const watchAllFields = watch();
 
   const isFormValid =
-    !!watchAllFields.title?.trim() &&
+    !!watchAllFields.title?.trim() && watchAllFields.title.trim().length >= 6 && watchAllFields.title.trim().length <= 100 &&
     (editingTask ? true : !!watchAllFields.assignedTo) &&
     !!watchAllFields.deadline &&
     !!watchAllFields.priority &&
@@ -109,7 +109,7 @@ export default function Tasks() {
     reset({ 
       title: '', 
       assignedTo: hrAdmin?.uid || (isCEO ? 'HR-SYSTEM' : ''), 
-      deadline: new Date().toISOString().split('T')[0], 
+      deadline: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], 
       priority: 'medium',
       status: 'pending'
     });
@@ -479,7 +479,11 @@ export default function Tasks() {
             <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Task Title / Description</label>
               <input
-                {...register('title', { required: 'Title is required' })}
+                {...register('title', { 
+                  required: 'Title/Description is required',
+                  minLength: { value: 6, message: 'Must be between 6 and 100 characters' },
+                  maxLength: { value: 100, message: 'Must be between 6 and 100 characters' }
+                })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
                 placeholder="Complete Q3 Financial Audit Review"
               />
@@ -540,7 +544,7 @@ export default function Tasks() {
             <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Priority</label>
               <select
-                {...register('priority')}
+                {...register('priority', { required: 'Priority is required' })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
               >
                 <option value="low">Low</option>
@@ -590,7 +594,7 @@ export default function Tasks() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !isFormValid}
+              disabled={isSubmitting}
               className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
                {isSubmitting ? 'Processing...' : (editingTask ? 'Save Updates' : 'Assign Directive')}

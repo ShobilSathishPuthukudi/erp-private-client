@@ -16,6 +16,7 @@ import AnnouncementBoard from '@/components/shared/AnnouncementBoard';
 import { Modal } from '@/components/shared/Modal';
 import AdmissionWizard from './AdmissionWizard';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 export default function Dashboard() {
   const user = useAuthStore(state => state.user);
@@ -85,42 +86,23 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 p-6 lg:p-10 animate-in fade-in duration-700">
       {/* Premium Welcome Header */}
-      <div className="relative overflow-hidden bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl border border-white/10">
-        <div className="absolute top-0 right-0 p-12 opacity-10">
-            <Layout className="w-64 h-64 -rotate-12" />
-        </div>
-        <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="bg-blue-500/20 backdrop-blur-xl p-3 rounded-2xl border border-blue-400/30">
-                    <Sparkles className="w-6 h-6 text-blue-400" />
-                </div>
-                <span className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">Institutional Node Active</span>
-            </div>
-            <h1 className="text-4xl lg:text-5xl font-black tracking-tight mb-4">
-                Welcome, {(user?.name || 'Academic Administrator').split(' ')[0]}
-            </h1>
-            <p className="text-slate-400 text-lg max-w-2xl leading-relaxed">
-                Your portal for institutional governance and student lifecycle management is fully synchronized with our central framework.
-            </p>
-            
-            <div className="flex flex-wrap gap-4 mt-10">
-                <button 
-                  onClick={() => setIsAdmissionModalOpen(true)}
-                  className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group border border-white/20 shadow-xl"
-                >
-                    <UserPlus className="w-4 h-4" />
-                    Initiate Admission
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <button 
-                  onClick={() => navigate('programs')}
-                  className="bg-slate-800/50 backdrop-blur-md text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/10"
-                >
-                    Browse Programs
-                </button>
-            </div>
-        </div>
-      </div>
+      <DashboardGreeting 
+        role="Partner Center - Institutional Node"
+        name={(user?.name || 'Academic Administrator').split(' ')[0]}
+        subtitle={`Your portal for institutional governance and student lifecycle management is fully synchronized with our central framework for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
+        actions={[
+          {
+            label: 'Initiate Admission',
+            onClick: () => setIsAdmissionModalOpen(true),
+            icon: UserPlus
+          },
+          {
+            label: 'Browse Programs',
+            link: 'programs',
+            icon: Sparkles
+          }
+        ]}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -164,7 +146,7 @@ export default function Dashboard() {
                     <Bell className="w-6 h-6 text-slate-600" />
                 </div>
                 <div>
-                   <h2 className="text-xl font-black text-slate-900 tracking-tight">Institutional Directives</h2>
+                   <h2 className="text-xl font-black text-slate-900 tracking-tight">Institutional directives</h2>
                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Academic & HR Operations</p>
                 </div>
             </div>

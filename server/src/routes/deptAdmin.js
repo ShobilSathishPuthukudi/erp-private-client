@@ -333,13 +333,19 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
 
   try {
     // Oversight Query: Filter by departmentId only if provided (execs might skip for total view)
+    const baseConditions = [];
+    if (departmentId || subDepartmentId) {
+       baseConditions.push({
+          ...(departmentId && { departmentId }),
+          ...(subDepartmentId && { subDepartmentId })
+       });
+    }
+
     const whereClause = {
         [Op.or]: [
-            {
-                ...(departmentId && { departmentId }),
-                ...(subDepartmentId && { subDepartmentId })
-            },
-            { assignedTo: req.user.uid }
+            ...baseConditions,
+            { assignedTo: req.user.uid },
+            { assignedBy: req.user.uid }
         ]
     };
 
@@ -353,7 +359,7 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
             required: false 
         }
       ],
-      order: [['deadline', 'ASC']]
+      order: [['createdAt', 'DESC']]
     });
 
     const tasks = augmentTaskCollection(tasksRaw);

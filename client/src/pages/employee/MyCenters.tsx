@@ -44,7 +44,7 @@ export default function MyCenters() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic leading-none">Partnership Ledger</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic leading-none">Partnership ledger</h1>
           <p className="text-slate-500 font-medium mt-2">Direct track of institutional nodes registered via your referral identity.</p>
         </div>
         <div className="relative max-w-md w-full">

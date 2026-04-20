@@ -35,7 +35,7 @@ export default function Universities() {
   const [requestReason, setRequestReason] = useState('');
   const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
 
-  const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { isSubmitting, errors, isDirty } } = useForm();
   const watchAllFields = watch();
 
   const isFormValid = 
@@ -224,11 +224,11 @@ export default function Universities() {
               }}
               disabled={!canEdit}
               title={canEdit ? 'Edit university' : 'Only proposed universities can be edited'}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:scale-100"
             >
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
+            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all hover:-translate-y-0.5 hover:scale-110 hover:shadow-md active:scale-95 shadow-sm border border-red-100 bg-white">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -324,14 +324,14 @@ export default function Universities() {
           <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 uppercase">
             <button
               onClick={() => setDeletingItem(null)}
-              className="px-6 py-2 text-slate-500 font-black text-[10px] tracking-widest"
+              className="px-6 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-black text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all"
             >
               Cancel
             </button>
             {deletingItem?.status === 'proposed' && (
               <button
                 onClick={executeDelete}
-                className="px-8 py-2 bg-rose-600 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-lg shadow-rose-200"
+                className="px-8 py-2 bg-rose-600 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-rose-700 transition-all active:scale-95 shadow-lg shadow-rose-900/20"
               >
                 Delete
               </button>
@@ -341,7 +341,7 @@ export default function Universities() {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
-        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+        <div className="overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
           <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
@@ -373,11 +373,12 @@ export default function Universities() {
                 <div className="relative group">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('name', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    {...register('name', { required: 'Institutional Designation is mandatory' })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.name ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="Cambridge International"
                     />
                 </div>
+                {errors.name && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.name.message as string}</p>}
                 </div>
 
                 <div className="col-span-2">
@@ -385,11 +386,12 @@ export default function Universities() {
                 <div className="relative group">
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('shortName', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900 uppercase"
+                    {...register('shortName', { required: 'Short Name / Abbreviation is mandatory' })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.shortName ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900 uppercase`}
                     placeholder="CU / LPU"
                     />
                 </div>
+                {errors.shortName && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.shortName.message as string}</p>}
                 </div>
 
                 <div>
@@ -397,11 +399,12 @@ export default function Universities() {
                 <div className="relative group">
                     <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('accreditation', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    {...register('accreditation', { required: 'Accreditation details are mandatory' })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.accreditation ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="UGC Category-1"
                     />
                 </div>
+                {errors.accreditation && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.accreditation.message as string}</p>}
                 </div>
 
                 <div>
@@ -409,11 +412,12 @@ export default function Universities() {
                 <div className="relative group">
                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('websiteUrl', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    {...register('websiteUrl', { required: 'Official Institutional URL is mandatory' })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.websiteUrl ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="https://university.edu"
                     />
                 </div>
+                {errors.websiteUrl && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.websiteUrl.message as string}</p>}
                 </div>
 
 
@@ -422,7 +426,7 @@ export default function Universities() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
+          <div className="flex justify-end gap-3 p-8 border-t border-slate-100 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
@@ -432,7 +436,7 @@ export default function Universities() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !isFormValid}
+              disabled={isSubmitting || (!!editingItem && !isDirty)}
               className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Update Node' : 'Initialize Node')}
@@ -481,7 +485,7 @@ export default function Universities() {
                 </button>
                 <button
                 onClick={submitGatedRequest}
-                className="px-8 py-2 bg-amber-500 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-200"
+                className="px-8 py-2 bg-amber-500 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-900/20"
                 >
                 Dispatch to Finance
                 </button>

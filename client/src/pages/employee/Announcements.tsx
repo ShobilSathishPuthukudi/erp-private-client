@@ -38,7 +38,7 @@ export default function StaffAnnouncements() {
               <div className="w-10 h-10 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200">
                  <Bell className="w-5 h-5" />
               </div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional Board</h1>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional board</h1>
            </div>
            <p className="text-slate-500 font-medium max-w-md">Your unified feed for HR directives, Ops updates, and organizational milestones.</p>
         </div>
@@ -58,7 +58,7 @@ export default function StaffAnnouncements() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Live Directives</h2>
+                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Live directives</h2>
                 <div className="h-px flex-1 bg-slate-100 mx-6"></div>
             </div>
             <AnnouncementBoard />

@@ -158,7 +158,7 @@ export default function MyTasks() {
               <Activity className="w-6 h-6" />
            </div>
            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Operational Desk</h1>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Operational desk</h1>
               <p className="text-slate-500 text-sm font-medium">Synchronize your daily deliverables with the institutional executor.</p>
            </div>
         </div>

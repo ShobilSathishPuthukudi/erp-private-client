@@ -144,7 +144,7 @@ export default function AuditLogs() {
             <History className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System Audit Ledger</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System audit ledger</h1>
             <p className="text-slate-500 mt-1">Immutable record of high-authority institutional modifications.</p>
           </div>
         </div>

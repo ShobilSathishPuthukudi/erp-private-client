@@ -318,9 +318,7 @@ export default function PermissionMatrix() {
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-                Permission Matrix
-              </h1>
+              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Permission matrix</h1>
               <p className="text-sm text-slate-500 mt-0.5">
                 Configure what each role can do across institutional actions.
               </p>

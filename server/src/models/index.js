@@ -31,6 +31,7 @@ import LeadTouchpoint from './LeadTouchpoint.js';
 import Quotation from './Quotation.js';
 import Deal from './Deal.js';
 import Target from './Target.js';
+import TargetAssignment from './TargetAssignment.js';
 import IncentiveRule from './IncentiveRule.js';
 import IncentivePayout from './IncentivePayout.js';
 import ReregRequest from './ReregRequest.js';
@@ -197,12 +198,23 @@ Target.belongsTo(User, { foreignKey: 'targetableId', targetKey: 'uid', as: 'empl
 Target.hasMany(IncentiveRule, { foreignKey: 'targetId', as: 'rules' });
 IncentiveRule.belongsTo(Target, { foreignKey: 'targetId' });
 
+// Target -> Assignments
+Target.hasMany(TargetAssignment, { foreignKey: 'targetId', as: 'assignments' });
+TargetAssignment.belongsTo(Target, { foreignKey: 'targetId', as: 'target' });
+User.hasMany(TargetAssignment, { foreignKey: 'employeeUid', sourceKey: 'uid', as: 'targetAssignments' });
+TargetAssignment.belongsTo(User, { foreignKey: 'employeeUid', targetKey: 'uid', as: 'employee' });
+Task.hasMany(TargetAssignment, { foreignKey: 'taskId', as: 'targetAssignments' });
+TargetAssignment.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+
 // User -> Payouts
 User.hasMany(IncentivePayout, { foreignKey: 'userId', sourceKey: 'uid', as: 'payouts' });
 IncentivePayout.belongsTo(User, { foreignKey: 'userId', targetKey: 'uid', as: 'employee' });
 
 // Payout -> Rule
 IncentivePayout.belongsTo(IncentiveRule, { foreignKey: 'ruleId' });
+IncentivePayout.belongsTo(Target, { foreignKey: 'targetId', as: 'target' });
+IncentivePayout.belongsTo(TargetAssignment, { foreignKey: 'assignmentId', as: 'assignment' });
+TargetAssignment.hasOne(IncentivePayout, { foreignKey: 'assignmentId', as: 'payout' });
 
 // Student -> ReregRequest
 // Student -> ReregRequest
@@ -314,8 +326,11 @@ CenterSubDept.belongsTo(Department, { foreignKey: 'centerId' });
 
 // ChangeRequest -> Center
 ChangeRequest.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });
+ChangeRequest.belongsTo(Department, { as: 'currentUniversity', foreignKey: 'currentUniversityId' });
+ChangeRequest.belongsTo(Department, { as: 'requestedUniversity', foreignKey: 'requestedUniversityId' });
 ChangeRequest.belongsTo(Program, { as: 'currentProgram', foreignKey: 'currentProgramId' });
 ChangeRequest.belongsTo(Program, { as: 'requestedProgram', foreignKey: 'requestedProgramId' });
+ChangeRequest.belongsTo(ProgramFee, { as: 'requestedFeeSchema', foreignKey: 'requestedFeeSchemaId' });
 Department.hasMany(ChangeRequest, { foreignKey: 'centerId' });
 
 // AdmissionSession -> Program
@@ -374,6 +389,7 @@ const models = {
   Quotation,
   Deal,
   Target,
+  TargetAssignment,
   IncentiveRule,
   IncentivePayout,
   ReregRequest,

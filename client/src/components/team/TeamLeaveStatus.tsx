@@ -258,7 +258,7 @@ export default function TeamLeaveStatus() {
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
+        <div className="flex bg-[var(--theme-soft)] p-1 rounded-2xl border border-[var(--card-border)] w-fit">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -268,13 +268,13 @@ export default function TeamLeaveStatus() {
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                   ${isActive 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
+                    ? 'bg-[var(--card-bg)] text-[var(--theme-accent)] shadow-lg ring-1 ring-[var(--card-border)]' 
+                    : 'text-[var(--page-text)] opacity-60 hover:opacity-100 hover:bg-[var(--theme-soft)]'}
                 `}
               >
-                <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-[var(--theme-accent)]' : 'opacity-60'}`} />
                 {tab.label}
-                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-[var(--theme-accent)] text-white border-none' : 'bg-[var(--card-border)] text-inherit opacity-80'}`}>
                   {tab.count}
                 </span>
               </button>
@@ -287,9 +287,9 @@ export default function TeamLeaveStatus() {
       {!isHrView && requestedCount > 0 && activeTab !== 'requested' && (
         <button
           onClick={() => setActiveTab('requested')}
-          className="flex w-full items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-4 text-left text-sm text-amber-800 transition hover:bg-amber-100 shadow-sm"
+          className="flex w-full items-center gap-4 rounded-2xl border border-amber-300 bg-amber-100 p-4 text-left text-sm text-amber-800 transition-all hover:bg-amber-200 hover:scale-[1.01] hover:shadow-md hover:shadow-amber-200/20 shadow-sm"
         >
-          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center text-amber-700 shrink-0">
             <AlertCircle className="h-5 w-5" />
           </div>
           <div className="flex-1">
@@ -298,7 +298,7 @@ export default function TeamLeaveStatus() {
               {requestedCount} {requestedCount === 1 ? 'request awaits' : 'requests await'} your verification.
             </p>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-white px-3 py-1.5 rounded-lg border border-amber-200">Review Now →</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-300 shadow-sm">Review Now →</span>
         </button>
       )}
 
@@ -315,7 +315,7 @@ export default function TeamLeaveStatus() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by employee identity, leave type or status..."
-              className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-400 sm:text-sm transition-all font-medium"
+              className="block w-full pl-10 pr-3 py-2.5 border border-[var(--card-border)] rounded-xl bg-[var(--theme-soft)] placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-400 transition-all font-medium text-[var(--page-text)]"
             />
           </div>
           
@@ -352,65 +352,65 @@ export default function TeamLeaveStatus() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/60">
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <tr className="border-b border-[var(--card-border)] bg-[var(--theme-soft)]">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--page-text)]">
                     Employee
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--page-text)]">
                     Type
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--page-text)]">
                     Duration
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--page-text)]">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--page-text)]">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--card-border)]">
                 {filteredRecords.map((record) => {
                   const days = getDurationDays(record.fromDate, record.toDate);
                   const rowCanAct = canAct(record.status);
                   const busy = actingId === record.id;
                   return (
-                    <tr key={record.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr key={record.id} className="hover:bg-slate-400/10 transition-colors duration-200">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--theme-soft)] text-xs font-semibold text-[var(--page-text)] border border-[var(--card-border)]">
                             {getInitials(record.employee?.name, record.employeeId)}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-slate-900">
+                            <p className="truncate font-medium text-[var(--page-text)]">
                               {record.employee?.name || record.employeeId}
                             </p>
-                            <p className="truncate text-xs text-slate-500">
+                            <p className="truncate text-xs opacity-60 text-[var(--page-text)]">
                               {record.employee?.email || record.employeeId}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                        <span className="inline-flex items-center rounded-md bg-[var(--theme-soft)] border border-[var(--card-border)] px-2 py-0.5 text-xs font-medium text-[var(--page-text)]">
                           {record.type || '—'}
                         </span>
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-700">
+                          <span className="text-xs text-[var(--page-text)]">
                             {formatDate(record.fromDate)}
-                            <span className="mx-1 text-slate-400">→</span>
+                            <span className="mx-1 opacity-50">→</span>
                             {formatDate(record.toDate)}
                           </span>
                           {days !== null && (
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 tabular-nums">
+                            <span className="rounded bg-[var(--theme-soft)] border border-[var(--card-border)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--page-text)] tabular-nums">
                               {days}d
                             </span>
                           )}
                         </div>
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] opacity-60 text-[var(--page-text)]">
                           <Clock className="h-3 w-3" />
                           Submitted {formatDate(record.createdAt)}
                         </p>
@@ -431,14 +431,14 @@ export default function TeamLeaveStatus() {
                             <button
                               onClick={() => setConfirmState({ record, action: 'reject' })}
                               disabled={busy}
-                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 disabled:opacity-50"
+                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition-all duration-300 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-50"
                             >
                               Reject
                             </button>
                             <button
                               onClick={() => setConfirmState({ record, action: 'approve' })}
                               disabled={busy}
-                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-emerald-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95 disabled:opacity-60 flex items-center gap-2"
+                              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-emerald-600 transition-all duration-300 hover:scale-105 hover:shadow-xl shadow-lg shadow-slate-900/10 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 flex items-center gap-2"
                             >
                               {activeTab === 'requested' || !isHrView ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                               {approveLabel}
@@ -447,7 +447,7 @@ export default function TeamLeaveStatus() {
                         ) : (
                           <button
                             onClick={() => setConfirmState({ record, action: 'view' })}
-                            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 transition-all active:scale-95 flex items-center gap-2 ml-auto"
+                            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2 ml-auto"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             View
@@ -546,7 +546,7 @@ export default function TeamLeaveStatus() {
               {confirmState.action === 'view' ? (
                 <button
                   onClick={() => setConfirmState(null)}
-                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                  className="rounded-md border border-slate-200/50 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all hover:scale-105 active:scale-95"
                 >
                   Close
                 </button>
@@ -555,7 +555,7 @@ export default function TeamLeaveStatus() {
                   <button
                     onClick={() => setConfirmState(null)}
                     disabled={!!actingId}
-                    className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                    className="rounded-md border border-slate-200/50 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                   >
                     Cancel
                   </button>

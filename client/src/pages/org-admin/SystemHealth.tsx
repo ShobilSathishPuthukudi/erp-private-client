@@ -97,7 +97,7 @@ export default function SystemHealth() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">System Health & Audits</h1>
+          <h1 className="text-2xl font-bold text-slate-900">System health & audits</h1>
           <p className="text-slate-500 text-sm">Real-time telemetry and architectural oversight console.</p>
         </div>
         <button 

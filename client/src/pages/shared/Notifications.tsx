@@ -48,7 +48,12 @@ export default function Notifications() {
         return '/dashboard/operations/announcements';
       }
       if (normalizedRole === 'hr') return '/dashboard/hr/announcements';
-      if (normalizedRole === 'ceo') return '/dashboard/ceo/announcements';
+      if (normalizedRole === 'ceo') {
+        if (notification?.message?.startsWith('HR Broadcast:')) {
+          return '/dashboard/ceo/hr-broadcasts';
+        }
+        return '/dashboard/ceo/announcements';
+      }
       return '/dashboard/announcements';
     }
 

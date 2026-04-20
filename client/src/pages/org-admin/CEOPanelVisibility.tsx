@@ -91,7 +91,7 @@ export default function CEOPanelVisibility() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Visibility Scope Configuration</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Visibility scope configuration</h1>
             <p className="text-slate-500 mt-1">Directly modify the data access boundaries for CEO accounts.</p>
           </div>
         </div>

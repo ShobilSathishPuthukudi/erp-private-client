@@ -184,12 +184,8 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase flex items-center gap-2">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 flex items-center gap-2">
               {title}
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[9px] uppercase font-bold rounded-md">Live Ledger</span>
-              {readOnly && (
-                 <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] uppercase font-bold rounded-md">Oversight Mode</span>
-              )}
             </h1>
             <p className="text-slate-500 font-medium text-sm">{subtitle}</p>
           </div>

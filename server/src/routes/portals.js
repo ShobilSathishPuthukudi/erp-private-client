@@ -7,8 +7,23 @@ import erpEvents from '../lib/events.js';
 import { getSubDepartmentNameAliases, normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
-const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam, EmployeeHRRequest } = models;
+const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam, EmployeeHRRequest, TargetAssignment, ChangeRequest } = models;
 import { createNotification } from './notifications.js';
+import { syncTargetProgress } from './targets.js';
+
+const syncAssignmentsForTask = async (taskId, completedAt) => {
+  const assignments = await TargetAssignment.findAll({ where: { taskId, status: 'assigned' } });
+  if (!assignments.length) return;
+
+  const targetIds = new Set();
+  for (const assignment of assignments) {
+    await assignment.update({ status: 'completed', completedAt: completedAt || new Date() });
+    targetIds.add(assignment.targetId);
+  }
+  for (const targetId of targetIds) {
+    await syncTargetProgress(targetId);
+  }
+};
 
 const getSubDeptId = (user) => {
   if (!user) return null;
@@ -157,9 +172,14 @@ router.get('/partner-center/programs', verifyToken, requireRole('Partner Centers
 
     const programs = await CenterProgram.findAll({
       where: { centerId, isActive: true },
-      include: [{ 
-        model: Program, 
-        include: [{ model: Department, as: 'university', attributes: ['name'] }] 
+      include: [{
+        model: Program,
+        include: [{ model: Department, as: 'university', attributes: ['id', 'name', 'status'] }]
+      }, {
+        model: ProgramFee,
+        as: 'feeSchema',
+        attributes: ['id', 'name'],
+        required: false
       }]
     });
     res.json(programs);
@@ -181,15 +201,169 @@ router.get('/study-center/programs', verifyToken, requireRole('Partner Centers')
 
     const programs = await CenterProgram.findAll({
       where: { centerId, isActive: true },
-      include: [{ 
-        model: Program, 
-        include: [{ model: Department, as: 'university', attributes: ['name'] }] 
+      include: [{
+        model: Program,
+        include: [{ model: Department, as: 'university', attributes: ['id', 'name', 'status'] }]
+      }, {
+        model: ProgramFee,
+        as: 'feeSchema',
+        attributes: ['id', 'name'],
+        required: false
       }]
     });
     res.json(programs);
   } catch (error) {
     console.error('Fetch center programs alias error:', error);
     res.status(500).json({ error: 'Failed to fetch authorized programs' });
+  }
+});
+
+router.get('/study-center/university-change/options', verifyToken, requireRole('Partner Centers'), async (req, res) => {
+  try {
+    let centerId = req.user.deptId;
+    if (!centerId) {
+      const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+      if (center) centerId = center.id;
+    }
+    if (!centerId) return res.status(400).json({ error: 'Center ID not assigned' });
+
+    const currentMappings = await CenterProgram.findAll({
+      where: { centerId, isActive: true },
+      include: [
+        {
+          model: Program,
+          include: [{ model: Department, as: 'university', attributes: ['id', 'name', 'status'] }]
+        },
+        {
+          model: ProgramFee,
+          as: 'feeSchema',
+          attributes: ['id', 'name'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    const universities = await Department.findAll({
+      where: { type: 'universities', status: 'proposed' },
+      attributes: ['id', 'name', 'status'],
+      include: [{
+        model: Program,
+        attributes: ['id', 'name', 'type', 'subDeptId'],
+        include: [{
+          model: ProgramFee,
+          as: 'fees',
+          where: { isActive: true },
+          required: false,
+          attributes: ['id', 'name'],
+        }],
+        required: false,
+      }],
+      order: [['name', 'ASC']],
+    });
+
+    const requests = await ChangeRequest.findAll({
+      where: { centerId, requestType: 'center_university_change' },
+      include: [
+        { model: Department, as: 'currentUniversity', attributes: ['id', 'name'], required: false },
+        { model: Department, as: 'requestedUniversity', attributes: ['id', 'name'], required: false },
+        { model: Program, as: 'currentProgram', attributes: ['id', 'name'], required: false },
+        { model: Program, as: 'requestedProgram', attributes: ['id', 'name'], required: false },
+        { model: ProgramFee, as: 'requestedFeeSchema', attributes: ['id', 'name'], required: false },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 20,
+    });
+
+    res.json({ currentMappings, universities, requests });
+  } catch (error) {
+    console.error('Fetch university change options error:', error);
+    res.status(500).json({ error: 'Failed to load university change options' });
+  }
+});
+
+router.post('/study-center/university-change-requests', verifyToken, requireRole('Partner Centers'), async (req, res) => {
+  try {
+    const { currentProgramId, requestedUniversityId, requestedProgramId, reason } = req.body;
+
+    if (!currentProgramId || !requestedUniversityId || !requestedProgramId || !reason?.trim()) {
+      return res.status(400).json({ error: 'Current program, requested university, requested program, and reason are required' });
+    }
+
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+    if (!center) return res.status(404).json({ error: 'Center profile not found' });
+
+    const currentMapping = await CenterProgram.findOne({
+      where: { centerId: center.id, programId: currentProgramId, isActive: true },
+      include: [{ model: Program, include: [{ model: Department, as: 'university', attributes: ['id', 'name'] }] }],
+    });
+
+    if (!currentMapping?.program) {
+      return res.status(404).json({ error: 'Current center-program mapping not found' });
+    }
+
+    const requestedUniversity = await Department.findOne({
+      where: { id: requestedUniversityId, type: 'universities', status: 'proposed' }
+    });
+    if (!requestedUniversity) {
+      return res.status(400).json({ error: 'Requested university must be in proposed status' });
+    }
+
+    const requestedProgram = await Program.findOne({
+      where: { id: requestedProgramId, universityId: requestedUniversityId }
+    });
+    if (!requestedProgram) {
+      return res.status(400).json({ error: 'Requested program does not belong to the selected university' });
+    }
+
+    const existingRequest = await ChangeRequest.findOne({
+      where: {
+        centerId: center.id,
+        currentProgramId,
+        requestedProgramId,
+        requestType: 'center_university_change',
+        status: { [Op.in]: ['pending_ops', 'pending_finance'] }
+      }
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({ error: 'A matching university change request is already pending' });
+    }
+
+    const request = await ChangeRequest.create({
+      requestType: 'center_university_change',
+      centerId: center.id,
+      currentUniversityId: currentMapping.program.universityId,
+      requestedUniversityId,
+      currentProgramId,
+      requestedProgramId,
+      reason: reason.trim(),
+      status: 'pending_ops',
+    });
+
+    const opsUsers = await User.findAll({
+      where: {
+        role: { [Op.in]: ['Operations Admin', 'Academic Operations Admin', 'Organization Admin'] },
+        status: 'active'
+      },
+      attributes: ['uid']
+    });
+
+    for (const ops of opsUsers) {
+      await createNotification(req.io, {
+        targetUid: ops.uid,
+        title: `University Change Request: ${center.name}`,
+        message: `${center.name} requested reassignment from ${currentMapping.program?.name} to ${requestedProgram.name}.`,
+        type: 'info',
+        link: '/dashboard/academic/university-changes',
+      });
+    }
+
+    res.status(201).json({ message: 'University change request submitted for Operations approval.', request });
+  } catch (error) {
+    console.error('Create university change request error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create university change request' });
   }
 });
 
@@ -570,23 +744,65 @@ router.post('/partner-center/students/:id/submit', verifyToken, requireRole('Par
   try {
     const { id } = req.params;
     let center = await Department.findOne({ where: { id: req.user.deptId } });
-    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner-center' } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
     if (!center) return res.status(404).json({ error: 'Center profile not found' });
 
     const student = await Student.findOne({ where: { id, centerId: center.id } });
     if (!student) return res.status(404).json({ error: 'Student asset not located' });
 
-    if (student.status !== 'DRAFT') {
-      return res.status(400).json({ error: 'Submission protocol failure: Only DRAFT students can be submitted.' });
+    const canResubmit = student.status === 'DRAFT' || student.enrollStatus === 'correction_requested';
+    if (!canResubmit) {
+      return res.status(400).json({ error: 'Submission protocol failure: Only draft or correction-requested students can be submitted.' });
     }
 
     const logs = student.verificationLogs || [];
-    logs.push({ step: 'Center_Submission', time: new Date(), status: 'PENDING_REVIEW', by: req.user.uid });
+    logs.push({
+      step: student.enrollStatus === 'correction_requested' ? 'Center_Resubmission' : 'Center_Submission',
+      time: new Date(),
+      status: 'PENDING_REVIEW',
+      by: req.user.uid
+    });
 
     await student.update({ 
       status: 'PENDING_REVIEW',
-      verificationLogs: logs
+      enrollStatus: 'pending_subdept',
+      reviewStage: 'SUB_DEPT',
+      verificationLogs: logs,
+      resubmissionDate: new Date(),
+      lastRejectionReason: null
     });
+
+    try {
+      const opsNotificationRoles = [
+        'Academic Operations',
+        'Academic Operations Admin',
+        'Academic Operations Administrator',
+        'Operations Admin',
+        'Operations Administrator',
+        'Organization Admin'
+      ];
+
+      const opsUsers = await User.findAll({
+        where: {
+          role: { [Op.in]: opsNotificationRoles },
+          status: 'active'
+        },
+        attributes: ['uid']
+      });
+
+      for (const ops of opsUsers) {
+        await createNotification(req.io, {
+          targetUid: ops.uid,
+          title: `Resubmitted Enrollment: ${student.name}`,
+          message: `${center.name} has corrected and resubmitted ${student.name}'s application for review.`,
+          type: 'info',
+          link: '/dashboard/operations/pending-reviews?tab=pending',
+          metadata: { studentId: student.id, centerId: student.centerId, flow: 'student_resubmission' }
+        });
+      }
+    } catch (notificationError) {
+      console.error('[RESUBMIT_NOTIFY_ERROR]:', notificationError);
+    }
 
     res.json({ message: 'Student successfully submitted to Sub-Department for review.', student });
   } catch (error) {
@@ -675,7 +891,14 @@ router.put('/employee/tasks/:id/status', verifyToken, requireRole('employee'), a
     const task = await Task.findOne({ where: { id, assignedTo: req.user.uid } });
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    await task.update({ status });
+    const wasIncomplete = task.status !== 'completed';
+    const completedAt = status === 'completed' ? new Date() : task.completedAt;
+    await task.update({ status, completedAt });
+
+    if (status === 'completed' && wasIncomplete) {
+      await syncAssignmentsForTask(task.id, completedAt);
+    }
+
     res.json(task);
   } catch (error) {
     console.error('Update employee task error:', error);
@@ -693,12 +916,15 @@ router.put('/employee/tasks/:id/complete', verifyToken, requireRole('employee'),
 
     if (task.status === 'completed') return res.status(400).json({ error: 'Task is already completed' });
 
-    await task.update({ 
-      status: 'completed', 
+    const completedAt = new Date();
+    await task.update({
+      status: 'completed',
       remarks: remarks || task.remarks,
       evidenceUrl: evidenceUrl || task.evidenceUrl,
-      completedAt: new Date()
+      completedAt
     });
+
+    await syncAssignmentsForTask(task.id, completedAt);
 
     res.json({ message: 'Task completed successfully with evidence recorded.', task });
   } catch (error) {

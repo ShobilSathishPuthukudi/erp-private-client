@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/shared/DataTable';
@@ -27,7 +27,11 @@ interface Student {
   subDepartment?: { name: string };
   program?: { name: string };
   university?: { name: string };
-  marks?: any;
+  marks?: {
+    lastExam?: string;
+    lastExamScore?: string;
+    marksProof?: string;
+  };
   createdAt: string;
   documents?: { name: string, path: string }[];
   reviewStage?: string;
@@ -36,6 +40,11 @@ interface Student {
 }
 
 export default function PendingReviews() {
+  const getApiErrorMessage = (error: unknown, fallback: string) => {
+    const apiError = error as { response?: { data?: { error?: string } } };
+    return apiError.response?.data?.error || fallback;
+  };
+
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'pending' | 'finance' | 'approved' | 'rejected') || 'pending';
   const [activeTab, setActiveTab] = useState<'pending' | 'finance' | 'approved' | 'rejected'>(initialTab);
@@ -83,7 +92,7 @@ export default function PendingReviews() {
       };
       const res = await api.get(`/academic/students?status=${statusMap[activeTab]}`);
       setStudents(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to access eligibility queue');
     } finally {
       setIsLoading(false);
@@ -118,8 +127,8 @@ export default function PendingReviews() {
       toast.success(res.data.message || 'Application approved and routed to Finance');
       setIsReviewModalOpen(false);
       await Promise.all([fetchData(), fetchCounts()]);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Authorization protocol failure');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Authorization protocol failure'));
     }
   };
 
@@ -138,8 +147,26 @@ export default function PendingReviews() {
       toast.success('Enrollment Rejected: Study Center Notified');
       setIsReviewModalOpen(false);
       await Promise.all([fetchData(), fetchCounts()]);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Rejection protocol failure');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Rejection protocol failure'));
+    }
+  };
+
+  const handleRequestCorrection = async () => {
+    if (!selectedStudent) return;
+    if (!remarks.trim()) {
+      return toast.error('Mandatory correction remarks required before returning the application');
+    }
+    try {
+      const res = await api.put(`/academic/students/${selectedStudent.id}/verify-eligibility`, {
+        status: 'correction_requested',
+        remarks: remarks.trim()
+      });
+      toast.success(res.data.message || 'Correction requested and partner center notified');
+      setIsReviewModalOpen(false);
+      await Promise.all([fetchData(), fetchCounts()]);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Correction workflow failed'));
     }
   };
 
@@ -153,7 +180,13 @@ export default function PendingReviews() {
             {row.original.name?.charAt(0) || '?'}
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-slate-900">{row.original.name || 'Unknown'}</span>
+            <Link
+              to={`/dashboard/academic/students/${row.original.id}`}
+              className="font-bold text-slate-900 hover:text-blue-600 transition-colors"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {row.original.name || 'Unknown'}
+            </Link>
             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">APP-REF-{row.original.id}</span>
           </div>
         </div>
@@ -243,13 +276,13 @@ export default function PendingReviews() {
              <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id as any);
+                  setActiveTab(tab.id as 'pending' | 'finance' | 'approved' | 'rejected');
                   setSearchParams({ tab: tab.id });
                 }}
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                   ${activeTab === tab.id 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
                 `}
              >
@@ -322,7 +355,7 @@ export default function PendingReviews() {
               })}
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Governance Desk</p>
                 <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-indigo-600 uppercase tracking-widest">
@@ -489,6 +522,14 @@ export default function PendingReviews() {
                     >
                         <XCircle className="w-4 h-4" />
                         Issue Rejection
+                    </button>
+                    <button
+                        onClick={handleRequestCorrection}
+                        disabled={!remarks.trim()}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 text-amber-700 font-black hover:bg-amber-50 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-xs uppercase tracking-widest border border-amber-200 bg-amber-50/60"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Request Correction
                     </button>
                     <button 
                         onClick={handleApprove}

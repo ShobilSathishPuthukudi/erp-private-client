@@ -91,7 +91,7 @@ export default function Holidays() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Holiday Synchronization"
+        title="Holiday synchronization"
         description="Coordinate organization-wide breaks across all departmental pods."
         icon={CalendarDays}
         action={

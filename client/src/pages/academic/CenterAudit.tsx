@@ -274,7 +274,7 @@ export default function CenterAudit() {
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                   ${activeTab === tab.id 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200' 
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
                 `}
              >

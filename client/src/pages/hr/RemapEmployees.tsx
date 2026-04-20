@@ -223,7 +223,7 @@ export default function RemapEmployees() {
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader
-        title="Employee Remap"
+        title="Employee remap"
         description="Move existing employees into a different department or unit and clear any seeded admin mapping automatically."
         icon={Shuffle}
       />

@@ -6,7 +6,7 @@ import erpEvents from '../lib/events.js';
 import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
-const { Program, Student, Department, AccreditationRequest, ProgramOffering, Payment } = models;
+const { Program, Student, Department, AccreditationRequest, ProgramOffering, Payment, Notification, User } = models;
 
 const getLegacySubDeptId = (user) => {
   if (!user) return null;
@@ -461,12 +461,39 @@ router.put('/accreditation-requests/:id/approve', verifyToken, isSubDeptAdmin, a
     if (!request) return res.status(404).json({ error: 'Accreditation request not found' });
 
     // Step 1: Assign administrative routing blocks and transfer to finance governance.
-    await request.update({ 
-      status: 'finance_pending', 
+    await request.update({
+      status: 'finance_pending',
       assignedUniversityId,
       assignedSubDeptId,
-      remarks 
+      remarks
     });
+
+    // Step 2: Notify Finance Admins that a verified request is awaiting ratification,
+    // and notify the requesting Partner Center that Operations has forwarded their request.
+    try {
+      const financeAdmins = await User.findAll({
+        where: { role: { [Op.in]: ['Finance Admin', 'Organization Admin'] } },
+        attributes: ['uid']
+      });
+      await Promise.all(financeAdmins.map((admin) => Notification.create({
+        userUid: admin.uid,
+        type: 'info',
+        message: `Operations cleared program request "${request.courseName}" — awaiting Finance ratification.`,
+        link: '/dashboard/finance/accreditation-queue'
+      })));
+
+      const center = await Department.findByPk(request.centerId);
+      if (center?.adminId) {
+        await Notification.create({
+          userUid: center.adminId,
+          type: 'info',
+          message: `Your program request "${request.courseName}" has been verified by Operations and forwarded to Finance for final approval.`,
+          link: '/dashboard/partner-center/accreditation'
+        });
+      }
+    } catch (notifyError) {
+      console.error('[ACCREDITATION_FORWARD_NOTIFY_ERROR]:', notifyError);
+    }
 
     res.json({ message: 'Request formally authorized and transferred to Finance Queue', request });
   } catch (error) {

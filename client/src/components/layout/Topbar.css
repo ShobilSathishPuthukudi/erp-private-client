@@ -717,4 +717,46 @@ body.modal-open-blur .header-modern-glass {
 .notification-bell-btn:active .lucide-bell {
     transform: scale(0.9);
 }
+
+/* ---- Antigravity-Skills Design System: Theme Overrides ---- */
+html[data-card-theme="midnight-ops"] .antigravity-dropdown,
+html[data-card-theme="midnight"] .antigravity-dropdown {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: #1e293b;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+html[data-card-theme="midnight-ops"] .dropdown-head,
+html[data-card-theme="midnight"] .dropdown-head {
+    border-bottom-color: #1e293b;
+}
+html[data-card-theme="midnight-ops"] .dropdown-head h4,
+html[data-card-theme="midnight"] .dropdown-head h4 {
+    color: #f1f5f9;
+}
+html[data-card-theme="midnight-ops"] .profile-popover-head,
+html[data-card-theme="midnight"] .profile-popover-head {
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.1) 0%, transparent 100%);
+    border-bottom-color: #1e293b;
+}
+html[data-card-theme="midnight-ops"] .profile-popover-head h5,
+html[data-card-theme="midnight"] .profile-popover-head h5 {
+    color: #f1f5f9;
+}
+html[data-card-theme="midnight-ops"] .profile-popover-head p,
+html[data-card-theme="midnight"] .profile-popover-head p {
+    color: #94a3b8;
+}
+html[data-card-theme="midnight-ops"] .popover-actions button,
+html[data-card-theme="midnight"] .popover-actions button {
+    color: #cbd5e1;
+}
+html[data-card-theme="midnight-ops"] .popover-actions button:hover,
+html[data-card-theme="midnight"] .popover-actions button:hover {
+    background: #1e293b;
+    color: #818cf8;
+}
+html[data-card-theme="midnight-ops"] .popover-divider,
+html[data-card-theme="midnight"] .popover-divider {
+    background: #1e293b;
+}
 

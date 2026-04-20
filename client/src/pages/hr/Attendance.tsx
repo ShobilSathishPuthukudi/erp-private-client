@@ -178,7 +178,7 @@ export default function Attendance() {
   return (
     <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Institutional Presence"
+        title="Institutional presence"
         description="Daily registry and historical attendance audit for staff and administrators."
         icon={CalendarDays}
       />

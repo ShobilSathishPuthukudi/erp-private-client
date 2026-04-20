@@ -180,7 +180,7 @@ export default function LoginPage() {
         {/* Left Side: Login Form */}
         <div className="bg-white p-12 lg:p-16 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col">
           <div className="mb-10">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Institutional Login</h2>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Institutional login</h2>
             <p className="text-slate-500 font-medium">Global Audit System v1.0</p>
           </div>
 
@@ -247,7 +247,7 @@ export default function LoginPage() {
         <div className="bg-white p-12 lg:p-16 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col min-h-[520px]">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quick Login Panel</h2>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Quick login panel</h2>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">14 Roles • 1-Click Authentication</p>
             </div>
             <div className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider">

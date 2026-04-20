@@ -197,7 +197,7 @@ export default function SubDeptSessions() {
             <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
               <Calendar className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional Sessions</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional sessions</h1>
           </div>
           <p className="text-slate-500 font-medium ml-15">Configure academic intake cycles and admission batches for jurisdictional operations.</p>
         </div>

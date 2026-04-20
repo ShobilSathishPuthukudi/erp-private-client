@@ -181,7 +181,7 @@ export default function Leaves() {
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Leave Approvals"
+        title="Leave approvals"
         description="Review and authorize advanced (Step-2) employee leave requests"
         icon={Calendar}
       />

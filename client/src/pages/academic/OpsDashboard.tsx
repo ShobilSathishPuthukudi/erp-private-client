@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -14,16 +14,16 @@ import {
   Activity,
   User as UserIcon,
   Globe,
-  Sun,
-  CloudSun,
-  MoonStar,
   Calendar,
   GraduationCap,
-  Key
+  Key,
+  Building2,
+  ArrowRight
 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
 import { useAuthStore } from '@/store/authStore';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 export default function OpsDashboard() {
   const { user } = useAuthStore();
@@ -39,28 +39,18 @@ export default function OpsDashboard() {
 
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
+  const [trendRange, setTrendRange] = useState<'30' | '90'>('30');
+  const [drillDown, setDrillDown] = useState<{ 
+    isOpen: boolean; 
+    type: string; 
+    title: string;
+    primaryAction?: { label: string; link: string };
+  }>({
     isOpen: false,
     type: '',
     title: ''
   });
 
-  const [greeting, setGreeting] = useState('');
-  const [GreetingIcon, setGreetingIcon] = useState<any>(Sun);
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) {
-      setGreeting('Good morning');
-      setGreetingIcon(Sun);
-    } else if (hour < 17) {
-      setGreeting('Good afternoon');
-      setGreetingIcon(CloudSun);
-    } else {
-      setGreeting('Good evening');
-      setGreetingIcon(MoonStar);
-    }
-  }, []);
 
   const handleLogClick = (log: any) => {
     setSelectedLog(log);
@@ -68,20 +58,28 @@ export default function OpsDashboard() {
   };
 
   const openDrillDown = (type: string, title: string) => {
-    setDrillDown({ isOpen: true, type, title });
+    let primaryAction;
+    if (type === 'totalStudents' || type === 'students') {
+      primaryAction = { label: 'Go to student status', link: '../pending-reviews' };
+    } else if (type === 'centers') {
+      primaryAction = { label: 'Go to center status', link: '../center-audit' };
+    } else if (type === 'programs') {
+      primaryAction = { label: 'Go to programs', link: '../programs' };
+    }
+    setDrillDown({ isOpen: true, type, title, primaryAction });
   };
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get('/operations/stats/academic-overview');
+        const res = await api.get('/operations/stats/academic-overview', { params: { range: trendRange } });
         setStats((prev: any) => ({ ...prev, ...res.data }));
       } catch (error) {
         console.error('Failed to fetch ops stats:', error);
       }
     };
     fetchStats();
-  }, []);
+  }, [trendRange]);
 
   const kpis = [
     { label: 'Total Managed Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', type: 'totalStudents' },
@@ -108,70 +106,23 @@ export default function OpsDashboard() {
   return (
     <div className="p-2 space-y-8">
       {/* Institutional Hero Banner */}
-      <div className="bg-slate-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
-        <div className="relative z-10 max-w-4xl">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-md">
-                <Calendar className="w-4 h-4 text-emerald-400" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <h1 className="text-3xl md:text-5xl font-black mb-6 tracking-tighter leading-tight">
-            <span className="text-slate-400 block mb-1 text-sm md:text-base tracking-normal">{greeting},</span>
-            <span className="text-indigo-400 font-outline-2 uppercase break-words">
-              {user?.name || 'Administrator'}
-            </span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10 max-w-3xl">
-            Digital Governance HUD: Monitoring real-time telemetry, institutional admission velocity, and structural academic architecture.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-[0.1em]">
-            <NavLink
-              to="../pending-reviews"
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all text-slate-400 hover:text-white group/link"
-            >
-              <GraduationCap className="w-4 h-4 text-indigo-400 group-hover/link:scale-110 transition-transform" />
-              <span>Student Status</span>
-            </NavLink>
-            <NavLink
-              to="../center-audit"
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all text-slate-400 hover:text-white group/link"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover/link:scale-110 transition-transform" />
-              <span>Center Review</span>
-            </NavLink>
-            <NavLink
-              to="../credential-requests"
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all text-slate-400 hover:text-white group/link"
-            >
-              <Key className="w-4 h-4 text-amber-400 group-hover/link:scale-110 transition-transform" />
-              <span>Credential Request</span>
-            </NavLink>
-            <NavLink
-              to="../tasks"
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-all text-slate-400 hover:text-white group/link"
-            >
-              <Terminal className="w-4 h-4 text-indigo-400 group-hover/link:scale-110 transition-transform" />
-              <span>Tasks</span>
-            </NavLink>
-          </div>
-        </div>
-
-        {/* Abstract architectural shapes for premium depth */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute -top-24 -left-24 w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-        {/* Subtle grid pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-      </div>
+      <DashboardGreeting 
+        role="Academic operations admin"
+        name={user?.name || 'Administrator'}
+        subtitle="Digital Governance HUD: Monitoring real-time telemetry, institutional admission velocity, and structural academic architecture."
+        actions={[
+          {
+            label: 'Onboard University',
+            link: '../universities',
+            icon: Building2
+          },
+          {
+            label: 'Formulate Program',
+            link: '../programs',
+            icon: BookOpen
+          }
+        ]}
+      />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -200,7 +151,7 @@ export default function OpsDashboard() {
 
       {/* Sub-Department Pulse */}
       <div className="space-y-4">
-        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+        <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2" style={{ color: 'var(--page-text, inherit)' }}>
           <Layers className="w-5 h-5 text-indigo-500" />
           Sub-Department Pulse
         </h2>
@@ -256,9 +207,13 @@ export default function OpsDashboard() {
               <BarChart3 className="w-6 h-6 text-indigo-500" />
               Admission Velocity Trend
             </h3>
-            <select className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500">
-              <option>Last 30 Days</option>
-              <option>Last 90 Days</option>
+            <select
+              value={trendRange}
+              onChange={(e) => setTrendRange(e.target.value as '30' | '90')}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
             </select>
           </div>
 
@@ -340,6 +295,7 @@ export default function OpsDashboard() {
         onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
         type={drillDown.type}
         title={drillDown.title}
+        primaryAction={drillDown.primaryAction}
       />
       {/* Log Detail Modal */}
       <Modal
@@ -351,7 +307,7 @@ export default function OpsDashboard() {
         {selectedLog && (
           <div className="space-y-6">
             {/* Header info */}
-            <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-indigo-100">
+            <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-xl shadow-indigo-900/30">
               <div className="flex items-center gap-3 mb-2">
                 <Activity className="w-5 h-5 text-indigo-200" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">System Event Captured</span>
@@ -430,7 +386,7 @@ export default function OpsDashboard() {
         )}
       </Modal>
       {/* Governance & Configuration Panel */}
-      <div className="bg-slate-900 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden">
+      <div className="bg-slate-800 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden border border-slate-700/50">
         <Activity className="absolute -right-4 -bottom-4 w-48 h-48 text-white/5 rotate-6" />
         <div className="max-w-2xl relative z-10">
           <h4 className="text-xl font-bold mb-3">Governance & Configuration Panel</h4>
@@ -444,6 +400,7 @@ export default function OpsDashboard() {
           <NavLink
             to="/dashboard/org-admin/audit/compliance"
             className="w-full py-4 bg-white text-slate-900 text-center font-bold text-xs uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl"
+            data-theme-surface="true"
           >
             Compliance Report
           </NavLink>

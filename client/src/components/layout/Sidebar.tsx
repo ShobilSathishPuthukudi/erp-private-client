@@ -178,6 +178,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Institutional Directives', path: '/dashboard/ceo/announcements' },
+        { name: 'HR Broadcasts', path: '/dashboard/ceo/hr-broadcasts' },
       ]
     },
     {
@@ -185,7 +186,7 @@ const menus: Record<string, MenuLink[]> = {
       icon: TrendingUp,
       isGroup: true,
       items: [
-        { name: 'Payout Approvals', path: '/dashboard/ceo/payouts' },
+        { name: 'Incentive Payouts', path: '/dashboard/ceo/payouts' },
       ]
     }
   ],
@@ -323,6 +324,7 @@ const menus: Record<string, MenuLink[]> = {
       items: [
         { name: 'Center Verification', path: '/dashboard/operations/center-audit' },
         { name: 'Accreditation Queue', path: '/dashboard/operations/accreditation' },
+        { name: 'All Centers', path: '/dashboard/operations/centers' },
       ]
     },
     {
@@ -350,7 +352,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Credential Requests', path: '/dashboard/operations/credential-requests' },
-        { name: 'Security Control', path: '/dashboard/operations/security' },
       ]
     },
     {
@@ -437,7 +438,6 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Credential Requests', path: '/dashboard/academic/credential-requests' },
-        { name: 'Security Control', path: '/dashboard/academic/security' },
       ]
     },
     {
@@ -621,6 +621,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Programs', path: '/dashboard/partner-center/programs' },
+        { name: 'Request New Program', path: '/dashboard/partner-center/accreditation' },
         { name: 'Students', path: '/dashboard/partner-center/students' },
         { name: 'Internal Marks', path: '/dashboard/partner-center/internal-marks' },
         { name: 'Re-Registration', path: '/dashboard/partner-center/rereg' },
@@ -686,6 +687,7 @@ const menus: Record<string, MenuLink[]> = {
       isGroup: true,
       items: [
         { name: 'Institutional Nodes', path: '/dashboard/sales/nodes' },
+        { name: 'Target Workflow', path: '/dashboard/sales/targets' },
       ]
     },
     {
@@ -894,11 +896,14 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
           <div 
             className="sidebar-logo-modern cursor-pointer"
             onClick={() => {
-              const dashboardPath = role === 'organization admin' ? 'org-admin/overview' : role;
+              let dashboardPath = role;
+              if (role === 'organization admin') dashboardPath = 'org-admin/overview';
+              else if (role === 'operations') dashboardPath = 'operations/overview';
+              else if (role === 'ceo') dashboardPath = 'ceo/kpis';
               navigate(`/dashboard/${dashboardPath}`);
             }}
           >
-            <div className="logo-icon bg-white overflow-hidden">
+            <div className="logo-icon overflow-hidden">
               {orgLogo ? (
                 <img src={orgLogo} alt="Logo" className="w-full h-full object-cover" />
               ) : (
@@ -923,7 +928,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                     navigate(`/dashboard/${dashboardPath}`);
                   }}
                 >
-                  <div className="logo-icon bg-white overflow-hidden">
+                  <div className="logo-icon overflow-hidden">
                     {orgLogo ? (
                       <img src={orgLogo} alt="Logo" className="w-full h-full object-cover" />
                     ) : (

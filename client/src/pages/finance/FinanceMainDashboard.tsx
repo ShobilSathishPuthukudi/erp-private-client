@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { 
   DollarSign, 
   Users, 
@@ -8,7 +11,8 @@ import {
   ArrowUpRight, 
   TrendingUp, 
   ShieldCheck,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
@@ -24,6 +28,7 @@ interface FinanceStats {
 }
 
 export default function FinanceMainDashboard() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState<FinanceStats>({
     revenue: 0,
     verifiedPaymentCount: 0,
@@ -89,6 +94,7 @@ export default function FinanceMainDashboard() {
         });
       } catch (error) {
         console.error('CRITICAL: Failed to load Finance HUD', error);
+        toast.error('Failed to synchronize ledger');
       } finally {
         setLoading(false);
       }
@@ -100,22 +106,23 @@ export default function FinanceMainDashboard() {
 
   return (
     <div className="p-8 space-y-10 min-h-screen">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4 uppercase">
-            Finance Control Engine
-            <span className="bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full text-xs tracking-widest border border-emerald-200">LIVE</span>
-          </h1>
-          <p className="text-slate-500 font-medium mt-2 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" /> Authorized access only. Institutional gatekeeping protocols active.
-          </p>
-        </div>
-        <div className="flex gap-4">
-           <Link to="/dashboard/finance/approvals" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
-              <Zap className="w-4 h-4 text-emerald-400 fill-emerald-400" /> Finalize Queues
-           </Link>
-        </div>
-      </div>
+      <DashboardGreeting 
+        role="Chief - Financial Governance"
+        name={user?.name || 'Administrator'}
+        subtitle="Financial Control Engine: Monitoring real-time revenue velocity, institutional reconciliation, and structural fiscal architecture."
+        actions={[
+          {
+            label: 'Finalize Queues',
+            link: '/dashboard/finance/collections?tab=pending',
+            icon: ShieldCheck
+          },
+          {
+            label: 'Ledger Audit',
+            link: '/dashboard/finance/ledger',
+            icon: BookOpen
+          }
+        ]}
+      />
 
       {/* KPI HUD */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

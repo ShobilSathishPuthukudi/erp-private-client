@@ -178,7 +178,7 @@ export default function Exams() {
             <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/20">
               <ClipboardCheck className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Examination Engine</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Examination engine</h1>
           </div>
           <p className="text-slate-500 font-medium ml-15">Schedule institutional assessments and manage academic transcript entry protocols.</p>
         </div>
@@ -240,7 +240,7 @@ export default function Exams() {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true}>
-        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+        <div className="overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
           <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
@@ -313,7 +313,7 @@ export default function Exams() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
+          <div className="flex justify-end gap-3 p-8 border-t border-slate-100 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}

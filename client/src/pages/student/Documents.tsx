@@ -43,7 +43,7 @@ export default function Documents() {
     <div className="space-y-6">
       <div className="flex justify-between items-center shrink-0">
         <div>
-           <h1 className="text-2xl font-bold text-slate-900">My Secure Documents</h1>
+           <h1 className="text-2xl font-bold text-slate-900">My secure documents</h1>
            <p className="text-slate-500">Upload your required ID proofs, previous transcripts, and compliance files.</p>
         </div>
       </div>

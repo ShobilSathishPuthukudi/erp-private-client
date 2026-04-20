@@ -115,7 +115,7 @@ export default function AuditFilterSearch() {
             <SearchCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Forensic Search Intelligence</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Forensic search intelligence</h1>
             <p className="text-slate-500 mt-1 font-medium text-sm tracking-tight text-[11px] uppercase opacity-70">Isolate behavioral patterns and institutional data mutations.</p>
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function AuditFilterSearch() {
                   <Filter className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">Search Parameters</h2>
+                  <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">Search parameters</h2>
                   <p className="text-[10px] text-slate-400 font-bold tracking-tight mt-1 uppercase">Define your investigation scope</p>
                 </div>
               </div>

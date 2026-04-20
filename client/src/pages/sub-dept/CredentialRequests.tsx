@@ -152,7 +152,7 @@ export default function CredentialRequests() {
             ) : isApproved && isExpired ? (
               <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Window Expired</span>
             ) : (
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Awaiting Approval</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Awaiting Approval</span>
             )}
           </div>
         );
@@ -161,7 +161,7 @@ export default function CredentialRequests() {
   ];
 
   return (
-    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto auto-fade-in">
+    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto auto-">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
@@ -188,8 +188,8 @@ export default function CredentialRequests() {
                  <Key className="w-8 h-8 text-indigo-300" />
               </div>
               <div>
-                 <h2 className="text-xl font-black uppercase tracking-wider mb-2">Center Access Authenticated</h2>
-                 <p className="text-indigo-200 text-sm font-medium">Reveal window is active. These credentials will be hidden in 30 minutes.</p>
+                 <h2 className="text-xl font-black uppercase tracking-wider mb-2">Center access authenticated</h2>
+                 <p className="text-indigo-200 text-sm font-medium">Reveal window is active. These credentials will be hidden in 24 hours.</p>
               </div>
            </div>
            <div className="flex gap-6 w-full md:w-auto">
@@ -229,7 +229,7 @@ export default function CredentialRequests() {
                  </li>
                  <li className="flex gap-4">
                     <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-black flex-shrink-0">2</div>
-                    <p className="text-xs text-slate-300 font-medium">Approved reveals expire automatically after 30 minutes.</p>
+                    <p className="text-xs text-slate-300 font-medium">Approved reveals expire automatically after 24 hours.</p>
                  </li>
                  <li className="flex gap-4">
                     <div className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-black flex-shrink-0">!</div>

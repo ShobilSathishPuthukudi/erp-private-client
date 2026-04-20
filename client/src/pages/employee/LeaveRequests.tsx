@@ -184,7 +184,7 @@ export default function LeaveRequests() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Leave Requests</h1>
+          <h1 className="text-2xl font-bold text-slate-900">My leave requests</h1>
           <p className="text-slate-500">Submit and track your history of physical absences</p>
         </div>
         <button 

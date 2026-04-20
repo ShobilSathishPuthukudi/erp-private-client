@@ -115,6 +115,77 @@
   }
 }
 
+/* Card theme overrides — intentionally unlayered so they beat Tailwind's
+   bg-white / border-slate-* / shadow-* utilities (which live in the utilities layer).
+   Applies to:
+     1. Page title component (PageHeader) — border tint only, bg stays white
+     2. Dashboard cards (bg-white + rounded-2xl/3xl/arbitrary-rounded pattern) — bg + border + themed shadow
+   Buttons, inputs, dropdowns, and smaller rounded chrome stay neutral. */
+html[data-card-theme]:not([data-card-theme="default"]) [data-theme-surface="page-header"] {
+  border-color: var(--card-border);
+}
+html[data-card-theme]:not([data-card-theme="default"]) :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class*="rounded-["]):not([data-theme-surface]) {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+/* Ensure inner tables and lists inherit the card background color when themed */
+html[data-card-theme]:not([data-card-theme="default"]) :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is(table, thead, tbody, tr, td, th, ul, li) {
+  background-color: transparent !important;
+}
+
+/* Universal structural gray container handling for Midnight Ops (e.g. Switch Tabs, Filter bars) */
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) :is([class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-slate-200"], [class~="bg-slate-100/50"]):is([class~="rounded-md"], [class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class~="rounded-full"], [class*="rounded-["]):not([data-theme-surface]),
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) :is([class~="hover:bg-slate-50"]:hover, [class~="hover:bg-slate-100"]:hover, [class~="hover:bg-slate-200"]:hover):not([data-theme-surface]) {
+  background-color: var(--theme-soft) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Flip inactive tab text colors inside these structural gray blocks */
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) :is([class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-slate-200"], [class~="bg-slate-100/50"], [class~="hover:bg-slate-50"]:hover, [class~="hover:bg-slate-100"]:hover, [class~="hover:bg-slate-200"]:hover):is([class~="rounded-md"], [class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class~="rounded-full"], [class*="rounded-["]):not([data-theme-surface]) :is([class~="text-slate-900"], [class~="text-slate-800"], [class~="text-slate-700"], [class~="text-slate-600"], [class~="text-slate-500"], [class~="text-slate-400"]) {
+  color: #94a3b8;
+}
+
+/* Dark card theme (midnight): flip text colors so card contents remain readable
+   on dark surfaces. Scoped to cards only — page chrome and non-card text untouched. */
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class*="rounded-["]):not([data-theme-surface]) :is([class~="text-slate-900"], [class~="text-slate-800"], [class~="text-slate-700"], [class~="text-slate-600"]) {
+  color: #f1f5f9;
+}
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class*="rounded-["]):not([data-theme-surface]) :is([class~="text-slate-500"], [class~="text-slate-400"], [class~="text-slate-300"]) {
+  color: #94a3b8;
+}
+
+/* Midnight page surface: force generic static light slate backgrounds into themed surfaces
+   so that white text-flipping doesn't render them invisible on a white background. */
+html[data-card-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class*="rounded-["]):not([data-theme-surface]) :is([class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-slate-200"], [class~="bg-slate-50/50"], [class~="bg-slate-100/50"]) {
+  background-color: var(--theme-soft) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Universal mapping for Chart Tooltips (Recharts) to prevent white-on-white text inheritance */
+html[data-card-theme="midnight"] .recharts-default-tooltip {
+  background-color: var(--theme-soft) !important;
+  border-color: var(--card-border) !important;
+  color: #f1f5f9 !important;
+  border-radius: 12px !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+html[data-card-theme="midnight"] .recharts-default-tooltip .recharts-tooltip-label {
+  color: #f1f5f9 !important;
+}
+
+/* Midnight page surface: force every card shadow to a deep black tone so depth stays
+   visible on the dark page background. Overrides any Tailwind shadow-* / shadow-<color>
+   utilities on themed cards, regardless of the card-theme selection. */
+html[data-page-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [class~="bg-white"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"], [class~="rounded-3xl"], [class*="rounded-["]):not([data-theme-surface]),
+html[data-page-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [data-theme-surface="card"] {
+  --tw-shadow-color: rgb(0 0 0 / 0.6);
+  --tw-shadow: 0 10px 30px -6px rgb(0 0 0 / 0.6);
+  box-shadow: 0 10px 30px -6px rgb(0 0 0 / 0.6);
+}
+
 @media print {
   /* Hide navigation chrome and secondary UI */
   aside, 

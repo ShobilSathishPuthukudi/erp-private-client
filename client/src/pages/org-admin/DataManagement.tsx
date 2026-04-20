@@ -45,7 +45,7 @@ export default function DataManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Data & Backup Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Data & backup management</h1>
           <p className="text-slate-500 text-sm">Institutional data sovereignty and disaster recovery console.</p>
         </div>
         <button 

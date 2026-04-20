@@ -139,7 +139,7 @@ export default function SubDepartmentsList() {
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Sub-Departments</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Sub-departments</h1>
             <p className="text-slate-500 mt-1">Divisional units and specialized sectors managed under core departments.</p>
           </div>
         </div>

@@ -47,9 +47,7 @@ export default function Alerts() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">
-            Escalated Task Hub
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Escalated task hub</h1>
           <p className="text-slate-500 mt-1 font-medium">Critical personnel tasks and institutional deadlines requiring immediate executive oversight.</p>
         </div>
       </div>

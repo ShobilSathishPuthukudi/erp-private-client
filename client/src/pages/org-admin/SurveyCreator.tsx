@@ -151,7 +151,7 @@ export default function SurveyCreator() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Institutional Feedback"
+        title="Institutional feedback"
         description="Design and deploy quality assurance surveys across the organization."
         icon={MessageSquare}
         action={

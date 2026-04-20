@@ -31,6 +31,7 @@ export default function CEOAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDirective, setSelectedDirective] = useState<Announcement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ 
     title: '', 
@@ -46,7 +47,8 @@ export default function CEOAnnouncements() {
   const fetchAnnouncements = async () => {
     try {
       const res = await api.get('/announcements/ceo');
-      setAnnouncements(res.data);
+      // Filter out HR broadcasts so only CEO-issued directives reside here
+      setAnnouncements(res.data.filter((a: any) => a.targetChannel !== 'all_employees'));
     } catch (error) {
       toast.error('Failed to load institutional directives');
     } finally {
@@ -82,28 +84,21 @@ export default function CEOAnnouncements() {
   };
 
   return (
-    <div className="space-y-10 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl shadow-slate-900/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 blur-[100px] -mr-48 -mt-48 rounded-full"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] -ml-32 -mb-32 rounded-full"></div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-             <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                <ShieldCheck className="w-5 h-5 text-blue-400" />
-             </div>
-             <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Executive Governance</span>
+    <div className="p-2 space-y-6 flex flex-col">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tight mb-2">Institutional Directives</h1>
-          <p className="text-slate-400 text-sm font-medium max-w-xl">
-             Issue high-level mandates and operational instructions directly to the HR Administration team. 
-             Directives trigger immediate priority alerts across the governance layer.
-          </p>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Institutional directives</h1>
+            <p className="text-slate-500 font-medium text-sm">Issue high-level mandates and operational instructions directly to the HR Administration team.</p>
+          </div>
         </div>
 
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="relative z-10 group flex items-center gap-3 bg-white hover:bg-slate-50 text-slate-900 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-1 active:scale-95 shadow-xl shadow-white/5"
+          className="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-1 active:scale-95 shadow-xl shadow-slate-900/20"
         >
           <Sparkles className="w-4 h-4 text-amber-500 group-hover:animate-spin-slow" />
           Issue New Directive
@@ -132,7 +127,11 @@ export default function CEOAnnouncements() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {announcements.map(ann => (
-              <div key={ann.id} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:-translate-y-2 transition-all duration-500">
+              <div 
+                key={ann.id} 
+                onClick={() => setSelectedDirective(ann)}
+                className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 cursor-pointer"
+              >
                 <div className="flex justify-between items-start mb-6">
                   <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityStyles[ann.priority as keyof typeof priorityStyles]}`}>
                     {ann.priority} Mode
@@ -240,6 +239,56 @@ export default function CEOAnnouncements() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!selectedDirective}
+        onClose={() => setSelectedDirective(null)}
+        title="Directive details"
+        maxWidth="2xl"
+      >
+        {selectedDirective && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+               <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityStyles[selectedDirective.priority as keyof typeof priorityStyles]}`}>
+                 {selectedDirective.priority} Mode
+               </div>
+               <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                 <Clock className="w-4 h-4" />
+                 {format(new Date(selectedDirective.createdAt), 'PPpp')}
+               </div>
+            </div>
+            
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 mb-4">{selectedDirective.title}</h2>
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{selectedDirective.message}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-6 border-t border-slate-100">
+               <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-sm">
+                 {selectedDirective.author?.name?.charAt(0) || 'C'}
+               </div>
+               <div>
+                 <p className="text-sm font-black text-slate-900 uppercase">Authorizer</p>
+                 <p className="text-xs font-bold text-slate-400 capitalize">Executive Office</p>
+               </div>
+               <div className="flex items-center gap-4 ml-auto">
+                 <div className="flex items-center gap-2 text-emerald-500">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Broadcasted</span>
+                 </div>
+                 <button 
+                   onClick={() => setSelectedDirective(null)}
+                   className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                 >
+                   Close View
+                 </button>
+               </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

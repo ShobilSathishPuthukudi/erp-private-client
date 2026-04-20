@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
 import { Download } from 'lucide-react';
 import jsPDF from 'jspdf';
+import { Link } from 'react-router-dom';
 
 interface Invoice {
   id: number;
@@ -93,7 +94,9 @@ export default function Invoices() {
     { 
       id: 'student', 
       header: 'Billed Entity',
-      cell: ({ row }) => <span className="font-medium text-slate-600">{row.original.student?.name || `Database ID: ${row.original.studentId}`}</span>
+      cell: ({ row }) => row.original.student?.name
+        ? <Link to={`/dashboard/finance/students/${row.original.studentId}`} className="font-medium text-slate-600 hover:text-blue-600 transition-colors">{row.original.student.name}</Link>
+        : <span className="font-medium text-slate-600">{`Database ID: ${row.original.studentId}`}</span>
     },
     { accessorKey: 'amount', header: 'Base Calculation', cell: ({ row }) => `Rs. ${parseFloat(row.original.amount).toLocaleString('en-IN')}` },
     { accessorKey: 'gst', header: 'Tax Load (18%)', cell: ({ row }) => <span className="text-slate-500 font-mono">Rs. {row.original.gst}</span> },
@@ -127,7 +130,7 @@ export default function Invoices() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tax Invoice Master Ledger</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Tax invoice master ledger</h1>
           <p className="text-slate-500 mt-1">A consolidated log of all automatically and manually generated GST bills containing historical retrieval modules.</p>
         </div>
       </div>

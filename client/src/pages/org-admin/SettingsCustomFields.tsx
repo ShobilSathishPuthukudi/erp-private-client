@@ -80,7 +80,7 @@ export default function SettingsCustomFields() {
             <Database className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Entity Schema Extension</h1>
+            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Entity schema extension</h1>
             <p className="text-slate-500 mt-1 font-medium">Dynamically add custom attributes to core system entities.</p>
           </div>
         </div>

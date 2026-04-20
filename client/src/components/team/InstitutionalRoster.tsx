@@ -60,16 +60,22 @@ export default function InstitutionalRoster() {
 
   const filteredData = useMemo(() => {
     // 1. Remove students as requested
-    const nonStudents = users.filter(u => u.role !== 'student');
+    const nonStudents = users.filter(u => (u.role || '').toLowerCase().trim() !== 'student');
 
     // 2. Filter based on active tab
     switch (activeTab) {
       case 'centers':
-        return nonStudents.filter(u => u.role === 'Partner Center');
+        return nonStudents.filter(u => ['partner center', 'partner-center'].includes((u.role || '').toLowerCase().trim()));
       case 'admins':
-        return nonStudents.filter(u => u.role.toLowerCase().includes('admin'));
-      case 'employees':
-        return nonStudents.filter(u => u.role === 'Employee');
+        return nonStudents.filter(u => (u.role || '').toLowerCase().trim().includes('admin'));
+      case 'employees': {
+        const isAdmin = (r: string) => r.includes('admin') || r === 'ceo';
+        const isCenter = (r: string) => ['partner center', 'partner-center'].includes(r);
+        return nonStudents.filter(u => {
+           const r = (u.role || '').toLowerCase().trim();
+           return !isAdmin(r) && !isCenter(r) && r !== 'student';
+        });
+      }
       default:
         return [];
     }
@@ -188,9 +194,12 @@ export default function InstitutionalRoster() {
   ];
 
   const tabs = [
-    { id: 'admins', name: 'Admins', icon: UserCog, count: users.filter(u => u.role.toLowerCase().includes('admin')).length },
-    { id: 'employees', name: 'Employees', icon: Briefcase, count: users.filter(u => u.role === 'Employee').length },
-    { id: 'centers', name: 'Partner Centers', icon: Building2, count: users.filter(u => u.role === 'Partner Center').length },
+    { id: 'admins', name: 'Admins', icon: UserCog, count: users.filter(u => (u.role || '').toLowerCase().trim().includes('admin') && (u.role || '').toLowerCase().trim() !== 'student').length },
+    { id: 'employees', name: 'Employees', icon: Briefcase, count: users.filter(u => {
+        const r = (u.role || '').toLowerCase().trim();
+        return !r.includes('admin') && !['partner center', 'partner-center'].includes(r) && r !== 'student' && r !== 'ceo';
+    }).length },
+    { id: 'centers', name: 'Partner Centers', icon: Building2, count: users.filter(u => ['partner center', 'partner-center'].includes((u.role || '').toLowerCase().trim())).length },
   ];
 
   const title = currentRole === 'ceo' ? 'Executive Structure' : 'Institutional Structure';
@@ -242,13 +251,19 @@ export default function InstitutionalRoster() {
   );
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <PageHeader
-        title={title}
-        description={description}
-        icon={Users}
-        action={headerIcons}
-      />
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">{title}</h1>
+            <p className="text-slate-500 font-medium text-sm">{description}</p>
+          </div>
+        </div>
+        {headerIcons && <div>{headerIcons}</div>}
+      </div>
 
       <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
         {tabs.map((tab) => (

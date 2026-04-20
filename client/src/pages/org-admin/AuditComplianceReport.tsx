@@ -120,7 +120,7 @@ export default function AuditComplianceReport() {
           <AlertTriangle className="w-10 h-10" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-rose-900">Compliance Stream Interrupted</h2>
+          <h2 className="text-2xl font-bold text-rose-900">Compliance stream interrupted</h2>
           <p className="text-rose-600 mt-2 font-medium max-w-md mx-auto">{error}</p>
         </div>
         <button 
@@ -149,7 +149,7 @@ export default function AuditComplianceReport() {
             <ShieldCheck className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Governance Compliance Suite</h1>
+            <h1 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Governance compliance suite</h1>
             <p className="text-slate-500 mt-1 font-medium">Monthly board-level auditing reports for regulatory filings and internal reviews.</p>
           </div>
         </div>

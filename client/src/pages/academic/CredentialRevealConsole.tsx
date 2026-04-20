@@ -10,7 +10,7 @@ interface Props {
 
 export default function CredentialRevealConsole({ requestId, onExpiry }: Props) {
   const [credentials, setCredentials] = useState<any>(null);
-  const [timeLeft, setTimeLeft] = useState(1800); // 30 mins
+  const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,6 +21,10 @@ export default function CredentialRevealConsole({ requestId, onExpiry }: Props) 
     try {
       const res = await api.get(`/academic/credentials/reveal/${requestId}`);
       setCredentials(res.data);
+      if (res.data?.revealUntil) {
+        const secs = Math.max(0, Math.floor((new Date(res.data.revealUntil).getTime() - Date.now()) / 1000));
+        setTimeLeft(secs);
+      }
     } catch (error) {
        toast.error('Reveal window expired or unauthorized');
        onExpiry();
@@ -30,18 +34,20 @@ export default function CredentialRevealConsole({ requestId, onExpiry }: Props) 
   };
 
   useEffect(() => {
+    if (loading) return;
     if (timeLeft <= 0) {
       onExpiry();
       return;
     }
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, loading]);
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   if (loading) return <div className="p-12 text-center animate-pulse">Initiating Security Reveal...</div>;

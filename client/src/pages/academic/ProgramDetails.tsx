@@ -179,7 +179,7 @@ export default function ProgramDetails() {
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
                   {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-8 right-8 h-1 bg-blue-600 rounded-t-full shadow-lg shadow-blue-200" />
+                    <div className="absolute bottom-0 left-8 right-8 h-1 bg-blue-600 rounded-t-full shadow-lg shadow-blue-900/20" />
                   )}
                 </button>
               ))}

@@ -79,11 +79,11 @@ export default function SurveyHub() {
       {!activeSurvey ? (
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[var(--theme-soft)] text-[var(--theme-accent)] rounded-full flex items-center justify-center mx-auto mb-4">
                <MessageSquare className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-900">Institutional Feedback Hub</h1>
-            <p className="text-slate-500 max-w-lg mx-auto">Your feedback directly shapes our institutional progress. Please complete any active surveys assigned to your profile.</p>
+            <h1 className="text-3xl font-extrabold text-[var(--page-text)]">Institutional feedback hub</h1>
+            <p className="text-[var(--page-text)] opacity-80 max-w-lg mx-auto">Your feedback directly shapes our institutional progress. Please complete any active surveys assigned to your profile.</p>
           </div>
 
           <div className="grid gap-4">
@@ -93,16 +93,16 @@ export default function SurveyHub() {
                 <div 
                   key={s.id}
                   onClick={() => !expired && setActiveSurvey(s)}
-                  className={`group bg-white p-6 rounded-2xl border transition-all flex items-center justify-between ${expired ? 'opacity-60 grayscale cursor-not-allowed border-slate-200' : 'cursor-pointer hover:shadow-md hover:border-blue-400 border-slate-200 shadow-sm'}`}
+                  className={`group bg-[var(--card-bg)] p-6 rounded-2xl border transition-all flex items-center justify-between ${expired ? 'opacity-60 grayscale cursor-not-allowed border-[var(--card-border)]' : 'cursor-pointer hover:shadow-md hover:border-[var(--card-accent)] border-[var(--card-border)] shadow-[var(--card-shadow)]'}`}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${expired ? 'bg-slate-100' : 'bg-slate-50 group-hover:bg-blue-50'}`}>
-                       <HelpCircle className={`w-6 h-6 ${expired ? 'text-slate-300' : 'text-slate-400 group-hover:text-blue-500'}`} />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${expired ? 'bg-[var(--theme-soft)]' : 'bg-[var(--theme-soft)] group-hover:bg-[var(--theme-soft)]'}`}>
+                       <HelpCircle className={`w-6 h-6 ${expired ? 'text-[var(--page-text)] opacity-50' : 'text-[var(--theme-accent)]'}`} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900">{s.title}</h3>
+                      <h3 className="font-bold text-[var(--page-text)]">{s.title}</h3>
                       <div className="flex items-center gap-3">
-                         <p className="text-xs text-slate-500">{s.questions.length} Questions • Mandatory</p>
+                         <p className="text-xs text-[var(--page-text)] opacity-70">{s.questions.length} Questions • Mandatory</p>
                          {s.expiryDate && (
                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${expired ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'}`}>
                              {expired ? 'Expired' : `Expires: ${new Date(s.expiryDate).toLocaleDateString()}`}
@@ -111,34 +111,34 @@ export default function SurveyHub() {
                       </div>
                     </div>
                   </div>
-                  {!expired && <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />}
+                  {!expired && <ChevronRight className="w-5 h-5 text-[var(--page-text)] opacity-40 group-hover:text-[var(--page-accent)] transition-all group-hover:translate-x-1" />}
                 </div>
               );
             }) : (
-              <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-slate-200 text-center">
-                 <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="bg-[var(--card-bg)] p-12 rounded-3xl border-2 border-dashed border-[var(--card-border)] text-center">
+                 <div className="w-12 h-12 bg-[var(--theme-soft)] text-[var(--theme-accent)] rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="w-6 h-6" />
                  </div>
-                 <h3 className="font-bold text-slate-900 text-lg">You're all caught up!</h3>
-                 <p className="text-slate-400 text-sm mt-1">There are no active surveys requiring your attention right now.</p>
+                 <h3 className="font-bold text-[var(--page-text)] text-lg">You're all caught up!</h3>
+                 <p className="text-[var(--page-text)] opacity-70 text-sm mt-1">There are no active surveys requiring your attention right now.</p>
               </div>
             )}
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
-          <div className="bg-slate-900 p-8 text-white relative">
+        <div className="bg-[var(--page-surface)] rounded-3xl shadow-[var(--card-shadow)] border border-[var(--shell-border)] overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
+          <div className="bg-[var(--card-bg)] p-8 text-[var(--page-text)] border-b border-[var(--card-border)] relative">
             <button 
               onClick={() => setActiveSurvey(null)}
-              className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
+              className="absolute top-6 right-6 text-[var(--page-text)] opacity-50 hover:opacity-100 transition-colors"
             >
               Exit
             </button>
             <h2 className="text-2xl font-bold">{activeSurvey.title}</h2>
             <div className="flex items-center gap-3 mt-1">
-               <p className="text-slate-400 text-sm">Please provide honest feedback to help us improve.</p>
+               <p className="text-[var(--page-text)] opacity-80 text-sm">Please provide honest feedback to help us improve.</p>
                {activeSurvey.expiryDate && (
-                 <span className="text-[10px] font-black uppercase text-amber-400 bg-white/10 px-2 py-0.5 rounded-full">
+                 <span className="text-[10px] font-black uppercase text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
                    Closing: {new Date(activeSurvey.expiryDate).toLocaleString()}
                  </span>
                )}
@@ -149,8 +149,8 @@ export default function SurveyHub() {
             {activeSurvey.questions.map((q: any, idx: number) => (
               <div key={q.id} className="space-y-4">
                 <div className="flex items-start space-x-3">
-                   <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold mt-0.5">{idx + 1}</span>
-                   <h4 className="text-lg font-bold text-slate-800">{q.label}</h4>
+                   <span className="w-6 h-6 rounded-full bg-[var(--theme-soft)] text-[var(--theme-accent)] flex items-center justify-center text-[10px] font-bold mt-0.5">{idx + 1}</span>
+                   <h4 className="text-lg font-bold text-[var(--page-text)]">{q.label}</h4>
                 </div>
 
                 <div className="pl-9">
@@ -160,7 +160,7 @@ export default function SurveyHub() {
                         <button
                           key={val}
                           onClick={() => setAnswers({ ...answers, [q.id]: val })}
-                          className={`w-12 h-12 rounded-2xl font-bold transition-all ${answers[q.id] === val ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                          className={`w-12 h-12 rounded-2xl font-bold transition-all ${answers[q.id] === val ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-fg)] border-none' : 'bg-[var(--card-bg)] text-[var(--page-text)] border border-[var(--card-border)] hover:bg-[var(--theme-soft)]'}`}
                         >
                           {val}
                         </button>
@@ -174,7 +174,7 @@ export default function SurveyHub() {
                         <button
                           key={opt}
                           onClick={() => setAnswers({ ...answers, [q.id]: opt })}
-                          className={`px-4 py-3 rounded-xl text-sm font-medium text-left transition-all border ${answers[q.id] === opt ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm' : 'bg-white border-slate-200 hove:bg-slate-50 text-slate-600'}`}
+                          className={`px-4 py-3 rounded-xl text-sm font-medium text-left transition-all border ${answers[q.id] === opt ? 'bg-[var(--theme-soft)] border-[var(--theme-accent)] text-[var(--theme-accent)]' : 'bg-[var(--card-bg)] border-[var(--card-border)] hover:bg-[var(--theme-soft)] text-[var(--page-text)]'}`}
                         >
                           {opt}
                         </button>
@@ -184,7 +184,7 @@ export default function SurveyHub() {
 
                   {q.type === 'text' && (
                     <textarea 
-                      className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all text-sm"
+                      className="w-full h-32 px-4 py-3 bg-[var(--theme-soft)] border border-[var(--card-border)] rounded-2xl focus:ring-2 focus:ring-[var(--theme-accent)] outline-none transition-all text-sm text-[var(--page-text)]"
                       placeholder="Share your thoughts..."
                       value={answers[q.id] || ''}
                       onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
@@ -194,15 +194,15 @@ export default function SurveyHub() {
               </div>
             ))}
 
-            <div className="pt-6 border-t border-slate-100 flex justify-between items-center">
-              <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Your responses are confidential</p>
+            <div className="pt-6 border-t border-[var(--card-border)] flex justify-between items-center">
+              <p className="text-[10px] text-[var(--page-text)] opacity-50 uppercase font-black tracking-tighter">Your responses are confidential</p>
               <button 
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex items-center px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all disabled:opacity-50"
+                className="flex items-center px-8 py-3 bg-[var(--theme-accent)] text-[var(--theme-accent-fg)] rounded-2xl font-bold opacity-90 hover:opacity-100 shadow-[var(--card-shadow)] transition-all disabled:opacity-50"
               >
                 {submitting ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-[var(--theme-soft)] border-t-[var(--theme-accent-fg)] rounded-full animate-spin"></div>
                 ) : (
                   <>
                     Submit Feedback

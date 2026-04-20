@@ -90,7 +90,7 @@ export default function Announcements() {
   return (
     <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
       <PageHeader 
-        title="Global Announcements"
+        title="Global announcements"
         description="Push real-time company-wide broadcasts and urgent notices."
         icon={Megaphone}
         action={
@@ -354,7 +354,7 @@ export default function Announcements() {
                 onClick={() => setIsDetailOpen(false)}
                 className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2"
               >
-                Dismiss Notice
+                Close View
               </button>
             </div>
           </div>

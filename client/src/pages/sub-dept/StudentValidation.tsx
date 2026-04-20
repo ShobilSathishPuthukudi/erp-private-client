@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 const MapPin = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -131,7 +131,13 @@ export default function StudentValidation() {
       header: 'Student Identity',
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 uppercase tracking-tight">{row.original.name}</span>
+          <Link
+            to={`/dashboard/subdept/${unit}/students/${row.original.id}`}
+            onClick={(event) => event.stopPropagation()}
+            className="font-bold text-slate-900 uppercase tracking-tight hover:text-blue-600 transition-colors"
+          >
+            {row.original.name}
+          </Link>
           <span className="text-[10px] font-mono text-slate-400 uppercase">ID: ARCH-{row.original.id}</span>
         </div>
       )
@@ -271,10 +277,10 @@ export default function StudentValidation() {
       {/* Review Modal */}
       {isReviewOpen && selectedStudent && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200">
             <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Application Validation</h2>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Application validation</h2>
                 <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">
                   Stage: {activeTab === 'PENDING' ? 'Sub-Departmental Review' : activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
                 </p>
@@ -426,7 +432,7 @@ export default function StudentValidation() {
                 {activeTab === 'REJECTED' && (
                    <section className="bg-rose-50 border border-rose-100 rounded-[2rem] p-8 space-y-4">
                       <h4 className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Rejection Logic History</h4>
-                      <p className="text-sm font-medium text-slate-700 ">"{selectedStudent.lastRejectionReason || 'No reason provided'}"</p>
+                      <p className="text-sm font-medium text-slate-700">"{selectedStudent.lastRejectionReason || 'No reason provided'}"</p>
                       <div className="pt-4 border-t border-rose-200">
                          <p className="text-[9px] font-black text-rose-400 uppercase tracking-tight">Reviewed on: {selectedStudent.reviewedAt ? new Date(selectedStudent.reviewedAt).toLocaleDateString() : 'N/A'}</p>
                       </div>

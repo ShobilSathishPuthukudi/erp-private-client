@@ -6,10 +6,11 @@ import UniversityDetails from './UniversityDetails';
 import Programs from './Programs';
 import ProgramDetails from './ProgramDetails';
 import Students from './Students';
+import StudentDetails from './StudentDetails';
+import Centers from './Centers';
 import PendingReviews from './PendingReviews';
 import Sessions from './Sessions';
 import CredentialRequests from './CredentialRequests';
-import SecurityControl from './SecurityControl';
 import AcademicStaff from './AcademicStaff';
 import ReferredLeads from './ReferredLeads';
 import FinanceRequests from './FinanceRequests';
@@ -26,6 +27,8 @@ import CenterPerformance from './CenterPerformance';
 import SubDeptOverview from './SubDeptOverview';
 import VerificationHub from './VerificationHub';
 import OnboardingPulse from './OnboardingPulse';
+import IncentiveOpsDesk from './IncentiveOpsDesk';
+import CenterUniversityChanges from './CenterUniversityChanges';
 import OpsInternalMarksView from './InternalMarksView';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
@@ -230,6 +233,7 @@ export default function AcademicDashboard() {
       {/* Student Review */}
       <Route path="pending-reviews" element={<PendingReviews />} />
       <Route path="students" element={<Students />} />
+      <Route path="students/:id" element={<StudentDetails />} />
 
       {/* Marks & Sessions */}
       <Route path="sessions" element={<Sessions />} />
@@ -239,7 +243,6 @@ export default function AcademicDashboard() {
 
       {/* Credentials */}
       <Route path="credential-requests" element={<CredentialRequests />} />
-      <Route path="security" element={<SecurityControl />} />
 
       {/* Operational Support */}
       <Route path="staff" element={<AcademicStaff />} />
@@ -251,10 +254,13 @@ export default function AcademicDashboard() {
       <Route path="hr-broadcasts" element={<HRBroadcasts />} />
       <Route path="referrals" element={<ReferredLeads />} />
       <Route path="finance-requests" element={<FinanceRequests />} />
+      <Route path="incentives" element={<IncentiveOpsDesk />} />
+      <Route path="university-changes" element={<CenterUniversityChanges />} />
 
       {/* New Operations Module Routes */}
       <Route path="overview" element={<OpsDashboard />} />
       <Route path="center-audit" element={<CenterAudit />} />
+      <Route path="centers" element={<Centers />} />
       <Route path="accreditation" element={<AccreditationRequests />} />
       <Route path="center-performance" element={<CenterPerformance />} />
       <Route path="sub-dept-overview" element={<SubDeptOverview />} />

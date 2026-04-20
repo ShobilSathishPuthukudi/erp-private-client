@@ -213,7 +213,7 @@ export default function CRM({ category: propCategory }: { category?: 'PIPELINE' 
     <div className="space-y-6 max-w-[1600px] mx-auto p-6">
       <div className="flex justify-between items-center shrink-0">
         <div>
-           <h1 className="text-4xl font-black text-slate-900 tracking-tight">CRM Pipeline</h1>
+           <h1 className="text-4xl font-black text-slate-900 tracking-tight">CRM pipeline</h1>
            <p className="text-slate-500 font-medium whitespace-nowrap">Manage institutional leads and convert them into operational centers.</p>
         </div>
         <div className="flex space-x-3">

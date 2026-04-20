@@ -33,7 +33,7 @@ export default function DeptAdminDashboard() {
     <div className="space-y-8">
        <div className="flex justify-between items-center bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
           <div>
-             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter ">Department Intelligence</h1>
+             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter ">Department intelligence</h1>
              <p className="text-slate-500 font-medium mt-1 text-sm uppercase tracking-widest">Forensic Oversight & Risk Telemetry / {new Date().toLocaleDateString()}</p>
           </div>
           <div className="flex gap-4">
@@ -73,7 +73,7 @@ export default function DeptAdminDashboard() {
        <Routes>
           <Route path="/" element={
             <div className="p-6">
-              <h1 className="text-2xl font-bold text-slate-900 mb-4">Department Administration</h1>
+              <h1 className="text-2xl font-bold text-slate-900 mb-4">Department administration</h1>
               <p className="text-slate-500">Oversee team day-to-day operations, assign and track critical tasks, and perform structural reviews of team leave requests.</p>
             </div>
           } />

@@ -27,7 +27,7 @@ export default function AccreditationInterest() {
                 <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                     <Building className="w-24 h-24" />
                 </div>
-                <h1 className="text-2xl font-bold">Accreditation Interest</h1>
+                <h1 className="text-2xl font-bold">Accreditation interest</h1>
                 <p className="text-slate-400 text-sm mt-1">Request institutional tie-ups for programs already within our university network.</p>
             </div>
 

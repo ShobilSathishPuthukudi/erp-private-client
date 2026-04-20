@@ -73,7 +73,7 @@ export default function StudentFinancials() {
                     <ArrowLeft className="w-5 h-5 text-slate-600" />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Financial Audit Profile</h1>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Financial audit profile</h1>
                     <p className="text-slate-500 text-sm font-medium">Verified billing history for <b>{student?.name}</b></p>
                 </div>
             </div>

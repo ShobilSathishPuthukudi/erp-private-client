@@ -85,11 +85,16 @@ router.post('/hr', verifyToken, async (req, res) => {
     }
 });
 
-// CEO: Get own directives
+// CEO: Get own directives & HR Broadcasts
 router.get('/ceo', verifyToken, isCEO, async (req, res) => {
     try {
         const announcements = await Announcement.findAll({
-            where: { authorId: req.user.uid },
+            where: { 
+                [Op.or]: [
+                    { authorId: req.user.uid },
+                    { targetChannel: 'all_employees' }
+                ]
+            },
             include: [{ model: User, as: 'author', attributes: ['name'] }],
             order: [['createdAt', 'DESC']]
         });

@@ -62,7 +62,7 @@ export default function AccreditationQueue() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex flex-col gap-6 shrink-0">
         <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Accreditation Audits</h1>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Accreditation audits</h1>
            <p className="text-slate-500 text-sm font-medium">Verify structural pipelines and authorize program initialization.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit gap-2">

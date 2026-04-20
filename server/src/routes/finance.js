@@ -12,7 +12,7 @@ import { checkPermission } from '../middleware/rbac.js';
 import { clearNotifications } from './notifications.js';
 
 const router = express.Router();
-const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution } = models;
+const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution, Target, TargetAssignment, Task } = models;
 
 const isFinanceOrAdmin = (req, res, next) => {
   const userRole = req.user.role?.toLowerCase()?.trim();
@@ -23,6 +23,27 @@ const isFinanceOrAdmin = (req, res, next) => {
     return res.status(403).json({ error: 'Access denied: Finance privileges required' });
   }
   next();
+};
+
+const getCenterRecipientUids = async (student) => {
+  const recipientUids = new Set();
+  if (!student?.centerId) return [];
+
+  const centerUsers = await User.findAll({
+    where: {
+      status: 'active',
+      [Op.or]: [
+        { deptId: student.centerId, role: { [Op.in]: ['Partner Center', 'Partner Centers', 'partner centers'] } },
+        student.center?.adminId ? { uid: student.center.adminId } : null,
+      ].filter(Boolean),
+    },
+    attributes: ['uid'],
+  });
+
+  for (const user of centerUsers) {
+    if (user?.uid) recipientUids.add(user.uid);
+  }
+  return [...recipientUids];
 };
 
 // Enforce mandatory remarks for all EDIT/DELETE actions in this module
@@ -533,17 +554,166 @@ router.get('/invoices', verifyToken, isFinanceOrAdmin, async (req, res) => {
 router.get('/change-requests', verifyToken, isFinanceOrAdmin, async (req, res) => {
   try {
     const requests = await ChangeRequest.findAll({
-      where: { status: 'pending_finance' },
+      where: { status: 'pending_finance', requestType: 'center_university_change' },
       include: [
-        { model: Department, as: 'center', attributes: ['name'], required: false },
-        { model: Program, as: 'currentProgram', attributes: ['name'], required: false },
-        { model: Program, as: 'requestedProgram', attributes: ['name'], required: false }
-      ]
+        { model: Department, as: 'center', attributes: ['id', 'name'], required: false },
+        { model: Department, as: 'currentUniversity', attributes: ['id', 'name', 'status'], required: false },
+        { model: Department, as: 'requestedUniversity', attributes: ['id', 'name', 'status'], required: false },
+        { model: Program, as: 'currentProgram', attributes: ['id', 'name', 'universityId'], required: false },
+        { model: Program, as: 'requestedProgram', attributes: ['id', 'name', 'universityId'], required: false },
+        { model: ProgramFee, as: 'requestedFeeSchema', attributes: ['id', 'name', 'programId'], required: false }
+      ],
+      order: [['createdAt', 'DESC']],
     });
     res.json(requests || []);
   } catch (error) {
     console.error("ERROR:", error);
     res.status(500).json({ message: error.message || "Internal Server Error" });
+  }
+});
+
+router.post('/change-requests/:id/decision', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const { status, remarks, feeSchemaId } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Status must be approved or rejected' });
+    }
+
+    if (!remarks || remarks.trim().length < 12) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Finance remarks (min 12 chars) are required' });
+    }
+
+    const request = await ChangeRequest.findByPk(id, {
+      include: [
+        { model: Department, as: 'center', attributes: ['id', 'name', 'adminId'] },
+        { model: Department, as: 'requestedUniversity', attributes: ['id', 'name', 'status'] },
+        { model: Program, as: 'currentProgram', attributes: ['id', 'name', 'universityId', 'subDeptId'] },
+        { model: Program, as: 'requestedProgram', attributes: ['id', 'name', 'universityId', 'subDeptId'] },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!request) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Change request not found' });
+    }
+
+    if (request.status !== 'pending_finance') {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'Only finance-pending requests can be processed here' });
+    }
+
+    let mapping = null;
+    let feeSchema = null;
+
+    if (status === 'approved') {
+      if (!feeSchemaId) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Fee structure is required for finance approval' });
+      }
+
+      feeSchema = await ProgramFee.findByPk(feeSchemaId, { transaction });
+      if (!feeSchema || Number(feeSchema.programId) !== Number(request.requestedProgramId)) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Selected fee structure does not match the requested program' });
+      }
+
+      if (request.requestedUniversity?.status !== 'proposed' && request.requestedUniversity?.status !== 'active' && request.requestedUniversity?.status !== 'staged') {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Requested university is not available for reassignment' });
+      }
+
+      const currentMapping = await CenterProgram.findOne({
+        where: {
+          centerId: request.centerId,
+          programId: request.currentProgramId,
+          isActive: true,
+        },
+        transaction,
+      });
+
+      if (currentMapping) {
+        await currentMapping.update({ isActive: false }, { transaction });
+      }
+
+      const [nextMapping] = await CenterProgram.findOrCreate({
+        where: {
+          centerId: request.centerId,
+          programId: request.requestedProgramId,
+        },
+        defaults: {
+          feeSchemaId,
+          subDeptId: request.requestedProgram?.subDeptId || null,
+          isActive: true,
+        },
+        transaction,
+      });
+
+      await nextMapping.update({
+        feeSchemaId,
+        subDeptId: request.requestedProgram?.subDeptId || nextMapping.subDeptId,
+        isActive: true,
+      }, { transaction });
+
+      mapping = nextMapping;
+    }
+
+    await request.update({
+      status: status === 'approved' ? 'approved' : 'rejected_finance',
+      financeRemarks: remarks.trim(),
+      requestedFeeSchemaId: feeSchemaId || request.requestedFeeSchemaId,
+      financeApprovedBy: req.user.uid,
+      financeApprovedAt: new Date(),
+    }, { transaction });
+
+    await logAction({
+      userId: req.user.uid,
+      action: status === 'approved' ? 'FINANCE_APPROVE_CENTER_UNIVERSITY_CHANGE' : 'FINANCE_REJECT_CENTER_UNIVERSITY_CHANGE',
+      entity: 'ChangeRequest',
+      details: `Finance ${status} center university change request #${request.id} for ${request.center?.name || `center ${request.centerId}`}`,
+      module: 'Finance',
+      remarks,
+    });
+
+    const centerRecipients = await User.findAll({
+      where: {
+        status: 'active',
+        [Op.or]: [
+          { deptId: request.centerId, role: { [Op.in]: ['Partner Center', 'Partner Centers', 'partner centers'] } },
+          request.center?.adminId ? { uid: request.center.adminId } : null,
+        ].filter(Boolean),
+      },
+      attributes: ['uid'],
+      transaction,
+    });
+
+    await Promise.all(centerRecipients.map((user) => Notification.create({
+      userUid: user.uid,
+      type: status === 'approved' ? 'success' : 'warning',
+      title: `University change ${status}`,
+      message: status === 'approved'
+        ? `Finance approved the university change for ${request.currentProgram?.name || 'your program'}. The new fee structure is now active.`
+        : `Finance rejected the university change request. Review the remarks and submit a corrected request if needed.`,
+      link: '/dashboard/study-center/programs',
+    }, { transaction })));
+
+    await transaction.commit();
+    res.json({
+      message: status === 'approved' ? 'University change approved and center records updated.' : 'University change rejected by Finance.',
+      request,
+      mapping,
+      feeSchema,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Finance center university decision error:', error);
+    res.status(500).json({ error: error.message || 'Failed to process center university change request' });
   }
 });
 
@@ -1102,6 +1272,88 @@ router.post('/approvals/students/:id/reject', verifyToken, isFinanceOrAdmin, asy
     }
 });
 
+router.post('/approvals/students/:id/request-correction', verifyToken, isFinanceOrAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { remarks } = req.body;
+
+        if (!remarks || remarks.length < 12) {
+            return res.status(400).json({ error: 'Institutional Guardrail: Correction request requires remarks (min 12 chars).' });
+        }
+
+        const student = await Student.findByPk(id, {
+          include: [{ model: Department, as: 'center', attributes: ['id', 'name', 'adminId'] }],
+        });
+        if (!student) return res.status(404).json({ error: 'Student not found.' });
+
+        if (!['PAYMENT_VERIFIED', 'FINANCE_PENDING', 'FINANCE_APPROVED'].includes(student.status)) {
+            return res.status(400).json({ error: 'Protocol Violation: Student must be in the finance approval flow before requesting correction.' });
+        }
+
+        const logs = student.verificationLogs || [];
+        logs.push({
+          step: 'Finance_Correction_Requested',
+          time: new Date(),
+          status: 'CORRECTION_REQUESTED',
+          by: req.user.uid,
+          remarks,
+        });
+
+        await student.update({
+            status: 'DRAFT',
+            enrollStatus: 'correction_requested',
+            reviewStage: 'SUB_DEPT',
+            remarks,
+            lastRejectionReason: remarks,
+            reviewedBy: req.user.uid,
+            reviewedAt: new Date(),
+            resubmittedTo: 'SUB_DEPT',
+            resubmissionDate: null,
+            verificationLogs: logs,
+        });
+
+        await logAction({
+            userId: req.user.uid,
+            action: 'FINANCE_REQUEST_CORRECTION',
+            entity: 'Student',
+            details: `Finance requested correction for ${student.name}`,
+            module: 'Finance',
+            remarks
+        });
+
+        const financeRecipients = await User.findAll({
+            where: {
+                role: { [Op.in]: ['Finance Admin', 'Organization Admin'] },
+                status: 'active'
+            },
+            attributes: ['uid']
+        });
+
+        await clearNotifications({
+            userUids: financeRecipients.map((user) => user.uid),
+            links: ['/dashboard/finance/approvals'],
+            messagePatterns: [
+                `Finance Review Required: ${student.name}:%`,
+                `%${student.name}%finance verification%`
+            ]
+        });
+
+        const centerRecipientUids = await getCenterRecipientUids(student);
+        await Promise.all(centerRecipientUids.map((uid) => Notification.create({
+          userUid: uid,
+          type: 'warning',
+          title: `Correction Requested: ${student.name}`,
+          message: `Finance requested corrections for ${student.name}. Update the application using the remarks and resubmit it through the normal new-student flow.`,
+          link: '/dashboard/study-center/students',
+        })));
+
+        res.json({ message: 'Correction requested. Student returned to partner center for edit and resubmission.', student });
+    } catch (error) {
+        console.error('Finance correction request error:', error);
+        res.status(500).json({ error: 'Finance correction request protocol failed.' });
+    }
+});
+
 // --- Financial Aging Telemetry ---
 
 router.get('/aging/student/:id', verifyToken, isFinanceOrAdmin, async (req, res) => {
@@ -1242,6 +1494,247 @@ router.put('/students/:id/verify-fee', verifyToken, isFinanceOrAdmin, async (req
   }
 });
 
+const getIncentiveReward = (rules, overrideAmount) => {
+  if (overrideAmount !== undefined && overrideAmount !== null && overrideAmount !== '') {
+    return Number(overrideAmount);
+  }
+
+  const structure = rules?.[0]?.structure;
+  if (!Array.isArray(structure) || structure.length === 0) return 0;
+  return structure.reduce((max, rule) => Math.max(max, Number(rule?.reward || 0)), 0);
+};
+
+router.get('/incentive-payouts', verifyToken, isFinanceOrAdmin, async (req, res) => {
+  try {
+    const queue = await TargetAssignment.findAll({
+      where: {
+        status: { [Op.in]: ['completed', 'approved', 'denied', 'payout_processed'] },
+      },
+      include: [
+        {
+          model: Target,
+          as: 'target',
+          include: [{ model: IncentiveRule, as: 'rules' }],
+        },
+        { model: User, as: 'employee', attributes: ['uid', 'name', 'email', 'role'] },
+        { model: Task, as: 'task', attributes: ['id', 'title', 'status', 'deadline', 'completedAt'] },
+        { model: IncentivePayout, as: 'payout', required: false },
+      ],
+      order: [['updatedAt', 'DESC']],
+    });
+
+    const payouts = await IncentivePayout.findAll({
+      include: [
+        { model: User, as: 'employee', attributes: ['uid', 'name', 'email', 'role'] },
+        { model: Target, as: 'target', attributes: ['id', 'title', 'metric', 'value'] },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 100,
+    });
+
+    res.json({ queue, payouts });
+  } catch (error) {
+    console.error('Fetch finance incentive payouts error:', error);
+    res.status(500).json({ error: 'Failed to load finance incentive payout queue' });
+  }
+});
+
+const reviewIncentiveAssignment = async (req, res, forceApprove = false) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { assignmentId } = req.params;
+    const { amount, remarks, period, decision = 'approve', nextCycleValue, nextCycleStartDate, nextCycleEndDate } = req.body;
+    const finalDecision = forceApprove ? 'approve' : decision;
+
+    const assignment = await TargetAssignment.findByPk(assignmentId, {
+      include: [
+        {
+          model: Target,
+          as: 'target',
+          include: [{ model: IncentiveRule, as: 'rules' }],
+        },
+        { model: Task, as: 'task' },
+        { model: User, as: 'employee', attributes: ['uid', 'name', 'email', 'role'] },
+        { model: IncentivePayout, as: 'payout', required: false },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!assignment) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Target assignment not found' });
+    }
+
+    if (assignment.payoutId || assignment.payout || ['approved', 'denied', 'payout_processed'].includes(assignment.status)) {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'This assignment has already been reviewed by Finance' });
+    }
+
+    const taskCompleted = assignment.task?.status === 'completed';
+    if (!(assignment.status === 'completed' || taskCompleted)) {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'Task must be completed before payout processing' });
+    }
+
+    const activeRule = assignment.target?.rules?.[0];
+    if (!activeRule) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Target has no incentive rule configured' });
+    }
+
+    if (!['approve', 'deny'].includes(finalDecision)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Decision must be approve or deny' });
+    }
+
+    if (!remarks || remarks.trim().length < 8) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Finance review remarks are required' });
+    }
+
+    let payout = null;
+    let nextCycleTarget = null;
+
+    if (finalDecision === 'approve') {
+      const rewardAmount = getIncentiveReward(assignment.target?.rules, amount);
+      if (!rewardAmount || rewardAmount < 0) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'A valid incentive amount is required' });
+      }
+
+      payout = await IncentivePayout.create({
+        userId: assignment.employeeUid,
+        ruleId: activeRule.id,
+        targetId: assignment.targetId,
+        assignmentId: assignment.id,
+        amount: rewardAmount,
+        achievementPercentage: 100,
+        period: period || new Date().toISOString().slice(0, 7),
+        status: 'processed',
+        handledByFinance: req.user.uid,
+        financeRemarks: remarks?.trim() || null,
+        processedAt: new Date(),
+      }, { transaction });
+    } else {
+      nextCycleTarget = await Target.create({
+        title: `${assignment.target?.title || 'Incentive Plan'} - Next Cycle`,
+        description: assignment.target?.description || null,
+        targetableType: assignment.target?.targetableType || 'department',
+        targetableId: assignment.target?.targetableId || 'sales',
+        metric: assignment.target?.metric || 'revenue',
+        value: nextCycleValue || assignment.target?.value,
+        startDate: nextCycleStartDate || assignment.target?.startDate,
+        endDate: nextCycleEndDate || assignment.target?.endDate,
+        status: 'active',
+        workflowStatus: 'pending_operations',
+        financeRemarks: `Auto-created after finance denial. ${remarks.trim()}`,
+        eligibilityCriteria: assignment.target?.eligibilityCriteria || null,
+        cycleName: assignment.target?.cycleName || null,
+        assignedBy: req.user.uid,
+      }, { transaction });
+
+      await IncentiveRule.create({
+        targetId: nextCycleTarget.id,
+        structure: assignment.target?.rules?.[0]?.structure || [],
+        type: activeRule.type || 'flat',
+      }, { transaction });
+    }
+
+    await assignment.update({
+      status: finalDecision === 'approve' ? 'payout_processed' : 'denied',
+      payoutId: payout?.id || null,
+      completedAt: assignment.completedAt || assignment.task?.completedAt || new Date(),
+      remarks: remarks?.trim() || assignment.remarks,
+      financeDecisionAt: new Date(),
+      financeDecisionBy: req.user.uid,
+      financeDecisionRemarks: remarks?.trim() || null,
+    }, { transaction });
+
+    await assignment.target.update({
+      financeDecisionUid: req.user.uid,
+      financeDecisionAt: new Date(),
+      financeReviewRemarks: remarks.trim(),
+      nextCycleTargetValue: nextCycleValue || assignment.target.nextCycleTargetValue,
+      nextCycleStartDate: nextCycleStartDate || assignment.target.nextCycleStartDate,
+      nextCycleEndDate: nextCycleEndDate || assignment.target.nextCycleEndDate,
+    }, { transaction });
+
+    const siblingAssignments = await TargetAssignment.findAll({
+      where: { targetId: assignment.targetId },
+      transaction,
+    });
+
+    const allProcessed = siblingAssignments.every((item) => {
+      if (item.id === assignment.id) return finalDecision === 'approve';
+      return item.status === 'payout_processed';
+    });
+
+    await Target.update({
+      workflowStatus: finalDecision === 'approve'
+        ? (allProcessed ? 'disbursed' : 'approved_by_finance')
+        : 'denied_by_finance',
+      status: allProcessed ? 'completed' : assignment.target?.status || 'active',
+    }, {
+      where: { id: assignment.targetId },
+      transaction,
+    });
+
+    await Notification.create({
+      userUid: assignment.employeeUid,
+      type: finalDecision === 'approve' ? 'success' : 'warning',
+      title: finalDecision === 'approve' ? 'Incentive Processed' : 'Incentive Denied',
+      message: finalDecision === 'approve'
+        ? `Finance processed your incentive payout for ${assignment.target?.title || 'completed sales target'}.`
+        : `Finance denied your incentive for ${assignment.target?.title || 'completed sales target'}. Review the remarks for the next cycle.`,
+      link: '/dashboard/employee/tasks',
+    }, { transaction });
+
+    if (nextCycleTarget) {
+      const opsUsers = await User.findAll({
+        where: {
+          role: { [Op.in]: ['Operations Admin', 'Academic Operations Admin', 'Organization Admin'] },
+          status: 'active'
+        },
+        attributes: ['uid'],
+        transaction,
+      });
+
+      await Promise.all(opsUsers.map((user) => Notification.create({
+        userUid: user.uid,
+        type: 'info',
+        title: 'New incentive cycle ready',
+        message: `${nextCycleTarget.title} was created after a finance denial and needs operations verification.`,
+        link: '/dashboard/academic/incentives',
+      }, { transaction })));
+    }
+
+    await logAction({
+      userId: req.user.uid,
+      action: finalDecision === 'approve' ? 'FINANCE_APPROVE_INCENTIVE' : 'FINANCE_DENY_INCENTIVE',
+      entity: 'TargetAssignment',
+      details: `Finance ${finalDecision}d incentive assignment ${assignment.id} for ${assignment.employee?.name || assignment.employeeUid}`,
+      module: 'Finance',
+      remarks: remarks.trim(),
+    });
+
+    await transaction.commit();
+    res.json({
+      message: finalDecision === 'approve' ? 'Incentive payout processed by Finance' : 'Incentive denied and next cycle prepared',
+      payout,
+      nextCycleTarget,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Process finance incentive review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to process incentive review' });
+  }
+};
+
+router.post('/incentive-payouts/process/:assignmentId', verifyToken, isFinanceOrAdmin, async (req, res) => reviewIncentiveAssignment(req, res, true));
+
+router.post('/incentive-payouts/review/:assignmentId', verifyToken, isFinanceOrAdmin, async (req, res) => reviewIncentiveAssignment(req, res, false));
+
 
 // --- Accreditation Pipeline ---
 router.get('/accreditation-requests', verifyToken, async (req, res) => {
@@ -1307,6 +1800,21 @@ router.put('/accreditation-requests/:id/approve', verifyToken, async (req, res) 
       status: 'open',
       accreditationRequestId: request.id
     });
+
+    // Step 4: Notify the Partner Center that their program request has been approved.
+    try {
+      const center = await Department.findByPk(request.centerId);
+      if (center?.adminId) {
+        await Notification.create({
+          userUid: center.adminId,
+          type: 'success',
+          message: `Your program request "${newProgram.name}" has been approved by Finance and is now live in your portfolio.`,
+          link: '/dashboard/partner-center/programs'
+        });
+      }
+    } catch (notifyError) {
+      console.error('[ACCREDITATION_APPROVE_NOTIFY_ERROR]:', notifyError);
+    }
 
     res.json({ message: 'Program formally finalized and injected into execution architecture' });
   } catch (error) {

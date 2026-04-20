@@ -34,7 +34,12 @@ export default function NotificationCenter() {
         return '/dashboard/operations/announcements';
       }
       if (normalizedRole === 'hr') return '/dashboard/hr/announcements';
-      if (normalizedRole === 'ceo') return '/dashboard/ceo/announcements';
+      if (normalizedRole === 'ceo') {
+        if (notification?.message?.startsWith('HR Broadcast:')) {
+          return '/dashboard/ceo/hr-broadcasts';
+        }
+        return '/dashboard/ceo/announcements';
+      }
       return '/dashboard/announcements';
     }
 
@@ -225,7 +230,7 @@ export default function NotificationCenter() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right dropdown-menu-card">
           <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
             <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
             <div className="flex gap-3">

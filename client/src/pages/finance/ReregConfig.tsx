@@ -33,11 +33,27 @@ export default function ReregConfig() {
     }
   };
 
+  const today = new Date().toISOString().split('T')[0];
+
+  const isFormValid =
+    !!formData.programId &&
+    !!formData.deadline &&
+    formData.deadline >= today &&
+    Number.isFinite(formData.autoApprovalThreshold) &&
+    formData.autoApprovalThreshold >= 0 &&
+    Number.isFinite(formData.escalationDays) &&
+    formData.escalationDays >= 1;
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid) {
+      toast.error('Please complete all required fields');
+      return;
+    }
     try {
       await api.post('/rereg/config', formData);
       toast.success('REREG profile deployed');
+      setFormData({ programId: '', deadline: '', autoApprovalThreshold: 0, escalationDays: 7 });
       fetchData();
     } catch (error) {
       toast.error('Failed to deploy config');
@@ -63,8 +79,9 @@ export default function ReregConfig() {
             <h3 className="font-black text-slate-900 uppercase tracking-tighter mb-6">Create Cycle Profile</h3>
             <form onSubmit={handleSave} className="space-y-6">
                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Program</label>
-                  <select 
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Program <span className="text-rose-500">*</span></label>
+                  <select
+                    required
                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white"
                     value={formData.programId}
                     onChange={(e) => setFormData({ ...formData, programId: e.target.value })}
@@ -74,24 +91,53 @@ export default function ReregConfig() {
                   </select>
                </div>
                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">REREG Deadline</label>
-                  <input 
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">REREG Deadline <span className="text-rose-500">*</span></label>
+                  <input
                     type="date"
+                    required
+                    min={today}
                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white"
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                   />
                </div>
                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auto-Approval Threshold (₹)</label>
-                  <input 
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auto-Approval Threshold (₹) <span className="text-rose-500">*</span></label>
+                  <input
                     type="number"
+                    required
+                    min={0}
+                    step="0.01"
                     className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white"
-                    value={formData.autoApprovalThreshold}
-                    onChange={(e) => setFormData({ ...formData, autoApprovalThreshold: parseFloat(e.target.value) })}
+                    value={Number.isFinite(formData.autoApprovalThreshold) ? formData.autoApprovalThreshold : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, autoApprovalThreshold: v === '' ? NaN : parseFloat(v) });
+                    }}
                   />
                </div>
-               <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest">Deploy Cycle Profile</button>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Escalation Window (Days) <span className="text-rose-500">*</span></label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    step="1"
+                    className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white"
+                    value={Number.isFinite(formData.escalationDays) ? formData.escalationDays : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, escalationDays: v === '' ? NaN : parseInt(v, 10) });
+                    }}
+                  />
+               </div>
+               <button
+                 type="submit"
+                 disabled={!isFormValid}
+                 className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest disabled:bg-slate-300 disabled:cursor-not-allowed"
+               >
+                 Deploy Cycle Profile
+               </button>
             </form>
          </div>
 

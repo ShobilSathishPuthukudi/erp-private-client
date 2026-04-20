@@ -44,7 +44,7 @@ export default function CronMonitoring() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Cron Monitoring Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Cron monitoring dashboard</h1>
           <p className="text-slate-500 text-sm">Real-time status of GAP-3 background processors and GAP-2 escalation engines.</p>
         </div>
         <button 
@@ -104,7 +104,7 @@ export default function CronMonitoring() {
 
       <div className="bg-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-100">
          <div className="relative z-10 w-full md:w-2/3">
-            <h2 className="text-2xl font-bold mb-2">Automated Escalation Logic (GAP-2)</h2>
+            <h2 className="text-2xl font-bold mb-2">Automated escalation logic (gap-2)</h2>
             <p className="text-indigo-100 text-sm leading-relaxed mb-6">
               The `task-escalation` job bridges our event stream and multi-tier accountability. 
               Once a task becomes overdue, the Department Admin is notified immediately. They can escalate directly or grant a 24-hour grace period. If they do nothing, or the grace period expires, the task escalates to the CEO Dashboard automatically.

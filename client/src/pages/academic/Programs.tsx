@@ -330,11 +330,11 @@ export default function Programs() {
               }}
               disabled={!canEdit}
               title={canEdit ? 'Edit program' : 'Only draft programs can be edited'}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-all hover:scale-110 active:scale-95 shadow-sm border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:scale-100"
             >
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all active:scale-95 shadow-sm border border-red-100 bg-white">
+            <button onClick={() => handleDelete(item)} className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all hover:-translate-y-0.5 hover:scale-110 hover:shadow-md active:scale-95 shadow-sm border border-red-100 bg-white">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -445,7 +445,7 @@ export default function Programs() {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} hideHeader={true} maxWidth="2xl">
-        <div className="bg-white overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
+        <div className="overflow-hidden transition-all duration-300 flex flex-col max-h-[calc(100vh-160px)]">
           <div className="bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 relative border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
@@ -653,7 +653,7 @@ export default function Programs() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 p-8 bg-slate-50 border-t border-slate-200 shrink-0">
+          <div className="flex justify-end gap-3 p-8 border-t border-slate-100 shrink-0">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
@@ -712,7 +712,7 @@ export default function Programs() {
                 </button>
                 <button
                 onClick={submitGatedRequest}
-                className="px-8 py-2 bg-amber-500 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-200"
+                className="px-8 py-2 bg-amber-500 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-amber-600 transition-all active:scale-95 shadow-lg shadow-amber-900/20"
                 >
                 Dispatch to Finance
                 </button>

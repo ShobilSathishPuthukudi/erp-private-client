@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 
 
@@ -52,9 +53,9 @@ export default function InstitutionalApprovals() {
   
   // Approval Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<StudentApproval | null>(null);
   const [remarks, setRemarks] = useState('');
-  const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'request_correction'>('approve');
 
   const getAssetUrl = (path?: string) => {
     if (!path) return null;
@@ -62,7 +63,7 @@ export default function InstitutionalApprovals() {
     return `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '')}${path}`;
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       if (activeTab === 'enrolled') {
@@ -75,12 +76,12 @@ export default function InstitutionalApprovals() {
         const res = await api.get('/finance/approvals/students');
         setStudents(res.data);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to sync institutional approval queues');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab]);
 
   const fetchCounts = async () => {
     try {
@@ -101,7 +102,7 @@ export default function InstitutionalApprovals() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]);
+  }, [fetchData]);
 
   useEffect(() => {
     fetchCounts();
@@ -116,6 +117,12 @@ export default function InstitutionalApprovals() {
       if (activeTab === 'enrollment' && actionType === 'approve') {
         endpoint = `/finance/approvals/students/${selectedItem?.id}/finalize`;
         method = 'post';
+      } else if (activeTab === 'enrollment' && actionType === 'request_correction') {
+        endpoint = `/finance/approvals/students/${selectedItem?.id}/request-correction`;
+        method = 'post';
+      } else if (activeTab === 'enrollment' && actionType === 'reject') {
+        endpoint = `/finance/approvals/students/${selectedItem?.id}/reject`;
+        method = 'post';
       }
       
       const payload = { status: actionType === 'approve' ? 'approved' : 'rejected', remarks };
@@ -127,14 +134,14 @@ export default function InstitutionalApprovals() {
       setIsModalOpen(false);
       setRemarks('');
       await Promise.all([fetchData(), fetchCounts()]);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Approval protocol failure');
+    } catch (error: unknown) {
+      toast.error((error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Approval protocol failure');
     }
   };
 
 
   const stuColumns: ColumnDef<StudentApproval>[] = [
-    { accessorKey: 'name', header: 'Student Identity', cell: ({ row }) => <span className="font-bold text-slate-900">{row.original.name}</span> },
+    { accessorKey: 'name', header: 'Student Identity', cell: ({ row }) => <Link to={`/dashboard/finance/students/${row.original.id}`} className="font-bold text-slate-900 hover:text-blue-600 transition-colors">{row.original.name}</Link> },
     { accessorKey: 'center.name', header: 'Source Center' },
     { accessorKey: 'program.name', header: 'Academic Node' },
     { 
@@ -168,12 +175,26 @@ export default function InstitutionalApprovals() {
       cell: ({ row }) => {
         if (activeTab === 'enrollment') {
           return (
-            <button 
-              onClick={() => { setSelectedItem(row.original); setActionType('approve'); setIsModalOpen(true); }}
-              className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200"
-            >
-              Finalize & Enroll
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => { setSelectedItem(row.original); setActionType('approve'); setIsModalOpen(true); }}
+                className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200"
+              >
+                Finalize & Enroll
+              </button>
+              <button
+                onClick={() => { setSelectedItem(row.original); setActionType('request_correction'); setIsModalOpen(true); }}
+                className="bg-amber-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-amber-600"
+              >
+                Request Correction
+              </button>
+              <button
+                onClick={() => { setSelectedItem(row.original); setActionType('reject'); setIsModalOpen(true); }}
+                className="bg-rose-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-rose-700"
+              >
+                Reject
+              </button>
+            </div>
           );
         }
         return (
@@ -234,7 +255,7 @@ export default function InstitutionalApprovals() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex flex-col gap-6 shrink-0">
         <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Student Audit & Approvals</h1>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Student audit & approvals</h1>
            <p className="text-slate-500 text-sm font-medium">Review finance-bound student verification and final enrollment decisions.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit">
@@ -270,13 +291,33 @@ export default function InstitutionalApprovals() {
         title="Student Audit Decision"
       >
         <div className="space-y-6">
-            <div className={`p-4 rounded-2xl border flex gap-4 ${actionType === 'approve' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                {actionType === 'approve' ? <RefreshCw className="w-6 h-6 text-emerald-600" /> : <AlertCircle className="w-6 h-6 text-red-600" />}
+            <div className={`p-4 rounded-2xl border flex gap-4 ${
+              actionType === 'approve'
+                ? 'bg-emerald-50 border-emerald-100'
+                : actionType === 'request_correction'
+                  ? 'bg-amber-50 border-amber-100'
+                  : 'bg-red-50 border-red-100'
+            }`}>
+                {actionType === 'approve'
+                  ? <RefreshCw className="w-6 h-6 text-emerald-600" />
+                  : <AlertCircle className={`w-6 h-6 ${actionType === 'request_correction' ? 'text-amber-600' : 'text-red-600'}`} />}
                 <div>
-                    <h3 className={`font-black uppercase tracking-tighter ${actionType === 'approve' ? 'text-emerald-900' : 'text-red-900'}`}>
-                        Confirm {actionType === 'approve' ? 'Institutional Verification' : 'Protocol Rejection'}
+                    <h3 className={`font-black uppercase tracking-tighter ${
+                      actionType === 'approve'
+                        ? 'text-emerald-900'
+                        : actionType === 'request_correction'
+                          ? 'text-amber-900'
+                          : 'text-red-900'
+                    }`}>
+                        Confirm {actionType === 'approve' ? 'Institutional Verification' : actionType === 'request_correction' ? 'Correction Loop' : 'Protocol Rejection'}
                     </h3>
-                    <p className={`text-xs mt-1 ${actionType === 'approve' ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <p className={`text-xs mt-1 ${
+                      actionType === 'approve'
+                        ? 'text-emerald-700'
+                        : actionType === 'request_correction'
+                          ? 'text-amber-700'
+                          : 'text-red-700'
+                    }`}>
                         This action will be permanently recorded in the forensic audit ledger. 
                         Mandatory remarks are required for regulatory compliance.
                     </p>

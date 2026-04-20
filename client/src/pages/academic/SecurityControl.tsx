@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { ShieldAlert, Search, Terminal, Lock, Clock, Eye } from 'lucide-react';
 import CredentialRequestModal from './CredentialRequestModal';
 import CredentialRevealConsole from './CredentialRevealConsole';
+import toast from 'react-hot-toast';
 
 export default function SecurityControl() {
   const [centers, setCenters] = useState<any[]>([]);
@@ -30,6 +31,16 @@ export default function SecurityControl() {
        console.error('Security fetch failed');
     } finally {
        setLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async (requestId: number) => {
+    try {
+      const res = await api.post(`/academic/credentials/request/${requestId}/cancel`);
+      toast.success(res.data.message || 'Request withdrawn');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to withdraw request');
     }
   };
 
@@ -100,10 +111,10 @@ export default function SecurityControl() {
                            </button>
                         ) : pendingReq ? (
                            <button 
-                             disabled
-                             className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
+                             onClick={() => handleCancelRequest(pendingReq.id)}
+                             className="w-full bg-rose-50 text-rose-600 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition-all flex items-center justify-center gap-2 border border-rose-100"
                            >
-                              <Clock className="w-4 h-4" /> Authorization Pending
+                              <Clock className="w-4 h-4" /> Withdraw Request
                            </button>
                         ) : (
                            <button 
@@ -135,7 +146,9 @@ export default function SecurityControl() {
                        <span className="font-black text-slate-900 uppercase">{req.center?.name}</span>
                        <span className={`px-2 py-0.5 rounded-full font-black uppercase ${
                          req.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
-                         req.status === 'rejected' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
+                         req.status === 'rejected' ? 'bg-rose-50 text-rose-600' : 
+                         req.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 
+                         'bg-amber-50 text-amber-600'
                        }`}>
                          {req.status}
                        </span>

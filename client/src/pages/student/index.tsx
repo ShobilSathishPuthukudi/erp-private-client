@@ -14,6 +14,7 @@ import {
   BookOpen,
   ArrowRight
 } from 'lucide-react';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 export default function StudentPortal() {
   const user = useAuthStore(state => state.user);
@@ -50,21 +51,23 @@ export default function StudentPortal() {
     return (
       <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Student Gateway</h1>
-            <p className="text-slate-500 font-medium mt-1">Institutional enrollment node: <span className="text-slate-900 font-bold">{user?.uid}</span></p>
-          </div>
-          <div className="flex items-center gap-3">
-             <span className={`px-4 py-2 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg ${
-               status === 'ENROLLED' ? 'bg-green-600 text-white shadow-green-200' :
-               status === 'REJECTED' ? 'bg-red-600 text-white shadow-red-200' :
-               'bg-blue-600 text-white shadow-blue-200'
-             }`}>
-               Current: {status.replace('_', ' ')}
-             </span>
-          </div>
-        </div>
+        <DashboardGreeting 
+          role="Student Gateway - Institutional Node"
+          name={user?.name || 'Academic Scholar'}
+          subtitle={`Institutional enrollment node: ${user?.uid}. Your academic roadmap and admission pipeline are active for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
+          actions={[
+            {
+              label: 'Academic Transcript',
+              link: 'transcript',
+              icon: FileText
+            },
+            {
+              label: 'Financial Ledger',
+              link: 'invoices',
+              icon: CreditCard
+            }
+          ]}
+        />
 
         {/* Lifecycle Stepper */}
         <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50">

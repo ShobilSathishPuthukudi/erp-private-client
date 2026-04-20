@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { 
   Users, 
@@ -109,7 +109,7 @@ export default function Students() {
           {filteredStudents.map((student) => {
             const stage = student.reviewStage || 'SUB_DEPT';
             return (
-              <div key={student.id} className="group bg-white border border-slate-200 rounded-[2.5rem] p-8 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 transition-all relative overflow-hidden">
+              <Link to={`/dashboard/subdept/${unit}/students/${student.id}`} key={student.id} className="group block bg-white border border-slate-200 rounded-[2.5rem] p-8 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 transition-all relative overflow-hidden">
                 <div className="flex justify-between items-start mb-6">
                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all overflow-hidden border border-slate-100">
                       <Users className="w-8 h-8" />
@@ -166,7 +166,7 @@ export default function Students() {
 
                 {/* Aesthetic background accent */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/10 transition-colors" />
-              </div>
+              </Link>
             );
           })}
         </div>

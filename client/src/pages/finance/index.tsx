@@ -18,6 +18,7 @@ import UniversityFinancialReport from './UniversityFinancialReport';
 import DailyAdmissionReport from './DailyAdmissionReport';
 import CredentialAudit from './CredentialAudit';
 import CenterVerification from './CenterVerification';
+import UniversityChanges from './UniversityChanges';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
@@ -35,6 +36,7 @@ export default function FinanceDashboard() {
       <Route path="accreditation-queue" element={<AccreditationQueue />} />
       <Route path="sessions-queue" element={<AdmissionSessionsQueue />} />
       <Route path="center-verification" element={<CenterVerification />} />
+      <Route path="university-changes" element={<UniversityChanges />} />
       <Route path="performance" element={<TargetManager />} />
       <Route path="rereg" element={<ReregManager />} />
       <Route path="rereg-config" element={<ReregConfig />} />

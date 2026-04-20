@@ -6,6 +6,12 @@ import { Clock, UserCheck, UserPlus, History, X, CheckCircle2, AlertTriangle, Ar
 import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
 
+const safeFormat = (dateStr: any, formatStr: string) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? 'N/A' : format(d, formatStr);
+};
+
 type EscalationTask = {
   id: number;
   title: string;
@@ -159,23 +165,34 @@ export default function Escalations() {
   }
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="p-2 space-y-6 flex flex-col">
       
-      {/* Tab Switcher */}
-      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm self-start inline-flex">
-        <button 
-          onClick={() => setActiveTab('tasks')}
-          className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === 'tasks' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          Task Escalations ({tasks.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('leaves')}
-          className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === 'leaves' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          Leave Deadlocks ({leaves.length})
-        </button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Critical Inbox</h1>
+            <p className="text-slate-500 font-medium text-sm">Protracted deadlocks requiring executive intervention.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+          <button 
+            onClick={() => setActiveTab('tasks')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'tasks' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            Tasks ({tasks.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('leaves')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'leaves' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            Leaves ({leaves.length})
+          </button>
+        </div>
       </div>
+
 
       {/* Critical Overdue Section */}
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
@@ -233,13 +250,8 @@ export default function Escalations() {
                         <div>
                           <div className="font-black text-slate-900 leading-tight mb-1 flex items-center gap-2 group-hover:text-indigo-600 transition-colors">
                              {task.title.length > 12 ? task.title.slice(0, 12) + '...' : task.title}
-                             {task.isCritical && (
-                               <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[8px] font-black rounded-sm border border-red-200">
-                                 {task.escalationLabel || 'CRITICAL'}
-                               </span>
-                             )}
                           </div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Deadline: {format(new Date(task.deadline), 'MMM dd, yyyy')}</div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Deadline: {safeFormat(task.deadline, 'MMM dd, yyyy')}</div>
                         </div>
                       </div>
                     </td>
@@ -326,7 +338,7 @@ export default function Escalations() {
                     </td>
                     <td className="px-10 py-6">
                        <div className="text-[11px] font-bold text-slate-600">
-                          {format(new Date(leave.startDate), 'MMM dd')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
+                          {safeFormat(leave.startDate, 'MMM dd')} - {safeFormat(leave.endDate, 'MMM dd, yyyy')}
                        </div>
                     </td>
                     <td className="px-10 py-6 text-right">
@@ -406,7 +418,7 @@ export default function Escalations() {
                      </div>
                      <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
                         <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date Created</span>
-                        <span className="text-xs font-bold text-slate-900">{selectedTask.createdAt ? format(new Date(selectedTask.createdAt), 'MMM dd, yyyy') : 'Unknown'}</span>
+                        <span className="text-xs font-bold text-slate-900">{selectedTask.createdAt ? safeFormat(selectedTask.createdAt, 'MMM dd, yyyy') : 'Unknown'}</span>
                      </div>
                      <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
                         <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Days Overdue</span>
@@ -414,6 +426,14 @@ export default function Escalations() {
                           {selectedTask.daysOverdue} Days 
                         </span>
                      </div>
+                  </div>
+                  <div className="pt-6 border-t border-slate-100 flex justify-end">
+                    <button 
+                      onClick={() => setModalMode(null)}
+                      className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                    >
+                      Close View
+                    </button>
                   </div>
                 </div>
               )}

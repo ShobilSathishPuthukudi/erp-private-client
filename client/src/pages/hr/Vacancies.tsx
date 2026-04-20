@@ -121,7 +121,7 @@ export default function Vacancies() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader 
-        title="Workforce Planning"
+        title="Workforce planning"
         description="Manage institutional vacancies and hiring quotas"
         icon={Briefcase}
         action={

@@ -39,7 +39,7 @@ export default function ReferralForm() {
            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10" />
            </div>
-           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4">Interest Certified</h2>
+           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4">Interest certified</h2>
            <p className="text-slate-500 font-medium mb-8">Thank you for your interest in partnering with RPS. Our regional development team will reach out within 24 operational hours.</p>
            <button 
                 onClick={() => window.location.reload()}
@@ -80,7 +80,7 @@ export default function ReferralForm() {
         </div>
 
         <div className="p-12 lg:p-16">
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-8 ">Register Interest</h2>
+            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-8 ">Register interest</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
                     <div>

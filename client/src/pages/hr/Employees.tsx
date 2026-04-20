@@ -256,7 +256,7 @@ export default function Employees() {
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Personnel Directory"
+        title="Personnel directory"
         description="Create employees from approved vacancies and maintain workforce records"
         icon={Users}
         action={

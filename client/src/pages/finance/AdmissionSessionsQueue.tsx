@@ -84,7 +84,7 @@ export default function AdmissionSessionsQueue() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
       <div className="flex flex-col gap-6 shrink-0">
         <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Admission Sessions</h1>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Admission sessions</h1>
            <p className="text-slate-500 text-sm font-medium">Verify financial viability and unlock operational intake windows.</p>
         </div>
       </div>

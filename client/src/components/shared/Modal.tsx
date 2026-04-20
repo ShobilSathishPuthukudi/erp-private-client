@@ -52,7 +52,7 @@ export function Modal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto modal-portal">
       <div className="flex min-h-full items-center justify-center p-4 sm:p-0">
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
@@ -68,12 +68,12 @@ export function Modal({
           style={{ maxWidth: maxWidth === 'full' ? '95vw' : undefined }}
         >
           {!hideHeader && (
-            <div className="bg-white px-6 py-5 border-b border-slate-200 shrink-0">
+            <div className="px-6 py-5 border-b border-slate-200 shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-slate-900 leading-6">{title}</h3>
                 <button
                   type="button"
-                  className="rounded-md bg-white text-slate-400 hover:text-slate-900 transition-all hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
+                  className="rounded-md text-slate-400 hover:text-slate-900 transition-all hover:scale-110 active:scale-95 cursor-pointer focus:outline-none"
                   onClick={onClose}
                 >
                   <X className="h-6 w-6" aria-hidden="true" />
@@ -84,7 +84,7 @@ export function Modal({
           
           <div className={clsx(
             "overflow-y-auto flex-1",
-            !hideHeader ? "px-6 py-5 bg-slate-50/50" : (!isTransparent ? "bg-white" : "")
+            !hideHeader && "px-6 py-5 bg-slate-50/50"
           )}>
             {children}
           </div>

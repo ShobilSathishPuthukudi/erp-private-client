@@ -102,7 +102,7 @@ export default function CredentialAudit() {
                 <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-slate-900/20">
                     <Terminal className="w-7 h-7" />
                 </div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Security Audit Ledger</h1>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Security audit ledger</h1>
             </div>
             <p className="text-slate-500 font-medium max-w-2xl leading-relaxed">System-wide forensic trail for Partner Center credential reveals. All access decisions are permanently logged and audited by the Finance Department.</p>
          </div>

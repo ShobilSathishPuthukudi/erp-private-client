@@ -41,7 +41,7 @@ export default function UniversityFinancialReport() {
             <BarChart2 className="w-64 h-64" />
          </div>
          <div className="relative z-10">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 ">Institutional Cash Flow Intelligence</h2>
+            <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 ">Institutional cash flow intelligence</h2>
             <p className="text-slate-400 font-medium ">Forensic 90-day projections and University-partner distribution analytics.</p>
          </div>
 

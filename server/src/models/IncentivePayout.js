@@ -19,6 +19,14 @@ const IncentivePayout = sequelize.define('incentive_payout', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
   },
+  targetId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  assignmentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   achievementPercentage: {
     type: DataTypes.DECIMAL(5, 2),
     allowNull: false,
@@ -33,6 +41,18 @@ const IncentivePayout = sequelize.define('incentive_payout', {
   },
   ceoRemarks: {
     type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  handledByFinance: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  financeRemarks: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  processedAt: {
+    type: DataTypes.DATE,
     allowNull: true,
   }
 });

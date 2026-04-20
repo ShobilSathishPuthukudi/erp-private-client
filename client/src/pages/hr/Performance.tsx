@@ -155,7 +155,7 @@ export default function Performance() {
   return (
     <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Performance Metrics"
+        title="Performance metrics"
         description="Real-time oversight of institutional productivity and task accountability"
         icon={TrendingUp}
         action={

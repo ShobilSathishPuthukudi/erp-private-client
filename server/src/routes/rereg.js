@@ -23,7 +23,7 @@ router.get('/queue', verifyToken, isFinanceOrAdmin, async (req, res) => {
             include: [
                 { 
                   model: Student, 
-                  attributes: ['name', 'uid', 'pendingAmount'],
+                  attributes: ['id', 'name', 'uid', 'pendingAmount'],
                   include: [{ model: Program, attributes: ['name'], required: false }]
                 }
             ],

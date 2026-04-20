@@ -85,7 +85,7 @@ export default function VerificationHub() {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding Hub</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding hub</h1>
             <p className="text-slate-500 font-medium text-sm">Unified monitoring for institutional onboarding and center audits.</p>
           </div>
         </div>

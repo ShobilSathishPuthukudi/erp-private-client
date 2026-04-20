@@ -4,6 +4,7 @@ import { Download, Calendar, Users, DollarSign, Target, BarChart3 } from 'lucide
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { Link } from 'react-router-dom';
 
 export default function DailyAdmissionReport() {
   const [report, setReport] = useState<any>(null);
@@ -45,7 +46,7 @@ export default function DailyAdmissionReport() {
   if (!report) return (
     <div className="p-12 text-center">
       <div className="inline-block p-8 bg-red-50 rounded-[32px] border border-red-100">
-        <h2 className="text-red-900 font-black uppercase tracking-tighter text-xl">System Synchronization Failure</h2>
+        <h2 className="text-red-900 font-black uppercase tracking-tighter text-xl">System synchronization failure</h2>
         <p className="text-red-600 font-medium mt-2">The institutional admission stream is currently offline or unreachable.</p>
         <button 
           onClick={() => window.location.reload()}
@@ -60,7 +61,7 @@ export default function DailyAdmissionReport() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8">
       <PageHeader 
-        title="Daily Admission Intelligence"
+        title="Daily admission intelligence"
         description="Monitor institutional growth in real-time. Branded PDF export enabled for executive reporting."
         icon={BarChart3}
         action={
@@ -102,7 +103,7 @@ export default function DailyAdmissionReport() {
                {report.details.map((student: any) => (
                   <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                      <td className="p-6">
-                        <p className="font-black text-slate-900 uppercase tracking-tight">{student.name}</p>
+                        <Link to={`/dashboard/finance/students/${student.id}`} className="font-black text-slate-900 uppercase tracking-tight hover:text-blue-600 transition-colors">{student.name}</Link>
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{student.uid}</p>
                      </td>
                      <td className="p-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">{student.center.name}</td>

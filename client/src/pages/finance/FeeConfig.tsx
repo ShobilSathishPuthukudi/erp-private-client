@@ -171,16 +171,27 @@ export default function FeeConfig() {
                 <div className="space-y-3">
                     {fields.map((field, index) => (
                         <div key={field.id} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 ">
-                            <input 
-                                {...register(`installments.${index}.label` as const, { required: true })}
+                            <input
+                                {...register(`installments.${index}.label` as const, {
+                                  required: 'Label required',
+                                  validate: (v) => (typeof v === 'string' && v.trim().length > 0) || 'Label required',
+                                })}
                                 className="flex-1 bg-transparent font-medium text-slate-900 outline-none"
                                 placeholder="Label"
                             />
                             <div className="flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-inner">
                                 <span className="text-slate-400 text-xs font-bold">₹</span>
-                                <input 
+                                <input
                                     type="number"
-                                    {...register(`installments.${index}.amount` as const, { required: true, valueAsNumber: true })}
+                                    min={0.01}
+                                    step="0.01"
+                                    {...register(`installments.${index}.amount` as const, {
+                                      required: 'Amount required',
+                                      valueAsNumber: true,
+                                      validate: (v) =>
+                                        (typeof v === 'number' && Number.isFinite(v) && v > 0) ||
+                                        'Amount must be greater than zero',
+                                    })}
                                     className="w-20 outline-none font-bold text-slate-900"
                                 />
                             </div>

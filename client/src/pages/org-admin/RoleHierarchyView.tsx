@@ -244,7 +244,7 @@ export default function RoleHierarchyView() {
                       <Layout className="w-6 h-6 text-indigo-600" />
                  </div>
                  <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Role Hierarchy</h1>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional role hierarchy</h1>
                     <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Governing Authority & Structural Chain</p>
                  </div>
             </div>

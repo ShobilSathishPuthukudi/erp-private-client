@@ -8,7 +8,7 @@ import {
   Filter
 } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const MilestoneNode = ({ 
   label, 
@@ -152,7 +152,7 @@ export default function OnboardingPulse() {
               className={`
                 flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                 ${activeTab === tab.id 
-                  ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100 ring-1 ring-slate-200' 
+                  ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
               `}
             >
@@ -294,7 +294,13 @@ export default function OnboardingPulse() {
                                  {row.original.name?.charAt(0) || '?'}
                               </div>
                               <div className="flex flex-col">
-                                <span className="font-bold text-slate-900 text-sm">{row.original.name || 'Unknown Student'}</span>
+                                <Link
+                                  to={`/dashboard/academic/students/${row.original.id}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="font-bold text-slate-900 text-sm hover:text-blue-600 transition-colors"
+                                >
+                                  {row.original.name || 'Unknown Student'}
+                                </Link>
                                 <span className="text-[10px] text-slate-400 uppercase font-black">Partner: {row.original.center?.name || 'Institutional Desk'}</span>
                               </div>
                             </div>

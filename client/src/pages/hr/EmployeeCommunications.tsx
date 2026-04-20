@@ -82,7 +82,7 @@ export default function EmployeeCommunications() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Employee Communications"
+        title="Employee communications"
         description="Review employee questions, respond from HR, and track request resolution."
         icon={MessagesSquare}
       />

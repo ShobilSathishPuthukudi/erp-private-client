@@ -88,6 +88,20 @@ body.modal-open-blur .sidebar-modern {
     letter-spacing: 0.05em;
 }
 
+/* Midnight Ops Overrides */
+[data-panel-theme="midnight"] .logo-name {
+    color: #ffffff;
+}
+
+[data-panel-theme="midnight"] .logo-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+[data-panel-theme="midnight"] .logo-icon {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
 /* Navigation */
 .sidebar-nav-modern {
     flex: 1;

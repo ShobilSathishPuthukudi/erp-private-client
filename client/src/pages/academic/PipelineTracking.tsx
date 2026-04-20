@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { Link } from 'react-router-dom';
 import { 
   GitPullRequest, 
   Clock, 
@@ -17,25 +18,25 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 
-const unitMap: { [key: number]: string } = {
-  1: 'OpenSchool',
-  2: 'Online',
-  3: 'Skill',
-  4: 'BVoc'
-};
-
-const unitColors: { [key: string]: string } = {
-  'OpenSchool': 'text-blue-600 bg-blue-50',
+const colorByCanonical: { [key: string]: string } = {
+  'Open School': 'text-blue-600 bg-blue-50',
   'Online': 'text-purple-600 bg-purple-50',
   'Skill': 'text-emerald-600 bg-emerald-50',
   'BVoc': 'text-rose-600 bg-rose-50'
 };
 
+interface SubDepartmentUnit {
+  id: number;
+  name: string;
+  matchingIds: number[];
+}
+
 export default function PipelineTracking() {
   const [pipeline, setPipeline] = useState<any[]>([]);
+  const [units, setUnits] = useState<SubDepartmentUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<number | 'all'>('all');
-  
+
   // Drill-down state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -46,7 +47,9 @@ export default function PipelineTracking() {
     const fetchPipeline = async () => {
       try {
         const res = await api.get('/operations/pipeline');
-        setPipeline(res.data);
+        const payload = Array.isArray(res.data) ? { stats: res.data, subDepartments: [] } : res.data;
+        setPipeline(payload.stats || []);
+        setUnits(payload.subDepartments || []);
       } catch (error) {
         console.error('Pipeline sync failure:', error);
       } finally {
@@ -55,6 +58,12 @@ export default function PipelineTracking() {
     };
     fetchPipeline();
   }, []);
+
+  const resolveUnitName = (subDepartmentId: number | null | undefined) => {
+    if (subDepartmentId == null) return 'Cross-Dept';
+    const match = units.find(u => u.matchingIds.includes(Number(subDepartmentId)));
+    return match?.name || 'Cross-Dept';
+  };
 
   const handleDrillDown = async (item: any, stageLabel: string) => {
     setActiveStageLabel(stageLabel);
@@ -83,9 +92,15 @@ export default function PipelineTracking() {
   ];
 
   const getFilteredPipeline = (stageId: string) => {
-    let filtered = pipeline.filter(p => p.reviewStage === stageId || p.enrollStatus === stageId);
+    let filtered = pipeline.filter(p => {
+      const isEnrolled = p.enrollStatus === 'enrolled' || p.enrollStatus === 'active';
+      if (stageId === 'ENROLLED') return isEnrolled;
+      return p.reviewStage === stageId && !isEnrolled;
+    });
     if (selectedUnit !== 'all') {
-      filtered = filtered.filter(p => p.subDepartmentId === selectedUnit);
+      const selected = units.find(u => u.id === selectedUnit);
+      const allowed = new Set(selected?.matchingIds || [selectedUnit]);
+      filtered = filtered.filter(p => allowed.has(Number(p.subDepartmentId)));
     }
     return filtered;
   };
@@ -109,8 +124,8 @@ export default function PipelineTracking() {
                 className="bg-slate-50 border-none px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
             >
                 <option value="all">Global Architecture</option>
-                {Object.entries(unitMap).map(([id, name]) => (
-                    <option key={id} value={id}>{name} Unit</option>
+                {units.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} Unit</option>
                 ))}
             </select>
         </div>
@@ -128,7 +143,7 @@ export default function PipelineTracking() {
                     <div className={`w-2 h-2 rounded-full ${stage.color}`} />
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{stage.label}</span>
                  </div>
-                 <span className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-black tracking-tighter shadow-lg shadow-slate-100">{count}</span>
+                 <span className="bg-slate-800 border border-slate-700 text-white px-3 py-1 rounded-lg text-[10px] font-black tracking-tighter shadow-lg shadow-slate-900/20">{count}</span>
               </div>
               
               <div className="bg-slate-50 rounded-3xl p-4 min-h-[600px] border border-slate-200/50 space-y-4">
@@ -141,8 +156,8 @@ export default function PipelineTracking() {
                  ) : stageItems.length > 0 ? (
                     <div className="space-y-3">
                        {stageItems.map((item, i) => {
-                          const unitName = unitMap[item.subDepartmentId] || 'Cross-Dept';
-                          const cardColor = unitColors[unitName] || 'text-slate-600 bg-slate-50';
+                          const unitName = resolveUnitName(item.subDepartmentId);
+                          const cardColor = colorByCanonical[unitName] || 'text-slate-600 bg-slate-50';
                           return (
                             <div 
                                 key={i} 
@@ -193,7 +208,7 @@ export default function PipelineTracking() {
         <div className="space-y-6">
             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg shadow-slate-200">
+                    <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg shadow-slate-900/20">
                         <Activity className="w-6 h-6" />
                     </div>
                     <div>
@@ -221,7 +236,7 @@ export default function PipelineTracking() {
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-black text-slate-900 tracking-tight leading-none">{student.name}</h4>
+                                        <Link to={`/dashboard/academic/students/${student.id}`} className="font-black text-slate-900 tracking-tight leading-none hover:text-indigo-600 transition-colors">{student.name}</Link>
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {student.id}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -251,6 +266,15 @@ export default function PipelineTracking() {
                         <p className="text-[10px] font-black uppercase tracking-[0.3em]">No node metadata salvaged</p>
                     </div>
                 )}
+            </div>
+
+            <div className="pt-6 border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => setIsDetailsOpen(false)}
+                  className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+                >
+                  Close Insight
+                </button>
             </div>
         </div>
       </Modal>

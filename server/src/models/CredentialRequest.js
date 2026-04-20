@@ -31,7 +31,7 @@ const CredentialRequest = sequelize.define('credential_request', {
     defaultValue: 'VIEW',
   },
   status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'cancelled'),
     defaultValue: 'pending',
   },
   revealUntil: {

@@ -88,7 +88,7 @@ export default function ChangePasswordPage() {
     return (
         <div className="max-w-5xl mx-auto p-6 animate-in fade-in duration-500">
             <div className="mb-8 border-b border-slate-200 pb-6">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Change Password</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Change password</h1>
                 <p className="text-slate-500 mt-2">Update your account security credentials</p>
             </div>
 

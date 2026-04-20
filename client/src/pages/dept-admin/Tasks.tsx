@@ -35,6 +35,7 @@ export default function Tasks() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const today = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
   const fetchData = async () => {
     try {
@@ -61,7 +62,7 @@ export default function Tasks() {
     reset({ 
       title: '', 
       assignedTo: '', 
-      deadline: new Date().toISOString().split('T')[0], 
+      deadline: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], 
       priority: 'medium',
       status: 'pending'
     });
@@ -254,7 +255,12 @@ export default function Tasks() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Deadline Date</label>
               <input
                 type="date"
-                {...register('deadline', { required: 'Deadline is required' })}
+                min={editingTask ? undefined : today}
+                {...register('deadline', {
+                  required: 'Deadline is required',
+                  validate: (value) =>
+                    editingTask || !value || value >= today || 'Deadline cannot be in the past',
+                })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
               />
               {errors.deadline && <p className="text-red-500 text-xs mt-1">{errors.deadline.message as string}</p>}

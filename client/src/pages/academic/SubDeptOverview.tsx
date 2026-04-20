@@ -6,7 +6,8 @@ import {
   ShieldCheck,
   Briefcase,
   Layers,
-  Search
+  Search,
+  Users
 } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
@@ -133,14 +134,14 @@ export default function SubDeptOverview() {
   ];
 
   return (
-    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-4 space-y-6 flex flex-col min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase">Sub-Department Telemetry</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase">Sub-department telemetry</h1>
             <p className="text-slate-500 font-medium text-sm">Institutional monitoring hub for departmental execution layers.</p>
           </div>
         </div>
@@ -155,48 +156,52 @@ export default function SubDeptOverview() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div 
           onClick={() => openDrillDown('totalStudents', 'Total Unit Students')}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 flex items-center justify-between group shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer active:scale-95"
         >
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Unit Students</p>
-          <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalStudents || 0}</h3>
-          <p className="text-xs font-bold text-slate-500 mt-2 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-emerald-500" />
-            Across {data.length} {data.length === 1 ? 'Jurisdiction' : 'Jurisdictions'}
-          </p>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Unit Students</p>
+            <h4 className="text-2xl font-black text-slate-900">{globalStats?.totalStudents || 0}</h4>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 transition-transform">
+            <Users className="w-7 h-7" />
+          </div>
         </div>
+
         <div 
           onClick={() => openDrillDown('students', 'Global Approval History')}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 flex items-center justify-between group shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer active:scale-95"
         >
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Global Approval Rate</p>
-          <h3 className="text-4xl font-black text-slate-900">{globalStats?.approvalRate || 0}%</h3>
-          <p className="text-xs font-bold text-slate-500 mt-2">Quality Compliance Index</p>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Global Approval Rate</p>
+            <h4 className="text-2xl font-black text-slate-900">{globalStats?.approvalRate || 0}%</h4>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 transition-transform">
+            <TrendingUp className="w-7 h-7" />
+          </div>
         </div>
+
         <div 
           onClick={() => openDrillDown('batches', 'Active Batch Matrix')}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all"
+          className="bg-white p-8 rounded-3xl border border-slate-200 flex items-center justify-between group shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer active:scale-95"
         >
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Active Batches</p>
-          <h3 className="text-4xl font-black text-slate-900">{globalStats?.totalBatches || 0}</h3>
-          <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-tight">Across all centers</p>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Active Batches</p>
+            <h4 className="text-2xl font-black text-slate-900">{globalStats?.totalBatches || 0}</h4>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 transition-transform">
+            <Layers className="w-7 h-7" />
+          </div>
         </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Departmental Matrix</h2>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                    placeholder="Filter Units..." 
-                    className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                />
-            </div>
-        </div>
         <DataTable 
           columns={columns} 
           data={data} 
-          isLoading={loading} 
+          isLoading={loading}
+          searchKey="name"
+          searchPlaceholder="Filter Departmental Units..."
+          exportFileName="Academic_Unit_Telemetry"
         />
       </div>
 

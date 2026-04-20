@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { Camera, Save, User as UserIcon, ArrowLeft, ShieldCheck, Briefcase, Mail, Phone, Calendar, MapPin, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getNormalizedRole } from '@/lib/roles';
 
 const profileSchema = z.object({
   name: z.string().optional(),
@@ -108,9 +109,20 @@ export default function ProfilePage() {
       <button 
         type="button"
         onClick={() => {
-          const role = user.role.toLowerCase().trim();
-          const dashboardPath = (role === 'partner-center') ? 'partner-center' : role;
-          navigate(`/dashboard/${dashboardPath}`);
+          const role = getNormalizedRole(user.role);
+          if (['openschool', 'online', 'skill', 'bvoc'].includes(role)) {
+            navigate(`/dashboard/subdept/${role}/portal`);
+            return;
+          }
+          if (role === 'operations') {
+            navigate('/dashboard/operations/overview');
+            return;
+          }
+          if (role === 'organization admin') {
+            navigate('/dashboard/org-admin/overview');
+            return;
+          }
+          navigate(`/dashboard/${role}`);
         }}
         className="flex items-center space-x-2 text-slate-500 hover:text-slate-900 transition-colors group w-max mb-6"
       >

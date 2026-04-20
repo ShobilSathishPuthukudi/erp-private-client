@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import { Modal } from '@/components/shared/Modal';
 import AdmissionWizard from './AdmissionWizard';
+import { Link } from 'react-router-dom';
 
 interface Student {
   id: number;
@@ -14,6 +15,7 @@ interface Student {
   status: string;
   enrollStatus?: string;
   invoiceId?: number;
+  lastRejectionReason?: string;
   program?: { name: string, duration: number, type: string };
 }
 
@@ -25,6 +27,11 @@ const canCenterEditStudent = (student: Student) => {
 };
 
 export default function Students() {
+  const getApiErrorMessage = (error: unknown, fallback: string) => {
+    const apiError = error as { response?: { data?: { error?: string } } };
+    return apiError.response?.data?.error || fallback;
+  };
+
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'enrolled'>('pending');
@@ -36,7 +43,7 @@ export default function Students() {
       setIsLoading(true);
       const res = await api.get('/portals/study-center/students');
       setStudents(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch students allocated to this center');
     } finally {
       setIsLoading(false);
@@ -50,6 +57,16 @@ export default function Students() {
     return students.filter(s => s.status !== 'ENROLLED' && s.status !== 'REJECTED');
   }, [students, activeTab]);
 
+  const handleResubmit = async (student: Student) => {
+    try {
+      await api.post(`/portals/partner-center/students/${student.id}/submit`);
+      toast.success('Student application resubmitted for review');
+      fetchStudents();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to resubmit student'));
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -59,7 +76,7 @@ export default function Students() {
     { 
       accessorKey: 'name', 
       header: 'Full Name',
-      cell: ({ row }) => <span className="font-semibold text-slate-900">{row.original.name}</span>
+      cell: ({ row }) => <Link to={`/dashboard/study-center/students/${row.original.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">{row.original.name}</Link>
     },
     { 
       id: 'program', 
@@ -79,10 +96,24 @@ export default function Students() {
         if (s === 'FINANCE_APPROVED') color = 'bg-emerald-100 text-emerald-700';
         if (s === 'ENROLLED') color = 'bg-green-600 text-white';
         if (s === 'REJECTED') color = 'bg-red-100 text-red-700';
+        if (row.original.enrollStatus === 'correction_requested') color = 'bg-amber-100 text-amber-800 border border-amber-300';
         return <span className={`px-2 py-1 text-[9px] rounded-full font-black uppercase tracking-tighter ${color}`}>
-            {s === 'FINANCE_PENDING' ? 'Awaiting Finance' : s?.replace('_', ' ')}
+            {row.original.enrollStatus === 'correction_requested'
+              ? 'Correction Requested'
+              : s === 'FINANCE_PENDING'
+                ? 'Awaiting Finance'
+                : s?.replace('_', ' ')}
         </span>;
       }
+    },
+    {
+      id: 'remarks',
+      header: 'Review Remarks',
+      cell: ({ row }) => (
+        <span className="text-xs text-slate-600 line-clamp-2 max-w-[260px]">
+          {row.original.lastRejectionReason || 'No pending remarks'}
+        </span>
+      )
     },
     {
       id: 'type',
@@ -100,25 +131,37 @@ export default function Students() {
         if (activeTab !== 'pending') return null;
 
         const canEdit = canCenterEditStudent(row.original);
+        const canResubmit = row.original.enrollStatus === 'correction_requested' && row.original.status === 'DRAFT';
 
         return (
-          <button 
-            onClick={() => {
-              if (!canEdit) return;
-              setEditingStudent(row.original);
-              setIsModalOpen(true);
-            }}
-            disabled={!canEdit}
-            className={clsx(
-              "p-2 rounded-lg transition-all group",
-              canEdit
-                ? "hover:bg-blue-50 text-blue-600 active:scale-95"
-                : "text-slate-300 cursor-not-allowed"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (!canEdit) return;
+                setEditingStudent(row.original);
+                setIsModalOpen(true);
+              }}
+              disabled={!canEdit}
+              className={clsx(
+                "p-2 rounded-lg transition-all group",
+                canEdit
+                  ? "hover:bg-blue-50 text-blue-600 active:scale-95"
+                  : "text-slate-300 cursor-not-allowed"
+              )}
+              title={canEdit ? "Edit Student Data" : "Editing locked after Academic Operations verification"}
+            >
+              <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            </button>
+            {canResubmit && (
+              <button
+                onClick={() => handleResubmit(row.original)}
+                className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all active:scale-95"
+                title="Resubmit Student Application"
+              >
+                Resubmit
+              </button>
             )}
-            title={canEdit ? "Edit Student Data" : "Editing locked after Academic Operations verification"}
-          >
-            <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          </button>
+          </div>
         );
       }
     }
@@ -128,7 +171,7 @@ export default function Students() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-end shrink-0">
         <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional Student Roster</h1>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional student roster</h1>
            <p className="text-slate-500 text-sm mt-1">Manage and monitor student enrollments for your center</p>
         </div>
         <button 

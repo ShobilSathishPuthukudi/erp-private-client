@@ -66,7 +66,7 @@ export default function PolicyControls() {
       
       <div className="flex items-center justify-between">
          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Governance Framework</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Governance framework</h2>
             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional SLA & Risk Threshold Management</p>
          </div>
          {user?.role === 'CEO' || user?.role === 'Organization Admin' ? (

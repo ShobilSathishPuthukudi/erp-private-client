@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
 import { Modal } from './Modal';
 import { api } from '@/lib/api';
 import { 
@@ -13,7 +14,8 @@ import {
   AlertCircle,
   FileText,
   UserCheck,
-  Layers
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import { toSentenceCase } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -23,9 +25,13 @@ interface DrillDownModalProps {
   onClose: () => void;
   type: string;
   title: string;
+  primaryAction?: {
+    label: string;
+    link: string;
+  };
 }
 
-export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalProps) {
+export function DrillDownModal({ isOpen, onClose, type, title, primaryAction }: DrillDownModalProps) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,7 +100,7 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
               placeholder={`Search within ${title?.toLowerCase()}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm font-bold focus:border-blue-600 focus:bg-white transition-all outline-none"
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm text-slate-900 font-bold focus:border-blue-600 focus:bg-white transition-all outline-none"
             />
           </div>
           <div className="flex items-center gap-3 px-6 py-3 bg-blue-50 border border-blue-100 rounded-xl">
@@ -142,9 +148,9 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
                         <div className="flex flex-col gap-1.5">
                           <div className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
                             item.status === 'active' || item.status === 'ENROLLED' || item.status === 'verified' || item.status === 'completed'
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                              : 'bg-amber-50 text-amber-600 border-amber-100'
-                          }`}>
+                               ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                               : 'bg-amber-50 text-amber-600 border-amber-100'
+                           }`}>
                             {item.status || 'Active Protocol'}
                           </div>
                           {item.center?.name && (
@@ -180,6 +186,26 @@ export function DrillDownModal({ isOpen, onClose, type, title }: DrillDownModalP
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">The requested forensic stream returned an empty set for the current scope.</p>
             </div>
           )}
+        </div>
+
+        {/* Action Footer */}
+        <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            {primaryAction && (
+              <NavLink 
+                to={primaryAction.link}
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+              >
+                {primaryAction.label} <ArrowRight className="w-3.5 h-3.5" />
+              </NavLink>
+            )}
+          </div>
+          <button 
+            onClick={onClose}
+            className="px-6 py-2.5 bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-[0.98]"
+          >
+            Close Insight
+          </button>
         </div>
       </div>
     </Modal>

@@ -206,16 +206,7 @@ export default function App() {
             <Route path="study-center/*" element={<Navigate to="/dashboard/partner-center" replace />} />
             
             <Route path="tasks" element={<ProtectedRoute><TasksRedirect /></ProtectedRoute>} />
-            <Route path="hr/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="hr/dept-leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="academic/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="operations/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="finance/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="sales/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="subdept/openschool/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="subdept/online/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="subdept/skill/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
-            <Route path="subdept/bvoc/leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
+            <Route path="leaves" element={<ProtectedRoute><LegacyLeaveRedirect /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="change-password" element={<ProtectedRoute><ChangePasswordGuard><ChangePassword /></ChangePasswordGuard></ProtectedRoute>} />
             <Route path="profile/preferences" element={<ProtectedRoute><Preferences /></ProtectedRoute>} />

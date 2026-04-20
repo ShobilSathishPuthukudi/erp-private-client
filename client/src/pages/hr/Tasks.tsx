@@ -35,6 +35,7 @@ export default function HRTasks() {
   const isCEO = currentRole === 'ceo';
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const today = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
   const fetchData = async () => {
     try {
@@ -128,7 +129,7 @@ export default function HRTasks() {
   return (
     <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Global Task Control"
+        title="Global task control"
         description="Monitor and escalate institutional deliverables"
         icon={ClipboardList}
         action={
@@ -196,7 +197,15 @@ export default function HRTasks() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">Deadline</label>
-              <input type="date" {...register('deadline', { required: true })} className="mt-1 w-full p-2 border rounded-lg" />
+              <input
+                type="date"
+                min={today}
+                {...register('deadline', {
+                  required: true,
+                  validate: (value) => !value || value >= today || 'Deadline cannot be in the past',
+                })}
+                className="mt-1 w-full p-2 border rounded-lg"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Priority</label>
