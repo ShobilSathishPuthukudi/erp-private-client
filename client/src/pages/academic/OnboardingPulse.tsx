@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { api } from '@/lib/api';
 import { 
   Building2, 
@@ -43,6 +44,7 @@ const MilestoneNode = ({
 );
 
 export default function OnboardingPulse() {
+  useApplyTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as 'centers' | 'students') || 'centers';
   const setActiveTab = (tab: 'centers' | 'students') => setSearchParams({ tab });
@@ -146,13 +148,14 @@ export default function OnboardingPulse() {
               className={`
                 flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                 ${activeTab === tab.id 
-                  ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200'
+                  ? 'bg-white shadow-lg ring-1 ring-slate-200'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
               `}
+              style={activeTab === tab.id ? { color: 'var(--theme-accent)', boxShadow: 'var(--card-shadow)' } : {}}
             >
-              <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <tab.icon className={`w-3.5 h-3.5`} style={activeTab === tab.id ? { color: 'var(--theme-accent)' } : { color: '#94a3b8' }} />
               {tab.name}
-              <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+              <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px]`} style={activeTab === tab.id ? { background: 'var(--theme-soft)', color: 'var(--theme-accent)' } : { background: '#e2e8f0', color: '#475569' }}>
                 {count || 0}
               </span>
             </button>
@@ -162,7 +165,7 @@ export default function OnboardingPulse() {
 
       {loading ? (
         <div className="h-96 flex items-center justify-center bg-white rounded-3xl border border-slate-100 shadow-sm">
-           <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+           <div className="w-10 h-10 border-4 border-[var(--theme-accent)] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="w-full space-y-6">
@@ -170,7 +173,7 @@ export default function OnboardingPulse() {
           <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-indigo-900/5 relative overflow-hidden">
              <div className="flex items-center justify-between mb-12 relative z-10">
                 <div className="flex items-center gap-4">
-                   <div className={`w-12 h-12 rounded-xl ${activeTab === 'centers' ? 'bg-slate-900' : 'bg-indigo-600'} flex items-center justify-center text-white shadow-lg shadow-indigo-600/10`}>
+                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg`} style={{ background: 'var(--theme-accent)', boxShadow: '0 10px 15px -3px var(--theme-accent)' }}>
                       {activeTab === 'centers' ? <Building2 className="w-6 h-6" /> : <Users className="w-6 h-6" />}
                    </div>
                    <div>

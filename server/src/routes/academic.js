@@ -1550,9 +1550,16 @@ router.post('/credentials/request', verifyToken, isAcademicOrAdmin, async (req, 
   try {
     const { centerId, remarks } = req.body;
     
-    // Validate target
-    const center = await Department.findOne({ where: { id: centerId, type: 'partner centers' } });
-    if (!center) return res.status(404).json({ error: 'Target center node not located' });
+    // Validate target (Must be an ACTIVE Partner Center)
+    const center = await Department.findOne({ 
+      where: { 
+        id: centerId, 
+        type: 'partner centers',
+        status: 'active'
+      } 
+    });
+    
+    if (!center) return res.status(404).json({ error: 'Institutional Guardrail: Target center not found or is currently INACTIVE. Forensic reveal is restricted to active institutional nodes.' });
 
     const request = await CredentialRequest.create({
       centerId,
@@ -1578,13 +1585,23 @@ router.post('/credentials/request', verifyToken, isAcademicOrAdmin, async (req, 
 
 router.get('/credentials/reveal/:id', verifyToken, isAcademicOrAdmin, async (req, res) => {
   try {
-    const request = await CredentialRequest.findByPk(req.params.id, {
-      include: [{ model: Department, as: 'center' }]
+    const request = await CredentialRequest.unscoped().findByPk(req.params.id, {
+      include: [
+        { 
+          model: Department.unscoped(), 
+          as: 'center',
+          include: [{ model: User.unscoped(), as: 'admin', attributes: ['email'] }] 
+        }
+      ]
     });
 
     if (!request) return res.status(404).json({ error: 'Request node not found' });
     if (request.status !== 'approved') return res.status(403).json({ error: 'Awaiting Finance clearance for reveal' });
     
+    if (request.revealUntil && new Date() > new Date(request.revealUntil)) {
+       return res.status(403).json({ error: 'Institutional Guardrail: 24-hour reveal window has expired. Please submit a new forensic request.' });
+    }
+
     // PRD Rule: 60-Second Security Window
     if (!request.expiresAt) {
       return res.status(403).json({ error: 'Security protocol: Must trigger view activation first.' });
@@ -1602,8 +1619,22 @@ router.get('/credentials/reveal/:id', verifyToken, isAcademicOrAdmin, async (req
        module: 'Academic'
     });
 
+    let loginId = request.center.admin?.email || request.center.email;
+
+    // Fallback: If no explicit admin link or email, locate the provisioned user account for this center
+    if (!loginId) {
+      const provisionedUser = await User.unscoped().findOne({
+        where: {
+          deptId: request.centerId,
+          role: { [Op.in]: ['Partner Center', 'partner centers', 'partner-center'] }
+        },
+        attributes: ['email', 'uid']
+      });
+      loginId = provisionedUser?.email || provisionedUser?.uid;
+    }
+
     res.json({
-      loginId: request.center.loginId,
+      loginId: loginId || request.center.loginId,
       password: request.center.password // Usually this would be decrypted here
     });
   } catch (error) {

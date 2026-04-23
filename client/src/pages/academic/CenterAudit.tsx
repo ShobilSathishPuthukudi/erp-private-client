@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
@@ -53,6 +54,7 @@ interface Center {
 }
 
 export default function CenterAudit() {
+  useApplyTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as 'pending' | 'approved' | 'rejected' | 'finance_pending') || 'pending';
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected' | 'finance_pending'>(initialTab);
@@ -198,7 +200,7 @@ export default function CenterAudit() {
         accessorKey: 'referringBDE.name',
         header: 'Referred By',
         cell: ({ row }) => (
-            <div className="flex items-center gap-2 font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg w-fit">
+            <div className="flex items-center gap-2 font-bold px-3 py-1 rounded-lg w-fit" style={{ color: 'var(--theme-accent)', background: 'var(--theme-soft)' }}>
                 <Users className="w-3 h-3" />
                 <span className="text-[10px] uppercase tracking-tight">{row.original.referringBDE?.name || 'Organic'}</span>
             </div>
@@ -263,13 +265,14 @@ export default function CenterAudit() {
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                   ${activeTab === tab.id 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200' 
+                    ? 'bg-white shadow-lg ring-1 ring-slate-200' 
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
                 `}
+                style={activeTab === tab.id ? { color: 'var(--theme-accent)', boxShadow: 'var(--card-shadow)' } : {}}
              >
-                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <tab.icon className={`w-3.5 h-3.5`} style={activeTab === tab.id ? { color: 'var(--theme-accent)' } : { color: '#94a3b8' }} />
                 {tab.name}
-                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px]`} style={activeTab === tab.id ? { background: 'var(--theme-soft)', color: 'var(--theme-accent)' } : { background: '#e2e8f0', color: '#475569' }}>
                   {counts[tab.id as keyof typeof counts] || 0}
                 </span>
              </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { 
@@ -25,6 +26,7 @@ interface Student {
 }
 
 export default function ResubmissionLogs() {
+  useApplyTheme();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
@@ -118,16 +120,16 @@ export default function ResubmissionLogs() {
       </div>
 
       {/* Explanatory Information Card */}
-      <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 flex flex-col md:flex-row items-start gap-6">
-        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
+      <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 flex flex-col md:flex-row items-start gap-6" style={{ background: 'var(--theme-soft)', borderColor: 'var(--card-border)' }}>
+        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm shrink-0" style={{ color: 'var(--theme-accent)' }}>
           <Info className="w-6 h-6" />
         </div>
         <div>
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2">How this tracking works</h3>
-          <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-4xl">
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2" style={{ color: 'var(--page-text)' }}>How this tracking works</h3>
+          <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-4xl" style={{ color: 'var(--page-text)', opacity: 0.8 }}>
             This module automatically isolates and flags students caught in an iterative application loop. 
             Exclusively, students whose enrollment status is marked as <span className="font-bold text-rose-500">Rejected</span> or individuals who have 
-            been required to <button type="button" onClick={() => setShowDetails(!showDetails)} className="font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-300 underline-offset-4 transition-all hover:bg-indigo-100 rounded px-1 -mx-1">resubmit their applications multiple times</button> will appear here. 
+            been required to <button type="button" onClick={() => setShowDetails(!showDetails)} className="font-bold underline underline-offset-4 transition-all rounded px-1 -mx-1" style={{ color: 'var(--theme-accent)', textDecorationColor: 'var(--theme-accent)' }}>resubmit their applications multiple times</button> will appear here. 
             If the queue is currently empty, it signifies that your verification pipeline is clear and successfully resolving without severe bottlenecks!
           </p>
 

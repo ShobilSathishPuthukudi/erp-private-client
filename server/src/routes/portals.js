@@ -1113,8 +1113,7 @@ router.get('/employee/my-centers', verifyToken, requireRole('employee'), async (
     const centers = await Department.findAll({
       where: { 
         bdeId: { [Op.in]: validBdeIds },
-        type: { [Op.in]: ['partner-center', 'partner centers'] },
-        status: 'active'
+        type: { [Op.in]: ['partner-center', 'partner centers', 'study-center', 'study centers'] }
       },
       order: [['createdAt', 'DESC']]
     });

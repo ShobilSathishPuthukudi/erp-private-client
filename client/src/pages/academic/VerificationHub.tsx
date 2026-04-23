@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Link } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 
 export default function VerificationHub() {
+  useApplyTheme();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{
     centers: { status: string; count: number | string }[];
@@ -56,21 +58,21 @@ export default function VerificationHub() {
     return (
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 group hover:border-indigo-300 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 relative overflow-hidden cursor-pointer">
         {/* Background Vector Ghost Icon */}
-        <div className={`absolute -right-6 -bottom-6 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.08] pointer-events-none ${textColor}`}>
+        <div className={`absolute -right-6 -bottom-6 opacity-[0.03] transform rotate-[15deg] transition-all duration-700 group-hover:rotate-0 group-hover:scale-125 group-hover:opacity-[0.08] pointer-events-none`} style={{ color: 'var(--theme-accent)' }}>
           <Icon className="w-40 h-40" />
         </div>
         
         <div className="relative z-10">
-          <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 ${color}`}>
             <Icon className="w-7 h-7" />
           </div>
           <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-slate-500 transition-colors">{title}</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-4xl font-black text-slate-900 group-hover:text-indigo-900 transition-colors">{count}</h3>
+            <h3 className="text-4xl font-black text-slate-900 group-hover:text-indigo-900 transition-colors" style={{ color: 'var(--page-text)' }}>{count}</h3>
             <span className="text-sm font-bold text-slate-400 group-hover:text-indigo-400 transition-colors">/ {total}</span>
           </div>
-          <p className="mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-2 group-hover:text-indigo-600 transition-colors">
-            <Activity className="w-3 h-3 text-indigo-500 group-hover:animate-pulse" />
+          <p className="mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-2 transition-colors" style={{ color: 'var(--theme-accent)' }}>
+            <Activity className="w-3 h-3 group-hover:animate-pulse" style={{ color: 'var(--theme-accent)' }} />
             {desc}
           </p>
         </div>
@@ -85,7 +87,7 @@ export default function VerificationHub() {
         description="Unified monitoring for institutional onboarding and center audits." 
         icon={ShieldCheck} 
         action={
-          <button onClick={fetchStats} className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]">
+          <button onClick={fetchStats} className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02] border border-white/5" style={{ background: 'var(--theme-accent)', color: 'var(--theme-accent-fg)' }}>
               <TrendingUp className="w-4 h-4" />
               Refresh Telemetry
           </button>
@@ -102,11 +104,11 @@ export default function VerificationHub() {
             {/* 1. Center Onboarding Section (Primary) */}
             <div className="space-y-8">
               <div className="flex items-center justify-between px-2">
-                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tighter">
-                  <Building2 className="w-8 h-8 text-indigo-600" />
+                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tighter" style={{ color: 'var(--page-text)' }}>
+                  <Building2 className="w-8 h-8" style={{ color: 'var(--theme-accent)' }} />
                   Institutional Center Onboarding
                 </h3>
-                <Link to="/dashboard/operations/center-audit" className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-2 uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-xl transition-all">
+                <Link to="/dashboard/operations/center-audit" className="text-xs font-black flex items-center gap-2 uppercase tracking-widest px-4 py-2 rounded-xl transition-all border" style={{ color: 'var(--theme-accent)', background: 'var(--theme-soft)', borderColor: 'var(--card-border)' }}>
                   Access Audit Queue <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -150,11 +152,11 @@ export default function VerificationHub() {
             {/* 2. Student Verification Section (Secondary) */}
             <div className="space-y-8">
               <div className="flex items-center justify-between px-2">
-                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tighter">
-                  <Users className="w-8 h-8 text-indigo-600" />
+                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tighter" style={{ color: 'var(--page-text)' }}>
+                  <Users className="w-8 h-8" style={{ color: 'var(--theme-accent)' }} />
                   Student Enrollment Verification
                 </h3>
-                <Link to="/dashboard/operations/pending-reviews" className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-2 uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-xl transition-all">
+                <Link to="/dashboard/operations/pending-reviews" className="text-xs font-black flex items-center gap-2 uppercase tracking-widest px-4 py-2 rounded-xl transition-all border" style={{ color: 'var(--theme-accent)', background: 'var(--theme-soft)', borderColor: 'var(--card-border)' }}>
                   Review Transcripts <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>

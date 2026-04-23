@@ -116,7 +116,9 @@ export default function MyTasks() {
       header: 'Operational Node',
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{row.original.title}</span>
+          <span className="font-black text-slate-900 uppercase tracking-tight text-sm cursor-pointer hover:text-[var(--theme-accent)] transition-all">
+            {row.original.title.length > 12 ? `${row.original.title.substring(0, 12)}...` : row.original.title}
+          </span>
           <div className="flex items-center gap-2 mt-1">
              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">
                 Deadline: {new Date(row.original.deadline).toLocaleDateString()}
@@ -245,7 +247,7 @@ export default function MyTasks() {
                  <div className="flex justify-between items-start mb-4">
                    <div className="space-y-1">
                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Node</p>
-                     <p className="text-xl font-black uppercase tracking-tight">{viewingTask.title}</p>
+                     <p className="text-xl font-black uppercase tracking-tight break-words leading-tight">{viewingTask.title}</p>
                    </div>
                    <div className="text-right">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>

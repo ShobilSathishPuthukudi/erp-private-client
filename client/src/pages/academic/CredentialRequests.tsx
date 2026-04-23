@@ -58,6 +58,19 @@ export default function CredentialRequests() {
     fetchData();
   }, []);
 
+  // Security Protocol: Auto-close reveal window after 60 seconds
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isRevealModalOpen) {
+        timer = setTimeout(() => {
+            setIsRevealModalOpen(false);
+            setRevealData(null);
+            toast.info('Institutional Guardrail: Security window expired. Vault auto-locked.');
+        }, 60000);
+    }
+    return () => clearTimeout(timer);
+  }, [isRevealModalOpen]);
+
   const onSubmit = async (data: any) => {
     try {
       await api.post('/academic/credentials/request', data);
@@ -153,16 +166,30 @@ export default function CredentialRequests() {
         return (
           <div className="flex items-center gap-2">
             {s === 'approved' ? (
-                <button 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleReveal(row.original.id);
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 shadow-lg bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20"
-                >
-                <Eye className="w-3.5 h-3.5" />
-                <span>Reveal Credentials</span>
-                </button>
+                (() => {
+                  const isExpired = row.original.revealUntil && new Date() > new Date(row.original.revealUntil);
+                  if (isExpired) return (
+                    <button 
+                    disabled
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-amber-50 text-amber-600 cursor-not-allowed border border-amber-100"
+                    >
+                    <Timer className="w-3.5 h-3.5" />
+                    <span>Window Expired (24h)</span>
+                    </button>
+                  );
+                  return (
+                    <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleReveal(row.original.id);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 shadow-lg bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20"
+                    >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Reveal Credentials</span>
+                    </button>
+                  );
+                })()
             ) : s === 'pending' ? (
                 <button 
                 onClick={(e) => {
@@ -359,16 +386,16 @@ export default function CredentialRequests() {
                 <Lock className="w-10 h-10" />
             </div>
             
-            <div className="space-y-4 max-w-xs mx-auto">
+            <div className="space-y-4 max-w-sm mx-auto">
                 <div className="bg-slate-900 p-6 rounded-3xl space-y-4 border border-white/10 shadow-emerald-500/20 shadow-2xl">
                     <div>
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Institutional Login-ID</p>
-                        <p className="text-2xl font-black text-white selection:bg-emerald-500">{revealData?.loginId}</p>
+                        <p className="text-xl font-black text-white selection:bg-emerald-500 break-all">{revealData?.loginId}</p>
                     </div>
                     <div className="h-px bg-white/10 w-full" />
                     <div>
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Pass-Key</p>
-                        <p className="text-2xl font-black text-emerald-400 selection:bg-white selection:text-slate-900">{revealData?.password}</p>
+                        <p className="text-xl font-black text-emerald-400 selection:bg-white selection:text-slate-900 break-all">{revealData?.password}</p>
                     </div>
                 </div>
                 

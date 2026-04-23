@@ -238,7 +238,11 @@ export default function Tasks() {
       cell: ({ row }) => {
         const title = row.original.title || '';
         return (
-          <span className="font-semibold text-slate-900" title={title}>
+          <span 
+            className="font-black text-slate-900 cursor-pointer hover:text-[var(--theme-accent)] transition-all underline decoration-slate-200 underline-offset-4 hover:decoration-[var(--theme-accent)]" 
+            title={title}
+            onClick={() => setViewingTask(row.original)}
+          >
             {title.length > 12 ? `${title.substring(0, 12)}...` : title}
           </span>
         );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/shared/DataTable';
@@ -41,6 +42,7 @@ interface Student {
 }
 
 export default function PendingReviews() {
+  useApplyTheme();
   const getApiErrorMessage = (error: unknown, fallback: string) => {
     const apiError = error as { response?: { data?: { error?: string } } };
     return apiError.response?.data?.error || fallback;
@@ -277,13 +279,14 @@ export default function PendingReviews() {
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
                   ${activeTab === tab.id 
-                    ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 ring-1 ring-slate-200'
+                    ? 'bg-white shadow-lg ring-1 ring-slate-200'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
                 `}
+                style={activeTab === tab.id ? { color: 'var(--theme-accent)', boxShadow: 'var(--card-shadow)' } : {}}
              >
-                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <tab.icon className={`w-3.5 h-3.5`} style={activeTab === tab.id ? { color: 'var(--theme-accent)' } : { color: '#94a3b8' }} />
                 {tab.name}
-                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                <span className={`static ml-1 px-1.5 py-0.5 rounded-md text-[9px]`} style={activeTab === tab.id ? { background: 'var(--theme-soft)', color: 'var(--theme-accent)' } : { background: '#e2e8f0', color: '#475569' }}>
                   {counts[tab.id as keyof typeof counts] || 0}
                 </span>
              </button>

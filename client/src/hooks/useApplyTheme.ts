@@ -17,27 +17,29 @@ export function useApplyTheme() {
   const { panelThemes, pageThemes, cardThemes, previewPanelKey, previewPageKey, previewCardKey } = useThemeStore();
 
   useEffect(() => {
+    const roleToPanelMap: Record<string, string> = {
+      'organization admin': 'org-admin',
+      'ceo': 'ceo',
+      'hr': 'hr',
+      'finance': 'finance',
+      'sales': 'sales',
+      'operations': 'academic',
+      'openschool': 'openschool',
+      'online': 'online',
+      'skill': 'skill',
+      'bvoc': 'bvoc',
+      'partner-center': 'partner-center',
+      'student': 'student',
+      'employee': 'employee',
+      'sub_dept_admin': 'academic',
+    };
+
     // 1. Resolve Panel Context
     let panel = findPanelByPath(pathname);
     
     // Fallback: If on a shared page (profile panel), adopt the theme of the user's primary workspace layout
     if (panel?.key === 'profile' && user) {
       const normalizedRole = getNormalizedRole(user.role || '');
-      const roleToPanelMap: Record<string, string> = {
-        'organization admin': 'org-admin',
-        'ceo': 'ceo',
-        'hr': 'hr',
-        'finance': 'finance',
-        'sales': 'sales',
-        'operations': 'academic',
-        'openschool': 'openschool',
-        'online': 'online',
-        'skill': 'skill',
-        'bvoc': 'bvoc',
-        'partner-center': 'partner-center',
-        'student': 'student',
-        'employee': 'employee',
-      };
       const userPanelKey = roleToPanelMap[normalizedRole];
       if (userPanelKey) {
          const userHomePanel = PANELS.find(p => p.key === userPanelKey);
@@ -47,9 +49,21 @@ export function useApplyTheme() {
       }
     }
 
-    let panelThemeId = panel ? panelThemes[panel.key] : DEFAULT_THEME_ID;
-    let pageThemeId = panel ? pageThemes[panel.key] : DEFAULT_THEME_ID;
-    let cardThemeId = panel ? cardThemes[panel.key] : DEFAULT_THEME_ID;
+    // New Logic: If the current panel has NO theme configured in the store, 
+    // fall back to the user's home panel theme for a consistent institutional experience.
+    const getThemeWithFallback = (themes: Record<string, string>, currentKey: string | undefined) => {
+      if (currentKey && themes[currentKey]) return themes[currentKey];
+      if (user) {
+        const normalizedRole = getNormalizedRole(user.role || '');
+        const homeKey = roleToPanelMap[normalizedRole];
+        if (homeKey && themes[homeKey]) return themes[homeKey];
+      }
+      return DEFAULT_THEME_ID;
+    };
+
+    let panelThemeId = getThemeWithFallback(panelThemes, panel?.key);
+    let pageThemeId = getThemeWithFallback(pageThemes, panel?.key);
+    let cardThemeId = getThemeWithFallback(cardThemes, panel?.key);
 
     // 2. Handle Preview Overrides (from Theme Studio)
     if (previewPanelKey) {
