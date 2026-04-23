@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import Employees from './Employees';
 import Admins from './Admins';
 import Vacancies from './Vacancies';
@@ -14,6 +15,7 @@ import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 import EmployeeCards from './EmployeeCards';
+import EmployeeDetails from './EmployeeDetails';
 import EmployeeCommunications from './EmployeeCommunications';
 import RemapEmployees from './RemapEmployees';
 import RoleMapping from '../org-admin/RoleMapping';
@@ -213,11 +215,13 @@ function DashboardLanding() {
 }
 
 export default function HRDashboard() {
+  useApplyTheme();
   return (
     <Routes>
       <Route path="/" element={<DashboardLanding />} />
       <Route path="vacancies" element={<Vacancies />} />
       <Route path="employees" element={<Employees />} />
+      <Route path="employees/:id" element={<EmployeeDetails />} />
       <Route path="remap" element={<RemapEmployees />} />
       <Route path="role-mapping" element={<RoleMapping />} />
       <Route path="admins" element={<Admins />} />

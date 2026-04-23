@@ -224,7 +224,11 @@ router.get('/referrals', verifyToken, isOpsOrAdmin, async (req, res) => {
           type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] },
           bdeId: { [Op.ne]: null }
         },
-        include: [{ model: User, as: 'referringBDE', attributes: ['name', 'email'] }]
+        include: [
+          { model: User, as: 'referringBDE', attributes: ['name', 'email'] },
+          { model: Lead, as: 'sourceLead', attributes: ['name', 'email', 'phone'] },
+          { model: User, as: 'admin', attributes: ['name', 'email'] }
+        ]
       }),
       Lead.findAll({
         where: { 
@@ -454,7 +458,8 @@ router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
     const uni = await Department.findByPk(req.params.id, {
       attributes: {
         include: [
-          [sequelize.literal(`(SELECT COUNT(*) FROM programs WHERE programs.universityId = department.id)`), 'totalPrograms']
+          [sequelize.literal(`(SELECT COUNT(*) FROM programs WHERE programs.universityId = department.id)`), 'totalPrograms'],
+          ['logo', 'logoUrl']
         ]
       },
       include: [
@@ -471,8 +476,18 @@ router.get('/universities/:id', verifyToken, isAcademicOrAdmin, async (req, res)
 router.post('/universities', verifyToken, checkPermissionOrRole('ACAD_UNI_SEED', 'create', ['Academic Operations Admin']), validate(universitySchema), async (req, res) => {
   try {
     const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    const existing = await Department.findOne({
+      where: sequelize.and(
+        { type: 'universities' },
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), (trimmedName || '').toLowerCase())
+      )
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'A university with this name already exists (case-insensitive).' });
+    }
     const uni = await Department.create({
-      name,
+      name: trimmedName,
       shortName,
       type: 'universities',
       adminId: req.user.uid,
@@ -498,16 +513,46 @@ router.post('/universities', verifyToken, checkPermissionOrRole('ACAD_UNI_SEED',
 router.put('/universities/:id', verifyToken, checkPermissionOrRole('ACAD_UNI_SEED', 'update', ['Academic Operations Admin']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, shortName, status, accreditation, websiteUrl, affiliationDoc } = req.body;
+    const { name, shortName, status, accreditation, websiteUrl, affiliationDoc, email, phone, address, logoUrl } = req.body;
     const uni = await Department.findOne({ where: { id, type: 'universities' } });
     if (!uni) return res.status(404).json({ error: 'University not found' });
-    if (uni.status !== 'proposed') {
+
+    // Governance Guard: Only allow branding/contact updates for non-proposed statuses
+    const isGovernanceUpdate = (name && name !== uni.name) || 
+                               (shortName && shortName !== uni.shortName) || 
+                               (status && status !== uni.status);
+    
+    if (uni.status !== 'proposed' && isGovernanceUpdate) {
       return res.status(400).json({
-        error: 'Governance Error: Only universities in PROPOSED state can be edited.'
+        error: 'Governance Error: Core institutional fields (Name, ShortName, Status) can only be modified in the PROPOSED state.'
       });
     }
 
-    await uni.update({ name, shortName, status, accreditation, websiteUrl, affiliationDoc });
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    if (trimmedName && trimmedName !== uni.name) {
+      const clash = await Department.findOne({
+        where: sequelize.and(
+          { type: 'universities', id: { [Op.ne]: id } },
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), trimmedName.toLowerCase())
+        )
+      });
+      if (clash) {
+        return res.status(409).json({ error: 'Another university with this name already exists (case-insensitive).' });
+      }
+    }
+
+    await uni.update({ 
+      name: trimmedName || uni.name, 
+      shortName: shortName || uni.shortName, 
+      status: status || uni.status, 
+      accreditation: accreditation || uni.accreditation, 
+      websiteUrl: websiteUrl || uni.websiteUrl, 
+      affiliationDoc: affiliationDoc || uni.affiliationDoc,
+      email: email || uni.email,
+      phone: phone || uni.phone,
+      address: address || uni.address,
+      logo: logoUrl || uni.logo
+    });
     res.json(uni);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update university' });
@@ -634,6 +679,13 @@ router.get('/programs/:id', verifyToken, isAcademicOrAdmin, async (req, res) => 
 router.post('/programs', verifyToken, checkPermissionOrRole('ACAD_PROG_ENG', 'create', ['Academic Operations Admin']), validate(programSchema), async (req, res) => {
   try {
     const { name, shortName, universityId, duration, type, intakeCapacity, totalFee, baseFee, taxPercentage, paymentStructure, totalCredits, tenure } = req.body;
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    const existingProgram = await Program.findOne({
+      where: sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), (trimmedName || '').toLowerCase())
+    });
+    if (existingProgram) {
+      return res.status(409).json({ error: 'A program with this name already exists (case-insensitive).' });
+    }
 
     const PROGRAM_TYPE_TO_SUB_DEPT = {
       'open school': 8,
@@ -654,7 +706,7 @@ router.post('/programs', verifyToken, checkPermissionOrRole('ACAD_PROG_ENG', 'cr
       : (totalFee || 0);
 
     const p = await Program.create({
-      name,
+      name: trimmedName,
       shortName,
       universityId: universityId || null,
       duration,
@@ -789,7 +841,21 @@ router.put('/programs/:id', verifyToken, checkPermissionOrRole('ACAD_PROG_ENG', 
       }
     }
 
+    const incomingName = typeof req.body.name === 'string' ? req.body.name.trim() : req.body.name;
+    if (incomingName) {
+      const clash = await Program.findOne({
+        where: sequelize.and(
+          { id: { [Op.ne]: id } },
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), incomingName.toLowerCase())
+        )
+      });
+      if (clash) {
+        return res.status(409).json({ error: 'Another program with this name already exists (case-insensitive).' });
+      }
+    }
+
     const { status, ...updateData } = req.body;
+    if (incomingName) updateData.name = incomingName;
 
     // Recalculate totalFee if baseFee or taxPercentage is updated
     let calculatedTotalFee = updateData.totalFee;

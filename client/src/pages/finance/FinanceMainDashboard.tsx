@@ -11,7 +11,6 @@ import {
   ArrowUpRight, 
   TrendingUp, 
   ShieldCheck,
-  Zap,
   BookOpen
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -141,7 +140,7 @@ export default function FinanceMainDashboard() {
           color="blue"
           trend={stats.pendingApprovals > 0 ? 'Action Required' : 'All Clear'}
           isAlert={stats.pendingApprovals > 0}
-          onClick={() => openDrillDown('students', 'Pending Finance Approvals')}
+          onClick={() => openDrillDown('finance_pending_approvals', 'Pending Finance Approvals')}
         />
         <StatCard
           title="Outstanding Receivables"
@@ -158,7 +157,7 @@ export default function FinanceMainDashboard() {
           color="rose"
           trend={stats.dormantCount > 0 ? `₹${stats.dormantAmount.toLocaleString()} aged` : 'No aged invoices'}
           isAlert={stats.dormantCount > 0}
-          onClick={() => openDrillDown('risk_alerts', 'Dormant Invoices')}
+          onClick={() => openDrillDown('dormant_invoices', 'Dormant Invoices')}
         />
       </div>
 

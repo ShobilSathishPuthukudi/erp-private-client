@@ -11,7 +11,7 @@ const { Lead, Department, Student, Payment, User, Referral, Program, AdmissionSe
 const Center = Department; // Alias for consistency with user request
 
 // GET All Leads
-router.get('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), async (req, res) => {
+router.get('/leads', authenticate, checkPermissionOrRole('SALES_LEAD_CAP', 'read', ['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   try {
     const { permissionFilter } = req;
     const leads = await Lead.findAll({
@@ -39,7 +39,7 @@ router.get('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'read'), as
 });
 
 // CREATE Lead
-router.post('/leads', authenticate, checkPermission('SALES_LEAD_CAP', 'create'), async (req, res) => {
+router.post('/leads', authenticate, checkPermissionOrRole('SALES_LEAD_CAP', 'create', ['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   try {
     const lead = await Lead.create({
       ...req.body,
@@ -85,23 +85,95 @@ router.get('/referral-code', authenticate, checkPermissionOrRole('SALES_LEAD_CAP
 router.get('/performance', authenticate, checkPermissionOrRole('SALES_LEAD_CAP', 'read', ['Sales Admin', 'Sales & CRM Admin', 'sales']), async (req, res) => {
   try {
     const { permissionFilter } = req;
+    const normalizedRole = req.user.role?.toLowerCase()?.trim();
+    const isAdmin = ['sales admin', 'sales & crm admin', 'organization admin', 'director - growth & crm'].includes(normalizedRole);
     const leads = await Lead.findAll({
       where: permissionFilter,
-      attributes: ['id', 'name', 'status', 'createdAt', 'expectedValue']
+      attributes: ['id', 'name', 'status', 'createdAt', 'expectedValue', 'centerId'],
+      include: [
+        {
+          model: Center,
+          as: 'Center',
+          required: false,
+          attributes: ['id', 'status'],
+          include: [
+            {
+              model: User,
+              as: 'referringBDE',
+              required: false,
+              attributes: ['uid', 'name']
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'employee',
+          required: false,
+          attributes: ['uid', 'name']
+        },
+        {
+          model: User,
+          as: 'referrer',
+          required: false,
+          attributes: ['uid', 'name']
+        }
+      ]
     });
+
+    // 1. Identify all centers in scope (from leads OR direct BDE assignment)
+    const leadCenterIds = leads.map(l => l.centerId).filter(Boolean);
+    
+    // Also fetch centers where this user is the BDE (handles centers without leads)
+    const directCenters = await Center.findAll({
+      where: isAdmin ? {} : { bdeId: req.user.uid },
+      attributes: ['id']
+    });
+    const directCenterIds = directCenters.map(c => c.id);
+    
+    const allRelevantCenterIds = [...new Set([...leadCenterIds, ...directCenterIds])];
+
+    const activeConvertedLeads = leads.filter(l => 
+      (l.status === 'CONVERTED' || l.status === 'converted') && 
+      l.Center?.status === 'active'
+    );
+
+    // Count and Fetch verified students from ALL relevant centers
+    const [totalEnrolled, verifiedStudents] = await Promise.all([
+      Student.count({
+        where: { centerId: { [Op.in]: allRelevantCenterIds }, status: 'ENROLLED' }
+      }),
+      Student.findAll({
+        where: { centerId: { [Op.in]: allRelevantCenterIds }, status: 'ENROLLED' },
+        attributes: ['id', 'name', 'status', 'createdAt'],
+        include: [{ model: Center, as: 'center', attributes: ['name'] }]
+      })
+    ]);
 
     const result = {
       total: leads.length,
-      converted: leads.filter(l => l.status === 'CONVERTED' || l.status === 'converted').length,
-      centerCount: leads.filter(l => l.status === 'CONVERTED' || l.status === 'converted').length, // Alias for UI
-      studentCount: leads.length, // Placeholder logic
+      converted: activeConvertedLeads.length,
+      centerCount: activeConvertedLeads.length, // Alias for UI
+      studentCount: totalEnrolled,
       totalRevenue: leads.reduce((acc, l) => acc + parseFloat(l.expectedValue || 0), 0),
-      centers: leads.map(l => ({
+      students: verifiedStudents.map(s => ({
+        id: s.id,
+        name: s.name,
+        status: s.financeStatus,
+        createdAt: s.createdAt,
+        amount: 0, // Not applicable here
+        centerName: s.department?.name
+      })),
+      centers: activeConvertedLeads.map(l => ({
         id: l.id,
         name: l.name,
         status: l.status,
         createdAt: l.createdAt,
-        revenue: parseFloat(l.expectedValue || 0)
+        revenue: parseFloat(l.expectedValue || 0),
+        referredBy:
+          l.Center?.referringBDE?.name ||
+          l.referrer?.name ||
+          l.employee?.name ||
+          null
       }))
     };
 
@@ -156,7 +228,7 @@ router.get('/conversion-options', authenticate, authorize(['Sales & CRM Admin', 
 });
 
 // CONVERT Lead to Center
-router.post('/leads/:id/convert-to-center', authenticate, checkPermission('SALES_CONV', 'approve'), async (req, res) => {
+router.post('/leads/:id/convert-to-center', authenticate, checkPermissionOrRole('SALES_CONV', 'approve', ['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -170,6 +242,9 @@ router.post('/leads/:id/convert-to-center', authenticate, checkPermission('SALES
     }
 
     // 1. Create Department (Study Center)
+    const centerEmail = req.body.email || lead.email || `center_${Date.now()}@erp.com`;
+    const centerPhone = lead.phone || 'NOT_PROVIDED';
+
     const center = await Department.create({
       name: lead.name,
       shortName: shortName || lead.name.substring(0, 5).toUpperCase(),
@@ -177,7 +252,9 @@ router.post('/leads/:id/convert-to-center', authenticate, checkPermission('SALES
       status: 'inactive',
       auditStatus: 'pending',
       sourceLeadId: lead.id,
-      bdeId: lead.bdeId || lead.employeeId || req.user.uid, // Fallback to converting user if lead has no BDE
+      bdeId: lead.bdeId || lead.employeeId || req.user.uid,
+      email: centerEmail,
+      phone: centerPhone,
       metadata: {
         convertedAt: new Date(),
         conversionNotes: notes
@@ -186,7 +263,6 @@ router.post('/leads/:id/convert-to-center', authenticate, checkPermission('SALES
 
     // 1b. Create User for Center Login (GAP-5 Ready)
     const { User: UserModel } = models;
-    const centerEmail = req.body.email || lead.email || `center_${center.id}@erp.com`;
     const password = req.body.password || 'password123';
     const hashedPassword = await bcrypt.hash(password, 10);
     const generatedUid = `CTR-${Date.now().toString().slice(-6)}-${center.id}`;
@@ -264,7 +340,7 @@ router.post('/leads/:id/assign', authenticate, authorize(['Organization Admin', 
   }
 });
 
-router.put('/leads/:id/status', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.put('/leads/:id/status', authenticate, authorize(['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -279,7 +355,7 @@ router.put('/leads/:id/status', authenticate, authorize(['Sales & CRM Admin', 'O
 });
 
 // GET Programs for a Converted Lead's Center
-router.get('/leads/:id/center-programs', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.get('/leads/:id/center-programs', authenticate, authorize(['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   try {
     const { id } = req.params;
     const lead = await Lead.findByPk(id);
@@ -298,7 +374,7 @@ router.get('/leads/:id/center-programs', authenticate, authorize(['Sales & CRM A
 });
 
 // SYNC Programs for a Converted Lead's Center
-router.put('/leads/:id/sync-programs', authenticate, authorize(['Sales & CRM Admin', 'Organization Admin']), async (req, res) => {
+router.put('/leads/:id/sync-programs', authenticate, authorize(['Sales Admin', 'Sales & CRM Admin', 'sales', 'Organization Admin', 'Director - Growth & CRM']), async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { id } = req.params;

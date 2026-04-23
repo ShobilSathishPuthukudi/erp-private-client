@@ -192,18 +192,19 @@ export default function CenterRegistration() {
       .filter(Boolean);
 
     if (errs.length) {
-      toast.error('Please fix the highlighted fields');
+      setErrors((prev) => ({ ...prev, form: 'Please fix the highlighted fields above' }));
       return;
     }
     if (!formData.interest.universityId) {
-      toast.error('Choose a primary university');
+      setErrors((prev) => ({ ...prev, 'interest.universityId': 'Choose a primary university', form: '' }));
       return;
     }
     if (formData.interest.programIds.length === 0) {
-      toast.error('Select at least one program');
+      setErrors((prev) => ({ ...prev, 'interest.programIds': 'Select at least one program', form: '' }));
       return;
     }
 
+    setErrors((prev) => ({ ...prev, form: '' }));
     setSubmitting(true);
     try {
       await axios.post(`${API_URL}/public/register-center`, {
@@ -214,7 +215,17 @@ export default function CenterRegistration() {
       setSubmitted(true);
       toast.success('Registration submitted');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to submit registration');
+      const status = error.response?.status;
+      const msg = error.response?.data?.error || 'Failed to submit registration';
+      if (status === 409 && /name/i.test(msg)) {
+        setErrors((prev) => ({ ...prev, name: msg }));
+      } else if (/email/i.test(msg)) {
+        setErrors((prev) => ({ ...prev, email: msg }));
+      } else if (/phone/i.test(msg)) {
+        setErrors((prev) => ({ ...prev, phone: msg }));
+      } else {
+        setErrors((prev) => ({ ...prev, form: msg }));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -306,6 +317,11 @@ export default function CenterRegistration() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {errors.form && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                {errors.form}
+              </div>
+            )}
             <section className="bg-white rounded-2xl border border-slate-200">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
@@ -487,7 +503,7 @@ export default function CenterRegistration() {
                     required
                     value={formData.interest.universityId}
                     onChange={(e) => handleUniversityChange(e.target.value)}
-                    className={inputClass('')}
+                    className={inputClass(errors['interest.universityId'])}
                   >
                     <option value="">Select an institution</option>
                     {universities.map((u) => (

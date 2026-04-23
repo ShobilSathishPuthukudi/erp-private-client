@@ -5,7 +5,7 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import { Op, fn, col, where as sqlWhere } from 'sequelize';
 import { createNotification } from './notifications.js';
 import { validateTaskAssignment } from '../utils/rbac/validateTaskAssignment.js';
-import { normalizeInstitutionRoleName, normalizeSubDepartmentName, getSubDepartmentNameAliases } from '../config/institutionalStructure.js';
+import { normalizeInstitutionRoleName, normalizeDepartmentName, normalizeSubDepartmentName, getSubDepartmentNameAliases, CORE_DEPARTMENTS } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { User, Task, Leave, Department, AuditLog, CEOPanel, Notification, Lead } = models;
@@ -13,6 +13,24 @@ const { User, Task, Leave, Department, AuditLog, CEOPanel, Notification, Lead } 
 const DEPT_GRACE_HOURS = 24;
 const ACADEMIC_PARENT_ADMIN_ROLES = ['academic operations admin', 'operations admin', 'operations', 'academic'];
 const STEP_1_PENDING_STATUSES = ['pending admin', 'pending_step1'];
+
+const resolveTaskLinkForRole = (role = '') => {
+  const normalizedRole = normalizeInstitutionRoleName(role || '').toLowerCase().trim();
+
+  if (normalizedRole === 'employee') return '/dashboard/employee/tasks';
+  if (normalizedRole === 'hr admin' || normalizedRole === 'hr') return '/dashboard/hr/dept-tasks';
+  if (normalizedRole === 'finance admin' || normalizedRole === 'finance') return '/dashboard/finance/tasks';
+  if (normalizedRole === 'sales admin' || normalizedRole === 'sales') return '/dashboard/sales/tasks';
+  if (normalizedRole.includes('operations') || normalizedRole.includes('academic')) return '/dashboard/operations/tasks';
+  if (normalizedRole === 'open school admin') return '/dashboard/subdept/openschool/tasks';
+  if (normalizedRole === 'online admin') return '/dashboard/subdept/online/tasks';
+  if (normalizedRole === 'skill admin') return '/dashboard/subdept/skill/tasks';
+  if (normalizedRole === 'bvoc admin') return '/dashboard/subdept/bvoc/tasks';
+  if (normalizedRole === 'ceo') return '/dashboard/ceo/escalations';
+  if (normalizedRole === 'organization admin') return '/dashboard/org-admin/alerts/escalated';
+
+  return '/dashboard/tasks';
+};
 
 const resolveManagedDepartmentIds = async (deptId, role) => {
   if (!deptId) return [];
@@ -56,6 +74,112 @@ const getTaskScope = async (task) => {
   });
 
   return { assignee, department: assignee?.department || null };
+};
+
+const canPerformLeaveStepOne = async (reqUser, employee) => {
+  const role = normalizeInstitutionRoleName(reqUser.role || '').toLowerCase().trim();
+  const reqUid = reqUser.uid;
+  const fs = await import('fs');
+  const path = await import('path');
+  const logFile = path.join(process.cwd(), 'scratch/auth_debug.log');
+  
+  const log = (msg) => {
+    try {
+      fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+    } catch (e) {}
+  };
+
+  log(`--- AUTH START: ${reqUid} (${role}) -> ${employee?.uid} ---`);
+
+  if (['organization admin', 'ceo', 'system-admin'].includes(role)) {
+    log(`Result: Approved via Global Role`);
+    return true;
+  }
+  if (!employee) {
+    log(`Result: Denied (Employee missing)`);
+    return false;
+  }
+  if (employee.uid === reqUid) {
+    log(`Result: Denied (Self-approval)`);
+    return false;
+  }
+
+  // 1. Explicit Reporting Line Authority
+  const isManager = (employee.reportingManagerUid && employee.reportingManagerUid === reqUid) || 
+                    (employee.reporting_manager_id && employee.reporting_manager_id === reqUid);
+  if (isManager) {
+    log(`Result: Approved via Reporting Manager`);
+    return true;
+  }
+
+  // 2. Departmental Authority (ID & Name normalization)
+  const reqDeptId = reqUser.deptId ? String(reqUser.deptId) : null;
+  const empDeptId = employee.deptId ? String(employee.deptId) : null;
+  log(`IDs: ReqDept=${reqDeptId}, EmpDept=${empDeptId}`);
+
+  if (reqDeptId && reqDeptId === empDeptId) {
+    log(`Result: Approved via Dept ID match`);
+    return true;
+  }
+
+  // Cross-check normalized names
+  const empDeptName = employee.department?.name || '';
+  log(`EmpDeptName: ${empDeptName}`);
+  
+  if (empDeptName) {
+    const canonicalEmpDept = normalizeDepartmentName(empDeptName);
+    log(`CanonicalEmpDept: ${canonicalEmpDept}`);
+    
+    const coreDept = CORE_DEPARTMENTS.find(d => d.adminRoleName.toLowerCase() === role);
+    if (coreDept) {
+       const canonicalCore = normalizeDepartmentName(coreDept.name);
+       log(`CoreDeptMatch: AdminRole=${role}, CanonicalCore=${canonicalCore}`);
+       if (canonicalCore === canonicalEmpDept) {
+         log(`Result: Approved via Normalized Name Match (Core Admin Role)`);
+         return true;
+       }
+    }
+
+    const reqDept = reqUser.deptId ? await Department.unscoped().findByPk(reqUser.deptId) : null;
+    if (reqDept?.name) {
+      const canonicalReqDept = normalizeDepartmentName(reqDept.name);
+      log(`AdminDeptName: ${reqDept.name} (Canonical=${canonicalReqDept})`);
+      if (canonicalReqDept === canonicalEmpDept) {
+        log(`Result: Approved via Normalized Name Match (Dept Member)`);
+        return true;
+      }
+    }
+  }
+
+  // 3. Mapped Institutional Admin
+  if (empDeptId) {
+    const primaryDept = await Department.unscoped().findByPk(empDeptId, { attributes: ['adminId'] });
+    log(`PrimaryDeptAdmin: ${primaryDept?.adminId}`);
+    if (primaryDept?.adminId === reqUid) {
+      log(`Result: Approved via Mapped AdminId`);
+      return true;
+    }
+  }
+
+  // 4. Sub-Department/Unit Admin Authority
+  if (employee.subDepartment) {
+    const subAliases = getSubDepartmentNameAliases(employee.subDepartment);
+    log(`SubDeptAliases: ${subAliases}`);
+    const unitDept = await Department.unscoped().findOne({
+      where: { name: { [Op.in]: subAliases } },
+      attributes: ['id', 'adminId']
+    });
+
+    if (unitDept) {
+       log(`UnitDept: ${unitDept.id} (Admin=${unitDept.adminId})`);
+       if (unitDept.adminId === reqUid) return true;
+       if (reqDeptId && reqDeptId === String(unitDept.id)) return true;
+       if (reqUser.subDepartment && subAliases.includes(reqUser.subDepartment)) return true;
+    }
+  }
+
+  log(`Result: Denied (No Match)`);
+  return false;
 };
 
 const canManageTaskEscalation = (reqUser, department, assignee) => {
@@ -127,10 +251,18 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Department scope missing' });
     }
 
+    const eligibleRoles = role === 'hr admin' || role === 'hr'
+      ? ['employee', 'hr']
+      : ['employee'];
+
     const queryWhere = {
       uid: { [Op.ne]: req.user.uid },
       [Op.and]: [
-        sqlWhere(fn('lower', col('role')), 'employee')
+        {
+          [Op.or]: eligibleRoles.map((eligibleRole) =>
+            sqlWhere(fn('lower', col('role')), eligibleRole)
+          )
+        }
       ]
     };
 
@@ -188,8 +320,7 @@ router.get('/team', verifyToken, isDeptAdmin, async (req, res) => {
       const overdueTasks = await Task.count({
         where: {
           assignedTo: user.uid,
-          status: { [Op.ne]: 'completed' },
-          deadline: { [Op.lt]: now }
+          status: { [Op.in]: ['overdue', 'reassigned_escalated'] }
         }
       });
 
@@ -357,6 +488,12 @@ router.get('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
             as: 'assignee', 
             attributes: ['uid', 'name', 'email'],
             required: false 
+        },
+        {
+            model: User,
+            as: 'assigner',
+            attributes: ['uid', 'name', 'role'],
+            required: false
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -436,13 +573,13 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
     }, { context: { assigner: req.user } });
 
     // GAP-2: Real-Time & Persistent Notification
-    const isCEO = req.user.role?.toLowerCase()?.trim() === 'ceo';
     await createNotification(req.io, {
       targetUid: assignedTo,
+      panelScope: targetUser.role,
       title: 'New Institutional Directive',
       message: `New task: ${title}. High-priority delivery expected.`,
       type: 'info',
-      link: isCEO ? '/dashboard/hr/dept-tasks' : '/dashboard/tasks'
+      link: resolveTaskLinkForRole(targetUser.role)
     });
 
     res.status(201).json(task);
@@ -455,16 +592,96 @@ router.post('/tasks', verifyToken, isDeptAdmin, async (req, res) => {
 router.put('/tasks/:id', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, deadline, priority, status, remarks } = req.body;
+    const { title, deadline, priority, status, remarks, assignedTo } = req.body;
 
-    const task = await Task.findOne({ where: { id, assignedBy: req.user.uid } });
+    // Authorization: Allow update if user is the creator OR the current assignee (for reassignment)
+    const task = await Task.findOne({ 
+      where: { 
+        id, 
+        [Op.or]: [
+          { assignedBy: req.user.uid },
+          { assignedTo: req.user.uid }
+        ]
+      } 
+    });
+    
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    if (status && status !== task.status && !remarks?.trim()) {
-      return res.status(400).json({ error: 'Remarks are required when changing task status' });
+    // Governance Lock: Restricted modifications for Escalated, Grace, or Finalized tasks
+    if (task.isEscalated || task.deptAdminDecision === 'GRACE_GRANTED' || ['completed', 'reassigned_escalated', 'resolved_by_ceo'].includes(task.status)) {
+      return res.status(403).json({ 
+        error: 'Governance Lock: Escalated, Grace-period, or Finalized tasks cannot be modified by Department Admin' 
+      });
     }
 
-    await task.update({ title, deadline, priority, status, ...(remarks ? { remarks } : {}) });
+    if (status !== undefined || remarks !== undefined) {
+      return res.status(400).json({
+        error: 'Task status can only be changed through the Institutional Execution Evidence workflow'
+      });
+    }
+
+    const updateData = { title, deadline, priority };
+    
+    // If reassigning, perform Institutional Handover (Close old, Create new)
+    if (assignedTo && assignedTo !== task.assignedTo) {
+      const targetUser = await User.findOne({ where: { uid: assignedTo } });
+      if (!targetUser) return res.status(404).json({ error: 'Successor not found' });
+      
+      // [RBAC] Ensure the admin has authority over the new assignee
+      validateTaskAssignment(req.user, targetUser);
+      
+      // 1. Terminate current task record for performance tracking
+      await task.update({ 
+        status: 'reassigned_escalated',
+        remarks: `INSTITUTIONAL HANDOVER: Reassigned by Admin to ${assignedTo}.`
+      }, { context: { assigner: req.user } });
+
+      // 1.5 Clear stale notifications GLOBALLY for this task
+      try {
+        const { clearNotifications } = await import('./notifications.js');
+        // Clear for ALL users since this specific task instance is terminated/reassigned
+        await clearNotifications({
+          messagePatterns: [
+            `%${task.title}%`, 
+            `%${task.id}%`,
+            `%reassigned%${task.title}%` // Catch legacy and variation messages
+          ]
+        });
+      } catch (e) {
+        console.error('Clear notifications error:', e);
+      }
+
+      // 2. Create NEW task for the successor
+      const newTask = await Task.create({
+        title: title || task.title,
+        assignedTo,
+        assignedBy: req.user.uid,
+        deadline: deadline || task.deadline,
+        priority: priority || task.priority,
+        status: 'pending',
+        departmentId: task.departmentId,
+        subDepartmentId: task.subDepartmentId,
+        isInstitutionalHandover: true
+      }, { context: { assigner: req.user } });
+
+      // 3. Notify Successor
+      try {
+        await createNotification(req.io, {
+          targetUid: assignedTo,
+          panelScope: targetUser.role,
+          title: 'Institutional Mandate - REASSIGNED',
+          message: `Task "${task.title}" has been reassigned to you by ${req.user.name}.`,
+          type: 'warning',
+          link: resolveTaskLinkForRole(targetUser.role)
+        });
+      } catch (e) {
+        console.error('Notification error:', e);
+      }
+
+      return res.json(newTask);
+    }
+
+    await task.update(updateData, { context: { assigner: req.user } });
     res.json(task);
   } catch (error) {
     console.error('Update task error:', error);
@@ -476,9 +693,16 @@ router.put('/tasks/:id/grace', verifyToken, isDeptAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const task = await Task.findByPk(id, {
-      include: [{ model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] }]
+      include: [
+        { model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] },
+        { model: User, as: 'assigner' }
+      ]
     });
     if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    if (task.assigner?.role?.toLowerCase()?.includes('ceo')) {
+      return res.status(403).json({ error: 'Executive mandates issued by the CEO cannot be deferred or escalated by departmental admins' });
+    }
 
     const { assignee, department } = await getTaskScope(task);
     if (!canManageTaskEscalation(req.user, department, assignee)) {
@@ -486,6 +710,9 @@ router.put('/tasks/:id/grace', verifyToken, isDeptAdmin, async (req, res) => {
     }
     if (task.status === 'completed') {
       return res.status(400).json({ error: 'Completed tasks cannot be placed into grace review' });
+    }
+    if (new Date(task.deadline) > new Date()) {
+      return res.status(400).json({ error: 'Grace period can only be granted after the task due date has passed' });
     }
 
     const graceUntil = new Date(Date.now() + DEPT_GRACE_HOURS * 60 * 60 * 1000);
@@ -506,6 +733,15 @@ router.put('/tasks/:id/grace', verifyToken, isDeptAdmin, async (req, res) => {
       timestamp: new Date()
     });
 
+    await createNotification(req.io, {
+      targetUid: task.assignedTo,
+      panelScope: assignee?.role,
+      title: 'Task Grace Granted',
+      message: `Your task "${task.title}" has been given a 24-hour grace period until ${graceUntil.toLocaleString()}.`,
+      type: 'info',
+      link: '/dashboard/employee/tasks'
+    });
+
     res.json({ message: '24-hour grace period granted', task });
   } catch (error) {
     console.error('Grant task grace error:', error);
@@ -517,9 +753,16 @@ router.put('/tasks/:id/escalate', verifyToken, isDeptAdmin, async (req, res) => 
   try {
     const { id } = req.params;
     const task = await Task.findByPk(id, {
-      include: [{ model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] }]
+      include: [
+        { model: User, as: 'assignee', include: [{ model: Department, as: 'department' }] },
+        { model: User, as: 'assigner' }
+      ]
     });
     if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    if (task.assigner?.role?.toLowerCase()?.includes('ceo')) {
+      return res.status(403).json({ error: 'Executive mandates issued by the CEO are already at the highest escalation level' });
+    }
 
     const { assignee, department } = await getTaskScope(task);
     if (!canManageTaskEscalation(req.user, department, assignee)) {
@@ -527,6 +770,9 @@ router.put('/tasks/:id/escalate', verifyToken, isDeptAdmin, async (req, res) => 
     }
     if (task.status === 'completed') {
       return res.status(400).json({ error: 'Completed tasks cannot be escalated' });
+    }
+    if (new Date(task.deadline) > new Date()) {
+      return res.status(400).json({ error: 'Task can only be escalated after the due date has passed' });
     }
 
     await task.update({
@@ -549,10 +795,11 @@ router.put('/tasks/:id/escalate', verifyToken, isDeptAdmin, async (req, res) => 
 
     await createNotification(req.io, {
       targetUid: task.assignedTo,
+      panelScope: assignee?.role,
       title: 'Task Escalated',
       message: `Your overdue task "${task.title}" has been escalated to the CEO by the Department Admin.`,
       type: 'warning',
-      link: '/dashboard/tasks'
+      link: '/dashboard/employee/tasks'
     });
 
     const allCeoPanels = await CEOPanel.findAll({ where: { status: 'Active' } });
@@ -584,6 +831,13 @@ router.delete('/tasks/:id', verifyToken, isDeptAdmin, async (req, res) => {
     const { id } = req.params;
     const task = await Task.findOne({ where: { id, assignedBy: req.user.uid } });
     if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    // Governance Lock: Restricted termination for Escalated, Grace, or Finalized tasks
+    if (task.isEscalated || task.deptAdminDecision === 'GRACE_GRANTED' || ['completed', 'reassigned_escalated', 'resolved_by_ceo'].includes(task.status)) {
+      return res.status(403).json({ 
+        error: 'Governance Lock: Escalated, Grace-period, or Finalized tasks cannot be terminated by Department Admin' 
+      });
+    }
 
     await task.destroy();
     res.json({ message: 'Task deleted successfully' });
@@ -662,10 +916,20 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
     const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
     const leave = await Leave.findByPk(id, {
-      include: [{ model: User, as: 'employee' }]
+      include: [{ 
+        model: User.unscoped(), 
+        as: 'employee',
+        include: [{ model: Department.unscoped(), as: 'department' }]
+      }]
     });
 
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+    if (leave.employeeId === req.user.uid) {
+      return res.status(403).json({ error: 'You cannot approve your own leave request' });
+    }
+    if (!(await canPerformLeaveStepOne(req.user, leave.employee))) {
+      return res.status(403).json({ error: 'Only the mapped department admin, sub-department admin, or reporting manager can approve this leave request' });
+    }
     const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
     if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only approve leaves for your department' });
@@ -696,6 +960,7 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     for (const hr of hrUsers) {
       await createNotification(req.io, {
         targetUid: hr.uid,
+        panelScope: 'HR Admin',
         title: 'Leave Request Ready For Step-2',
         message: `${leave.employee?.name || leave.employeeId} has a ${leave.type} request awaiting HR approval (${leave.fromDate} to ${leave.toDate}).`,
         type: 'info',
@@ -706,6 +971,7 @@ router.put('/leaves/:id/approve', verifyToken, isDeptAdmin, async (req, res) => 
     // Notify employee of Step 1 approval (Persistent Alert)
     await createNotification(req.io, {
       targetUid: leave.employeeId,
+      panelScope: leave.employee?.role || 'Employee',
       title: 'Leave Update (Step-1)',
       message: `Your leave request for ${leave.type} (${leave.fromDate} to ${leave.toDate}) was Step-1 APPROVED by your Department Head and forwarded to HR.`,
       type: 'success',
@@ -725,10 +991,20 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     const role = normalizeInstitutionRoleName(req.user.role)?.toLowerCase()?.trim();
     const unitRoles = ['bvoc admin', 'skill admin', 'online admin', 'open school admin'];
     const leave = await Leave.findByPk(id, {
-      include: [{ model: User, as: 'employee' }]
+      include: [{ 
+        model: User.unscoped(), 
+        as: 'employee',
+        include: [{ model: Department.unscoped(), as: 'department' }]
+      }]
     });
 
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+    if (leave.employeeId === req.user.uid) {
+      return res.status(403).json({ error: 'You cannot reject your own leave request' });
+    }
+    if (!(await canPerformLeaveStepOne(req.user, leave.employee))) {
+      return res.status(403).json({ error: 'Only the mapped department admin, sub-department admin, or reporting manager can reject this leave request' });
+    }
     const scopedDeptIds = await resolveManagedDepartmentIds(req.user.deptId, role);
     if (!scopedDeptIds.includes(leave.employee.deptId)) {
       return res.status(403).json({ error: 'You can only reject leaves for your department' });
@@ -754,6 +1030,7 @@ router.put('/leaves/:id/reject', verifyToken, isDeptAdmin, async (req, res) => {
     // Notify employee of Step 1 rejection (Persistent Alert)
     await createNotification(req.io, {
       targetUid: leave.employeeId,
+      panelScope: leave.employee?.role || 'Employee',
       title: 'Leave Rejected (Step-1)',
       message: `Your leave request for ${leave.type} was rejected by your Department Head.`,
       type: 'error',

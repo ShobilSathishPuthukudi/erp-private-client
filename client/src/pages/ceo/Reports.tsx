@@ -108,7 +108,8 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="p-2 space-y-8 flex flex-col">
+      <div className="space-y-8">
       
       {/* Report Customizer */}
       <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
@@ -147,7 +148,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         
         {/* PDF Executive Summary */}
-        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all">
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all">
            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
              <FileText className="w-7 h-7" />
            </div>
@@ -172,7 +173,7 @@ export default function Reports() {
         </div>
 
         {/* Excel Data Export */}
-        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all">
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all">
            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
              <FileSpreadsheet className="w-7 h-7" />
            </div>
@@ -189,7 +190,7 @@ export default function Reports() {
         </div>
 
         {/* Compliance Statement */}
-        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all relative overflow-hidden">
+        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 group hover:-translate-y-1 transition-all relative overflow-hidden">
            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-blue-200" />
            </div>

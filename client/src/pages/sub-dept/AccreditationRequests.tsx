@@ -126,7 +126,10 @@ export default function AccreditationRequests() {
       });
       toast.success('Course officially authorized and transferred to Finance review pipeline');
       setIsModalOpen(false);
+      setSelectedRequest(null);
       fetchData();
+      fetchCounts();
+      setActiveTab('finance_pending');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Approval protocol failure');
     }
@@ -233,7 +236,7 @@ export default function AccreditationRequests() {
         </div>
       
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-        <DataTable columns={columns} data={requests} isLoading={isLoading} searchKey="courseName" />
+        <DataTable columns={columns} data={requests} isLoading={isLoading} />
       </div>
 
       <Modal

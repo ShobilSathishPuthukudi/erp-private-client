@@ -337,6 +337,12 @@ Department.hasMany(ChangeRequest, { foreignKey: 'centerId' });
 AdmissionSession.belongsTo(Program, { foreignKey: 'programId' });
 Program.hasMany(AdmissionSession, { foreignKey: 'programId' });
 
+// Student -> AdmissionSession
+Student.belongsTo(AdmissionSession, { foreignKey: 'sessionId' });
+AdmissionSession.hasMany(Student, { foreignKey: 'sessionId', as: 'students' });
+Student.belongsTo(AdmissionSession, { as: 'nextSession', foreignKey: 'nextSessionId' });
+AdmissionSession.hasMany(Student, { foreignKey: 'nextSessionId', as: 'upcomingStudents' });
+
 // AdmissionSession -> SubDept
 AdmissionSession.belongsTo(Department, { as: 'subDept', foreignKey: 'subDeptId' });
 AdmissionSession.belongsTo(Department, { as: 'center', foreignKey: 'centerId' });

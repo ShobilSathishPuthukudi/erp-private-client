@@ -36,6 +36,7 @@ router.post('/', verifyToken, async (req, res) => {
         const users = await User.findAll({ where: { status: 'active' } });
         const notifications = users.map(u => ({
             userUid: u.uid,
+            panelScope: 'employee',
             type: 'info',
             message: `Institutional Holiday: ${holiday.name} on ${new Date(holiday.date).toLocaleDateString()}. ${holiday.description || ''}`,
             link: '/dashboard/employee' // Adjust as needed

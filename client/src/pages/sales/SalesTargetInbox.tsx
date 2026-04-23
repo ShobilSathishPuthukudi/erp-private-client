@@ -29,8 +29,8 @@ export default function SalesTargetInbox() {
     try {
       const res = await api.get('/targets/sales-admin/targets');
       setTargets(res.data || []);
-    } catch {
-      toast.error('Failed to load sales incentive progress');
+    } catch (error: any) {
+      toast.error(`Error: ${error?.response?.data?.error || error.message || 'Failed to load sales incentive progress'}`);
     } finally {
       setLoading(false);
     }

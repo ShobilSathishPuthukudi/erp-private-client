@@ -217,3 +217,12 @@ html[data-page-theme="midnight"] :is(main, .modal-portal, .dropdown-menu-card) [
     print-color-adjust: exact !important;
   }
 }
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

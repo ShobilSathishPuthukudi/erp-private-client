@@ -17,6 +17,11 @@ interface Center {
   activePrograms?: number;
 }
 
+const formatCenterLocation = (center: { address?: string | null; city?: string | null; state?: string | null }) => {
+  const parts = [center.address, center.city, center.state].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : 'N/A';
+};
+
 export default function Centers() {
   const { unit } = useParams();
   const [centers, setCenters] = useState<Center[]>([]);
@@ -38,8 +43,8 @@ export default function Centers() {
         params: { subDeptId }
       });
       setDetails(res.data);
-    } catch (error) {
-      toast.error('Failed to fetch center intelligence data');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to fetch center intelligence data');
     } finally {
       setIsDetailsLoading(false);
     }
@@ -139,8 +144,6 @@ export default function Centers() {
           columns={columns} 
           data={centers} 
           isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Identify center..." 
           onRowClick={handleRowClick}
         />
       </div>
@@ -251,7 +254,7 @@ export default function Centers() {
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Physical Jurisdiction</p>
                         <p className="text-sm font-bold text-slate-700 leading-tight">
-                          {details.center.address}, {details.center.city}, {details.center.state}
+                          {formatCenterLocation(details.center)}
                         </p>
                       </div>
                     </div>

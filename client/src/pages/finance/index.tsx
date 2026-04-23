@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import Payments from './Payments';
 import Invoices from './Invoices';
 import FeeConfig from './FeeConfig';
@@ -16,15 +17,16 @@ import DistributionDashboard from './DistributionDashboard';
 import AgingReport from './AgingReport';
 import UniversityFinancialReport from './UniversityFinancialReport';
 import DailyAdmissionReport from './DailyAdmissionReport';
-import CredentialAudit from './CredentialAudit';
 import CenterVerification from './CenterVerification';
 import UniversityChanges from './UniversityChanges';
+import YieldRevenueDashboard from './YieldRevenueDashboard';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
 import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 
 export default function FinanceDashboard() {
+  useApplyTheme();
   return (
     <Routes>
       <Route path="/" element={<FinanceMainDashboard />} />
@@ -41,10 +43,10 @@ export default function FinanceDashboard() {
       <Route path="rereg" element={<ReregManager />} />
       <Route path="rereg-config" element={<ReregConfig />} />
       <Route path="credentials" element={<CredentialReviewTab />} />
-      <Route path="audit/security" element={<CredentialAudit />} />
       <Route path="distributions" element={<DistributionDashboard />} />
       <Route path="aging" element={<AgingReport />} />
       <Route path="university-reports" element={<UniversityFinancialReport />} />
+      <Route path="yield" element={<YieldRevenueDashboard />} />
       <Route path="daily-admissions" element={<DailyAdmissionReport />} />
       <Route path="students/:id" element={<StudentFinancials />} />
       <Route path="team" element={<DepartmentTeam />} />

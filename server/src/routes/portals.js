@@ -4,7 +4,7 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import sequelize from '../config/db.js';
 import { Op } from 'sequelize';
 import erpEvents from '../lib/events.js';
-import { getSubDepartmentNameAliases, normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
+import { getSubDepartmentNameAliases, normalizeDepartmentName, normalizeInstitutionRoleName, normalizeSubDepartmentName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { Student, AdmissionSession, Invoice, Task, Leave, Department, Program, User, ProgramFee, AccreditationRequest, ProgramOffering, CenterProgram, Payment, Notification, Subject, Mark, Exam, EmployeeHRRequest, TargetAssignment, ChangeRequest } = models;
@@ -36,6 +36,24 @@ const getSubDeptId = (user) => {
   return null;
 };
 
+const resolveTaskDashboardLinkForRole = (role = '') => {
+  const normalizedRole = normalizeInstitutionRoleName(role || '').toLowerCase().trim();
+
+  if (normalizedRole === 'employee') return '/dashboard/employee/tasks';
+  if (normalizedRole === 'hr admin' || normalizedRole === 'hr') return '/dashboard/hr/dept-tasks';
+  if (normalizedRole === 'finance admin' || normalizedRole === 'finance') return '/dashboard/finance/tasks';
+  if (normalizedRole === 'sales admin' || normalizedRole === 'sales') return '/dashboard/sales/tasks';
+  if (normalizedRole.includes('operations') || normalizedRole.includes('academic')) return '/dashboard/operations/tasks';
+  if (normalizedRole === 'open school admin') return '/dashboard/subdept/openschool/tasks';
+  if (normalizedRole === 'online admin') return '/dashboard/subdept/online/tasks';
+  if (normalizedRole === 'skill admin') return '/dashboard/subdept/skill/tasks';
+  if (normalizedRole === 'bvoc admin') return '/dashboard/subdept/bvoc/tasks';
+  if (normalizedRole === 'ceo') return '/dashboard/ceo/escalations';
+  if (normalizedRole === 'organization admin') return '/dashboard/org-admin/alerts/escalated';
+
+  return '/dashboard/tasks';
+};
+
 const isCenterEditLocked = (student) => {
   if (!student) return true;
 
@@ -50,6 +68,46 @@ const LEGACY_SUB_DEPT_NAME_BY_ID = {
   9: 'Online',
   10: 'Skill',
   11: 'BVoc'
+};
+
+const DEPARTMENT_ADMIN_ROLE_CANDIDATES = {
+  HR: ['HR Admin'],
+  Finance: ['Finance Admin'],
+  Sales: ['Sales Admin', 'Sales & CRM Admin'],
+  'Academic Operations': ['Academic Operations Admin', 'Operations Admin'],
+  'Open School': ['Open School Admin'],
+  Online: ['Online Admin', 'Online Department Admin'],
+  Skill: ['Skill Admin', 'Skill Department Admin'],
+  BVoc: ['BVoc Admin', 'BVoc Department Admin']
+};
+
+const resolveAdminRoleCandidates = ({ departmentName, subDepartmentName }) => {
+  const canonicalSubDept = normalizeSubDepartmentName(subDepartmentName || '');
+  if (canonicalSubDept && DEPARTMENT_ADMIN_ROLE_CANDIDATES[canonicalSubDept]) {
+    return DEPARTMENT_ADMIN_ROLE_CANDIDATES[canonicalSubDept];
+  }
+
+  const canonicalDepartment = normalizeDepartmentName(departmentName || '');
+  return DEPARTMENT_ADMIN_ROLE_CANDIDATES[canonicalDepartment] || [];
+};
+
+const resolveActiveDeptAdminUid = async ({ departmentId, departmentName, subDepartmentName }) => {
+  if (!departmentId) return null;
+
+  const roleCandidates = resolveAdminRoleCandidates({ departmentName, subDepartmentName });
+  if (!roleCandidates.length) return null;
+
+  const admin = await User.findOne({
+    where: {
+      deptId: departmentId,
+      status: 'active',
+      role: { [Op.in]: roleCandidates }
+    },
+    attributes: ['uid'],
+    order: [['updatedAt', 'DESC'], ['createdAt', 'ASC']]
+  });
+
+  return admin?.uid || null;
 };
 
 const resolveSubDeptDepartmentId = async ({ rawSubDeptId, programType }) => {
@@ -277,8 +335,8 @@ router.get('/study-center/university-change/options', verifyToken, requireRole('
 
     res.json({ currentMappings, universities, requests });
   } catch (error) {
-    console.error('Fetch university change options error:', error);
-    res.status(500).json({ error: 'Failed to load university change options' });
+    console.error('Fetch university change options error:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to load university change options', details: error.message });
   }
 });
 
@@ -553,11 +611,22 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
         return res.status(400).json({ error: 'Selected batch has reached maximum intake capacity' });
     }
 
+    const trimmedStudentName = typeof name === 'string' ? name.trim() : name;
+    const duplicateStudent = await Student.findOne({
+      where: sequelize.and(
+        { programId },
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('Student.name')), (trimmedStudentName || '').toLowerCase())
+      )
+    });
+    if (duplicateStudent) {
+      return res.status(409).json({ error: 'A student with this name is already enrolled in this program (case-insensitive).' });
+    }
+
     // Phase 2: Transactional Admission & Invoice Logic
     const result = await sequelize.transaction(async (t) => {
       // 1. Create Student
       const student = await Student.create({
-        name,
+        name: trimmedStudentName,
         email,
         deptId: program.universityId,
         centerId: center.id,
@@ -886,17 +955,41 @@ router.get('/employee/tasks', verifyToken, requireRole('employee'), async (req, 
 router.put('/employee/tasks/:id/status', verifyToken, requireRole('employee'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-    
-    const task = await Task.findOne({ where: { id, assignedTo: req.user.uid } });
+    const { status, remarks, evidenceUrl } = req.body;
+
+    const allowedStatuses = ['pending', 'in_progress', 'completed'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid task status' });
+    }
+
+    const task = await Task.findOne({
+      where: { id, assignedTo: req.user.uid },
+      include: [{ model: User, as: 'assigner', attributes: ['uid', 'role', 'status'] }]
+    });
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
     const wasIncomplete = task.status !== 'completed';
-    const completedAt = status === 'completed' ? new Date() : task.completedAt;
-    await task.update({ status, completedAt });
+    const completedAt = status === 'completed' ? new Date() : null;
+    await task.update({
+      status,
+      completedAt,
+      remarks: remarks !== undefined ? remarks : task.remarks,
+      evidenceUrl: evidenceUrl !== undefined ? evidenceUrl : task.evidenceUrl
+    });
 
     if (status === 'completed' && wasIncomplete) {
       await syncAssignmentsForTask(task.id, completedAt);
+    }
+
+    if (task.assigner?.uid && task.assigner.status === 'active') {
+      await createNotification(req.io, {
+        targetUid: task.assigner.uid,
+        panelScope: task.assigner.role,
+        title: 'Task Status Updated',
+        message: `${req.user.name || req.user.uid} changed "${task.title}" to ${status.replace('_', ' ')}.`,
+        type: status === 'completed' ? 'success' : 'info',
+        link: resolveTaskDashboardLinkForRole(task.assigner.role)
+      });
     }
 
     res.json(task);
@@ -911,7 +1004,10 @@ router.put('/employee/tasks/:id/complete', verifyToken, requireRole('employee'),
     const { id } = req.params;
     const { remarks, evidenceUrl } = req.body;
     
-    const task = await Task.findOne({ where: { id, assignedTo: req.user.uid } });
+    const task = await Task.findOne({
+      where: { id, assignedTo: req.user.uid },
+      include: [{ model: User, as: 'assigner', attributes: ['uid', 'role', 'status'] }]
+    });
     if (!task) return res.status(404).json({ error: 'Task not found or unauthorized' });
 
     if (task.status === 'completed') return res.status(400).json({ error: 'Task is already completed' });
@@ -925,6 +1021,17 @@ router.put('/employee/tasks/:id/complete', verifyToken, requireRole('employee'),
     });
 
     await syncAssignmentsForTask(task.id, completedAt);
+
+    if (task.assigner?.uid && task.assigner.status === 'active') {
+      await createNotification(req.io, {
+        targetUid: task.assigner.uid,
+        panelScope: task.assigner.role,
+        title: 'Task Completed',
+        message: `${req.user.name || req.user.uid} completed "${task.title}".`,
+        type: 'success',
+        link: resolveTaskDashboardLinkForRole(task.assigner.role)
+      });
+    }
 
     res.json({ message: 'Task completed successfully with evidence recorded.', task });
   } catch (error) {
@@ -1006,7 +1113,8 @@ router.get('/employee/my-centers', verifyToken, requireRole('employee'), async (
     const centers = await Department.findAll({
       where: { 
         bdeId: { [Op.in]: validBdeIds },
-        type: { [Op.in]: ['partner-center', 'partner centers'] }
+        type: { [Op.in]: ['partner-center', 'partner centers'] },
+        status: 'active'
       },
       order: [['createdAt', 'DESC']]
     });
@@ -1045,6 +1153,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
 
     const today = new Date();
     const todayLocal = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const sameDayCutoffPassed = today.getHours() >= 12;
 
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: 'Start date and end date are required' });
@@ -1054,12 +1163,33 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
       return res.status(400).json({ error: 'Previous dates are not allowed for leave requests' });
     }
 
-    if (toDate <= fromDate) {
-      return res.status(400).json({ error: 'End date must be after start date' });
+    if (toDate < fromDate) {
+      return res.status(400).json({ error: 'End date cannot be before start date' });
+    }
+
+    if (sameDayCutoffPassed && fromDate === todayLocal) {
+      return res.status(400).json({ error: 'Today cannot be selected as the start date after 12 noon' });
+    }
+
+    const overlappingLeave = await Leave.findOne({
+      where: {
+        employeeId: req.user.uid,
+        status: { [Op.ne]: 'rejected' },
+        fromDate: { [Op.lte]: toDate },
+        toDate: { [Op.gte]: fromDate }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    if (overlappingLeave) {
+      return res.status(409).json({
+        error: `A leave request already exists for ${overlappingLeave.fromDate} to ${overlappingLeave.toDate}. You can only re-apply if that leave is rejected.`
+      });
     }
     
-    // Strict two-step workflow: every employee leave starts with department admin review.
-    const initialStatus = 'pending admin';
+    // Institutional Oversight: HR Admin leave requests are elevated directly to the CEO for finalization
+    const userRole = (req.user.role || '').toLowerCase();
+    const initialStatus = userRole.includes('hr admin') ? 'pending hr' : 'pending admin';
 
     const leave = await Leave.create({
       employeeId: req.user.uid,
@@ -1093,6 +1223,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
         if (!target || target.status !== 'active') return;
         await createNotification(req.io, {
           targetUid: uid,
+          panelScope: target.role,
           title: 'New Team Leave Request',
           message: `${employeeName} is requesting ${type} (${fromDate} to ${toDate}).`,
           type: 'info',
@@ -1104,7 +1235,7 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
         // Unit-level admin (BVoc/Online/Skill/Open School) whose Department row
         // matches the employee's subDepartment takes precedence over the parent
         // dept's admin — they are the actual Step-1 reviewer.
-        const recipientUids = new Set();
+        const candidateRecipientUids = new Set();
 
         if (employee?.subDepartment) {
           const aliases = getSubDepartmentNameAliases(employee.subDepartment);
@@ -1113,43 +1244,85 @@ router.post('/employee/leaves', verifyToken, requireRole('employee'), async (req
               where: { name: { [Op.in]: aliases } },
               attributes: ['adminId']
             });
-            if (unitDept?.adminId) recipientUids.add(unitDept.adminId);
+            if (unitDept?.adminId) candidateRecipientUids.add(unitDept.adminId);
           }
         }
 
-        if (!recipientUids.size && employee?.deptId) {
-          const dept = await Department.findByPk(employee.deptId, { attributes: ['adminId'] });
-          if (dept?.adminId) recipientUids.add(dept.adminId);
+        if (!candidateRecipientUids.size && employee?.deptId) {
+          const dept = await Department.findByPk(employee.deptId, { attributes: ['id', 'name', 'adminId'] });
+          if (dept?.adminId) {
+            candidateRecipientUids.add(dept.adminId);
+          } else {
+            const resolvedAdminUid = await resolveActiveDeptAdminUid({
+              departmentId: dept?.id || employee.deptId,
+              departmentName: dept?.name,
+              subDepartmentName: employee?.subDepartment
+            });
+            if (resolvedAdminUid) {
+              candidateRecipientUids.add(resolvedAdminUid);
+            }
+          }
         }
 
         if (employee?.reportingManagerUid) {
-          recipientUids.add(employee.reportingManagerUid);
+          candidateRecipientUids.add(employee.reportingManagerUid);
         }
 
-        // Fallback: no admin/manager resolvable — ping all active HR Admins so
-        // the request isn't silently orphaned when a dept admin slot is empty.
-        if (!recipientUids.size) {
-          console.warn(`[LEAVE-NOTIFY] No dept admin/manager resolvable for employee ${req.user.uid} (deptId=${employee?.deptId}, subDept=${employee?.subDepartment}). Falling back to HR Admins.`);
+        const resolvedRecipients = [];
+        for (const uid of candidateRecipientUids) {
+          if (uid === req.user.uid) continue; // Preventive Guard: No self-notification for leave requests
+          const target = await User.findByPk(uid);
+          if (!target || target.status !== 'active') continue;
+          resolvedRecipients.push(target.uid);
+        }
+
+        // Fallback: no active admin/manager resolvable — ping all active HR Admins so
+        // the request isn't silently orphaned when a dept admin slot is empty or stale.
+        if (!resolvedRecipients.length) {
+          console.warn(`[LEAVE-NOTIFY] No active dept admin/manager resolvable for employee ${req.user.uid} (deptId=${employee?.deptId}, subDept=${employee?.subDepartment}). Falling back to HR Admins.`);
           const hrAdmins = await User.findAll({
             where: { role: 'HR Admin', status: 'active' },
             attributes: ['uid']
           });
-          hrAdmins.forEach((hr) => recipientUids.add(hr.uid));
+          hrAdmins.forEach((hr) => {
+            if (hr.uid !== req.user.uid) {
+              resolvedRecipients.push(hr.uid);
+            }
+          });
         }
 
-        for (const uid of recipientUids) {
+        for (const uid of new Set(resolvedRecipients)) {
           await notifyAdminUid(uid);
         }
       }
 
       if (initialStatus === 'pending hr') {
+        // applicant notification
         await createNotification(req.io, {
           targetUid: req.user.uid,
+          panelScope: req.user.role,
           title: 'Institutional Forwarding',
-          message: `Your ${type} request has been automatically forwarded to HR for finalization based on departmental hierarchy.`,
+          message: userRole.includes('hr admin') 
+            ? `Your ${type} request has been elevated to the CEO for institutional finalization.`
+            : `Your ${type} request has been automatically forwarded to HR for finalization based on departmental hierarchy.`,
           type: 'success',
           link: '/dashboard/employee/leaves'
         });
+
+        // Notify CEO(s) for HR Admin requests
+        if (userRole.includes('hr admin')) {
+          const ceos = await User.findAll({ where: { role: 'CEO', status: 'active' }, attributes: ['uid'] });
+          for (const ceo of ceos) {
+            await createNotification(req.io, {
+              targetUid: ceo.uid,
+              panelScope: 'CEO',
+              title: 'HR Admin Leave Request',
+              message: `${employeeName} (HR Admin) has submitted a leave request for CEO finalization.`,
+              type: 'warning',
+              link: '/dashboard/ceo/hr-leaves' // Targeted link for CEO HR leave dashboard
+            });
+          }
+        }
       }
     } catch (notifyError) {
       console.error('[NOTIFY-HR] Failure sending leave alerts:', notifyError);
@@ -1275,14 +1448,27 @@ router.post('/employee/hr-requests', verifyToken, async (req, res) => {
       const hrUsers = await User.findAll({
         where: {
           status: 'active',
-          role: 'HR Admin'
+          uid: { [Op.ne]: req.user.uid }
         },
-        attributes: ['uid']
+        include: [{
+          model: models.Role,
+          as: 'assignedAdminRoles',
+          attributes: ['id', 'name'],
+          required: false,
+          where: { name: 'HR Admin' }
+        }],
+        attributes: ['uid', 'role']
       });
 
-      for (const hr of hrUsers) {
+      const hrRecipientUids = [...new Set(
+        hrUsers
+          .filter((user) => user.role === 'HR Admin' || (user.assignedAdminRoles || []).some((role) => role.name === 'HR Admin'))
+          .map((user) => user.uid)
+      )];
+
+      for (const hrUid of hrRecipientUids) {
         await createNotification(req.io, {
-          targetUid: hr.uid,
+          targetUid: hrUid,
           title: 'New Employee HR Request',
           message: `${employee?.name || req.user.uid} submitted "${subject.trim()}" from ${employee?.department?.name || 'their department'}.`,
           type: 'info',
@@ -1365,6 +1551,54 @@ router.post('/partner-center/accreditation-interest', verifyToken, requireRole('
   } catch (error) {
     console.error('Accreditation interest error:', error);
     res.status(500).json({ error: 'Failed to record accreditation interest' });
+  }
+});
+
+router.get('/partner-center/accreditation-requests', verifyToken, requireRole('Partner Centers'), async (req, res) => {
+  try {
+    let centerId = req.user.deptId;
+    if (!centerId) {
+      const center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+      if (center) centerId = center.id;
+    }
+    if (!centerId) return res.status(400).json({ error: 'Center ID not assigned' });
+
+    const requests = await AccreditationRequest.findAll({
+      where: { centerId },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(requests);
+  } catch (error) {
+    console.error('Fetch center accreditation requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch accreditation history' });
+  }
+});
+
+router.get('/partner-center/entities', verifyToken, requireRole('Partner Centers'), async (req, res) => {
+  try {
+    let center = await Department.findOne({ where: { id: req.user.deptId } });
+    if (!center) center = await Department.findOne({ where: { adminId: req.user.uid, type: 'partner centers' } });
+    
+    let universities = [];
+    if (center && center.parentId) {
+      const parentUni = await Department.findByPk(center.parentId, { attributes: ['id', 'name'] });
+      if (parentUni) universities = [parentUni];
+    } else {
+      // Fallback for centers without parentId (should not happen in prod)
+      universities = await Department.findAll({ 
+        where: { type: 'universities', status: 'active' }, 
+        attributes: ['id', 'name'] 
+      });
+    }
+
+    const subDepts = await Department.findAll({ 
+      where: { type: 'sub-departments', status: { [Op.in]: ['active', 'staged'] } }, 
+      attributes: ['id', 'name'] 
+    });
+    res.json({ universities, subDepts });
+  } catch (error) {
+    console.error('Fetch partner center entities error:', error);
+    res.status(500).json({ error: 'Failed to synchronize institutional routing entities' });
   }
 });
 

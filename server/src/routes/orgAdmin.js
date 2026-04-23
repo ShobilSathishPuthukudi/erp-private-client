@@ -925,8 +925,11 @@ router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
     
     if (!name) return res.status(400).json({ error: 'Role name is mandatory' });
     
-    // Check for duplicate
-    const existing = await Role.findOne({ where: { name } });
+    // Check for duplicate (Case-Insensitive)
+    const normalizedTargetName = name.trim().toLowerCase();
+    const existing = await Role.findOne({ 
+      where: sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), normalizedTargetName)
+    });
     if (existing) return res.status(400).json({ error: 'Role identifier already exists' });
 
     // Auto-generate Unique Role ID
@@ -953,6 +956,7 @@ router.post('/roles', verifyToken, isOrgAdmin, async (req, res) => {
       if (hrUsers.length > 0) {
         const notificationPayloads = hrUsers.map(hr => ({
           userUid: hr.uid,
+          panelScope: 'hr admin',
           type: 'info',
           message: `New institutional role created: ${name}. You can now assign this role to personnel in the Workforce section.`,
           link: '/hr/employees'
@@ -1045,7 +1049,7 @@ router.get('/admin-credentials', verifyToken, isPrimaryOrgAdmin, async (req, res
         uid: user.uid,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: normalizeInstitutionRoleName(user.role),
         status: user.status,
         createdAt: user.createdAt
       }));
@@ -1111,7 +1115,7 @@ router.get('/admin-credentials/:uid', verifyToken, isPrimaryOrgAdmin, async (req
       mappedRolePassword ||
       directRole?.devRolePassword ||
       user.devPassword ||
-      '';
+      'password123';
 
     await AuditLog.create({
       userId: req.user.uid,
@@ -1127,7 +1131,7 @@ router.get('/admin-credentials/:uid', verifyToken, isPrimaryOrgAdmin, async (req
       uid: user.uid,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: normalizeInstitutionRoleName(user.role),
       status: user.status,
       password: resolvedPassword,
       hasStoredPassword: Boolean(resolvedPassword),
@@ -1138,6 +1142,91 @@ router.get('/admin-credentials/:uid', verifyToken, isPrimaryOrgAdmin, async (req
     res.status(500).json({ error: 'Failed to reveal admin credentials' });
   }
 });
+
+router.put('/admin-credentials/:uid/password', verifyToken, isPrimaryOrgAdmin, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const adminRoles = await Role.findAll({
+      where: { isAdminEligible: true },
+      attributes: ['name']
+    });
+
+    const normalizedAdminRoles = new Set(
+      adminRoles.map((role) => normalizeInstitutionRoleName(role.name)?.toLowerCase()?.trim()).filter(Boolean)
+    );
+
+    normalizedAdminRoles.add('organization admin');
+    normalizedAdminRoles.add('ceo');
+
+    const user = await User.findByPk(req.params.uid, {
+      include: [{ model: Role, as: 'assignedAdminRoles', required: false }]
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    const normalizedRole = normalizeInstitutionRoleName(user.role)?.toLowerCase()?.trim();
+    if (!normalizedRole || !normalizedAdminRoles.has(normalizedRole)) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Admin credentials not available' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Update main user record
+    await user.update({ 
+      password: hashedPassword, 
+      devPassword: password 
+    }, { transaction });
+
+    // Update ceo panel if exists
+    const ceoPanel = await CEOPanel.findOne({ where: { userId: user.uid } });
+    if (ceoPanel) {
+      await ceoPanel.update({ devCredential: password }, { transaction });
+    }
+
+    // Update mapped role if exists
+    if (Array.isArray(user.assignedAdminRoles)) {
+      for (const role of user.assignedAdminRoles) {
+        if (role.devRolePassword) {
+          await role.update({ devRolePassword: password, rolePassword: hashedPassword }, { transaction });
+        }
+      }
+    }
+
+    // Update direct legacy role matching exact name if it exists and had a seeded password natively hooked there
+    const directRole = await Role.findOne({ where: { name: normalizeInstitutionRoleName(user.role) } });
+    if (directRole && directRole.devRolePassword) {
+      await directRole.update({ devRolePassword: password, rolePassword: hashedPassword }, { transaction });
+    }
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'ADMIN_CREDENTIAL_UPDATE',
+      entity: `User:${user.uid}`,
+      module: 'ORG_ADMIN',
+      remarks: `Modified seeded panel credentials for ${user.name || user.uid}`,
+      ipAddress: req.ip || '0.0.0.0',
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({ success: true, message: 'Admin credentials updated successfully' });
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error('Update Admin Credentials Error:', error);
+    res.status(500).json({ error: 'Failed to update admin credentials' });
+  }
+});
+
 
 // GET /alerts - High Fidelity System Governance
 router.get('/alerts', verifyToken, isOrgAdmin, async (req, res) => {
@@ -1258,6 +1347,63 @@ router.put('/roles/:id', verifyToken, isOrgAdmin, async (req, res) => {
     res.json(role);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update role configuration' });
+  }
+});
+
+router.delete('/roles/:id', verifyToken, isOrgAdmin, async (req, res) => {
+  let transaction;
+  try {
+    transaction = await sequelize.transaction();
+    const { id } = req.params;
+    const role = await Role.findByPk(id, { transaction });
+    
+    if (!role) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Role not found' });
+    }
+    
+    if (!role.isCustom) {
+      await transaction.rollback();
+      return res.status(403).json({ error: 'System roles cannot be deleted.' });
+    }
+
+    const usersWithRole = await User.count({ where: { role: role.name }, transaction });
+    if (usersWithRole > 0) {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'Cannot delete role assigned to active users.' });
+    }
+
+    const originalName = role.name;
+    await role.destroy({ transaction });
+    
+    await Permission.destroy({ where: { role: originalName }, transaction });
+    await RolePermissionShadow.destroy({ where: { roleName: originalName }, transaction });
+
+    const currentConfig = await OrgConfig.findOne({ where: { key: 'GLOBAL_PERMISSION_MATRIX' }, transaction });
+    if (currentConfig) {
+      const configVal = currentConfig.value;
+      if (configVal && configVal.matrix && configVal.matrix[originalName]) {
+        delete configVal.matrix[originalName];
+        await currentConfig.update({ value: configVal }, { transaction });
+        clearMatrixCache();
+      }
+    }
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'ROLE_DELETED',
+      entity: `Role: ${originalName}`,
+      module: 'GOVERNANCE',
+      remarks: 'Permanently deleted custom institutional role and removed from global matrix.',
+      timestamp: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({ message: 'Role deleted successfully' });
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error('Delete Role Error:', error);
+    res.status(500).json({ error: 'Failed to delete role' });
   }
 });
 
@@ -1392,7 +1538,41 @@ router.post('/permissions/matrix/update-full', verifyToken, isOrgAdmin, async (r
       }, { transaction });
     }
 
-    // 2. Update Master JSON
+    // 2. Generate Granular Audit Logs (Done BEFORE saving to prevent memory mutation)
+    const oldMatrix = currentConfig ? currentConfig.value.matrix : {};
+    const auditLogsToCreate = [];
+
+    for (const [roleName, actions] of Object.entries(matrix)) {
+      for (const [actionId, newPerms] of Object.entries(actions)) {
+        const oldPerms = oldMatrix[roleName]?.[actionId] || { create: false, read: false, update: false, delete: false, approve: false };
+        
+        const hasChanged = 
+          Boolean(oldPerms.create) !== Boolean(newPerms.create) ||
+          Boolean(oldPerms.read) !== Boolean(newPerms.read) ||
+          Boolean(oldPerms.update) !== Boolean(newPerms.update) ||
+          Boolean(oldPerms.delete) !== Boolean(newPerms.delete) ||
+          Boolean(oldPerms.approve) !== Boolean(newPerms.approve);
+
+        if (hasChanged) {
+          auditLogsToCreate.push({
+            userId: req.user.uid,
+            action: 'PERMISSION_UPDATE',
+            entity: `Role: ${roleName}`,
+            module: 'GOVERNANCE',
+            before: { read: Boolean(oldPerms.read), write: Boolean(oldPerms.update), approve: Boolean(oldPerms.approve) },
+            after: { read: Boolean(newPerms.read), write: Boolean(newPerms.update), approve: Boolean(newPerms.approve) },
+            remarks: `Updated ${actionId.charAt(0).toUpperCase() + actionId.slice(1).replace('-', ' ')} access for ${roleName}`,
+            timestamp: new Date()
+          });
+        }
+      }
+    }
+    
+    if (auditLogsToCreate.length > 0) {
+      await AuditLog.bulkCreate(auditLogsToCreate, { transaction });
+    }
+
+    // 3. Update Master JSON
     const [config, created] = await OrgConfig.findOrCreate({
       where: { key: 'GLOBAL_PERMISSION_MATRIX' },
       defaults: { 
@@ -1406,7 +1586,7 @@ router.post('/permissions/matrix/update-full', verifyToken, isOrgAdmin, async (r
       await config.update({ value: { matrix } }, { transaction });
     }
 
-    // 3. Synchronize Shadow Registry
+    // 4. Synchronize Shadow Registry
     await RolePermissionShadow.destroy({ where: {}, transaction });
     const shadowRows = [];
     for (const [roleName, actions] of Object.entries(matrix)) {
@@ -1426,7 +1606,7 @@ router.post('/permissions/matrix/update-full', verifyToken, isOrgAdmin, async (r
     }
     await RolePermissionShadow.bulkCreate(shadowRows, { transaction });
 
-    // 4. Audit & Cache Invalidation
+    // 4. Audit & Cache Invalidation (Global Checkpoint)
     await AuditLog.create({
       userId: req.user.uid,
       action: 'PERMISSION_MATRIX_RECONCILIATION',
@@ -1538,7 +1718,10 @@ router.post('/permissions/rollback/:id', verifyToken, isOrgAdmin, async (req, re
 router.get('/audit/permissions', verifyToken, isOrgAdmin, async (req, res) => {
   try {
     const logs = await AuditLog.findAll({
-      where: { module: 'GOVERNANCE', action: 'PERMISSION_UPDATE' },
+      where: { 
+        module: 'GOVERNANCE', 
+        action: { [Op.in]: ['PERMISSION_UPDATE', 'PERMISSION_MATRIX_RECONCILIATION'] }
+      },
       order: [['timestamp', 'DESC']],
       limit: 100
     });
@@ -1552,14 +1735,16 @@ router.get('/audit/permissions', verifyToken, isOrgAdmin, async (req, res) => {
         if (p.read) return 'Read Only';
         return 'No Access';
       };
+      
+      const isGlobal = log.action === 'PERMISSION_MATRIX_RECONCILIATION';
 
       return {
         id: log.id,
         user: log.userId,
-        role: log.entity.replace('Role: ', ''),
-        feature: log.remarks.split('Updated ')[1].split(' access')[0],
-        prev: formatAccess(log.before),
-        next: formatAccess(log.after),
+        role: isGlobal ? 'GLOBAL MATRIX' : log.entity.replace('Role: ', ''),
+        feature: isGlobal ? 'System Recalibration' : (log.remarks.includes('Updated ') ? log.remarks.split('Updated ')[1].split(' access')[0] : log.remarks),
+        prev: isGlobal ? 'Previous Version Snapshot' : formatAccess(log.before),
+        next: isGlobal ? 'New Action-Level Matrix' : formatAccess(log.after),
         time: new Date(log.timestamp).toLocaleString()
       };
     });

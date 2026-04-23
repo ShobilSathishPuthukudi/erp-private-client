@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -171,7 +172,15 @@ export default function App() {
       <BrowserRouter>
         <ClickableCursorManager />
         <ScrollToTop />
-        <Toaster position="top-right" />
+        {createPortal(
+          <Toaster 
+            position="top-right" 
+            containerClassName="!z-[9999999]"
+            containerStyle={{ zIndex: 9999999 }} 
+            toastOptions={{ style: { zIndex: 9999999 } }}
+          />,
+          document.body
+        )}
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" replace />} />
           

@@ -41,7 +41,9 @@ type EscalationLeave = {
 export default function Escalations() {
   const [tasks, setTasks] = useState<EscalationTask[]>([]);
   const [leaves, setLeaves] = useState<EscalationLeave[]>([]);
+  const [resolvedTasks, setResolvedTasks] = useState<EscalationTask[]>([]);
   const [activeTab, setActiveTab] = useState<'tasks' | 'leaves'>('tasks');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'resolved' | 'granted'>('all');
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<EscalationTask | null>(null);
   const [selectedLeave, setSelectedLeave] = useState<EscalationLeave | null>(null);
@@ -89,11 +91,23 @@ export default function Escalations() {
       setDeptLoading(false);
     }
   };
-
   const fetchEscalations = async () => {
     try {
       const res = await api.get('/ceo/escalations');
-      setTasks(res.data.tasks || []);
+      // Merge active and resolved tasks into a single unified list
+      const allTasks = [
+        ...(res.data.tasks || []),
+        ...(res.data.resolvedTasks || [])
+      ].sort((a, b) => {
+        // Active tasks (non-completed) come first
+        const isAActive = !['completed', 'resolved_by_ceo', 'reassigned_escalated'].includes(a.status);
+        const isBActive = !['completed', 'resolved_by_ceo', 'reassigned_escalated'].includes(b.status);
+        if (isAActive && !isBActive) return -1;
+        if (!isAActive && isBActive) return 1;
+        return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+      });
+      
+      setTasks(allTasks);
       setLeaves(res.data.leaves || []);
     } catch (error) {
       toast.error('Failed to load escalations');
@@ -156,6 +170,16 @@ export default function Escalations() {
     return 'bg-blue-50 text-blue-700 border-blue-100 ring-blue-500/20';
   };
 
+  const filteredTasks = tasks.filter(t => {
+    if (statusFilter === 'all') return true;
+    const isCompleted = ['completed', 'resolved_by_ceo', 'reassigned_escalated'].includes(t.status);
+    if (statusFilter === 'pending') return !isCompleted;
+    if (statusFilter === 'completed') return t.status === 'completed';
+    if (statusFilter === 'resolved') return t.status === 'resolved_by_ceo';
+    if (statusFilter === 'granted') return t.deptAdminDecision === 'GRACE_GRANTED';
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -167,7 +191,7 @@ export default function Escalations() {
   return (
     <div className="p-2 space-y-6 flex flex-col">
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
             <AlertTriangle className="w-6 h-6" />
@@ -177,25 +201,42 @@ export default function Escalations() {
             <p className="text-slate-500 font-medium text-sm">Protracted deadlocks requiring executive intervention.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-          <button 
-            onClick={() => setActiveTab('tasks')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'tasks' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+
+
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button 
+              onClick={() => setActiveTab('tasks')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'tasks' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              Tasks ({tasks.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('leaves')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'leaves' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              Leaves ({leaves.length})
+            </button>
+          </div>
+
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="bg-white border border-slate-200 text-slate-900 text-[11px] font-bold px-4 py-2 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all outline-none h-10 min-w-[150px]"
           >
-            Tasks ({tasks.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('leaves')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest ${activeTab === 'leaves' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
-          >
-            Leaves ({leaves.length})
-          </button>
+            <option value="all">All Records</option>
+            <option value="pending">Active Pending</option>
+            <option value="completed">Completed</option>
+            <option value="resolved">CEO Resolved</option>
+            <option value="granted">Grace Period</option>
+          </select>
         </div>
       </div>
 
 
       {/* Critical Overdue Section */}
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
         <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
@@ -212,33 +253,37 @@ export default function Escalations() {
                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monitoring Mode</span>
                </div>
              )}
-             <span className={`text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider ${activeTab === 'tasks' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
-               {(activeTab === 'tasks' ? tasks : leaves).length} Active System Risks
-             </span>
+              <span className={`text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider ${activeTab === 'tasks' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
+                {(activeTab === 'tasks' ? filteredTasks : leaves).length} System Records
+              </span>
           </div>
         </div>
 
         <div className="overflow-x-auto text-[13px]">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white border-b border-slate-50">
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{activeTab === 'tasks' ? 'Task Objective' : 'Employee / Leave Type'}</th>
+              <tr className="bg-slate-50 border-b border-slate-50">
+                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  {activeTab === 'tasks' ? 'Task Objective' : 'Employee / Leave Type'}
+                </th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental Chain</th>
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inertia</th>
+                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">
+                  {activeTab === 'tasks' ? 'Status' : 'Inertia'}
+                </th>
                 {activeTab === 'leaves' && <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Duration</th>}
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {activeTab === 'tasks' ? (
-                tasks.length === 0 ? (
+                filteredTasks.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-10 py-20 text-center">
                         <CheckCircle2 className="w-12 h-12 text-emerald-200 mx-auto mb-4" />
-                        <p className="text-sm font-bold text-slate-400">Governance Clean: All systemic task escalations resolved.</p>
+                        <p className="text-sm font-bold text-slate-400">Governance Clean: No matching task escalations found.</p>
                     </td>
                   </tr>
-                ) : tasks.map((task) => (
+                ) : filteredTasks.map((task) => (
                   <tr 
                     key={task.id} 
                     className="group hover:bg-slate-50/50 transition-all cursor-pointer"
@@ -268,15 +313,28 @@ export default function Escalations() {
                       </div>
                     </td>
                     <td className="px-10 py-6 text-center">
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ring-2 ring-transparent transition-all ${getUrgencyColor(task.daysOverdue)}`}>
-                        <Clock className="w-3.5 h-3.5" />
-                        {task.daysOverdue} Days Overdue
-                      </div>
+                      {['completed', 'resolved_by_ceo', 'reassigned_escalated'].includes(task.status) ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`px-3 py-1.5 rounded-xl border font-black text-[10px] uppercase tracking-widest ${
+                            task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                            task.status === 'resolved_by_ceo' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                            'bg-slate-50 text-slate-600 border-slate-100'
+                          }`}>
+                            {task.status?.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Resolved: {safeFormat(task.updatedAt, 'MMM dd')}</span>
+                        </div>
+                      ) : (
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ring-2 ring-transparent transition-all ${getUrgencyColor(task.daysOverdue)}`}>
+                          <Clock className="w-3.5 h-3.5" />
+                          {task.daysOverdue} Days Overdue
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-10 py-6 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {!isReadOnly && (
+                        {!isReadOnly && !['completed', 'resolved_by_ceo', 'reassigned_escalated'].includes(task.status) && (
                           <>
                             <button 
                               onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalMode('resolve'); }}
@@ -529,7 +587,7 @@ export default function Escalations() {
                         onChange={(e) => setTargetAssignee(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-black focus:ring-2 focus:ring-indigo-600/10 outline-none appearance-none"
                        >
-                         <option value="">Select an available employee</option>
+                         <option value="">Select Institutional Lead</option>
                          {deptUsers.filter(u => u.uid !== selectedTask.assignee.uid).map(u => (
                            <option key={u.uid} value={u.uid}>{u.name} ({u.role})</option>
                          ))}

@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import http from 'http';
 import { sequelize, models } from './models/index.js';
+import { clearMatrixCache } from './middleware/rbac.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -234,8 +235,54 @@ const cleanupDuplicateIndexes = async () => {
       console.log('Updating CredentialRequest status ENUM to include cancelled...');
       await sequelize.query("ALTER TABLE credential_requests MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'cancelled') DEFAULT 'pending'").catch(err => console.error(err.message));
     }
+
+    // 7. Ensure ChangeRequest Model schema reconciliation (Fix for Partner Center 500)
+    const [crCols] = await sequelize.query("SHOW COLUMNS FROM change_requests");
+    const crColNames = crCols.map(c => c.Field);
+    if (!crColNames.includes('requestType')) {
+        console.log('Adding missing requestType column to change_requests...');
+        await sequelize.query("ALTER TABLE change_requests ADD COLUMN requestType ENUM('center_university_change', 'generic') DEFAULT 'center_university_change'").catch(err => console.error(err.message));
+    }
+
+    // 8. Ensure Target Model schema reconciliation (Fix for Daily admissions 500)
+    const [tCols] = await sequelize.query("SHOW COLUMNS FROM targets");
+    const tColNames = tCols.map(c => c.Field);
+    if (!tColNames.includes('title')) {
+        console.log('Adding missing title column to targets...');
+        await sequelize.query("ALTER TABLE targets ADD COLUMN title VARCHAR(255) NULL").catch(err => console.error(err.message));
+    }
+
+    // 9. Ensure RBAC Permission for Finance Admin (Fix for Payments 403)
+    const [configs] = await sequelize.query("SELECT * FROM org_configs WHERE `key` = 'GLOBAL_PERMISSION_MATRIX'");
+    if (configs[0]) {
+        try {
+            let matrixData = configs[0].value;
+            if (typeof matrixData === 'string') {
+                matrixData = JSON.parse(matrixData);
+            }
+            if (matrixData.matrix && matrixData.matrix['Finance Admin'] && !matrixData.matrix['Finance Admin']['FIN_PAY_VERIFY']) {
+                console.log('Patching Finance Admin permissions for FIN_PAY_VERIFY...');
+                matrixData.matrix['Finance Admin']['FIN_PAY_VERIFY'] = { 
+                    read: true, 
+                    create: true, 
+                    update: true, 
+                    delete: false, 
+                    approve: true, 
+                    scope: 'GLOBAL' 
+                };
+                
+                await models.OrgConfig.update(
+                    { value: matrixData },
+                    { where: { key: 'GLOBAL_PERMISSION_MATRIX' } }
+                );
+            }
+            clearMatrixCache();
+        } catch (e) {
+            console.error('RBAC Permission patch failure:', e.message);
+        }
+    }
   } catch (err) {
-    console.warn('Index cleanup skipped:', err.message);
+    console.warn('Database reconciliation skipped:', err.message);
   }
 };
 
@@ -244,12 +291,18 @@ const startServer = (port) => {
     console.log(`[ERP] Server is running on port ${port}`);
     
     try {
-      // 1. Sanitize Database Indexes to prevent ER_TOO_MANY_KEYS
-      await cleanupDuplicateIndexes();
+    // 1. Sanitize Database Indexes to prevent ER_TOO_MANY_KEYS
+    await cleanupDuplicateIndexes();
 
-      // 1.1 FORCE SYNC CRITICAL GOVERNANCE MODELS (GAP-5)
-      await models.Role.sync({ alter: true });
-      await models.Permission.sync({ alter: true });
+    // 1.1 FORCE SYNC CRITICAL MODELS (Ensure tables and columns exist)
+    console.log('[DATABASE] Force-syncing critical institutional models...');
+    await models.OrgConfig.sync({ alter: true }).catch(err => console.warn('OrgConfig sync warning:', err.message));
+    await models.Target.sync({ alter: true }).catch(err => console.warn('Target sync warning:', err.message));
+    await models.ChangeRequest.sync({ alter: true }).catch(err => console.warn('ChangeRequest sync warning:', err.message));
+
+    // 1.2 FORCE SYNC CRITICAL GOVERNANCE MODELS (GAP-5)
+    await models.Role.sync({ alter: true });
+    await models.Permission.sync({ alter: true });
 
       // 2. Sync models with a soft fail (Sync already verified manually via DESC)
       await sequelize.sync({ alter: true }).catch(err => {

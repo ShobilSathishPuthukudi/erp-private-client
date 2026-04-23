@@ -11,6 +11,10 @@ const Notification = sequelize.define('notification', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  panelScope: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   type: {
     type: DataTypes.STRING,
     defaultValue: 'info', // info, success, warning, error

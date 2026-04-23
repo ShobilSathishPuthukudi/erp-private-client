@@ -12,6 +12,8 @@ interface Props {
 
 export default function DashboardMetricCard({ label, value, trend, status, onClick }: Props) {
   const isUp = trend[trend.length - 1] > trend[0];
+  const baseline = trend[0] || 1;
+  const percentChange = Math.abs(Math.round(((trend[trend.length - 1] - trend[0]) / baseline) * 100));
 
   const colors = {
     red: 'bg-rose-50 text-rose-600 border-rose-100',
@@ -55,7 +57,7 @@ export default function DashboardMetricCard({ label, value, trend, status, onCli
           </div>
           <div className={clsx("flex items-center gap-1 text-[10px] font-black ", isUp ? "text-emerald-500" : "text-rose-500")}>
              {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-             {Math.abs(Math.round(((trend[trend.length-1] - trend[0]) / trend[0]) * 100))}%
+             {percentChange}%
           </div>
        </div>
     </div>

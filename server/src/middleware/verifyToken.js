@@ -68,6 +68,7 @@ export const isAcademicOrAdmin = (req, res, next) => {
     'Academic Operations Administrator',
     'Academic Operations',
     'Sales Admin',
+    'SUB_DEPT_ADMIN',
     'Partner Center',
     'partner centers'
   ];
@@ -97,6 +98,7 @@ export const isOpsOrAdmin = (req, res, next) => {
     'Academic Operations',
     'Organization Admin', 
     'Sales Admin',
+    'SUB_DEPT_ADMIN',
     'Partner Center',
     'partner centers'
   ];

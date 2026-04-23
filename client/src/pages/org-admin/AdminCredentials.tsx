@@ -14,6 +14,8 @@ import {
   LockKeyhole,
   Check,
   AlertCircle,
+  Pencil,
+  X,
 } from 'lucide-react';
 
 interface AdminListItem {
@@ -84,6 +86,10 @@ export default function AdminCredentials() {
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+
   const isOrganizationAdmin = user?.role?.toLowerCase()?.trim() === 'organization admin';
 
   const fetchAdmins = async () => {
@@ -112,6 +118,8 @@ export default function AdminCredentials() {
       const { data } = await api.get(`/org-admin/admin-credentials/${uid}`);
       setSelectedAdmin(data);
       setShowPassword(false);
+      setIsEditingPassword(false);
+      setNewPassword('');
       setIsModalOpen(true);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Failed to reveal admin credentials'));
@@ -141,6 +149,27 @@ export default function AdminCredentials() {
       setTimeout(() => setCopiedField((prev) => (prev === fieldKey ? null : prev)), 1500);
     } catch {
       toast.error(`Failed to copy ${label.toLowerCase()}`);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    if (!selectedAdmin) return;
+    try {
+      setIsSavingPassword(true);
+      await api.put(`/org-admin/admin-credentials/${selectedAdmin.uid}/password`, { password: newPassword });
+      toast.success('Admin password updated successfully');
+      setSelectedAdmin((prev) => prev ? { ...prev, password: newPassword, hasStoredPassword: true } : null);
+      setIsEditingPassword(false);
+      setNewPassword('');
+      setShowPassword(true);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update password'));
+    } finally {
+      setIsSavingPassword(false);
     }
   };
 
@@ -320,6 +349,8 @@ export default function AdminCredentials() {
           setIsModalOpen(false);
           setSelectedAdmin(null);
           setShowPassword(false);
+          setIsEditingPassword(false);
+          setNewPassword('');
         }}
         title="Admin login credentials"
         maxWidth="md"
@@ -381,8 +412,63 @@ export default function AdminCredentials() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Password</label>
-              {selectedAdmin.hasStoredPassword ? (
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-slate-500">Password</label>
+                {!isEditingPassword && (
+                  <button
+                    onClick={() => {
+                      setIsEditingPassword(true);
+                      setNewPassword(selectedAdmin.hasStoredPassword ? selectedAdmin.password : '');
+                    }}
+                    className="inline-flex items-center gap-1 font-medium text-xs text-indigo-600 hover:text-indigo-700 transition"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    Edit
+                  </button>
+                )}
+              </div>
+              
+              {isEditingPassword ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password (min. 6 chars)"
+                      className="flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder-slate-400 font-mono"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      onClick={() => {
+                        setIsEditingPassword(false);
+                        setNewPassword('');
+                      }}
+                      className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 transition"
+                      disabled={isSavingPassword}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSavePassword}
+                      disabled={isSavingPassword || newPassword.length < 6}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60 transition"
+                    >
+                      {isSavingPassword ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Save 
+                    </button>
+                  </div>
+                </div>
+              ) : selectedAdmin.hasStoredPassword ? (
                 <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
                   <code className="flex-1 truncate font-mono text-sm text-slate-900">
                     {showPassword ? selectedAdmin.password : '•'.repeat(Math.min(selectedAdmin.password.length, 16))}

@@ -114,7 +114,7 @@ router.get('/reports/aging', verifyToken, roleGuard(['Finance Admin', 'Organizat
 // Finance: University Payment Report & Cash Flow (90-day)
 router.get('/reports/university/:id', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
   try {
-    const university = await Department.findOne({ where: { id: req.params.id, type: 'university' } });
+    const university = await Department.findOne({ where: { id: req.params.id, type: 'universities' } });
     if (!university) return res.status(404).json({ error: 'University not found' });
 
     // Total Owed vs Paid
@@ -133,13 +133,76 @@ router.get('/reports/university/:id', verifyToken, roleGuard(['Finance Admin', '
        }]
     });
 
-    const projections = {
-      d30: (students?.length || 0) * 5000, 
-      d60: (students?.length || 0) * 5200,
-      d90: (students?.length || 0) * 4800
-    };
+    // Real Forensic Projections based on pending EMIs
+    const now = new Date();
+    const d30Limit = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const d60Limit = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const d90Limit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+    const pendingEmis = await EMI.findAll({
+      where: {
+        status: 'pending',
+        dueDate: { [Op.gt]: now, [Op.lte]: d90Limit }
+      },
+      include: [{
+        model: Student,
+        required: true,
+        include: [{
+          model: Program,
+          where: { universityId: req.params.id },
+          required: true,
+          include: [{
+            model: DistributionConfig,
+            as: 'distributions',
+            where: { isActive: true },
+            required: false
+          }]
+        }]
+      }]
+    });
+
+    const projections = { d30: 0, d60: 0, d90: 0 };
+    pendingEmis.forEach(emi => {
+      const config = emi.Student?.Program?.distributions?.[0];
+      const sharePercent = Number(config?.universityShare || 0) / 100;
+      const uniAmount = Number(emi.amount) * sharePercent;
+      
+      const dueDate = new Date(emi.dueDate);
+      if (dueDate <= d30Limit) projections.d30 += uniAmount;
+      else if (dueDate <= d60Limit) projections.d60 += uniAmount;
+      else projections.d90 += uniAmount;
+    });
 
     res.json({ university, totalOwed, totalPaid, pending: totalOwed - totalPaid, projections });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Finance: All Universities Summary
+router.get('/reports/universities', verifyToken, roleGuard(['Finance Admin', 'Organization Admin', 'Organization Admin']), async (req, res) => {
+  try {
+    const universities = await Department.findAll({ where: { type: 'universities' } });
+    
+    const reports = await Promise.all(universities.map(async (uni) => {
+      const distributions = await PaymentDistribution.findAll({
+        where: { partnerType: 'university', partnerId: uni.id }
+      });
+      
+      const totalOwed = distributions.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+      const totalPaid = distributions.filter(d => d.status === 'distributed').reduce((sum, d) => sum + Number(d.amount || 0), 0);
+
+      return {
+        id: uni.id,
+        name: uni.name,
+        uid: uni.uid,
+        totalOwed,
+        totalPaid,
+        pending: totalOwed - totalPaid
+      };
+    }));
+
+    res.json(reports);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

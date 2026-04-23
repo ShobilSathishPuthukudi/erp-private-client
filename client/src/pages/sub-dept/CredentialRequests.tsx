@@ -212,8 +212,8 @@ export default function CredentialRequests() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-           <DataTable columns={columns} data={requests} isLoading={isLoading} searchKey="center.name" searchPlaceholder="Locate request by center..." />
+        <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+           <DataTable columns={columns} data={requests} isLoading={isLoading} />
         </div>
         
         <div className="space-y-6">
@@ -238,19 +238,6 @@ export default function CredentialRequests() {
               </ul>
            </div>
            
-           <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-3xl space-y-4">
-              <h3 className="text-indigo-900 font-black uppercase tracking-widest text-sm">Forensic Stats</h3>
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm">
-                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">My Requests</p>
-                    <p className="text-2xl font-black text-slate-900">{requests.length}</p>
-                 </div>
-                 <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm">
-                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">Approved</p>
-                    <p className="text-2xl font-black text-indigo-600">{requests.filter(r => r.status === 'approved').length}</p>
-                 </div>
-              </div>
-           </div>
         </div>
       </div>
 

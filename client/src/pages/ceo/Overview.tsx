@@ -998,7 +998,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           <div className="mt-12 pt-12 border-t border-slate-100/50">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {checkScope(['academic', 'enrollment']) && (
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Institutional Growth</h3>
@@ -1061,7 +1061,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               </div>
               )}
 
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Center-Leads Chart</h3>

@@ -5,7 +5,37 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 
 const router = express.Router();
-const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession, Invoice } = models;
+const { Student, Department, Program, Payment, Lead, User, Vacancy, Leave, Task, AdmissionSession, Invoice, CenterProgram } = models;
+
+const CENTER_TYPES = ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'];
+const SUB_DEPT_ROLES = ['open school admin', 'online admin', 'online department admin', 'bvoc admin', 'bvoc department admin', 'skill admin', 'skill department admin'];
+const EXECUTIVE_ROLES = ['ceo', 'organization admin', 'finance admin', 'academic operations admin'];
+
+const getLegacySubDeptId = (normalizedRole = '') => {
+  if (normalizedRole.includes('open school')) return 8;
+  if (normalizedRole.includes('online')) return 9;
+  if (normalizedRole.includes('skill')) return 10;
+  if (normalizedRole.includes('bvoc')) return 11;
+  return null;
+};
+
+const getSubDeptScopeIds = (normalizedRole, deptId) => {
+  if (!SUB_DEPT_ROLES.includes(normalizedRole)) return [];
+
+  const ids = [Number(deptId), getLegacySubDeptId(normalizedRole)]
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  return [...new Set(ids)];
+};
+
+const getStudentScope = (normalizedRole, deptId) => {
+  if (normalizedRole === 'partner center') return { centerId: deptId };
+  if (SUB_DEPT_ROLES.includes(normalizedRole)) {
+    const scopeIds = getSubDeptScopeIds(normalizedRole, deptId);
+    return scopeIds.length > 0 ? { subDepartmentId: { [Op.in]: scopeIds } } : {};
+  }
+  return {};
+};
 
 /**
  * Institutional Dashboard Drill-Down API
@@ -18,29 +48,36 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
     const normalizedRole = role?.toLowerCase().trim();
 
     let details = [];
-    let queryScope = {};
-
-    // Apply Jurisdictional Scoping
-    // CEO/Org Admin see everything. Dept Admins see their unit. Centers see their students.
-    if (['ceo', 'organization admin', 'finance admin', 'academic operations admin'].includes(normalizedRole)) {
-      queryScope = {}; // Global visibility
-    } else if (normalizedRole === 'partner center') {
-      queryScope = { centerId: deptId }; // Restricted to their center
-    } else if (['open school admin', 'online department admin', 'bvoc department admin', 'skill department admin'].includes(normalizedRole)) {
-      queryScope = { subDepartmentId: deptId }; // Restricted to their sub-dept
-    }
+    const studentScope = getStudentScope(normalizedRole, deptId);
+    const isExecutive = EXECUTIVE_ROLES.includes(normalizedRole);
+    const mappedCenterIds = (normalizedRole === 'partner center' && deptId) ? [deptId] : [];
+    const mappedSubDeptIds = getSubDeptScopeIds(normalizedRole, deptId);
 
     switch (type) {
       case 'students':
       case 'totalStudents':
       case 'pendingAdmissions':
+      case 'finance_pending_approvals':
         {
-          const statusFilter = type === 'pendingAdmissions' 
-            ? { status: { [Op.notIn]: ['ENROLLED', 'REJECTED'] } }
-            : {};
+          let statusFilter = {};
+          if (type === 'pendingAdmissions') {
+            statusFilter = {
+              [Op.or]: [
+                { status: { [Op.notIn]: ['ENROLLED', 'REJECTED', 'DRAFT'] } },
+                { enrollStatus: { [Op.in]: ['pending', 'pending_ops', 'pending_subdept', 'pending_finance'] } }
+              ]
+            };
+          } else if (type === 'finance_pending_approvals') {
+            statusFilter = {
+              [Op.or]: [
+                { status: { [Op.in]: ['FINANCE_PENDING', 'PAYMENT_VERIFIED'] } },
+                { enrollStatus: 'pending_finance' }
+              ]
+            };
+          }
 
           details = await Student.findAll({
-            where: { ...queryScope, ...statusFilter },
+            where: { ...studentScope, ...statusFilter },
             include: [
               { model: Department, as: 'center', attributes: ['name'] },
               { model: Program, attributes: ['name', 'shortName'] }
@@ -54,11 +91,18 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'centers':
       case 'activeCenters':
         {
-          // For global admins: show all centers. For sub-dept admins: show centers with their programs.
           const centerQuery = { 
-            type: { [Op.in]: ['partner centers', 'partner-center'] },
+            type: { [Op.in]: CENTER_TYPES },
             status: 'active'
           };
+
+          if (mappedCenterIds.length > 0) {
+            centerQuery.id = { [Op.in]: mappedCenterIds };
+          } else if (mappedSubDeptIds.length > 0) {
+            centerQuery.id = {
+              [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${mappedSubDeptIds.join(',')}) AND isActive = true)`)
+            };
+          }
 
           details = await Department.findAll({
             where: centerQuery,
@@ -70,17 +114,29 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
 
       case 'universities':
         {
-          // Forensic Logic: Retrieve unique universities linked to programs within the administrator's jurisdiction.
-          const subDeptAdminRoles = ['open school admin', 'online department admin', 'bvoc department admin', 'skill department admin'];
-          const isScoped = subDeptAdminRoles.includes(normalizedRole);
-          
-          const scopedPrograms = await Program.findAll({
-            where: isScoped ? { subDeptId: deptId } : {},
-            attributes: ['universityId'],
-            raw: true
-          });
-          
-          const universityIds = [...new Set(scopedPrograms.map(p => p.universityId).filter(Boolean))];
+          let universityIds = [];
+
+          if (mappedCenterIds.length > 0) {
+            const centerPrograms = await CenterProgram.findAll({
+              where: { centerId: { [Op.in]: mappedCenterIds }, isActive: true },
+              attributes: ['programId'],
+              raw: true
+            });
+            const programIds = [...new Set(centerPrograms.map((record) => record.programId).filter(Boolean))];
+            const scopedPrograms = await Program.findAll({
+              where: { id: { [Op.in]: programIds } },
+              attributes: ['universityId'],
+              raw: true
+            });
+            universityIds = [...new Set(scopedPrograms.map((program) => program.universityId).filter(Boolean))];
+          } else {
+            const scopedPrograms = await Program.findAll({
+              where: mappedSubDeptIds.length > 0 ? { subDeptId: { [Op.in]: mappedSubDeptIds } } : {},
+              attributes: ['universityId'],
+              raw: true
+            });
+            universityIds = [...new Set(scopedPrograms.map((program) => program.universityId).filter(Boolean))];
+          }
 
           details = await Department.findAll({
             where: { id: { [Op.in]: universityIds } },
@@ -93,8 +149,26 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'programs':
       case 'activePrograms':
         {
+          const where = {};
+          if (mappedCenterIds.length > 0) {
+            const centerPrograms = await CenterProgram.findAll({
+              where: { centerId: { [Op.in]: mappedCenterIds }, isActive: true },
+              attributes: ['programId'],
+              raw: true
+            });
+            where.id = { [Op.in]: [...new Set(centerPrograms.map((record) => record.programId).filter(Boolean))] };
+          } else if (mappedSubDeptIds.length > 0) {
+            where.subDeptId = { [Op.in]: mappedSubDeptIds };
+          } else if (!isExecutive && normalizedRole.includes('department') && deptId) {
+            where.universityId = deptId;
+          }
+
+          if (type === 'activePrograms') {
+            where.status = { [Op.in]: ['active', 'staged'] };
+          }
+
           details = await Program.findAll({
-            where: normalizedRole.includes('department') ? { universityId: deptId } : {},
+            where,
             include: [{ model: Department, as: 'university', attributes: ['name'] }],
             limit: 200
           });
@@ -104,8 +178,12 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'batches':
       case 'activeBatches':
         {
+          const where = {};
+          if (mappedCenterIds.length > 0) where.centerId = { [Op.in]: mappedCenterIds };
+          if (mappedSubDeptIds.length > 0) where.subDeptId = { [Op.in]: mappedSubDeptIds };
+
           details = await AdmissionSession.findAll({
-            where: queryScope,
+            where,
             include: [
               { model: Program, attributes: ['name', 'shortName'] },
               { model: Department, as: 'center', attributes: ['name'] }
@@ -119,22 +197,49 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'revenue':
       case 'yield_revenue':
       case 'pendingFees':
+      case 'dormant_invoices':
         {
-          const paymentStatus = type === 'pendingFees' ? 'pending' : 'verified';
-          details = await Payment.findAll({
-            where: { status: paymentStatus },
-            include: [
-              { 
-                model: Student, 
-                as: 'student', 
-                where: queryScope,
-                attributes: ['name', 'uid'],
-                include: [{ model: Department, as: 'center', attributes: ['name'] }]
-              }
-            ],
-            limit: 300,
-            order: [['createdAt', 'DESC']]
-          });
+          if (type === 'pendingFees' || type === 'dormant_invoices') {
+            const invoiceWhere = {
+              status: 'issued'
+            };
+            if (type === 'dormant_invoices') {
+              invoiceWhere.createdAt = {
+                [Op.lt]: new Date(Date.now() - (90 * 24 * 60 * 60 * 1000))
+              };
+            }
+
+            details = await Invoice.findAll({
+              where: invoiceWhere,
+              include: [
+                {
+                  model: Student,
+                  as: 'student',
+                  required: false,
+                  where: Object.keys(studentScope).length > 0 ? studentScope : undefined,
+                  attributes: ['name', 'uid'],
+                  include: [{ model: Department, as: 'center', attributes: ['name'] }]
+                }
+              ],
+              limit: 300,
+              order: [['createdAt', 'DESC']]
+            });
+          } else {
+            details = await Payment.findAll({
+              where: { status: 'verified' },
+              include: [
+                { 
+                  model: Student, 
+                  as: 'student', 
+                  where: studentScope,
+                  attributes: ['name', 'uid'],
+                  include: [{ model: Department, as: 'center', attributes: ['name'] }]
+                }
+              ],
+              limit: 300,
+              order: [['createdAt', 'DESC']]
+            });
+          }
         }
         break;
 
@@ -181,7 +286,7 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'hr_leaves':
         {
           details = await Leave.findAll({
-            where: { status: 'pending' },
+            where: { status: { [Op.in]: ['pending admin', 'pending hr'] } },
             include: [{ model: User, as: 'employee', attributes: ['name'] }]
           });
         }
@@ -204,11 +309,9 @@ router.get('/drill-down/:type', verifyToken, async (req, res) => {
       case 'risk_alerts':
       case 'riskExposureNodes':
         {
-          // Forensic Logic: Find students approved by Ops but lacking a paid invoice record.
-          // This matches the "Unpaid activations pending" KPI in the Finance Dashboard.
           const riskData = await Student.findAll({
             where: { 
-                ...queryScope,
+                ...studentScope,
                 status: { [Op.in]: ['FINANCE_PENDING', 'PAYMENT_VERIFIED'] } 
             },
             include: [

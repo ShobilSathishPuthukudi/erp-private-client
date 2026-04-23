@@ -269,8 +269,6 @@ export default function StudentValidation() {
           columns={columns} 
           data={students} 
           isLoading={isLoading} 
-          searchKey="name"
-          searchPlaceholder="Filter students by identity..."
         />
       </div>
 

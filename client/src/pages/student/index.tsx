@@ -1,4 +1,5 @@
 import { Routes, Route, Link } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Invoices from './Invoices';
@@ -17,6 +18,7 @@ import {
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 
 export default function StudentPortal() {
+  useApplyTheme();
   const user = useAuthStore(state => state.user);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);

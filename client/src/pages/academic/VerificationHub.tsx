@@ -8,9 +8,10 @@ import {
   ArrowRight,
   TrendingUp,
   CheckCircle2,
-  Clock,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Link } from 'react-router-dom';
 
 export default function VerificationHub() {
@@ -79,21 +80,17 @@ export default function VerificationHub() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding hub</h1>
-            <p className="text-slate-500 font-medium text-sm">Unified monitoring for institutional onboarding and center audits.</p>
-          </div>
-        </div>
-        <button onClick={fetchStats} className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]">
-            <TrendingUp className="w-4 h-4" />
-            Refresh Telemetry
-        </button>
-      </div>
+      <PageHeader 
+        title="Onboarding hub" 
+        description="Unified monitoring for institutional onboarding and center audits." 
+        icon={ShieldCheck} 
+        action={
+          <button onClick={fetchStats} className="px-6 py-3 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 hover:scale-[1.02]">
+              <TrendingUp className="w-4 h-4" />
+              Refresh Telemetry
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="h-96 flex items-center justify-center">

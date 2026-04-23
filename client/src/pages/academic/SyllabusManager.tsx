@@ -10,7 +10,8 @@ import {
   FileCheck,
   ChevronRight,
   GraduationCap,
-  X
+  X,
+  ShieldAlert
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
@@ -63,8 +64,12 @@ export default function SyllabusManager() {
     fetchPrograms();
   }, []);
 
+  const isNameInvalid = newSubject.name.length > 0 && (newSubject.name.trim().length < 3 || newSubject.name.trim().length > 20);
+  const isCreditsInvalid = Number.isFinite(newSubject.credits) && newSubject.credits <= 0;
+
   const isSubjectValid =
-    !!newSubject.name.trim() &&
+    newSubject.name.trim().length >= 3 &&
+    newSubject.name.trim().length <= 20 &&
     Number.isFinite(newSubject.credits) &&
     newSubject.credits > 0;
 
@@ -365,10 +370,15 @@ export default function SyllabusManager() {
                         required
                         value={newSubject.name}
                         onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${isNameInvalid ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                         placeholder="Advanced Calculus v3"
                     />
                 </div>
+                {isNameInvalid && (
+                    <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3"/> Must be between 3 to 20 characters
+                    </p>
+                )}
             </div>
             <div>
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Credit Weightage <span className="text-rose-500">*</span></label>
@@ -382,11 +392,16 @@ export default function SyllabusManager() {
                           const v = e.target.value;
                           setNewSubject({ ...newSubject, credits: v === '' ? NaN : parseInt(v, 10) });
                         }}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${isCreditsInvalid ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                         min="1"
                         step="1"
                     />
                 </div>
+                {isCreditsInvalid && (
+                    <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3"/> Must be above 0
+                    </p>
+                )}
             </div>
             <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
                 <button

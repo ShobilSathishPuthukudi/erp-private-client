@@ -53,8 +53,8 @@ export default function PayoutApproval() {
   if (loading) return <div className="animate-pulse h-64 bg-slate-50 rounded-2xl" />;
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="p-2 space-y-6 flex flex-col">
+      <div className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <h2 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
           <Award className="h-7 w-7 text-amber-500" />
           Incentive Payout Oversight
@@ -73,7 +73,7 @@ export default function PayoutApproval() {
 
       <div className="grid grid-cols-1 gap-4">
         {payouts.map((payout) => (
-          <div key={payout.id} className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center">
+          <div key={payout.id} className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/30 lg:flex-row lg:items-center hover:shadow-xl hover:scale-[1.01] transition-all">
             <div className="flex items-center gap-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                 <User className="h-6 w-6" />
@@ -109,7 +109,7 @@ export default function PayoutApproval() {
 
 function Kpi({ label, value, icon: Icon }: { label: string; value: string | number; icon: LucideIcon }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-[2rem] border border-slate-100 bg-white p-7 shadow-xl shadow-slate-200/40 hover:scale-[1.02] transition-all cursor-pointer">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>

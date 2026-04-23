@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { CheckCircle2, Clock3, Target, Users } from 'lucide-react';
+import { DrillDownModal } from '@/components/shared/DrillDownModal';
 
 type WorkflowTarget = {
   id: number;
@@ -12,6 +13,26 @@ type WorkflowTarget = {
 export default function SalesAchievement() {
   const [targets, setTargets] = useState<WorkflowTarget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string; data: any[] }>({
+    isOpen: false,
+    type: '',
+    title: '',
+    data: []
+  });
+
+  const openDrillDown = (type: string, title: string, filteredData: any[]) => {
+    setDrillDown({
+      isOpen: true,
+      type,
+      title,
+      data: filteredData.map(t => ({
+        id: t.id,
+        name: t.title,
+        status: t.workflowStatus,
+        createdAt: new Date().toISOString() // Fallback if not provided
+      }))
+    });
+  };
 
   useEffect(() => {
     const fetchTargets = async () => {
@@ -45,6 +66,8 @@ export default function SalesAchievement() {
       subtitle: 'Targets waiting for Sales Admin verification',
       icon: Clock3,
       tone: 'amber',
+      type: 'pending_approval',
+      data: targets.filter((target) => target.workflowStatus === 'pending_sales_admin')
     },
     {
       title: 'Assigned Targets',
@@ -52,6 +75,8 @@ export default function SalesAchievement() {
       subtitle: 'Targets already assigned to sales employees',
       icon: Users,
       tone: 'blue',
+      type: 'assigned',
+      data: targets.filter((target) => target.workflowStatus === 'assigned')
     },
     {
       title: 'Completed Targets',
@@ -59,6 +84,8 @@ export default function SalesAchievement() {
       subtitle: 'Targets fully completed and ready for oversight',
       icon: CheckCircle2,
       tone: 'emerald',
+      type: 'completed',
+      data: targets.filter((target) => target.workflowStatus === 'completed')
     },
   ];
 
@@ -67,7 +94,11 @@ export default function SalesAchievement() {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <div key={card.title} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+          <div 
+            key={card.title} 
+            onClick={() => openDrillDown(card.type, card.title, card.data)}
+            className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm cursor-pointer hover:shadow-md transition-all hover:-translate-y-1"
+          >
             <div className="mb-6 flex items-start justify-between">
               <div className={`rounded-2xl p-4 ${card.tone === 'amber' ? 'bg-amber-50 text-amber-600' : card.tone === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
                 <Icon className="h-5 w-5" />
@@ -81,6 +112,14 @@ export default function SalesAchievement() {
           </div>
         );
       })}
+
+      <DrillDownModal
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+        type={drillDown.type}
+        title={drillDown.title}
+        dataOverride={drillDown.data}
+      />
     </div>
   );
 }

@@ -52,6 +52,7 @@ interface University {
   totalStudents?: number;
   affiliationPdf?: string;
   Programs?: Program[];
+  programs?: Program[];
 }
 
 export default function UniversityDetails() {
@@ -78,7 +79,11 @@ export default function UniversityDetails() {
         governanceStructure: res.data.governanceStructure || '',
         operationalDomain: res.data.operationalDomain || '',
         logoUrl: res.data.logoUrl || '',
-        affiliationPdf: res.data.affiliationPdf || ''
+        affiliationPdf: res.data.affiliationPdf || '',
+        email: res.data.email || '',
+        phone: res.data.phone || '',
+        address: res.data.address || '',
+        websiteUrl: res.data.websiteUrl || ''
       });
     } catch (error) {
       toast.error('Failed to load institutional profile');
@@ -157,6 +162,8 @@ export default function UniversityDetails() {
   if (isLoading) return <div className="p-8">Loading infrastructure...</div>;
   if (!university) return <div className="p-8 text-rose-500 font-black uppercase">Institutional Node Not Found</div>;
 
+  const affiliatedPrograms = university.Programs || university.programs || [];
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Layout },
     { id: 'programs', label: `Programs (${university.totalPrograms || 0})`, icon: BookOpen },
@@ -182,7 +189,7 @@ export default function UniversityDetails() {
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-0.5">University details</h1>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-0.5">University details</h1>
             <p className="text-slate-400 font-medium text-sm">Institutional Profile & Affiliation Governance Management</p>
           </div>
         </div>
@@ -356,13 +363,13 @@ export default function UniversityDetails() {
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Affiliated Programs</h3>
                     </div>
                     <span className="px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
-                      {university.Programs?.length || 0} Total Routes
+                      {affiliatedPrograms.length} Total Routes
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
-                    {university.Programs && university.Programs.length > 0 ? (
-                      university.Programs.map((program) => (
+                    {affiliatedPrograms.length > 0 ? (
+                      affiliatedPrograms.map((program) => (
                         <div key={program.id} className="group p-6 bg-slate-50 border border-slate-100 rounded-3xl hover:border-blue-600/30 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-6">
@@ -431,7 +438,11 @@ export default function UniversityDetails() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Email Pipeline</p>
-                  <p className="text-sm font-bold text-slate-900">{university.email || 'reg@university.edu'}</p>
+                  {university.email ? (
+                    <p className="text-sm font-bold text-slate-900">{university.email}</p>
+                  ) : (
+                    <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-blue-600 hover:underline decoration-2">Set institutional email</button>
+                  )}
                 </div>
               </div>
               
@@ -441,7 +452,11 @@ export default function UniversityDetails() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Voice Protocol</p>
-                  <p className="text-sm font-bold text-slate-900">{university.phone || '+91 1724317431'}</p>
+                  {university.phone ? (
+                    <p className="text-sm font-bold text-slate-900">{university.phone}</p>
+                  ) : (
+                    <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-blue-600 hover:underline decoration-2">Add phone relay</button>
+                  )}
                 </div>
               </div>
 
@@ -451,10 +466,14 @@ export default function UniversityDetails() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Institutional Host</p>
-                  <a href={university.websiteUrl} target="_blank" className="text-sm font-bold text-blue-600 flex items-center gap-1.5 hover:underline decoration-2">
-                    {university.websiteUrl?.replace('https://', '') || 'www.university.edu'}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {university.websiteUrl ? (
+                    <a href={university.websiteUrl} target="_blank" className="text-sm font-bold text-blue-600 flex items-center gap-1.5 hover:underline decoration-2">
+                      {university.websiteUrl?.replace('https://', '')}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-blue-600 hover:underline decoration-2">Register host URL</button>
+                  )}
                 </div>
               </div>
 
@@ -464,9 +483,11 @@ export default function UniversityDetails() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Geographic Origin</p>
-                  <p className="text-xs font-medium text-slate-600 leading-normal">
-                    {university.address || 'Administrative Block, University Campus, Delhi NCR, India'}
-                  </p>
+                  {university.address ? (
+                    <p className="text-xs font-medium text-slate-600 leading-normal">{university.address}</p>
+                  ) : (
+                    <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-blue-600 hover:underline decoration-2">Pin institutional location</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -549,6 +570,35 @@ export default function UniversityDetails() {
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Operational Domain</label>
                                 <input {...register('operationalDomain')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="Higher Education (HEI)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Registry & Contact Protocols */}
+                    <div className="space-y-6 pt-6 border-t border-slate-700">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-900/30 flex items-center justify-center">
+                                <Mail className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <h3 className="text-xs font-black text-white uppercase tracking-widest">Registry & Contact Protocols</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Institutional Email</label>
+                                <input {...register('email')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="reg@university.edu" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Voice Protocol (Phone)</label>
+                                <input {...register('phone')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="+91 ..." />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Host Registry (Website)</label>
+                                <input {...register('websiteUrl')} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all" placeholder="https://..." />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Geographic Origin (Address)</label>
+                                <textarea {...register('address')} rows={2} className="w-full px-4 py-3.5 bg-slate-800 border border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-500 text-sm font-bold text-white transition-all resize-none" placeholder="Administrative Block, ..." />
                             </div>
                         </div>
                     </div>

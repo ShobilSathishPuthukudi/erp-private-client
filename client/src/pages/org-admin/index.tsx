@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import DepartmentsList from './DepartmentsList';
 import SubDepartmentsList from './SubDepartmentsList';
 import CEOPanelsList from './CEOPanelsList';
@@ -44,6 +45,7 @@ import {
 } from './GlobalMonitor';
 
 export default function OrgAdminDashboard() {
+  useApplyTheme();
   const { user } = useAuthStore();
   const role = user?.role?.toLowerCase() || '';
   const isOps = role.includes('operations') || role.includes('academic');

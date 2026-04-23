@@ -14,7 +14,8 @@ import {
   LayoutGrid,
   List,
   Share2,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -39,6 +40,8 @@ export default function RolesList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [roleToDelete, setRoleToDelete] = useState<any>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     fetchRoles();
@@ -63,6 +66,29 @@ export default function RolesList() {
       toast.error('Failed to fetch institutional roles');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const confirmDeleteRole = (role: any) => {
+    if (!role.isCustom) {
+      toast.error('System roles cannot be deleted');
+      return;
+    }
+    setRoleToDelete(role);
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDeleteRole = async () => {
+    if (!roleToDelete) return;
+    try {
+      await api.delete(`/org-admin/roles/${roleToDelete.id}`);
+      toast.success(`${toSentenceCase(roleToDelete.name)} role deleted successfully`);
+      fetchRoles();
+    } catch (error) {
+      toast.error('Failed to delete role. Ensure it is not mapped to any matrix.');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setRoleToDelete(null);
     }
   };
 
@@ -379,6 +405,18 @@ export default function RolesList() {
                   >
                     <Power className="w-4 h-4" />
                   </button>
+                  {role.isCustom && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmDeleteRole(role);
+                      }}
+                      className="p-2.5 rounded-xl border transition-all active:scale-[0.95] bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100"
+                      title="Delete Role"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -471,6 +509,18 @@ export default function RolesList() {
                         >
                           <Power className="w-4 h-4" />
                         </button>
+                        {role.isCustom && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteRole(role);
+                            }}
+                            className="p-2 rounded-lg border transition-all text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100"
+                            title="Delete Role"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -597,6 +647,45 @@ export default function RolesList() {
           }}
           onAudit={handleAuditRole}
         />
+      </Modal>
+
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setRoleToDelete(null);
+        }}
+        maxWidth="md"
+        hideHeader={true}
+      >
+        <div className="p-6 text-center space-y-6">
+          <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-100 shadow-inner">
+            <Trash2 className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2 font-display">Delete custom role</h3>
+            <p className="text-slate-500 font-medium leading-relaxed">
+              Are you sure you want to permanently delete the custom role <span className="font-bold text-slate-800 tracking-tight">"{roleToDelete?.name}"</span>? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-slate-100">
+            <button 
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setRoleToDelete(null);
+              }}
+              className="flex-1 px-4 py-3 bg-slate-50 font-bold text-slate-600 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={executeDeleteRole}
+              className="flex-1 px-4 py-3 bg-rose-600 font-bold text-white rounded-xl hover:bg-rose-700 transition-colors shadow-lg shadow-rose-500/20 active:scale-95"
+            >
+              Permanently Delete
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

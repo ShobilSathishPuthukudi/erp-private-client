@@ -423,7 +423,11 @@ router.get('/sales-admin/targets', verifyToken, async (req, res) => {
     });
     res.json(targets);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to load target workflow' });
+    console.error('CRITICAL SALES TARGET ERROR:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: error.message || 'Failed to load target workflow' });
   }
 });
 

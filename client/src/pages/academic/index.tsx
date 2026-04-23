@@ -1,4 +1,5 @@
 import { Routes, Route, Link } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Universities from './Universities';
@@ -12,7 +13,6 @@ import PendingReviews from './PendingReviews';
 import Sessions from './Sessions';
 import CredentialRequests from './CredentialRequests';
 import AcademicStaff from './AcademicStaff';
-import ReferredLeads from './ReferredLeads';
 import FinanceRequests from './FinanceRequests';
 import HRBroadcasts from './HRBroadcasts';
 import Exams from './Exams';
@@ -21,7 +21,6 @@ import CenterAudit from './CenterAudit';
 import AccreditationRequests from '../sub-dept/AccreditationRequests';
 import SyllabusManager from './SyllabusManager';
 import OpsDashboard from './OpsDashboard';
-import PipelineTracking from './PipelineTracking';
 import ResubmissionLogs from './ResubmissionLogs';
 import CenterPerformance from './CenterPerformance';
 import SubDeptOverview from './SubDeptOverview';
@@ -82,7 +81,7 @@ function DashboardLanding() {
     { title: 'Formulate Program', path: 'programs', icon: BookOpen, desc: 'Design New Academic Track' },
     { title: 'Session Lifecycle', path: 'sessions', icon: Calendar, desc: 'Initialize Batch Enrollment' },
     { title: 'Onboarding Pulse', path: 'onboarding-pulse', icon: Activity, desc: 'Institutional Milestone Tracking' },
-    { title: 'Onboarding Hub', path: 'onboarding-hub', icon: ShieldCheck, desc: 'Onboarding & Audit Command Center' },
+    { title: 'Onboarding hub', path: 'onboarding-hub', icon: ShieldCheck, desc: 'Onboarding & Audit Command Center' },
     { title: 'Secure Reveal HUD', path: 'credential-requests', icon: ShieldCheck, desc: 'Request & Audit Credential Access' },
   ];
 
@@ -220,6 +219,7 @@ function DashboardLanding() {
 }
 
 export default function AcademicDashboard() {
+  useApplyTheme();
   return (
     <Routes>
       <Route path="/" element={<DashboardLanding />} />
@@ -252,7 +252,6 @@ export default function AcademicDashboard() {
       <Route path="leave-status" element={<TeamLeaveStatus />} />
       <Route path="announcements" element={<InternalAnnouncements />} />
       <Route path="hr-broadcasts" element={<HRBroadcasts />} />
-      <Route path="referrals" element={<ReferredLeads />} />
       <Route path="finance-requests" element={<FinanceRequests />} />
       <Route path="incentives" element={<IncentiveOpsDesk />} />
       <Route path="university-changes" element={<CenterUniversityChanges />} />
@@ -265,7 +264,6 @@ export default function AcademicDashboard() {
       <Route path="center-performance" element={<CenterPerformance />} />
       <Route path="sub-dept-overview" element={<SubDeptOverview />} />
       <Route path="syllabus" element={<SyllabusManager />} />
-      <Route path="pipeline" element={<PipelineTracking />} />
       <Route path="resubmissions" element={<ResubmissionLogs />} />
       <Route path="onboarding-pulse" element={<OnboardingPulse />} />
       <Route path="onboarding-hub" element={<VerificationHub />} />

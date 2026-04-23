@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().min(3, 'Invalid institutional credential format'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    email: z.string().min(3, 'Invalid institutional credential format').max(50, 'Credential must not exceed 50 characters'),
+    password: z.string().min(6, 'Password must be at least 6 characters').max(20, 'Password must not exceed 20 characters'),
   })
 });
 
@@ -19,8 +19,8 @@ export const paymentSchema = z.object({
 export const employeeSchema = z.object({
   body: z.object({
     name: z.string().min(2),
-    email: z.string().email(),
-    password: z.string().min(6).optional(),
+    email: z.string().email().max(50, 'Email must not exceed 50 characters'),
+    password: z.string().min(6).max(20).optional(),
     deptId: z.number().int().nullable().optional(),
     status: z.enum(['active', 'inactive', 'suspended']).optional(),
   })
@@ -42,6 +42,10 @@ export const universitySchema = z.object({
     accreditation: z.string().optional(),
     websiteUrl: z.string().url().optional().or(z.literal('')),
     affiliationDoc: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    logoUrl: z.string().optional(),
     status: z.enum(['proposed', 'draft', 'staged', 'active', 'inactive']).optional(),
   })
 });

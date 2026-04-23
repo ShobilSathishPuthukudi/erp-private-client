@@ -22,6 +22,62 @@ const CORE_DEPARTMENT_ADMIN_LABELS = {
   'Academic Operations Admin': 'Academic Operations Department'
 };
 
+const resolveMappedSessionIdentity = async ({ baseUser, sessionRole, allowMappedAdminSwitch = true }) => {
+  let effectiveUser = baseUser;
+  let effectiveSessionRole = sessionRole;
+
+  if (!allowMappedAdminSwitch || effectiveSessionRole === 'Employee') {
+    return { effectiveUser, effectiveSessionRole };
+  }
+
+  const seededRole = await Role.findOne({
+    where: {
+      name: normalizeInstitutionRoleName(effectiveSessionRole || baseUser.role || ''),
+      isSeeded: true,
+      assignedUserUid: { [Op.ne]: null }
+    }
+  });
+
+  if (!seededRole?.assignedUserUid || seededRole.assignedUserUid === baseUser.uid) {
+    return { effectiveUser, effectiveSessionRole };
+  }
+
+  const assignedUser = await User.unscoped().findOne({
+    where: { uid: seededRole.assignedUserUid },
+    include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
+  });
+
+  if (assignedUser?.status === 'active') {
+    effectiveUser = assignedUser;
+    effectiveSessionRole = seededRole.name;
+  }
+
+  return { effectiveUser, effectiveSessionRole };
+};
+
+const buildSessionPayload = async (effectiveUser, effectiveRole) => {
+  const isManager = await User.unscoped().count({
+    where: { reportingManagerUid: effectiveUser.uid, status: 'active' }
+  }) > 0;
+
+  return {
+    uid: effectiveUser.uid,
+    email: effectiveUser.email,
+    role: effectiveRole,
+    isManager,
+    deptId: effectiveUser.deptId,
+    departmentName: resolveDepartmentLabel(effectiveUser, effectiveRole),
+    subDepartment: effectiveUser.subDepartment,
+    name: effectiveUser.name,
+    avatar: effectiveUser.avatar,
+    phone: effectiveUser.phone,
+    dateOfBirth: effectiveUser.dateOfBirth,
+    bio: effectiveUser.bio,
+    address: effectiveUser.address,
+    themePreferences: effectiveUser.themePreferences || {}
+  };
+};
+
 const resolveDepartmentLabel = (effectiveUser, effectiveRole) => {
   if (effectiveRole?.toLowerCase().includes('partner center')) {
     return 'Partner Center Hub';
@@ -169,45 +225,17 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
     }
 
-    const canonicalRole = normalizeInstitutionRoleName(user.role || '');
-    const seededRole = await Role.findOne({
-      where: {
-        name: canonicalRole,
-        isSeeded: true,
-        assignedUserUid: { [Op.ne]: null }
-      }
-    });
-
-    // If a seeded shortcut account (e.g. bvoc@erp.com) was used and that seeded role
-    // is currently assigned to a real employee, switch the session identity to that employee.
-    if (seededRole?.assignedUserUid && seededRole.assignedUserUid !== user.uid && sessionRole !== 'Employee') {
-      const assignedUser = await User.unscoped().findOne({
-        where: { uid: seededRole.assignedUserUid },
-        include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'] }]
+    if (matchedWithRolePassword || user.email === email) {
+      const resolved = await resolveMappedSessionIdentity({
+        baseUser: effectiveUser,
+        sessionRole
       });
-
-      if (assignedUser?.status === 'active' && (matchedWithRolePassword || user.email === email)) {
-        effectiveUser = assignedUser;
-        sessionRole = seededRole.name;
-      }
+      effectiveUser = resolved.effectiveUser;
+      sessionRole = resolved.effectiveSessionRole;
     }
 
-    const isManager = await User.unscoped().count({ where: { reportingManagerUid: effectiveUser.uid, status: 'active' } }) > 0;
-
     const effectiveRole = normalizeInstitutionRoleName(sessionRole || effectiveUser.role || '');
-
-    const payload = {
-      uid: effectiveUser.uid,
-      email: effectiveUser.email,
-      role: effectiveRole,
-      isManager,
-      deptId: effectiveUser.deptId,
-      departmentName: resolveDepartmentLabel(effectiveUser, effectiveRole),
-      subDepartment: effectiveUser.subDepartment,
-      name: effectiveUser.name,
-      avatar: effectiveUser.avatar,
-      themePreferences: effectiveUser.themePreferences || {}
-    };
+    const payload = await buildSessionPayload(effectiveUser, effectiveRole);
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
 
@@ -222,6 +250,38 @@ router.post('/login', validate(loginSchema), async (req, res) => {
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const user = await User.unscoped().findOne({
+      where: { uid: req.user.uid },
+      include: [
+        { model: Department.unscoped(), as: 'department', attributes: ['name'] }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let effectiveUser = user;
+    let sessionRole = normalizeInstitutionRoleName(req.user.role || user.role || '');
+
+    const resolved = await resolveMappedSessionIdentity({
+      baseUser: effectiveUser,
+      sessionRole
+    });
+    effectiveUser = resolved.effectiveUser;
+    sessionRole = resolved.effectiveSessionRole;
+
+    const effectiveRole = normalizeInstitutionRoleName(sessionRole || effectiveUser.role || '');
+    const payload = await buildSessionPayload(effectiveUser, effectiveRole);
+    res.json({ user: payload });
+  } catch (error) {
+    console.error('Fetch current session user error:', error);
+    res.status(500).json({ error: 'Failed to fetch current session user' });
   }
 });
 

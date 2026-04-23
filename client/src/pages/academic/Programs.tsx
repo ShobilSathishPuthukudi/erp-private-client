@@ -5,7 +5,7 @@ import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import { DashCard } from '@/components/shared/DashCard';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Edit2, Trash2, Library, Landmark, Clock, Users, ShieldAlert, X } from 'lucide-react';
+import { Edit2, Trash2, Library, Landmark, Clock, Users, ShieldAlert, X, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
@@ -62,11 +62,12 @@ export default function Programs() {
   const [deletingItem, setDeletingItem] = useState<Program | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestReason, setRequestReason] = useState('');
+  const [requestError, setRequestError] = useState('');
   const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
   const { user } = useAuthStore();
   const isOps = user?.role === 'Operations Admin';
 
-  const { register, handleSubmit, reset, formState: { isSubmitting }, watch, setValue } = useForm<ProgramFormData>({
+  const { register, handleSubmit, reset, formState: { isSubmitting, errors }, watch, setValue, setError } = useForm<ProgramFormData>({
     defaultValues: {
       name: '',
       shortName: '',
@@ -189,14 +190,24 @@ export default function Programs() {
       setIsModalOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Processing logic breakdown');
+      const status = error.response?.status;
+      const msg = error.response?.data?.error || 'Processing logic breakdown';
+      if (status === 409 && /name/i.test(msg)) {
+        setError('name', { type: 'server', message: msg });
+      } else if (/short.?name/i.test(msg)) {
+        setError('shortName', { type: 'server', message: msg });
+      } else {
+        setError('root' as any, { type: 'server', message: msg });
+      }
     }
   };
 
   const submitGatedRequest = async () => {
     if (!requestReason || requestReason.length < 10) {
-        return toast.error('Please provide a valid justification (min 10 chars)');
+        setRequestError('Please provide a valid justification (min 10 chars)');
+        return;
     }
+    setRequestError('');
     try {
         const payload = {
             entityType: 'Program',
@@ -211,8 +222,9 @@ export default function Programs() {
         setIsModalOpen(false);
         setRequestReason('');
         setPendingAction(null);
-    } catch (error) {
-        toast.error('Failed to synchronize action request');
+    } catch (error: any) {
+        const msg = error?.response?.data?.error || 'Failed to synchronize action request';
+        setRequestError(msg);
     }
   };
 
@@ -471,17 +483,28 @@ export default function Programs() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
+            {(errors as any).root && (
+              <div className="p-3 rounded-xl border border-red-200 bg-red-50 flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                <p className="text-xs font-bold text-red-700">{(errors as any).root.message}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="col-span-2">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Standardized Program Title</label>
                 <div className="relative group">
                     <Library className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('name', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    {...register('name', { 
+                      required: 'Program title is mandatory',
+                      minLength: { value: 3, message: 'Must be at least 3 characters' },
+                      maxLength: { value: 20, message: 'Must be at most 20 characters' }
+                    })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.name ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="Master of Computer Applications"
                     />
                 </div>
+                {errors.name && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.name.message as string}</p>}
                 </div>
 
                 <div className="col-span-2">
@@ -489,10 +512,17 @@ export default function Programs() {
                 <div className="relative group">
                     <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('shortName', { required: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900 uppercase"
+                    {...register('shortName', { 
+                      required: 'Short name is required',
+                      minLength: { value: 2, message: 'Must be at least 2 characters' },
+                      maxLength: { value: 12, message: 'Must be at most 12 characters' }
+                    })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.shortName ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900 uppercase`}
                     placeholder="MCA-OL"
                     />
+                </div>
+                {errors.shortName && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.shortName.message as string}</p>}
+                <div style={{ display: 'none' }}>
                 </div>
                 </div>
 
@@ -501,16 +531,18 @@ export default function Programs() {
                 <div className="relative group">
                     <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <select
-                    {...register('universityId', { required: true })}
+                    {...register('universityId', { required: 'Parent university is required' })}
                     disabled={!!editingItem}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900 disabled:opacity-50 disabled:bg-slate-100 cursor-not-allowed"
+                    className={`w-full min-h-[52px] pl-10 pr-10 py-3 appearance-none bg-slate-50 border ${errors.universityId ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900 disabled:opacity-50 disabled:bg-slate-100 cursor-not-allowed`}
                     >
                     <option value="">-- Institutional Mapping Required --</option>
                     {universities.map(u => (
                         <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                     </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
+                {errors.universityId && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.universityId.message as string}</p>}
                 {editingItem && (
                     <p className="mt-1.5 text-[10px] text-orange-600 font-bold uppercase ml-1">Institutional parent is immutable after deployment.</p>
                 )}
@@ -522,11 +554,12 @@ export default function Programs() {
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
                     type="number"
-                    {...register('duration', { required: true, valueAsNumber: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
+                    {...register('duration', { required: 'Duration is required', valueAsNumber: true, min: { value: 0.01, message: 'Must be above zero' } })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.duration ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     min="1"
                     />
                 </div>
+                {errors.duration && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.duration.message as string}</p>}
                 </div>
 
 
@@ -537,11 +570,17 @@ export default function Programs() {
                     <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
                     type="number"
-                    {...register('totalCredits', { required: true, valueAsNumber: true })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
-                    min="0"
+                    {...register('totalCredits', { 
+                      required: 'Total credits is required', 
+                      valueAsNumber: true, 
+                      min: { value: 0.01, message: 'Must be above zero' },
+                      max: { value: 99.99, message: 'Must be under 100' }
+                    })}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.totalCredits ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
+                    min="1"
                     />
                 </div>
+                {errors.totalCredits && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.totalCredits.message as string}</p>}
                 </div>
 
                 <div className="col-span-2 grid grid-cols-2 gap-4">
@@ -551,13 +590,18 @@ export default function Programs() {
                         <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                         <input
                         type="number"
-                        {...register('baseFee', { required: true, valueAsNumber: true })}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                        {...register('baseFee', { 
+                          required: 'Base fee is required', 
+                          valueAsNumber: true, 
+                          min: { value: 0.01, message: 'Must be above 0' } 
+                        })}
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.baseFee ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900`}
                         placeholder="0.00"
                         min="0"
                         step="0.01"
                         />
                     </div>
+                    {errors.baseFee && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.baseFee.message as string}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Tax (%)</label>
@@ -565,14 +609,15 @@ export default function Programs() {
                         <ShieldAlert className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                         <input
                         type="number"
-                        {...register('taxPercentage', { required: true, valueAsNumber: true })}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                        {...register('taxPercentage', { required: 'Tax percentage is required', valueAsNumber: true, min: { value: 0, message: 'Cannot be negative' }, max: { value: 100, message: 'Cannot exceed 100%' } })}
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.taxPercentage ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900`}
                         placeholder="18"
                         min="0"
                         max="100"
                         step="0.01"
                         />
                     </div>
+                    {errors.taxPercentage && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.taxPercentage.message as string}</p>}
                   </div>
                 </div>
 
@@ -593,13 +638,13 @@ export default function Programs() {
 
                 <div className="col-span-2">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Permitted Payment Structures</label>
-                <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div className={`grid grid-cols-3 gap-4 p-4 bg-slate-50 border ${errors.paymentStructure ? 'border-red-300' : 'border-slate-200'} rounded-2xl`}>
                     {['monthly', 'yearly', 'custom'].map((opt) => (
                     <label key={opt} className="flex items-center gap-3 cursor-pointer group">
                         <input
                         type="checkbox"
                         value={opt}
-                        {...register('paymentStructure')}
+                        {...register('paymentStructure', { validate: (v) => (Array.isArray(v) && v.length > 0) || 'Select at least one payment structure' })}
                         className="w-5 h-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900 transition-all cursor-pointer"
                         />
                         <span className="text-xs font-black text-slate-600 uppercase tracking-wide group-hover:text-slate-900 transition-colors">
@@ -608,6 +653,7 @@ export default function Programs() {
                     </label>
                     ))}
                 </div>
+                {errors.paymentStructure && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {(errors.paymentStructure as any).message as string}</p>}
                 </div>
 
                 {isTenureRequired && (
@@ -619,30 +665,35 @@ export default function Programs() {
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 group-focus-within:text-blue-600 transition-colors" />
                     <input
                         type="number"
-                        {...register('tenure', { 
-                        required: isTenureRequired, 
+                        {...register('tenure', {
+                        required: isTenureRequired ? 'Billing tenure is required' : false,
                         valueAsNumber: true,
-                        min: 1 
+                        min: { value: 1, message: 'Must be at least 1 cycle' }
                         })}
-                        className="w-full pl-10 pr-4 py-3 bg-blue-50 border border-blue-100 rounded-xl focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-slate-900 shadow-sm shadow-blue-100/50"
+                        className={`w-full pl-10 pr-4 py-3 bg-blue-50 border ${errors.tenure ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-blue-100 focus:ring-blue-500/10 focus:border-blue-500'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900 shadow-sm shadow-blue-100/50`}
                         placeholder="Enter tenure in months..."
                     />
                     </div>
+                    {errors.tenure && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.tenure.message as string}</p>}
                     <p className="mt-1.5 text-[9px] text-blue-400 font-bold uppercase ml-1 tracking-tight">Specify total payment cycles for this framework. For Monthly plans, this defaults to the program trajectory.</p>
                 </div>
                 )}
 
                 <div className="col-span-2">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Sub-Department Assignment</label>
+                <div className="relative group">
                 <select
-                    {...register('type', { required: true })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
+                    {...register('type', { required: 'Sub-department is required' })}
+                    className={`w-full min-h-[52px] px-4 pr-10 py-3 appearance-none bg-slate-50 border ${errors.type ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900`}
                 >
                     <option value="Bvoc">Bvoc</option>
                     <option value="Skill">Skill</option>
                     <option value="online">online</option>
                     <option value="OpenSchool">OpenSchool</option>
                 </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+                {errors.type && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {errors.type.message as string}</p>}
                 {editingItem && watch('type') !== editingItem.type && (
                     <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-2">
                     <ShieldAlert className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
@@ -663,7 +714,7 @@ export default function Programs() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !isFormValid}
+              disabled={isSubmitting}
               className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Serialize Changes' : 'Execute Generation')}
@@ -676,7 +727,7 @@ export default function Programs() {
       {/* Gated Action Request Modal */}
       <Modal
         isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
+        onClose={() => { setIsRequestModalOpen(false); setRequestError(''); }}
         title="Institutional Revision Request"
         maxWidth="md"
       >
@@ -694,18 +745,21 @@ export default function Programs() {
 
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Submission Justification</label>
-                <textarea 
+                <textarea
                     value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 text-sm placeholder:text-slate-300 font-medium transition-all"
+                    onChange={(e) => { setRequestReason(e.target.value); if (requestError) setRequestError(''); }}
+                    className={`w-full h-32 px-4 py-3 bg-slate-50 border ${requestError ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'} rounded-2xl outline-none focus:ring-2 text-sm placeholder:text-slate-300 font-medium transition-all`}
                     placeholder="Provide a valid reason for this modification/deletion request..."
                 />
+                {requestError && (
+                  <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {requestError}</p>
+                )}
             </div>
 
             <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-6 uppercase">
                 <button
                 type="button"
-                onClick={() => setIsRequestModalOpen(false)}
+                onClick={() => { setIsRequestModalOpen(false); setRequestError(''); }}
                 className="px-6 py-2 text-slate-500 font-black text-[10px]"
                 >
                 Cancel

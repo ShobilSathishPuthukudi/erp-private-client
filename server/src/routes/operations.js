@@ -648,7 +648,7 @@ router.get('/stats/academic-overview', verifyToken, isOpsOrAdmin, async (req, re
     res.json(stats);
   } catch (error) {
     console.error('Overview stats error:', error);
-    res.status(500).json({ error: 'Analytics engine failure' });
+    res.status(500).json({ error: error.message || 'Analytics engine failure' });
   }
 });
 
@@ -658,14 +658,19 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
     const whereClause = { 
        type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] } 
     };
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc', 'sub_dept_admin', 'bvoc admin'].includes(normalizeInstitutionRoleName(req.user.role));
     const scopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
-    const effectiveIds = isSubDeptAdmin ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
+    const effectiveIds = (isSubDeptAdmin && scopeIds.length > 0) ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
     const sqlScope = effectiveIds.length > 0 ? effectiveIds.join(',') : '';
 
     if (effectiveIds.length > 0) {
+      const validCPs = await CenterProgram.unscoped().findAll({
+        where: { subDeptId: { [Op.in]: effectiveIds }, isActive: true },
+        attributes: ['centerId'],
+        raw: true
+      });
       whereClause.id = {
-        [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${sqlScope}) AND isActive = true)`)
+        [Op.in]: validCPs.length > 0 ? validCPs.map(c => c.centerId) : []
       };
     }
 
@@ -683,7 +688,8 @@ router.get('/performance/centers', verifyToken, isOpsOrAdmin, async (req, res) =
     });
     res.json(centers);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to aggregate performance data' });
+    console.error('Failed to aggregate performance data:', error);
+    res.status(500).json({ error: error.message || 'Failed to aggregate performance data' });
   }
 });
 
@@ -691,16 +697,17 @@ router.get('/performance/centers/:id/details', verifyToken, isOpsOrAdmin, async 
   try {
     const { id } = req.params;
     const { subDeptId: querySubDeptId } = req.query;
-    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc'].includes(normalizeInstitutionRoleName(req.user.role));
+    const isSubDeptAdmin = ['SUB_DEPT_ADMIN', 'Open School Admin', 'Online Admin', 'Skill Admin', 'BVoc Admin', 'Openschool', 'Online', 'Skill', 'Bvoc', 'sub_dept_admin', 'bvoc admin'].includes(normalizeInstitutionRoleName(req.user.role));
     const scopeIds = isSubDeptAdmin ? getSubDeptScopeIds(req.user) : [];
-    const effectiveIds = isSubDeptAdmin ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
+    // Fallback to query parameter if role-based scope is empty (e.g. generic SUB_DEPT_ADMIN)
+    const effectiveIds = (isSubDeptAdmin && scopeIds.length > 0) ? scopeIds : await resolveSubDepartmentScopeIds(querySubDeptId);
 
-    const center = await Department.findOne({
+    const center = await Department.unscoped().findOne({
       where: { id, type: { [Op.in]: ['partner-center', 'partner center', 'partner centers', 'study-center', 'Study centers', 'study centers'] } },
-      attributes: ['id', 'name', 'status', 'email', 'phone', 'address', 'city', 'state']
+      attributes: ['id', 'name', 'status', 'email', 'phone', 'address']
     });
 
-    if (!center) return res.status(404).json({ error: 'Center not found' });
+    if (!center) return res.status(404).json({ error: 'Center identity not found in institutional network' });
 
     const mappings = await CenterProgram.findAll({
       where: { 
@@ -720,7 +727,7 @@ router.get('/performance/centers/:id/details', verifyToken, isOpsOrAdmin, async 
     res.json({ center, mappings });
   } catch (error) {
     console.error('Center details error:', error);
-    res.status(500).json({ error: 'Failed to fetch center forensic details' });
+    res.status(500).json({ error: `Institutional Telemetry Failure: ${error.message}` });
   }
 });
 

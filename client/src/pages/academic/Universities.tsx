@@ -33,9 +33,10 @@ export default function Universities() {
   const isOps = user?.role?.toLowerCase() === 'operations';
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestReason, setRequestReason] = useState('');
+  const [requestError, setRequestError] = useState('');
   const [pendingAction, setPendingAction] = useState<{ type: 'EDIT' | 'DELETE', data?: any, id?: number } | null>(null);
 
-  const { register, handleSubmit, reset, watch, formState: { isSubmitting, errors, isDirty } } = useForm();
+  const { register, handleSubmit, reset, watch, setError, formState: { isSubmitting, errors, isDirty } } = useForm();
   const watchAllFields = watch();
 
   const isFormValid = 
@@ -98,14 +99,28 @@ export default function Universities() {
       setIsModalOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Processing logic breakdown');
+      const status = error.response?.status;
+      const msg = error.response?.data?.error || 'Processing logic breakdown';
+      if (status === 409 && /name/i.test(msg)) {
+        setError('name', { type: 'server', message: msg });
+      } else if (/short.?name/i.test(msg)) {
+        setError('shortName', { type: 'server', message: msg });
+      } else if (/accreditation/i.test(msg)) {
+        setError('accreditation', { type: 'server', message: msg });
+      } else if (/url|website/i.test(msg)) {
+        setError('websiteUrl', { type: 'server', message: msg });
+      } else {
+        setError('root', { type: 'server', message: msg });
+      }
     }
   };
 
   const submitGatedRequest = async () => {
     if (!requestReason || requestReason.length < 10) {
-        return toast.error('Please provide a valid justification (min 10 chars)');
+        setRequestError('Please provide a valid justification (min 10 chars)');
+        return;
     }
+    setRequestError('');
     try {
         const payload = {
             entityType: 'Department', // Backend uses Department model for Universities
@@ -120,8 +135,9 @@ export default function Universities() {
         setIsModalOpen(false);
         setRequestReason('');
         setPendingAction(null);
-    } catch (error) {
-        toast.error('Failed to synchronize action request');
+    } catch (error: any) {
+        const msg = error?.response?.data?.error || 'Failed to synchronize action request';
+        setRequestError(msg);
     }
   };
 
@@ -367,13 +383,23 @@ export default function Universities() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
+            {errors.root && (
+              <div className="p-3 rounded-xl border border-red-200 bg-red-50 flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                <p className="text-xs font-bold text-red-700">{(errors.root as any).message}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="col-span-2">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Institutional Designation</label>
                 <div className="relative group">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('name', { required: 'Institutional Designation is mandatory' })}
+                    {...register('name', { 
+                      required: 'Institutional Designation is mandatory',
+                      minLength: { value: 3, message: 'Must be at least 3 characters' },
+                      maxLength: { value: 20, message: 'Must be at most 20 characters' }
+                    })}
                     className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.name ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="Cambridge International"
                     />
@@ -386,7 +412,11 @@ export default function Universities() {
                 <div className="relative group">
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('shortName', { required: 'Short Name / Abbreviation is mandatory' })}
+                    {...register('shortName', { 
+                      required: 'Short Name / Abbreviation is mandatory',
+                      minLength: { value: 2, message: 'Must be at least 2 characters' },
+                      maxLength: { value: 12, message: 'Must be at most 12 characters' }
+                    })}
                     className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.shortName ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-bold text-slate-900 uppercase`}
                     placeholder="CU / LPU"
                     />
@@ -399,7 +429,11 @@ export default function Universities() {
                 <div className="relative group">
                     <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('accreditation', { required: 'Accreditation details are mandatory' })}
+                    {...register('accreditation', { 
+                      required: 'Accreditation details are mandatory',
+                      minLength: { value: 2, message: 'Must be at least 2 characters' },
+                      maxLength: { value: 20, message: 'Must be at most 20 characters' }
+                    })}
                     className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.accreditation ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="UGC Category-1"
                     />
@@ -412,7 +446,10 @@ export default function Universities() {
                 <div className="relative group">
                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
-                    {...register('websiteUrl', { required: 'Official Institutional URL is mandatory' })}
+                    {...register('websiteUrl', { 
+                      required: 'Official Institutional URL is mandatory',
+                      maxLength: { value: 50, message: 'Must be at most 50 characters' }
+                    })}
                     className={`w-full pl-10 pr-4 py-3 bg-slate-50 border ${errors.websiteUrl ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-slate-900/5 focus:border-slate-900'} rounded-xl focus:ring-2 transition-all font-medium text-slate-900`}
                     placeholder="https://university.edu"
                     />
@@ -449,7 +486,7 @@ export default function Universities() {
       {/* Gated Action Request Modal */}
       <Modal
         isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
+        onClose={() => { setIsRequestModalOpen(false); setRequestError(''); }}
         title="Institutional Revision Request"
         maxWidth="md"
       >
@@ -467,18 +504,21 @@ export default function Universities() {
 
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Submission Justification</label>
-                <textarea 
+                <textarea
                     value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 text-sm placeholder:text-slate-300 font-medium transition-all"
+                    onChange={(e) => { setRequestReason(e.target.value); if (requestError) setRequestError(''); }}
+                    className={`w-full h-32 px-4 py-3 bg-slate-50 border ${requestError ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'} rounded-2xl outline-none focus:ring-2 text-sm placeholder:text-slate-300 font-medium transition-all`}
                     placeholder="Provide a valid reason for this modification/deletion request..."
                 />
+                {requestError && (
+                  <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {requestError}</p>
+                )}
             </div>
 
             <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-6 uppercase">
                 <button
                 type="button"
-                onClick={() => setIsRequestModalOpen(false)}
+                onClick={() => { setIsRequestModalOpen(false); setRequestError(''); }}
                 className="px-6 py-2 text-slate-500 font-black text-[10px]"
                 >
                 Cancel

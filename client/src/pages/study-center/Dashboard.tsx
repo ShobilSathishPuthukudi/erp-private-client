@@ -89,6 +89,7 @@ export default function Dashboard() {
       <DashboardGreeting 
         role="Partner Center - Institutional Node"
         name={(user?.name || 'Academic Administrator').split(' ')[0]}
+        hideGreeting={true}
         subtitle={`Your portal for institutional governance and student lifecycle management is fully synchronized with our central framework for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
         actions={[
           {

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -13,6 +14,7 @@ interface UserInfo {
   uid: string;
   name: string;
   email?: string;
+  role?: string;
   department?: { name: string };
 }
 
@@ -30,34 +32,24 @@ interface Leave {
   createdAt: string;
 }
 
-export default function Leaves() {
-  const [leaves, setLeaves] = useState<Leave[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function HRLeaveApprovals() {
   const [activeTab, setActiveTab] = useState<'requested' | 'pending' | 'approved' | 'rejected'>('pending');
   const [confirmModal, setConfirmModal] = useState<{id: number, action: 'approve' | 'reject'} | null>(null);
   const [selectedLeave, setSelectedLeave] = useState<Leave | null>(null);
 
-  const fetchLeaves = async () => {
-    try {
-      setIsLoading(true);
-      const res = await api.get('/hr/leaves');
-      setLeaves(res.data);
-    } catch (error) {
-      toast.error('Failed to fetch leave requests');
-    } finally {
-      setIsLoading(false);
+  const { data: leaves = [], isLoading, refetch } = useQuery({
+    queryKey: ['ceo-hr-leaves'],
+    queryFn: async () => {
+      const response = await api.get('/ceo/hr-leaves');
+      return response.data;
     }
-  };
-
-  useEffect(() => {
-    fetchLeaves();
-  }, []);
+  });
 
   const handleAction = async (id: number, action: 'approve' | 'reject') => {
     try {
-      await api.put(`/hr/leaves/${id}/${action}`);
+      await api.put(`/ceo/hr-leaves/${id}/${action}`);
       toast.success(`Leave request ${action}d successfully`);
-      await fetchLeaves();
+      await refetch();
       if (action === 'approve') {
         setActiveTab('approved');
       }
@@ -69,7 +61,7 @@ export default function Leaves() {
   };
 
   const filteredLeaves = useMemo(() => {
-    return leaves.filter(leave => {
+    return leaves.filter((leave: Leave) => {
       const s = leave.status;
       if (activeTab === 'requested') return ['pending_step1', 'pending admin'].includes(s);
       if (activeTab === 'pending') return ['pending_step2', 'pending hr'].includes(s);
@@ -80,10 +72,10 @@ export default function Leaves() {
   }, [leaves, activeTab]);
 
   const tabCounts = useMemo(() => ({
-    requested: leaves.filter(l => ['pending_step1', 'pending admin'].includes(l.status)).length,
-    pending: leaves.filter(l => ['pending_step2', 'pending hr'].includes(l.status)).length,
-    approved: leaves.filter(l => l.status === 'approved').length,
-    rejected: leaves.filter(l => l.status.includes('rejected')).length,
+    requested: leaves.filter((l: Leave) => ['pending_step1', 'pending admin'].includes(l.status)).length,
+    pending: leaves.filter((l: Leave) => ['pending_step2', 'pending hr'].includes(l.status)).length,
+    approved: leaves.filter((l: Leave) => l.status === 'approved').length,
+    rejected: leaves.filter((l: Leave) => l.status.includes('rejected')).length,
   }), [leaves]);
 
   const columns: ColumnDef<Leave>[] = [
@@ -132,7 +124,7 @@ export default function Leaves() {
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
             {['pending_step1', 'pending admin'].includes(s) ? 'Pending admin' : 
-             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'Forwarded to workforce control' : 'Pending hr') : 
+             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.role?.toLowerCase()?.includes('hr admin') ? 'Awaiting CEO Finalization' : 'Pending hr') : 
              toSentenceCase(s.replace('_', ' ')))}
           </span>
         );
@@ -143,7 +135,9 @@ export default function Leaves() {
       header: 'Actions (Step 2)',
       cell: ({ row }) => {
         const leave = row.original;
-        if (!['pending_step2', 'pending hr'].includes(leave.status)) {
+        const canAct = ['pending_step2', 'pending hr', 'pending_step1', 'pending admin'].includes(leave.status);
+        
+        if (!canAct) {
           return <span className="text-xs text-slate-400 ">No action required</span>;
         }
 
@@ -179,10 +173,10 @@ export default function Leaves() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
-        title="Leave approvals"
-        description="Review and authorize advanced (Step-2) employee leave requests"
+        title="HR Leave Escrow"
+        description="Executive review portal for HR Administrator leave requests."
         icon={Calendar}
       />
 
@@ -214,7 +208,7 @@ export default function Leaves() {
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col">
+      <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/40 border border-slate-100 rounded-[2rem] flex flex-col overflow-hidden">
         <DataTable 
           columns={columns} 
           data={filteredLeaves} 
@@ -273,7 +267,6 @@ export default function Leaves() {
         </div>
       </Modal>
 
-      {/* Details Modal */}
       <Modal
         isOpen={!!selectedLeave}
         onClose={() => setSelectedLeave(null)}
@@ -310,13 +303,11 @@ export default function Leaves() {
           };
 
           const step1Approved = !!selectedLeave.step1Approver;
-          const pendingStep2 = ['pending_step2', 'pending hr'].includes(status);
-          const canAct = pendingStep2;
+          const canAct = ['pending_step2', 'pending hr', 'pending_step1', 'pending admin'].includes(status);
           const empName = toSentenceCase(selectedLeave.employee?.name || selectedLeave.employeeId);
 
           return (
             <div className="space-y-5">
-              {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-slate-500">
@@ -334,7 +325,6 @@ export default function Leaves() {
                 </span>
               </div>
 
-              {/* Employee card */}
               <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white text-sm font-semibold">
                   {selectedLeave.employee?.name?.charAt(0).toUpperCase() || '?'}
@@ -377,7 +367,6 @@ export default function Leaves() {
                 </div>
               </div>
 
-              {/* Duration + submitted */}
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
                 <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 uppercase tracking-wider">
@@ -470,7 +459,7 @@ export default function Leaves() {
                         <p className="text-[11px] text-slate-500 truncate">
                           {selectedLeave.step2Approver
                             ? `${status === 'approved' ? 'Approved' : 'Reviewed'} by ${toSentenceCase(selectedLeave.step2Approver.name)}`
-                            : pendingStep2 ? 'Awaiting your review' : 'Pending'}
+                            : canAct ? 'Awaiting your review' : 'Pending'}
                         </p>
                       </div>
                     </div>

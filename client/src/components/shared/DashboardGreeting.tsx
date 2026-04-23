@@ -11,6 +11,7 @@ interface DashboardGreetingProps {
   role: string;
   name: string;
   subtitle: string;
+  hideGreeting?: boolean;
   actions?: Array<{
     label: string;
     link?: string;
@@ -23,6 +24,7 @@ export const DashboardGreeting: React.FC<DashboardGreetingProps> = ({
   role,
   name,
   subtitle,
+  hideGreeting = false,
   actions = []
 }) => {
   const [greeting, setGreeting] = useState('');
@@ -59,7 +61,9 @@ export const DashboardGreeting: React.FC<DashboardGreetingProps> = ({
 
       <div className="relative z-10 max-w-4xl">
         <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-tight">
-          <span className="text-slate-400 block mb-1 text-lg md:text-xl tracking-normal">{greeting},</span>
+          {!hideGreeting && (
+            <span className="text-slate-400 block mb-1 text-lg md:text-xl tracking-normal">{greeting},</span>
+          )}
           <span className="text-indigo-400 font-outline-2 capitalize break-words">
             {name}
           </span>

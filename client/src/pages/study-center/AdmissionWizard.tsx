@@ -37,7 +37,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
     const [marksProofName, setMarksProofName] = useState<string | null>(null);
     const [paymentReceiptName, setPaymentReceiptName] = useState<string | null>(null);
 
-    const { register, handleSubmit, reset, watch, formState: { errors, isValid }, trigger } = useForm({
+    const { register, handleSubmit, reset, watch, setError, formState: { errors, isValid }, trigger } = useForm({
         mode: "onChange"
     });
 
@@ -119,7 +119,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
 
     const handleFinalStep = async () => {
         if (!selectedFee) {
-            toast.error('Select a payment plan to continue');
+            setError('root' as any, { type: 'manual', message: 'Select a payment plan to continue' });
             return;
         }
         setStep(4);
@@ -129,12 +129,12 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
         const result = await trigger(['name', 'email', 'lastExam', 'lastExamScore']);
         if (result) {
             if (!marksProof) {
-                toast.error('Credential proof (marksheet) is required for verification');
+                setError('root' as any, { type: 'manual', message: 'Credential proof (marksheet) is required for verification' });
                 return;
             }
             setStep(5);
         } else {
-            toast.error('Resolve validation errors in the candidate profile');
+            setError('root' as any, { type: 'manual', message: 'Resolve validation errors in the candidate profile' });
         }
     };
 
@@ -183,7 +183,19 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                 setSelectedFee(null);
             }
          } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Admission logic breakdown');
+            const status = error.response?.status;
+            const msg = error.response?.data?.error || 'Admission logic breakdown';
+            if (status === 409 && /name/i.test(msg)) {
+              setError('name', { type: 'server', message: msg });
+              setStep(1);
+            } else if (/email/i.test(msg)) {
+              setError('email', { type: 'server', message: msg });
+              setStep(1);
+            } else if (/transaction/i.test(msg)) {
+              setError('transactionId', { type: 'server', message: msg });
+            } else {
+              setError('root' as any, { type: 'server', message: msg });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -191,6 +203,11 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
 
     return (
         <form onSubmit={handleSubmit(onFinalSubmit)} className="space-y-6">
+            {(errors as any).root && (
+              <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
+                <p className="text-xs font-bold text-rose-700">{(errors as any).root.message}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-8 px-2">
                 <StepIndicator current={step} target={1} label="Program" icon={<GraduationCap className="w-4 h-4" />} />
                 <div className="flex-1 h-px bg-slate-200 mx-2" />

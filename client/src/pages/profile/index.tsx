@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -20,6 +21,7 @@ const profileSchema = z.object({
 type ProfileForm = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
+  useApplyTheme();
   const user = useAuthStore(state => state.user);
   const updateUser = useAuthStore(state => state.updateUser);
   const [isSubmittingExt, setIsSubmittingExt] = useState(false);

@@ -102,6 +102,7 @@ router.post('/surveys', verifyToken, isAdmin, async (req, res) => {
         try {
           await models.Notification.create({
             userUid: user.uid,
+            panelScope: 'employee',
             type: 'info',
             message: `INSTITUTIONAL SURVEY: ${title}`,
             isRead: false,

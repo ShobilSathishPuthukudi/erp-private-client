@@ -90,6 +90,10 @@ const User = sequelize.define('user', {
     allowNull: true,
     defaultValue: {},
     comment: 'Stores panel-specific theme mappings for Panel and Page branding'
+  },
+  websiteUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 }, {
   timestamps: true,

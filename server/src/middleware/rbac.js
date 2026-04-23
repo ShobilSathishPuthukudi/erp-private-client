@@ -89,10 +89,10 @@ export const checkPermission = (actionId, requiredFlag) => {
           filter = {};
           break;
         case 'DEPARTMENT':
-          filter = { [Op.or]: [{ deptId: user.deptId }, { departmentId: user.deptId }] };
+          filter = { [Op.or]: [{ deptId: user.deptId || 0 }, { departmentId: user.deptId || 0 }] };
           break;
         case 'CENTER':
-          filter = { centerId: user.centerId || user.deptId }; // Assuming centerId fallback to deptId
+          filter = { centerId: user.centerId || user.deptId || 0 }; 
           break;
         case 'SELF':
           filter = { [Op.or]: [{ employeeId: user.uid }, { uid: user.uid }, { userId: user.uid }, { createdBy: user.uid }, { bdeId: user.uid }] };
@@ -178,10 +178,10 @@ export const checkPermissionOrRole = (actionId, requiredFlag, fallbackRoles = []
           filter = {};
           break;
         case 'DEPARTMENT':
-          filter = { [Op.or]: [{ deptId: user.deptId }, { departmentId: user.deptId }] };
+          filter = { [Op.or]: [{ deptId: user.deptId || 0 }, { departmentId: user.deptId || 0 }] };
           break;
         case 'CENTER':
-          filter = { centerId: user.centerId || user.deptId };
+          filter = { centerId: user.centerId || user.deptId || 0 };
           break;
         case 'SELF':
           filter = { [Op.or]: [{ employeeId: user.uid }, { uid: user.uid }, { userId: user.uid }, { createdBy: user.uid }, { bdeId: user.uid }] };

@@ -234,21 +234,21 @@ export default function Tasks() {
             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message as string}</p>}
           </div>
 
-          {!editingTask && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Assign To (Team Member)</label>
-              <select
-                {...register('assignedTo', { required: 'Assignee is required' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
-              >
-                <option value="">-- Select Team Member --</option>
-                {team.map((t) => (
-                  <option key={t.uid} value={t.uid}>{t.name} (EMP: {t.uid})</option>
-                ))}
-              </select>
-              {errors.assignedTo && <p className="text-red-500 text-xs mt-1">{errors.assignedTo.message as string}</p>}
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {editingTask ? "Reassign To (Change Team Member)" : "Assign To (Team Member)"}
+            </label>
+            <select
+              {...register('assignedTo', { required: 'Assignee is required' })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+            >
+              <option value="">-- Select Team Member --</option>
+              {team.map((t) => (
+                <option key={t.uid} value={t.uid}>{t.name} (EMP: {t.uid})</option>
+              ))}
+            </select>
+            {errors.assignedTo && <p className="text-red-500 text-xs mt-1">{errors.assignedTo.message as string}</p>}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

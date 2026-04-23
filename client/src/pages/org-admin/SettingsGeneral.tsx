@@ -16,7 +16,7 @@ import {
   MapPin,
   AlertTriangle
 } from 'lucide-react';
-import DepartmentCreate from './DepartmentCreate';
+
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Modal } from '@/components/shared/Modal';
@@ -38,35 +38,13 @@ export default function SettingsGeneral() {
   const [originalData, setOriginalData] = useState<typeof formData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<any>(null);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [loadingBranches, setLoadingBranches] = useState(true);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
 
   useEffect(() => {
     fetchSettings();
-    fetchBranches();
   }, []);
 
-  const fetchBranches = async () => {
-    try {
-      const response = await fetch('/api/departments?includeBranches=true');
-      if (!response.ok) throw new Error('Failed to fetch branches');
-      const data = await response.json();
-      // Filter for branches specifically as per institutional hierarchy (including legacy 'Center' and 'partner-center' types for visibility)
-      const branchUnits = Array.isArray(data) ? data.filter((d: any) => {
-        const type = d.type?.toLowerCase();
-        const status = d.status?.toLowerCase();
-        return (type === 'branch' || type === 'branches') && status !== 'inactive';
-      }) : [];
-      setBranches(branchUnits);
-      setLoadingBranches(false);
-    } catch (error) {
-      console.error("Failed to fetch branches", error);
-      setLoadingBranches(false);
-    }
-  };
+
 
   const fetchSettings = async () => {
     try {
@@ -168,25 +146,7 @@ export default function SettingsGeneral() {
     }
   };
 
-  const handleDeleteBranch = (id: number) => {
-    setDeleteConfirm(id);
-  };
 
-  const confirmDelete = async () => {
-    if (!deleteConfirm) return;
-    const id = deleteConfirm;
-    setDeleteConfirm(null);
-    
-    const loadToast = toast.loading('Archiving institutional branch...');
-    try {
-      await api.delete(`/departments/${id}`);
-      toast.success('Branch archived successfully', { id: loadToast });
-      fetchBranches();
-    } catch (error) {
-      console.error('Failed to archive branch', error);
-      toast.error('Failed to archive branch', { id: loadToast });
-    }
-  };
 
   const isProfileSet = formData.orgName || formData.orgLogo;
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -316,115 +276,7 @@ export default function SettingsGeneral() {
             </div>
           </div>
 
-          {/* Global Branches Grid (Secondary Branches) */}
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-200">
-                  <LayoutGrid className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-0.5">Institutional Branches Cards</h3>
-                  <p className="text-xs text-slate-500 font-medium">Regional extensions and administrative hubs.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setSelectedBranch(null);
-                  setIsBranchModalOpen(true);
-                }}
-                className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-950 hover:scale-105 active:scale-95 transition-all flex items-center shadow-2xl shadow-slate-900/20"
-              >
-                <Plus className="w-4 h-4 mr-2 text-blue-400" />
-                Register New Branch
-              </button>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {loadingBranches ? (
-                <div className="col-span-full py-32 text-center text-[11px] text-slate-400 font-black uppercase tracking-[0.3em] animate-pulse">
-                  Synchronizing regional nodes...
-                </div>
-              ) : branches.length === 0 ? (
-                <div className="col-span-full py-32 text-center border-2 border-dashed border-slate-100 rounded-[2.5rem] bg-slate-50/20">
-                   <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner">
-                     <Building2 className="w-10 h-10" />
-                   </div>
-                   <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.3em]">No secondary branches active</p>
-                </div>
-              ) : (
-                branches.map((branch) => (
-                  <div key={branch.id} className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-200 overflow-hidden group hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 hover:-translate-y-2">
-                    <div className="bg-slate-800 p-6 text-white flex justify-between items-center relative overflow-hidden transition-colors duration-500 group-hover:bg-slate-900">
-                       <Building2 className="absolute -right-4 -bottom-4 w-24 h-24 text-white/5 rotate-12 transition-transform duration-500 group-hover:scale-110" />
-                       <div className="flex items-start gap-6 relative z-10 w-full">
-                          <div className="flex-1 pt-1 min-w-0">
-                             <div className="flex items-center gap-2 mb-2">
-                                <div className="px-3 py-1 bg-blue-500/20 text-blue-300 text-[9px] font-black tracking-widest rounded-full border border-blue-400/10 uppercase">
-                                  {branch.type || 'Branch'}
-                                </div>
-                                {branch.shortName && (
-                                  <div className="px-3 py-1 bg-white/10 text-white/90 text-[9px] font-black tracking-widest rounded-full border border-white/10 uppercase">
-                                    {branch.shortName}
-                                  </div>
-                                )}
-                             </div>
-                             <h3 className="text-xl font-black text-white leading-tight drop-shadow-sm truncate pr-4" title={branch.name}>
-                               {branch.name}
-                             </h3>
-                          </div>
-                          <div className="absolute top-4 right-4 flex items-center gap-2">
-                             <button 
-                               onClick={() => {
-                                 setSelectedBranch(branch);
-                                 setIsBranchModalOpen(true);
-                               }}
-                               className="p-2 text-white/30 hover:text-white transition-all hover:scale-110 active:scale-95 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5"
-                               title="Edit Branch"
-                             >
-                               <Edit3 className="w-4 h-4" />
-                             </button>
-                             <button 
-                               onClick={() => handleDeleteBranch(branch.id)}
-                               className="p-2 text-rose-400/40 hover:text-rose-400 transition-all hover:scale-110 active:scale-95 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5"
-                               title="Archive Branch"
-                             >
-                               <Trash2 className="w-4 h-4" />
-                             </button>
-                          </div>
-                       </div>
-                    </div>
-                    
-                    <div className="p-8 grid grid-cols-2 gap-6 bg-white relative z-10">
-                       <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 transition-colors group-hover:bg-white group-hover:border-blue-100">
-                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 leading-none">Branch Region</h4>
-                          <div className="flex items-center gap-2.5">
-                             <Globe className="w-4 h-4 text-blue-600" />
-                             <span className="text-[11px] font-bold text-slate-800 truncate">{branch.metadata?.timezone || 'System Timezone'}</span>
-                          </div>
-                       </div>
-                       <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 transition-colors group-hover:bg-white group-hover:border-blue-100">
-                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 leading-none">Local Currency</h4>
-                          <div className="flex items-center gap-2.5">
-                             <Banknote className="w-4 h-4 text-emerald-600" />
-                             <span className="text-[11px] font-bold text-slate-800">{branch.metadata?.currency || 'System Currency'}</span>
-                          </div>
-                       </div>
-                       <div className="col-span-2 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 transition-colors group-hover:bg-white group-hover:border-blue-100">
-                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 leading-none">Physical Location</h4>
-                          <div className="flex items-start gap-2.5">
-                             <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                             <span className="text-[11px] font-bold text-slate-800 leading-relaxed whitespace-pre-wrap">
-                               {branch.address || 'Location Address Pending'}
-                             </span>
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -612,61 +464,7 @@ export default function SettingsGeneral() {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isBranchModalOpen}
-        onClose={() => {
-          setIsBranchModalOpen(false);
-          setSelectedBranch(null);
-        }}
-        hideHeader={true}
-        isTransparent={true}
-      >
-        <DepartmentCreate 
-          initialData={selectedBranch || { type: 'branch' }}
-          context="branch"
-          onClose={() => {
-            setIsBranchModalOpen(false);
-            setSelectedBranch(null);
-          }}
-          onSuccess={() => {
-            fetchBranches();
-            toast.success(selectedBranch ? 'Branch updated successfully' : 'New branch registered successfully');
-            setIsBranchModalOpen(false);
-            setSelectedBranch(null);
-          }}
-        />
-      </Modal>
 
-      <Modal
-        isOpen={deleteConfirm !== null}
-        onClose={() => setDeleteConfirm(null)}
-        hideHeader={true}
-        isTransparent={true}
-      >
-        <div className="bg-white max-w-md w-full rounded-[2.5rem] p-10 text-center mx-auto border border-rose-100">
-          <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner border border-rose-100">
-            <AlertTriangle className="w-12 h-12 text-rose-500" />
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-sm">Archive branch?</h2>
-          <p className="text-sm font-bold text-slate-500 mb-10 leading-relaxed px-4">
-            Are you sure you want to archive this branch? All data will be preserved but the branch will be deactivated.
-          </p>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => setDeleteConfirm(null)}
-              className="flex-1 px-6 py-4 bg-slate-50 text-slate-600 font-black rounded-2xl border border-slate-200 hover:bg-slate-100 transition-all uppercase tracking-[0.2em] text-[10px]"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={confirmDelete}
-              className="flex-1 px-6 py-4 bg-rose-600 text-white font-black rounded-2xl shadow-xl shadow-rose-600/30 hover:bg-rose-700 transition-all hover:-translate-y-0.5 active:translate-y-0 uppercase tracking-[0.2em] text-[10px]"
-            >
-              Archive
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

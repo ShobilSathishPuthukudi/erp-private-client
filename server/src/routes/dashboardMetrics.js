@@ -4,10 +4,11 @@ import { Op } from 'sequelize';
 import { verifyToken, roleGuard } from '../middleware/verifyToken.js';
 
 const router = express.Router();
-const { Task, Student, Payment, User, Department, Target, Program } = models;
+const { Task, Student, Payment, User, Department, Target, Program, AdmissionSession } = models;
 
 // Middleware for management-level access
 const isManagementOrAdmin = roleGuard(['Organization Admin', 'Organization Admin', 'ceo', 'Academic Admin']);
+const isFinanceLeadership = roleGuard(['Organization Admin', 'ceo', 'Finance Admin', 'Finance', 'Academic Operations Admin']);
 
 // Threshold definitions (configurable)
 const THRESHOLDS = {
@@ -66,35 +67,37 @@ router.get('/metrics/:deptId', verifyToken, async (req, res) => {
   }
 });
 
-// 🎯 STEP 3: FIX DAILY REPORT API (EXACT SPEC ALIGNMENT)
-// 🎯 STEP 1: FIX 403 FORBIDDEN (AUTH ISSUE)
-router.get('/reports/daily-admissions', verifyToken, async (req, res) => {
+router.get('/reports/daily-admissions', verifyToken, isFinanceLeadership, async (req, res) => {
     try {
-        if (!req.user) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-
-        const allowedRoles = ['ADMIN', 'CEO', 'FINANCE', 'Organization Admin', 'Organization Admin', 'ceo', 'Finance Admin'];
-        if (!allowedRoles.includes(req.user.role) && !allowedRoles.includes(req.user.role?.toUpperCase())) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
         console.log("[DASHBOARD] Fetching daily admissions report...");
         const today = new Date();
         const todayStart = new Date(today);
         todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
 
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-        // 1. Fetch Students Today
+        // Finance-facing "admissions" should reflect real progressed admissions,
+        // not raw draft records created today.
+        const admissionStatuses = ['PAYMENT_VERIFIED', 'FINANCE_APPROVED', 'ENROLLED'];
+
+        // 1. Fetch today's real admission records
         const students = await Student.findAll({
             where: {
-                createdAt: { [Op.gte]: todayStart }
+                status: { [Op.in]: admissionStatuses },
+                [Op.or]: [
+                    { createdAt: { [Op.between]: [todayStart, todayEnd] } },
+                    { reviewedAt: { [Op.between]: [todayStart, todayEnd] } }
+                ]
             },
             include: [
                 { model: Department, as: 'center', attributes: ['name'], required: false },
-                { model: Department, as: 'department', attributes: ['name'], required: false },
-                { model: Program, attributes: ['name'], required: false }
-            ]
+                { model: Department, as: 'subDepartment', attributes: ['name'], required: false },
+                { model: Program, attributes: ['name'], required: false },
+                { model: AdmissionSession, attributes: ['id', 'name', 'startDate', 'endDate'], required: false }
+            ],
+            order: [[sequelize.literal('COALESCE(`student`.`reviewedAt`, `student`.`createdAt`)'), 'DESC']]
         });
 
         // 2. Calculate Daily Revenue (Verified)
@@ -124,17 +127,33 @@ router.get('/reports/daily-admissions', verifyToken, async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const activeSessions = await AdmissionSession.findAll({
+            where: {
+                startDate: { [Op.lte]: todayEnd },
+                endDate: { [Op.gte]: todayStart }
+            },
+            attributes: ['id', 'name', 'startDate', 'endDate'],
+            order: [['endDate', 'ASC']]
+        });
+
+        const nextClosingSession = activeSessions[0] || null;
+        const cycleRemainingDays = nextClosingSession
+            ? Math.max(0, Math.ceil((new Date(nextClosingSession.endDate).getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000)))
+            : null;
+
         res.json({
             count: students?.length || 0,
             date: today.toLocaleDateString('en-IN'),
             revenue: dailyRevenue || 0,
             monthlyTotal: monthlyTotal || 0,
             target: parseFloat(targetRecord?.value || 5000000), // Default 5M if no target set
+            cycleRemainingDays,
+            activeSessionName: nextClosingSession?.name || null,
             details: students || []
         });
     } catch (error) {
-        console.error("ERROR:", error);
-        res.status(500).json({ message: error.message || "Internal Server Error" });
+        console.error("[DASHBOARD_ERROR] GET /reports/daily-admissions failure:", error.message, error.stack);
+        res.status(500).json({ error: 'Failed to sync daily admission stream', details: error.message });
     }
 });
 

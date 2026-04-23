@@ -62,7 +62,8 @@ export default function PolicyControls() {
   }
 
   return (
-    <div className="max-w-4xl space-y-8 pb-20">
+    <div className="p-2 space-y-8 flex flex-col">
+      <div className="max-w-4xl space-y-8 pb-20">
       
       <div className="flex items-center justify-between">
          <div>

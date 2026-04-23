@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Clock, Check, ShieldAlert } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,6 +15,8 @@ export default function NotificationCenter() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
+  const location = useLocation();
+  const notificationStorageKey = `notifs_cleared_${user?.uid || 'guest'}_${getNormalizedRole(user?.role || 'guest')}`;
 
   const hasDedicatedNotification = (announcement: any) =>
     ['all_employees', 'centers_only', 'hr_directives'].includes(announcement?.targetChannel);
@@ -23,6 +25,14 @@ export default function NotificationCenter() {
     if (!link) return '/dashboard/notifications';
 
     const normalizedRole = getNormalizedRole(user?.role || '');
+
+    if (link === '/dashboard/hr/employee-communications') {
+      return '/dashboard/hr/employee-communications';
+    }
+
+    if (link === '/dashboard/employee/hr-contact') {
+      return '/dashboard/employee/hr-contact';
+    }
 
     if (link === '/dashboard/announcements') {
       if (normalizedRole === 'employee') return '/dashboard/employee/announcements';
@@ -104,7 +114,7 @@ export default function NotificationCenter() {
 
       setNotifications(merged);
       
-      const storedTimestamp = parseInt(localStorage.getItem(`notifs_cleared_${user?.uid || 'guest'}`) || '0');
+      const storedTimestamp = parseInt(localStorage.getItem(notificationStorageKey) || '0');
       const visuallyUnreadCount = merged.filter((n: any) => !n.isRead && new Date(n.timestamp || n.createdAt).getTime() >= storedTimestamp).length;
       
       setUnreadCount(visuallyUnreadCount);
@@ -117,7 +127,7 @@ export default function NotificationCenter() {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 15000); // 15s poll for REST-based alerts
     return () => clearInterval(interval);
-  }, [user]);
+  }, [notificationStorageKey, user]);
 
   useEffect(() => {
     if (isOpen) {
@@ -137,9 +147,9 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     if (user?.uid) {
-      setClearTimestamp(parseInt(localStorage.getItem(`notifs_cleared_${user.uid}`) || '0'));
+      setClearTimestamp(parseInt(localStorage.getItem(notificationStorageKey) || '0'));
     }
-  }, [user]);
+  }, [notificationStorageKey, user]);
 
   const handleNotificationClick = async (n: any) => {
     // 1. Mark as read if it's currently unread
@@ -192,7 +202,7 @@ export default function NotificationCenter() {
       }
 
       const now = Date.now();
-      localStorage.setItem(`notifs_cleared_${user?.uid || 'guest'}`, now.toString());
+      localStorage.setItem(notificationStorageKey, now.toString());
       setClearTimestamp(now);
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
@@ -201,9 +211,36 @@ export default function NotificationCenter() {
     }
   };
 
-  const visibleNotifications = notifications.filter(n => 
-    new Date(n.timestamp || n.createdAt).getTime() >= clearTimestamp
-  );
+  const isEmployeeDashboard = location.pathname.includes('/dashboard/employee');
+  const isPartnerDashboard = location.pathname.includes('/dashboard/partner-center');
+  const isAdminDashboard = !isEmployeeDashboard && !isPartnerDashboard && location.pathname.includes('/dashboard/');
+
+  const visibleNotifications = notifications
+    .filter(n => new Date(n.timestamp || n.createdAt).getTime() >= clearTimestamp)
+    .filter(n => {
+      // Announcements and crucial messages show everywhere
+      if (n.isAnnouncement || n.type === 'urgent') return true;
+
+      const link = n.link || '';
+      
+      if (isEmployeeDashboard) {
+        // Show only employee-targeted notifications in employee panel
+        return link.includes('/dashboard/employee');
+      }
+
+      if (isPartnerDashboard) {
+        // Show only center-targeted notifications in center panel
+        return link.includes('/dashboard/partner-center') || link.includes('/dashboard/study-center');
+      }
+
+      if (isAdminDashboard) {
+        // Show everything EXCEPT direct employee-facing links in admin panel
+        // (to prevent personal HR responses from cluttering admin view)
+        return !link.includes('/dashboard/employee');
+      }
+
+      return true;
+    });
 
   const getIcon = (type: string) => {
     switch (type) {

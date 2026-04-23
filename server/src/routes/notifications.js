@@ -2,35 +2,82 @@ import express from 'express';
 import { models } from '../models/index.js';
 import { verifyToken } from '../middleware/verifyToken.js';
 import { Op } from 'sequelize';
+import { normalizeInstitutionRoleName } from '../config/institutionalStructure.js';
 
 const router = express.Router();
 const { Notification } = models;
+
+const normalizePanelScope = (value = '') => {
+  const normalized = normalizeInstitutionRoleName(value || '');
+  if (!normalized) return null;
+  return normalized.toLowerCase().trim();
+};
+
+const inferPanelScopeFromLink = (link = '') => {
+  if (!link) return null;
+
+  if (link.startsWith('/hr/')) return normalizePanelScope('HR Admin');
+
+  if (!link.startsWith('/dashboard/')) return null;
+
+  const parts = link.split('/').filter(Boolean);
+  const panel = parts[1];
+  const subPanel = parts[2];
+
+  if (panel === 'employee') return normalizePanelScope('Employee');
+  if (panel === 'hr') return normalizePanelScope('HR Admin');
+  if (panel === 'finance') return normalizePanelScope('Finance Admin');
+  if (panel === 'sales') return normalizePanelScope('Sales Admin');
+  if (panel === 'ceo') return normalizePanelScope('CEO');
+  if (panel === 'org-admin') return normalizePanelScope('Organization Admin');
+  if (panel === 'partner-center' || panel === 'study-center' || panel === 'center') return 'partner center';
+  if (panel === 'student') return 'student';
+  if (panel === 'academic' || panel === 'operations') return normalizePanelScope('Academic Operations Admin');
+  if (panel === 'subdept') {
+    if (subPanel === 'bvoc') return normalizePanelScope('BVoc Admin');
+    if (subPanel === 'online') return normalizePanelScope('Online Admin');
+    if (subPanel === 'skill') return normalizePanelScope('Skill Admin');
+    if (subPanel === 'openschool') return normalizePanelScope('Open School Admin');
+  }
+
+  return null;
+};
+
+const resolveNotificationPanelScope = (notification) =>
+  normalizePanelScope(notification?.panelScope) ||
+  inferPanelScopeFromLink(notification?.link || '');
+
+const matchesSessionPanel = (notification, sessionPanelScope) => {
+  const notificationScope = resolveNotificationPanelScope(notification);
+  if (!notificationScope) return true;
+  return notificationScope === sessionPanelScope;
+};
 
 // Get My Notifications (Paginated)
 router.get('/', verifyToken, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
+    const sessionPanelScope = normalizePanelScope(req.user.role);
 
-    const { count, rows: notifications } = await Notification.findAndCountAll({
+    const rows = await Notification.findAll({
       where: { userUid: req.user.uid },
       order: [['timestamp', 'DESC']],
-      limit,
-      offset
+      limit: Math.max(limit + offset + 50, 100)
     });
 
-    const unreadCount = await Notification.count({
-      where: { userUid: req.user.uid, isRead: false }
-    });
+    const filteredNotifications = rows.filter((notification) => matchesSessionPanel(notification, sessionPanelScope));
+    const notifications = filteredNotifications.slice(offset, offset + limit);
+    const unreadCount = filteredNotifications.filter((notification) => !notification.isRead).length;
 
     res.json({ 
       notifications, 
       unreadCount,
       pagination: {
-        total: count,
+        total: filteredNotifications.length,
         limit,
         offset,
-        hasMore: offset + notifications.length < count
+        hasMore: offset + notifications.length < filteredNotifications.length
       }
     });
   } catch (error) {
@@ -43,11 +90,14 @@ router.get('/', verifyToken, async (req, res) => {
 router.patch('/:id/read', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const sessionPanelScope = normalizePanelScope(req.user.role);
     const notification = await Notification.findOne({
       where: { id, userUid: req.user.uid }
     });
 
-    if (!notification) return res.status(404).json({ error: 'Notification not found' });
+    if (!notification || !matchesSessionPanel(notification, sessionPanelScope)) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
 
     notification.isRead = true;
     await notification.save();
@@ -62,10 +112,21 @@ router.patch('/:id/read', verifyToken, async (req, res) => {
 // Mark all as Read
 router.patch('/read-all', verifyToken, async (req, res) => {
   try {
-    await Notification.update(
-      { isRead: true },
-      { where: { userUid: req.user.uid, isRead: false } }
-    );
+    const sessionPanelScope = normalizePanelScope(req.user.role);
+    const notifications = await Notification.findAll({
+      where: { userUid: req.user.uid, isRead: false }
+    });
+
+    const targetIds = notifications
+      .filter((notification) => matchesSessionPanel(notification, sessionPanelScope))
+      .map((notification) => notification.id);
+
+    if (targetIds.length > 0) {
+      await Notification.update(
+        { isRead: true },
+        { where: { id: { [Op.in]: targetIds } } }
+      );
+    }
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Mark all read error:', error);
@@ -82,8 +143,13 @@ export const createNotification = async (io, data) => {
       throw new Error('Notification recipient is required');
     }
 
+    const panelScope = normalizePanelScope(
+      data.panelScope || data.scopeRole || inferPanelScopeFromLink(data.link || '')
+    );
+
     const notification = await Notification.create({
       userUid: targetUid,
+      panelScope,
       type: data.type || 'info',
       message: data.title ? `${data.title}: ${data.message}` : data.message,
       link: data.link || null
@@ -103,11 +169,11 @@ export const createNotification = async (io, data) => {
 };
 
 export const clearNotifications = async ({ userUids = [], links = [], messagePatterns = [] }) => {
-  if (!userUids.length) return 0;
-
-  const where = {
-    userUid: { [Op.in]: userUids }
-  };
+  const where = {};
+  
+  if (userUids.length) {
+    where.userUid = { [Op.in]: userUids };
+  }
 
   const filters = [];
   if (links.length) {
@@ -120,6 +186,8 @@ export const clearNotifications = async ({ userUids = [], links = [], messagePat
       }))
     });
   }
+
+  if (!userUids.length && !filters.length) return 0;
 
   if (filters.length === 1) {
     Object.assign(where, filters[0]);

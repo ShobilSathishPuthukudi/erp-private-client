@@ -18,6 +18,8 @@ export const applyExecutiveScope = async (req, res, next) => {
     if (adminRoles.includes(normalizedRole)) {
       req.visibility = { 
         restricted: false, 
+        deptIds: [],
+        names: [],
         filter: {}, 
         userFilter: {}, 
         vacancyFilter: {}, 
@@ -29,6 +31,8 @@ export const applyExecutiveScope = async (req, res, next) => {
     if (normalizedRole !== 'ceo') {
       req.visibility = { 
         restricted: false, 
+        deptIds: [],
+        names: [],
         filter: {}, 
         userFilter: {}, 
         vacancyFilter: {}, 
@@ -70,7 +74,14 @@ export const applyExecutiveScope = async (req, res, next) => {
         const sLower = s.toLowerCase();
         
         // Map the new UX suites down to raw primitive structural tokens
-        if (sLower.includes('academic') || sLower.includes('enrollment')) {
+        if (
+          sLower.includes('academic') ||
+          sLower.includes('enrollment') ||
+          sLower.includes('university') ||
+          sLower.includes('program') ||
+          sLower.includes('student') ||
+          sLower.includes('admission')
+        ) {
           return dName.includes('academic');
         }
         if (sLower.includes('finance') || sLower.includes('account')) {
@@ -115,8 +126,6 @@ export const applyExecutiveScope = async (req, res, next) => {
     const deptIds = [...new Set(scopedIds)];
     const names = allDepts.filter(d => deptIds.includes(d.id)).map(d => d.name);
     
-    console.log(`[VISIBILITY-SEC] User: ${uid} | Resolved Scope: ${names.length} entities | IDs: ${deptIds}`);
-
     const isGlobal = scopeStrings.includes('all') || scopeStrings.some(s => {
       const clean = s.toLowerCase().replace(/ scope$/i, '').trim();
       return clean === 'global overseer' || clean === 'global(all)';

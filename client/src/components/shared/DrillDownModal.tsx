@@ -5,7 +5,6 @@ import { api } from '@/lib/api';
 import { 
   Users, 
   Search, 
-  X, 
   Building, 
   GraduationCap, 
   DollarSign, 
@@ -25,22 +24,28 @@ interface DrillDownModalProps {
   onClose: () => void;
   type: string;
   title: string;
+  dataOverride?: any[];
   primaryAction?: {
     label: string;
     link: string;
   };
 }
 
-export function DrillDownModal({ isOpen, onClose, type, title, primaryAction }: DrillDownModalProps) {
+export function DrillDownModal({ isOpen, onClose, type, title, dataOverride, primaryAction }: DrillDownModalProps) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (isOpen && type) {
+      if (dataOverride) {
+        setData(dataOverride);
+        setLoading(false);
+        return;
+      }
       fetchDetails();
     }
-  }, [isOpen, type]);
+  }, [isOpen, type, dataOverride]);
 
   const fetchDetails = async () => {
     try {
@@ -62,6 +67,8 @@ export function DrillDownModal({ isOpen, onClose, type, title, primaryAction }: 
       (item.name?.toLowerCase().includes(searchStr)) ||
       (item.student?.name?.toLowerCase().includes(searchStr)) ||
       (item.center?.name?.toLowerCase().includes(searchStr)) ||
+      (item.program?.name?.toLowerCase().includes(searchStr)) ||
+      (item.university?.name?.toLowerCase().includes(searchStr)) ||
       (item.uid?.toLowerCase().includes(searchStr)) ||
       (item.status?.toLowerCase().includes(searchStr))
     );
@@ -138,16 +145,14 @@ export function DrillDownModal({ isOpen, onClose, type, title, primaryAction }: 
                             <div className="font-black text-slate-900 tracking-tight uppercase">
                               {toSentenceCase(item.name || item.student?.name || item.employee?.name || 'Institutional Entity')}
                             </div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                              {item.uid || item.student?.uid || `#${item.id}`}
-                            </div>
+                            {/* ID display removed as per request */}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex flex-col gap-1.5">
                           <div className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                            item.status === 'active' || item.status === 'ENROLLED' || item.status === 'verified' || item.status === 'completed'
+                            item.status === 'active' || item.status === 'ENROLLED' || item.status === 'verified' || item.status === 'completed' || item.status === 'CONVERTED' || item.status === 'converted'
                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                : 'bg-amber-50 text-amber-600 border-amber-100'
                            }`}>
@@ -159,7 +164,13 @@ export function DrillDownModal({ isOpen, onClose, type, title, primaryAction }: 
                                {item.center.name}
                             </div>
                           )}
-                          {item.amount && (
+                          {item.referredBy && (
+                            <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                              <ShieldCheck className="w-3 h-3" />
+                              Referred by {item.referredBy}
+                            </div>
+                          )}
+                          {item.amount > 0 && (
                             <div className="text-sm font-black text-slate-900">
                               ₹{parseFloat(item.amount).toLocaleString()}
                             </div>

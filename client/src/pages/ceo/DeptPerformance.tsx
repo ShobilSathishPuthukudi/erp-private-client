@@ -48,7 +48,8 @@ export default function DeptPerformance() {
   }
 
   return (
-    <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+    <div className="p-2 space-y-6 flex flex-col">
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
       <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Departmental benchmarking</h2>
@@ -63,7 +64,7 @@ export default function DeptPerformance() {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50/50">
+            <tr className="bg-slate-50">
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Division</th>
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">KPI Score</th>
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">SLA Compliance</th>

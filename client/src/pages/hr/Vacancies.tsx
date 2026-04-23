@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Briefcase, X } from 'lucide-react';
+import { Plus, Briefcase, X, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -182,8 +182,8 @@ export default function Vacancies() {
               <input 
                 {...register('title', { 
                   required: 'Position title is required',
-                  minLength: { value: 3, message: 'Position title must be at least 3 characters' },
-                  maxLength: { value: 24, message: 'Position title cannot exceed 24 characters' }
+                  minLength: { value: 3, message: 'Must be between 3 to 20 characters' },
+                  maxLength: { value: 20, message: 'Must be between 3 to 20 characters' }
                 })}
                 className={clsx(
                   "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium",
@@ -197,17 +197,20 @@ export default function Vacancies() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Department</label>
-                <select 
-                  {...register('departmentId', { required: 'Department is required' })}
-                  className={clsx(
-                    "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white",
-                    errors.departmentId ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
-                  )}
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name} ({toSentenceCase(d.type || 'Department')})</option>)}
-                </select>
-                {errors.departmentId && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.departmentId.message as string}</p>}
+                <div className="relative group mt-1">
+                  <select 
+                    {...register('departmentId', { required: 'Department is required' })}
+                    className={clsx(
+                      "w-full min-h-[52px] px-4 pr-10 py-3 bg-slate-50 border rounded-xl focus:ring-2 outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white",
+                      errors.departmentId ? "border-rose-300 focus:ring-rose-500 bg-rose-50/30" : "border-slate-200 focus:ring-blue-500"
+                    )}
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name} ({toSentenceCase(d.type || 'Department')})</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+                {errors.departmentId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.departmentId.message as string}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Positions (Quota)</label>
@@ -232,8 +235,8 @@ export default function Vacancies() {
               <textarea 
                 {...register('requirements', {
                   required: 'Requirements are required',
-                  minLength: { value: 3, message: 'Requirements must be at least 3 characters' },
-                  maxLength: { value: 50, message: 'Requirements cannot exceed 50 characters' }
+                  minLength: { value: 12, message: 'Must be between 12 to 200 characters' },
+                  maxLength: { value: 200, message: 'Must be between 12 to 200 characters' }
                 })}
                 className={clsx(
                   "w-full px-4 py-3 bg-slate-50 border rounded-xl mt-1 focus:ring-2 outline-none transition-all font-medium",

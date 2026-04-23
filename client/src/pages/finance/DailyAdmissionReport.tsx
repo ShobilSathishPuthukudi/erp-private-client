@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { Download, Calendar, Users, DollarSign, Target, BarChart3 } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -6,8 +7,30 @@ import autoTable from 'jspdf-autotable';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Link } from 'react-router-dom';
 
+interface ReportStudent {
+  id: number;
+  uid?: string;
+  name: string;
+  createdAt: string;
+  reviewedAt?: string | null;
+  center?: { name?: string | null };
+  subDepartment?: { name?: string | null };
+  program?: { name?: string | null };
+}
+
+interface DailyAdmissionReportData {
+  count: number;
+  date: string;
+  revenue: number;
+  monthlyTotal: number;
+  target: number;
+  cycleRemainingDays: number | null;
+  activeSessionName: string | null;
+  details: ReportStudent[];
+}
+
 export default function DailyAdmissionReport() {
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<DailyAdmissionReportData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +41,7 @@ export default function DailyAdmissionReport() {
     try {
       const res = await api.get('/dashboard/reports/daily-admissions');
       setReport(res.data);
-    } catch (error) {
+    } catch {
        console.error('Failed to sync daily admission stream');
     } finally {
        setLoading(false);
@@ -35,7 +58,12 @@ export default function DailyAdmissionReport() {
     autoTable(doc, {
       startY: 40,
       head: [['Student Name', 'Center', 'Sub-Dept', 'Program']],
-      body: report.details.map((d: any) => [d.name, d.center.name, d.department.name, d.program?.name || 'N/A']),
+      body: report.details.map((d) => [
+        d.name,
+        d.center?.name || 'N/A',
+        d.subDepartment?.name || 'N/A',
+        d.program?.name || 'N/A'
+      ]),
     });
     
     doc.save(`Admission_Report_${report.date}.pdf`);
@@ -69,7 +97,7 @@ export default function DailyAdmissionReport() {
             onClick={exportPDF}
             className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20"
           >
-            <Download className="w-4 h-4" /> Export Branded PDF
+            <Download className="w-4 h-4" /> Export
           </button>
         }
       />
@@ -83,7 +111,12 @@ export default function DailyAdmissionReport() {
             value={`${(report.target > 0 ? (report.monthlyTotal / report.target) * 100 : 0).toFixed(1)}%`} 
             sub={`Target: ₹${((report.target || 0) / 1000000).toFixed(1)}M`} 
          />
-         <MetricBox icon={<Calendar />} label="Cycle Remaining" value="12 Days" sub="Active Admission Window" />
+         <MetricBox
+            icon={<Calendar />}
+            label="Cycle Remaining"
+            value={report.cycleRemainingDays !== null ? `${report.cycleRemainingDays} Days` : 'N/A'}
+            sub={report.activeSessionName || 'No Active Admission Window'}
+         />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
@@ -100,15 +133,15 @@ export default function DailyAdmissionReport() {
                </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-               {report.details.map((student: any) => (
+               {report.details.map((student) => (
                   <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                      <td className="p-6">
                         <Link to={`/dashboard/finance/students/${student.id}`} className="font-black text-slate-900 uppercase tracking-tight hover:text-blue-600 transition-colors">{student.name}</Link>
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{student.uid}</p>
                      </td>
-                     <td className="p-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">{student.center.name}</td>
-                     <td className="p-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">{student.department.name}</td>
-                     <td className="p-6 text-right font-mono text-[10px] font-bold text-slate-400">{new Date(student.createdAt).toLocaleTimeString()}</td>
+                     <td className="p-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">{student.center?.name || 'N/A'}</td>
+                     <td className="p-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">{student.subDepartment?.name || 'N/A'}</td>
+                     <td className="p-6 text-right font-mono text-[10px] font-bold text-slate-400">{new Date(student.reviewedAt || student.createdAt).toLocaleTimeString()}</td>
                   </tr>
                ))}
                {report.details.length === 0 && (
@@ -123,7 +156,7 @@ export default function DailyAdmissionReport() {
   );
 }
 
-function MetricBox({ icon, label, value, sub }: any) {
+function MetricBox({ icon, label, value, sub }: { icon: ReactNode; label: string; value: string | number; sub: string }) {
    return (
       <div className="bg-white p-8 border border-slate-200 rounded-[32px] shadow-sm transform hover:-translate-y-1 transition-all">
          <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">

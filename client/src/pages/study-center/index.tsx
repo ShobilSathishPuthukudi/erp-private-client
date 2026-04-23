@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import Students from './Students';
 import ReregPortal from './ReregPortal';
 import AdmissionWizard from './AdmissionWizard';
@@ -13,6 +14,7 @@ import Exams from '../academic/Exams';
 import MarksEntry from '../academic/MarksEntry';
 
 export default function StudyCenterDashboard() {
+  useApplyTheme();
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />

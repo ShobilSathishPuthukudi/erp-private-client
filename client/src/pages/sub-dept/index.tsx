@@ -1,11 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import Programs from './Programs';
 import Students from './Students';
 import StudentDetails from '../academic/StudentDetails';
 import Centers from './Centers';
 import Sessions from './Sessions';
-import Exams from '../academic/Exams';
-import MarksEntry from '../academic/MarksEntry';
 import CredentialRequests from './CredentialRequests';
 import DashboardLanding from './DashboardLanding';
 import StudentValidation from './StudentValidation';
@@ -17,6 +16,7 @@ import SubDeptInternalMarks from './InternalMarks';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SubDeptDashboard() {
+  useApplyTheme();
   const user = useAuthStore(state => state.user);
   
   return (
@@ -31,8 +31,6 @@ export default function SubDeptDashboard() {
         <Route path="centers" element={<Centers />} />
         <Route path="sessions" element={<Sessions />} />
         <Route path="internal-marks" element={<SubDeptInternalMarks />} />
-        <Route path="exams" element={<Exams />} />
-        <Route path="exams/:id/marks" element={<MarksEntry />} />
         <Route path="credentials" element={<CredentialRequests />} />
         <Route path="team" element={<DepartmentTeam />} />
         <Route path="tasks" element={<DepartmentTasks />} />

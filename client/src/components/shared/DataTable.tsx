@@ -98,7 +98,7 @@ export function DataTable<TData, TValue>({
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-[var(--card-border)] rounded-xl leading-5 bg-[var(--theme-soft)] text-[var(--page-text)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-[var(--theme-accent)] sm:text-sm transition duration-150 ease-in-out font-medium"
+              className="block w-full pl-10 pr-3 py-2 border border-[var(--card-border)] rounded-xl leading-5 bg-slate-50 text-[var(--page-text)] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-[var(--theme-accent)] sm:text-sm transition duration-150 ease-in-out font-medium"
               placeholder={searchPlaceholder}
               value={globalFilter ?? ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
@@ -122,7 +122,7 @@ export function DataTable<TData, TValue>({
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 bg-[var(--theme-soft)] border-b border-[var(--card-border)] tracking-wider">
+            <thead className="text-xs text-slate-500 bg-slate-50 border-b border-[var(--card-border)] tracking-wider">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -176,7 +176,7 @@ export function DataTable<TData, TValue>({
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 mb-4 rounded-full bg-[var(--theme-soft)] flex items-center justify-center">
+                      <div className="w-16 h-16 mb-4 rounded-full bg-slate-50 flex items-center justify-center">
                         <Search className="w-8 h-8 text-slate-400" />
                       </div>
                       <p className="text-base font-medium">{emptyMessage}</p>
@@ -190,7 +190,7 @@ export function DataTable<TData, TValue>({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--card-border)] bg-[var(--theme-soft)]">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--card-border)] bg-slate-50">
           <div className="text-sm text-slate-500">
             Page <span className="font-medium text-slate-900">{table.getState().pagination.pageIndex + 1}</span> of{' '}
             <span className="font-medium text-slate-900">{table.getPageCount() || 1}</span>

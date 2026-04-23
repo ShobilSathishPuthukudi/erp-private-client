@@ -16,6 +16,7 @@ interface RoleCreateProps {
 export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCreateProps) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [backendNameError, setBackendNameError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
@@ -24,7 +25,7 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
   });
 
   const isNameValid = formData.name.length >= 3 && formData.name.length <= 30;
-  const isDescValid = formData.description.length <= 100;
+  const isDescValid = formData.description.trim().length > 0 && formData.description.length <= 100;
   const isFormValid = isNameValid && isDescValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +44,12 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to persist role configuration');
+      const errMsg = error.response?.data?.error;
+      if (errMsg === 'Role identifier already exists') {
+        setBackendNameError(errMsg);
+      } else {
+        toast.error(errMsg || 'Failed to persist role configuration');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +85,7 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex items-end justify-between px-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Role Identifier</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Role Identifier <span className="text-rose-500">*</span></label>
                 {formData.name.length > 0 && <span className={`text-[10px] font-bold ${!isNameValid ? 'text-rose-500' : 'text-slate-400'}`}>3-30 chars</span>}
               </div>
               <input 
@@ -88,21 +94,26 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
                 minLength={3}
                 maxLength={30}
                 placeholder="Regional Director, Academic Audit Lead" 
-                className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-60 ${submitted && !isNameValid ? 'border-rose-500 bg-rose-50/50' : 'border-slate-200'}`}
+                className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-60 ${(submitted && !isNameValid) || backendNameError ? 'border-rose-500 bg-rose-50/50' : 'border-slate-200'}`}
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  setBackendNameError(null);
+                }}
               />
-              {submitted && !isNameValid && (
-                <p className="text-xs text-rose-500 font-bold px-1 mt-1">Role Identifier must be between 3 and 30 characters.</p>
+              {((submitted && !isNameValid) || backendNameError) && (
+                <p className="text-xs text-rose-500 font-bold px-1 mt-1">
+                  {backendNameError || 'Role Identifier must be between 3 and 30 characters.'}
+                </p>
               )}
-              {(!submitted || isNameValid) && (
+              {!backendNameError && (!submitted || isNameValid) && (
                 <p className="text-[10px] text-slate-400 px-1 text-left">Defining the institutional marker for this scope of authority.</p>
               )}
             </div>
 
             <div className="space-y-3">
               <div className="flex items-end justify-between px-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Functional Description <span className="lowercase font-medium text-[10px] text-slate-400">(optional)</span></label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Functional Description <span className="text-rose-500">*</span></label>
                 {formData.description.length > 0 && <span className={`text-[10px] font-bold ${!isDescValid ? 'text-rose-500' : 'text-slate-400'}`}>Max 100 chars</span>}
               </div>
               <textarea 
@@ -114,7 +125,9 @@ export default function RoleCreate({ initialData, onClose, onSuccess }: RoleCrea
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
               {submitted && !isDescValid && (
-                <p className="text-xs text-rose-500 font-bold px-1 mt-1">Functional Description cannot exceed 100 characters.</p>
+                <p className="text-xs text-rose-500 font-bold px-1 mt-1">
+                  {formData.description.trim().length === 0 ? 'Functional Description is required.' : 'Functional Description cannot exceed 100 characters.'}
+                </p>
               )}
             </div>
 

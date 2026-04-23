@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Building, Users, DollarSign, TrendingUp, Copy, Search, ShieldCheck } from 'lucide-react';
+import { Building, DollarSign, TrendingUp, Copy, Search, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
@@ -12,16 +12,15 @@ interface Referral {
   status: string;
   createdAt: string;
   revenue: number;
+  referredBy?: string | null;
 }
 
 export default function SalesPerformance() {
   const user = useAuthStore((state) => state.user);
   const [performance, setPerformance] = useState<any>(null);
-  const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const normalizedRole = getNormalizedRole(user?.role || '');
   const isAdmin = ['organization admin', 'finance', 'ceo', 'sales'].includes(normalizedRole);
-  const shouldLoadReferralCode = normalizedRole === 'employee' || normalizedRole === 'bde';
   const [drillDown, setDrillDown] = useState<{ isOpen: boolean; type: string; title: string }>({
     isOpen: false,
     type: '',
@@ -35,23 +34,8 @@ export default function SalesPerformance() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const requests = [
-        api.get('/sales/performance'),
-        shouldLoadReferralCode ? api.get('/sales/referral-code') : Promise.resolve(null)
-      ] as const;
-      const [perfRes, codeRes] = await Promise.allSettled(requests);
-
-      if (perfRes.status !== 'fulfilled') {
-        throw perfRes.reason;
-      }
-
-      setPerformance(perfRes.value.data);
-
-      if (codeRes.status === 'fulfilled' && codeRes.value) {
-        setReferralCode(codeRes.value.data.referralCode || '');
-      } else {
-        setReferralCode('');
-      }
+      const perfRes = await api.get('/sales/performance');
+      setPerformance(perfRes.data);
     } catch (error) {
       console.error('Sales performance load error:', error);
       toast.error('Failed to load sales performance data');
@@ -64,11 +48,23 @@ export default function SalesPerformance() {
     fetchData();
   }, []);
 
-  const copyReferralLink = () => {
-    const link = `${window.location.origin}/register-center/${referralCode}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Unique registration link copied');
-  };
+  const drillDownData = drillDown.type === 'students'
+    ? (performance?.students || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        status: s.status,
+        amount: 0,
+        createdAt: s.createdAt,
+        referredBy: s.centerName
+      }))
+    : (performance?.centers || []).map((center: Referral) => ({
+        id: center.id,
+        name: center.name,
+        status: center.status,
+        amount: center.revenue,
+        createdAt: center.createdAt,
+        referredBy: center.referredBy
+      }));
 
   if (loading) return (
     <div className="space-y-8 animate-pulse">
@@ -97,11 +93,9 @@ export default function SalesPerformance() {
           )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" onClick={() => openDrillDown('centers', 'Centers Referred')} />
-        <StatCard icon={Users} label="Total Admissions" value={performance?.studentCount || 0} color="indigo" onClick={() => openDrillDown('students', 'Total Admissions')} />
-        <StatCard icon={DollarSign} label="Yield Revenue" value={`₹${(performance?.totalRevenue || 0).toLocaleString()}`} color="emerald" onClick={() => openDrillDown('revenue', 'Yield Revenue')} />
-        <StatCard icon={TrendingUp} label="Avg Students / Center" value={performance?.centerCount > 0 ? (performance.studentCount / performance.centerCount).toFixed(1) : '0'} color="amber" />
+        <StatCard icon={Users} label="Total Students Enrolled" value={(performance?.studentCount || 0).toLocaleString()} color="indigo" onClick={() => openDrillDown('students', 'Total Students Enrolled')} />
       </div>
 
       <DrillDownModal 
@@ -109,36 +103,8 @@ export default function SalesPerformance() {
         onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
         type={drillDown.type}
         title={drillDown.title}
+        dataOverride={drillDownData}
       />
-
-      {!isAdmin && shouldLoadReferralCode && (
-        <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-slate-200 group">
-          <div className="absolute -top-24 -right-24 p-12 opacity-10 group-hover:opacity-20 transition-opacity duration-1000">
-              <Building className="w-96 h-96 text-blue-500" />
-          </div>
-          <div className="relative z-10 max-w-3xl">
-              <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-blue-400/20">
-                 <TrendingUp className="w-3.5 h-3.5" />
-                 Institutional Expansion Engine
-              </div>
-              <h2 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter mb-4 leading-none">Your Unique <span className="text-blue-500">Referral Anchor</span></h2>
-              <p className="text-slate-400 font-medium mb-10 leading-relaxed text-lg pr-4">Distribute this personalized link to prospective partners. Every registration through this link automatically provisions a new Study Center node with immediate forensic attribution to your identity.</p>
-              
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white/5 border border-white/10 rounded-[2rem] p-3 pl-8 hover:border-blue-500/50 transition-colors group">
-                  <code className="flex-1 font-mono text-blue-400 font-bold truncate text-sm py-4">
-                      {window.location.origin}/register-center/{referralCode || 'GENERATING...'}
-                  </code>
-                  <button 
-                      disabled={!referralCode}
-                      onClick={copyReferralLink}
-                      className="bg-white text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5 disabled:opacity-50"
-                  >
-                      <Copy className="w-4 h-4" /> Copy Link
-                  </button>
-              </div>
-          </div>
-        </div>
-      )}
 
       <div className="bg-white border-2 border-slate-100 rounded-[3rem] overflow-hidden shadow-2xl shadow-slate-100/50">
         <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
@@ -166,11 +132,11 @@ export default function SalesPerformance() {
                         <tr key={c.id} className="hover:bg-blue-50/30 transition-all group">
                             <td className="px-10 py-6">
                                <div className="font-black text-slate-900 uppercase tracking-tighter text-base">{c.name}</div>
-                               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Node ID: {c.id}</div>
+                               {/* Node ID display removed for consistency */}
                             </td>
                             <td className="px-10 py-6 text-slate-500 font-mono font-bold">{new Date(c.createdAt).toLocaleDateString()}</td>
                             <td className="px-10 py-6">
-                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${c.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${(c.status === 'active' || c.status === 'CONVERTED' || c.status === 'converted') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                     {c.status}
                                 </span>
                             </td>

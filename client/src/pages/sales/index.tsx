@@ -1,8 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import SalesPerformance from './SalesPerformance';
 import SalesAchievement from './SalesAchievement';
 import SalesTargetInbox from './SalesTargetInbox';
-import ReferredLeads from '../academic/ReferredLeads';
 import DepartmentTeam from '@/components/team/DepartmentTeam';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 import DepartmentLeaves from '@/components/team/DepartmentLeaves';
@@ -10,9 +10,10 @@ import TeamLeaveStatus from '@/components/team/TeamLeaveStatus';
 
 import { useAuthStore } from '@/store/authStore';
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
-import { TrendingUp, Users } from 'lucide-react';
+import { TrendingUp, Users, Target } from 'lucide-react';
 
 export default function SalesDashboard() {
+  useApplyTheme();
   const { user } = useAuthStore();
   return (
     <Routes>
@@ -24,14 +25,14 @@ export default function SalesDashboard() {
             subtitle={`Sales telemetry and conversion velocity overview for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Growth & Outreach protocols active.`}
             actions={[
               {
-                label: 'CRM Analytics',
-                link: '/dashboard/sales/crm',
+                label: 'Onboarding hub',
+                link: '/dashboard/operations/onboarding-hub',
                 icon: TrendingUp
               },
               {
-                label: 'Lead Capture',
-                link: '/dashboard/sales/prospects',
-                icon: Users
+                label: 'Target Workflow',
+                link: '/dashboard/sales/targets',
+                icon: Target
               }
             ]}
           />
@@ -39,8 +40,6 @@ export default function SalesDashboard() {
           <SalesPerformance />
         </div>
       } />
-      <Route path="prospects" element={<ReferredLeads defaultTab="leads" />} />
-      <Route path="nodes" element={<ReferredLeads defaultTab="centers" />} />
       <Route path="targets" element={<SalesTargetInbox />} />
       <Route path="team" element={<DepartmentTeam />} />
       <Route path="tasks" element={<DepartmentTasks />} />

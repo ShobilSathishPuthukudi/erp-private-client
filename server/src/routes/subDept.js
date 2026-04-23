@@ -427,15 +427,47 @@ router.get('/accreditation-requests', verifyToken, isSubDeptAdmin, async (req, r
     const { unit, status } = req.query;
     const roleNormalized = req.user.role?.toLowerCase().trim();
     const isGlobalOps = ['organization admin', 'operations admin', 'operations administrator', 'academic operations admin', 'academic operations department'].includes(roleNormalized);
-    const targetType = unit || (isGlobalOps ? null : roleNormalized);
+    const scopeIds = getSubDeptScopeIds(req.user);
+    const scopeDepartments = scopeIds.length > 0
+      ? await Department.findAll({
+          where: { id: { [Op.in]: scopeIds } },
+          attributes: ['id', 'name'],
+          raw: true
+        })
+      : [];
+    const scopeTypeNames = [...new Set([
+      ...scopeDepartments.map((dept) => dept.name).filter(Boolean),
+      req.user.subDepartment,
+      normalizeInstitutionRoleName(req.user.role || '').replace(/\s+admin$/i, '').trim(),
+      unit
+    ].filter(Boolean))];
     
-    console.log("Accreditation Request Filter:", { unit, status, targetType, role: req.user.role });
+    console.log("Accreditation Request Filter:", { unit, status, scopeIds, scopeTypeNames, role: req.user.role });
+
+    const whereClause = {
+      status: status || 'pending'
+    };
+
+    if (!isGlobalOps) {
+      if (whereClause.status === 'pending') {
+        whereClause.type = scopeTypeNames.length > 0 ? { [Op.in]: scopeTypeNames } : roleNormalized;
+      } else if (scopeIds.length > 0) {
+        whereClause[Op.or] = [
+          { assignedSubDeptId: { [Op.in]: scopeIds } },
+          ...(scopeTypeNames.length > 0 ? [{ type: { [Op.in]: scopeTypeNames } }] : [])
+        ];
+      } else if (scopeTypeNames.length > 0) {
+        whereClause.type = { [Op.in]: scopeTypeNames };
+      }
+    } else if (unit) {
+      whereClause[Op.or] = [
+        { type: unit },
+        ...(Number.isInteger(Number(unit)) ? [{ assignedSubDeptId: Number(unit) }] : [])
+      ];
+    }
 
     const requests = await AccreditationRequest.findAll({
-      where: { 
-          status: status || 'pending',
-          type: targetType ? targetType : { [Op.ne]: null }
-      },
+      where: whereClause,
       include: [
         { model: Department, as: 'center', attributes: ['id', 'name'] }
       ]

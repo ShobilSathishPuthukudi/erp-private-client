@@ -1,11 +1,11 @@
 import { Routes, Route, Link } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import MyTasks from './MyTasks';
 import LeaveRequests from './LeaveRequests';
 import Announcements from './Announcements';
 import HRContact from './HRContact';
-import CRM from '../sales/CRM';
 import MyCenters from './MyCenters';
 import InstitutionalUniversities from './InstitutionalUniversities';
 import InstitutionalPrograms from './InstitutionalPrograms';
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export default function EmployeePortal() {
+  useApplyTheme();
   const user = useAuthStore(state => state.user);
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -451,7 +452,6 @@ export default function EmployeePortal() {
       <Route path="announcements" element={<Announcements />} />
       {(user?.role === 'Sales & CRM Admin' || user?.departmentName?.toLowerCase().includes('sales')) && (
         <>
-          <Route path="crm/*" element={<CRM />} />
           <Route path="centers" element={<MyCenters />} />
           <Route path="universities" element={<InstitutionalUniversities />} />
           <Route path="programs" element={<InstitutionalPrograms />} />

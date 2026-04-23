@@ -108,6 +108,14 @@ const Department = sequelize.define('department', {
   address: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 }, {
   defaultScope: {

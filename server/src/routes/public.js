@@ -7,6 +7,18 @@ const router = express.Router();
 const { User, Department, Lead, Program, Notification } = models;
 
 // DB Check
+router.get('/debug-leaves', async (req, res) => {
+  try {
+    const { Leave } = models;
+    const leaves = await Leave.unscoped().findAll({
+      include: [
+        { model: User.unscoped(), as: 'employee', attributes: ['uid', 'name', 'email', 'role', 'subDepartment', 'departmentId'] }
+      ]
+    });
+    res.json(leaves);
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 router.get('/dev-user-check', async (req, res) => {
   try {
     const users = await User.findAll({ attributes: ['uid', 'name', 'role', 'status'] });
@@ -126,6 +138,17 @@ router.post('/register-center', async (req, res) => {
       return res.status(400).json({ error: 'All fields (Name, Short Name, Email, Phone, University, and Program) are strictly mandatory.' });
     }
 
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    const duplicateCenter = await Department.findOne({
+      where: sequelize.and(
+        { type: { [Op.in]: ['partner-center', 'partner center', 'partner centers'] } },
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), (trimmedName || '').toLowerCase())
+      )
+    });
+    if (duplicateCenter) {
+      return res.status(409).json({ error: 'A partner center with this name already exists (case-insensitive).' });
+    }
+
     const placeholderPassword = 'provision_pending';
     const hashedPassword = await bcrypt.hash(placeholderPassword, 10);
 
@@ -147,7 +170,7 @@ router.post('/register-center', async (req, res) => {
 
     // 2. Create high-fidelity Department record
     const center = await Department.create({
-      name,
+      name: trimmedName,
       shortName: shortName.toUpperCase().trim(),
       type: 'partner centers',
       status: 'proposed',

@@ -30,7 +30,7 @@ const Task = sequelize.define('task', {
     defaultValue: 'medium',
   },
   status: {
-    type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'overdue'),
+    type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'overdue', 'reassigned_escalated', 'resolved_by_ceo'),
     defaultValue: 'pending',
   },
   evidenceUrl: {
@@ -84,6 +84,10 @@ const Task = sequelize.define('task', {
   subDepartmentId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  isInstitutionalHandover: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   }
 }, {
   indexes: [{ fields: ['assignedTo', 'status'] }],

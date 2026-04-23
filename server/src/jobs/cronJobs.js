@@ -44,16 +44,25 @@ const escalateTaskToCeo = async (task, allCeoPanels, now, reason) => {
         link: '/dashboard/ceo/escalations'
       });
     }
-    return;
+  } else {
+    const fallbackAdmin = await User.findOne({ where: { role: 'Organization Admin' } });
+    if (fallbackAdmin) {
+      await Notification.create({
+        userUid: fallbackAdmin.uid,
+        type: 'error',
+        message: `UNMAPPED ESCALATION [${deptName}]: Task "${task.title}" requires oversight but no CEO is authorized for this sector.`,
+        link: '/dashboard/org-admin/alerts/escalated'
+      });
+    }
   }
 
-  const fallbackAdmin = await User.findOne({ where: { role: 'Organization Admin' } });
-  if (fallbackAdmin) {
+  if (task.assignedTo) {
     await Notification.create({
-      userUid: fallbackAdmin.uid,
-      type: 'error',
-      message: `UNMAPPED ESCALATION [${deptName}]: Task "${task.title}" requires oversight but no CEO is authorized for this sector.`,
-      link: '/dashboard/org-admin/alerts/escalated'
+      userUid: task.assignedTo,
+      panelScope: task.assignee?.role?.toLowerCase()?.trim() || null,
+      type: 'warning',
+      message: `TASK ESCALATED: "${task.title}" is now under CEO review due to overdue completion.`,
+      link: '/dashboard/employee/tasks'
     });
   }
 };
@@ -115,6 +124,18 @@ export const initCronJobs = () => {
       for (const task of deptReviewTasks) {
         const deptAdminUid = task.assignee?.department?.adminId;
         const deptAdmin = deptAdminUid ? await User.findOne({ where: { uid: deptAdminUid } }) : null;
+
+        // [GOVERNANCE] Institutional Handover tasks escalate directly to CEO after deadline
+        if (task.isInstitutionalHandover) {
+          await escalateTaskToCeo(
+            task,
+            allCeoPanels,
+            now,
+            'CRITICAL ESCALATION: Institutional Handover task exceeded deadline. Direct CEO oversight required.'
+          );
+          escalationsToCeo++;
+          continue;
+        }
 
         if (!deptAdmin) {
           await escalateTaskToCeo(

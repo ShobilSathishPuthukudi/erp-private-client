@@ -18,6 +18,7 @@ import {
   Eye,
   Activity
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
 
@@ -127,15 +128,9 @@ export default function CenterAudit() {
     setTriedSubmit(true);
     
     if (!rejectionReason.trim()) {
-      toast.error('Audit remarks are mandatory for protocol clearance');
-      return;
-    }
-    if (status === 'approved' && !provisioningPassword.trim()) {
-      toast.error('Official security credentials must be provisioned for activation');
       return;
     }
     if (status === 'approved' && !selectedPrograms.length) {
-      toast.error('Select at least one academic program to authorize center');
       return;
     }
 
@@ -246,17 +241,11 @@ export default function CenterAudit() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Center audit system</h1>
-            <p className="text-slate-500 font-medium text-sm">Validate and ratify regional study centers for academic operations.</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader 
+        title="Center audit system" 
+        description="Validate and ratify regional study centers for academic operations." 
+        icon={Building2} 
+      />
 
       <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
            {[
@@ -388,18 +377,32 @@ export default function CenterAudit() {
                         const requestedIds = selectedCenter?.metadata?.primaryInterest?.programIds || [];
                         const legacyId = Number(selectedCenter?.metadata?.primaryInterest?.programId);
                         return requestedIds.includes(prog.id) || (legacyId && prog.id === legacyId);
-                      })
-                      .map(prog => (
-                        <div key={prog.id} className="flex items-start gap-3 p-3 border rounded-xl bg-slate-50 border-slate-100">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-slate-900">{prog.name}</p>
-                              <span className="text-[7px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Requested</span>
+                      }).length > 0 ? (
+                        programs
+                          .filter(prog => {
+                            const requestedIds = selectedCenter?.metadata?.primaryInterest?.programIds || [];
+                            const legacyId = Number(selectedCenter?.metadata?.primaryInterest?.programId);
+                            return requestedIds.includes(prog.id) || (legacyId && prog.id === legacyId);
+                          })
+                          .map(prog => (
+                            <div key={prog.id} onClick={() => {
+                              setSelectedPrograms(prev => prev.includes(prog.id) ? prev.filter(id => id !== prog.id) : [...prev, prog.id]);
+                              setTriedSubmit(false);
+                            }} className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-all ${selectedPrograms.includes(prog.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100 opacity-50'}`}>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-bold text-slate-900">{prog.name}</p>
+                                  <span className={`text-[7px] font-black ${selectedPrograms.includes(prog.id) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'} px-1.5 py-0.5 rounded-full uppercase tracking-tighter`}>
+                                    {selectedPrograms.includes(prog.id) ? 'Selected' : 'Requested'}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-500 uppercase">{prog.type}</p>
+                              </div>
                             </div>
-                            <p className="text-[10px] text-slate-500 uppercase">{prog.type}</p>
-                          </div>
-                        </div>
-                      ))
+                          ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No specific programs requested.</p>
+                      )
                   ) : (
                     (selectedCenter as any)?.mappedPrograms?.map((mp: any) => (
                       <div key={mp.program?.id} className="flex items-start gap-3 p-3 border rounded-xl bg-indigo-50/50 border-indigo-100">
@@ -414,6 +417,9 @@ export default function CenterAudit() {
                     ))
                   )}
                 </div>
+                {triedSubmit && activeTab === 'pending' && !selectedPrograms.length && (
+                  <p className="text-xs text-rose-500 font-bold pl-1 pt-1">Select at least one academic program to authorize center.</p>
+                )}
               </div>
             )}
 
@@ -445,6 +451,9 @@ export default function CenterAudit() {
                       <span className="text-[7px] font-black bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full uppercase">Mandatory</span>
                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">These remarks will be permanently recorded in the institutional ledger.</p>
                     </div>
+                    {triedSubmit && !rejectionReason.trim() && (
+                      <p className="text-xs text-rose-500 font-bold pl-1 pt-1">Audit remarks are mandatory for protocol clearance.</p>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 border-dashed">
@@ -472,12 +481,12 @@ export default function CenterAudit() {
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-1 flex items-center gap-2">
                     Official Admin Password
-                    <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full lowercase">required for activation</span>
+                    <span className="text-[8px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full lowercase">optional for auto-provisioning</span>
                   </label>
                   <div className="relative">
                     <input 
                       type="text" 
-                      className={`w-full bg-white border-2 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-0 transition-all shadow-sm ${triedSubmit && !provisioningPassword.trim() ? 'border-rose-400 bg-rose-50/30' : 'border-white focus:border-blue-600'}`}
+                      className={`w-full bg-white border-2 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-0 transition-all shadow-sm border-white focus:border-blue-600`}
                       placeholder="Provision official password..."
                       value={provisioningPassword}
                       onChange={e => setProvisioningPassword(e.target.value)}

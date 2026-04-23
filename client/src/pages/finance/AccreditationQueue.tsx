@@ -3,23 +3,29 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Eye, FileText, Landmark, GraduationCap, Calendar, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AccreditationQueue() {
   const [accredTab, setAccredTab] = useState<'finance_pending'|'approved'>('finance_pending');
   const [accredRequests, setAccredRequests] = useState<any[]>([]);
+  const [counts, setCounts] = useState<{ finance_pending: number, approved: number }>({ finance_pending: 0, approved: 0 });
   const [isLoading, setIsLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [remarks, setRemarks] = useState('');
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/finance/accreditation-requests', { params: { status: accredTab } });
+      const [res, countsRes] = await Promise.all([
+        api.get('/finance/accreditation-requests', { params: { status: accredTab } }),
+        api.get('/finance/accreditation-requests/counts')
+      ]);
       setAccredRequests(res.data);
+      setCounts(countsRes.data);
     } catch (error) {
       toast.error('Failed to sync accreditation audit queue');
     } finally {
@@ -52,8 +58,24 @@ export default function AccreditationQueue() {
     { accessorKey: 'assignedSubDeptName', header: 'Operational Type' },
     {
         id: 'actions',
-        cell: ({ row }) => accredTab === 'finance_pending' && (
-          <button onClick={() => { setSelectedItem(row.original); setIsModalOpen(true); }} className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-slate-800 cursor-pointer">Finalize Accreditation</button>
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => { setSelectedItem(row.original); setIsDetailsOpen(true); }}
+              className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all hover:bg-slate-200 cursor-pointer flex items-center gap-1.5"
+            >
+              <Eye className="w-3 h-3" />
+              Inspect
+            </button>
+            {accredTab === 'finance_pending' && (
+              <button 
+                onClick={() => { setSelectedItem(row.original); setIsModalOpen(true); }} 
+                className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-slate-800 cursor-pointer"
+              >
+                Finalize Accreditation
+              </button>
+            )}
+          </div>
         )
       }
   ];
@@ -66,14 +88,120 @@ export default function AccreditationQueue() {
            <p className="text-slate-500 text-sm font-medium">Verify structural pipelines and authorize program initialization.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit gap-2">
-            <button onClick={() => setAccredTab('finance_pending')} className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${accredTab === 'finance_pending' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500'}`}>Request Pending</button>
-            <button onClick={() => setAccredTab('approved')} className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${accredTab === 'approved' ? 'bg-white text-emerald-600 shadow-sm border' : 'text-slate-500'}`}>Approved Vault</button>
+            <button onClick={() => setAccredTab('finance_pending')} className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 ${accredTab === 'finance_pending' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500'}`}>
+              Request Pending
+              <span className={`px-2 py-0.5 rounded-full text-[10px] ${accredTab === 'finance_pending' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
+                {counts.finance_pending}
+              </span>
+            </button>
+            <button onClick={() => setAccredTab('approved')} className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 ${accredTab === 'approved' ? 'bg-white text-emerald-600 shadow-sm border' : 'text-slate-500'}`}>
+              Approved Vault
+              <span className={`px-2 py-0.5 rounded-full text-[10px] ${accredTab === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                {counts.approved}
+              </span>
+            </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
         <DataTable columns={columns} data={accredRequests} isLoading={isLoading} searchKey="courseName" />
       </div>
+
+      <Modal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        title="Institutional Audit Inspection"
+      >
+        {selectedItem && (
+          <div className="space-y-8">
+            <div className="flex items-start gap-4 p-5 bg-slate-50 border border-slate-100 rounded-3xl">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 shrink-0">
+                <FileText className="w-6 h-6 text-slate-900" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 leading-tight">{selectedItem.courseName}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest bg-slate-200/50 px-2 py-0.5 rounded-md">
+                    Audit ID: #{selectedItem.id?.toString().padStart(5, '0')}
+                  </span>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                    selectedItem.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {selectedItem.status?.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Landmark className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Target Institution</span>
+                </div>
+                <p className="text-sm font-black text-slate-900 uppercase">{selectedItem.assignedUniversityName || 'Institutional Default'}</p>
+              </div>
+
+              <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Operational Stream</span>
+                </div>
+                <p className="text-sm font-bold text-slate-700">{selectedItem.assignedSubDeptName || 'Standard Track'}</p>
+              </div>
+
+              {selectedItem.programDetails && (
+                <div className="col-span-2 p-5 bg-indigo-50/50 border border-indigo-100 rounded-[2rem] space-y-4">
+                   <div className="flex items-center gap-2 text-indigo-400">
+                      <Info className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Program Technical Profile</span>
+                   </div>
+                   <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-1">Duration & Scale</p>
+                        <p className="text-sm font-black text-indigo-900">{selectedItem.programDetails.duration} Years / {selectedItem.programDetails.credits} Credits</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-1">Fee Architecture</p>
+                        <p className="text-sm font-black text-indigo-900">₹{parseFloat(selectedItem.programDetails.totalFee).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-1">Service Type</p>
+                        <p className="text-sm font-black text-indigo-900 uppercase tracking-tighter">{selectedItem.programDetails.type}</p>
+                      </div>
+                   </div>
+                </div>
+              )}
+
+              <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1 col-span-2">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Audit Timeline & Remarks</span>
+                </div>
+                <div className="space-y-3 mt-2">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-dashed text-xs font-medium text-slate-600 leading-relaxed italic">
+                    "{selectedItem.remarks || 'No specific justification provided by the center.'}"
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400">
+                    Received on {new Date(selectedItem.createdAt).toLocaleDateString('en-IN', {
+                      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button 
+                onClick={() => setIsDetailsOpen(false)}
+                className="px-8 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all cursor-pointer shadow-lg shadow-slate-200"
+              >
+                Close Inspection
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={isModalOpen}

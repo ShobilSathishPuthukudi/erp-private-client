@@ -31,6 +31,7 @@ export default function EmployeeCommunications() {
   const [status, setStatus] = useState<'open' | 'in_review' | 'resolved'>('in_review');
   const [response, setResponse] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchItems = async () => {
     try {
@@ -53,12 +54,22 @@ export default function EmployeeCommunications() {
     setSelected(item);
     setStatus(item.status);
     setResponse(item.hrResponse || '');
+    setError(null);
   };
 
   const saveResponse = async () => {
     if (!selected) return;
+    
+    // Institutional Validation Guard
+    const msg = response.trim();
+    if (msg.length < 6 || msg.length > 200) {
+      setError('HR Response Content must be between 6 to 200 characters');
+      return;
+    }
+
     try {
       setSaving(true);
+      setError(null);
       await api.put(`/hr/employee-communications/${selected.id}`, {
         status,
         hrResponse: response
@@ -193,10 +204,18 @@ export default function EmployeeCommunications() {
                 <textarea
                   rows={4}
                   value={response}
-                  onChange={(e) => setResponse(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400 shadow-inner"
+                  onChange={(e) => {
+                    setResponse(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  className={`w-full bg-slate-50 border ${error ? 'border-red-300 ring-4 ring-red-50' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400 shadow-inner transition-all`}
                   placeholder="Draft resolution or request further information..."
                 />
+                {error && (
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-red-500 ml-1 animate-in fade-in slide-in-from-top-1">
+                    {error}
+                  </p>
+                )}
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">

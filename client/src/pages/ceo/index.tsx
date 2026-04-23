@@ -1,17 +1,20 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useApplyTheme } from '@/hooks/useApplyTheme';
 import Overview from './Overview';
 import Escalations from './Escalations';
 import PayoutApproval from './PayoutApproval';
 import EmployeePerformance from './EmployeePerformance';
 import Announcements from './Announcements';
 import HRBroadcasts from './HRBroadcasts';
+import HRLeaveApprovals from './HRLeaveApprovals';
 import InstitutionalRoster from '@/components/team/InstitutionalRoster';
 import DepartmentTasks from '@/components/team/DepartmentTasks';
 
 export default function CEODashboard() {
+  useApplyTheme();
   return (
     <div className="min-h-screen bg-[var(--page-bg)]">
-      <div className="max-w-[1600px] mx-auto p-4 lg:p-8">
+      <div className="max-w-[1600px] mx-auto">
         
         {/* Dynamic Routed Content */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -28,6 +31,7 @@ export default function CEODashboard() {
             {/* Team Management Integration */}
             <Route path="team" element={<InstitutionalRoster />} />
             <Route path="tasks" element={<DepartmentTasks />} />
+            <Route path="hr-leaves" element={<HRLeaveApprovals />} />
           </Routes>
         </div>
 

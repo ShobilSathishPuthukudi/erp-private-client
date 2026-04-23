@@ -21,6 +21,25 @@ const { User, Vacancy, Task, Department, Leave, Attendance, Lead, Referral, Audi
 
 const isHR = roleGuard(['HR Admin', 'Organization Admin', 'ceo', 'hr']);
 
+const canPerformHrLeaveFinalApproval = async (reqUser) => {
+  const role = normalizeInstitutionRoleName(reqUser.role || '').toLowerCase().trim();
+  if (['organization admin', 'ceo', 'hr admin'].includes(role)) {
+    return true;
+  }
+
+  if (!reqUser.deptId) {
+    return false;
+  }
+
+  const department = await Department.findByPk(reqUser.deptId, { attributes: ['adminId', 'name'] });
+  if (!department) {
+    return false;
+  }
+
+  const isHrDepartment = ['hr', 'human resources', 'hr department'].includes((department.name || '').toLowerCase().trim());
+  return isHrDepartment && department.adminId === reqUser.uid;
+};
+
 const avatarStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(process.cwd(), 'uploads', 'avatars');
@@ -271,6 +290,28 @@ router.get('/employees', verifyToken, isHR, applyExecutiveScope, async (req, res
   }
 });
 
+router.get('/employees/:uid', verifyToken, isHR, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const employee = await User.findByPk(uid, {
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: Department, as: 'department', attributes: ['name'], required: false },
+        { model: User, as: 'manager', attributes: ['name', 'uid'], required: false },
+        { model: Role, as: 'assignedAdminRoles', attributes: ['id', 'name', 'scopeType', 'scopeSubDepartment'], required: false }
+      ]
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: "Personnel record not found", module: "HR" });
+    }
+    res.json(employee);
+  } catch (error) {
+    console.error("HR API ERROR (Single Employee):", error);
+    res.status(500).json({ message: "Internal server error", module: "HR" });
+  }
+});
+
 router.post('/employees', verifyToken, isHR, avatarUpload.single('avatar'), async (req, res) => {
   let t;
   try {
@@ -280,9 +321,31 @@ router.post('/employees', verifyToken, isHR, avatarUpload.single('avatar'), asyn
 
     if (!vacancyId || !email || !password || !name) {
       await t.rollback();
-      return res.status(400).json({ 
-        error: "Invalid payload: email, password, name and vacancyId required", 
-        module: "HR" 
+      return res.status(400).json({
+        error: "Invalid payload: email, password, name and vacancyId required",
+        module: "HR"
+      });
+    }
+
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    
+    // Duplicate Identity Guards
+    const duplicateIdentity = await User.findOne({
+      where: {
+        [Op.or]: [
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), (trimmedName || '').toLowerCase()),
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), (email || '').toLowerCase())
+        ]
+      },
+      transaction: t
+    });
+
+    if (duplicateIdentity) {
+      await t.rollback();
+      const field = duplicateIdentity.email.toLowerCase() === email.toLowerCase() ? 'email' : 'name';
+      return res.status(409).json({ 
+        error: `Institutional Conflict: A record with this ${field} already exists (case-insensitive).`, 
+        module: 'HR' 
       });
     }
 
@@ -312,7 +375,7 @@ router.post('/employees', verifyToken, isHR, avatarUpload.single('avatar'), asyn
       email,
       password: hashedPassword,
       role: 'Employee',
-      name,
+      name: trimmedName,
       deptId: resolvedScope.deptId,
       subDepartment: resolvedScope.subDepartment, // Inheritance from vacancy structure
       reportingManagerUid: finalizedManagerUid,
@@ -378,10 +441,24 @@ router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
       return res.status(400).json({ message: "Invalid payload: email, password, name, and departmentId required", module: "HR" });
     }
 
-    // Check if user already exists
-    const existing = await User.findOne({ where: { email } });
-    if (existing) {
-      return res.status(400).json({ message: "An employee with this email already exists.", module: "HR" });
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+
+    // Duplicate Identity Guards
+    const duplicateIdentity = await User.findOne({
+      where: {
+        [Op.or]: [
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), (trimmedName || '').toLowerCase()),
+          sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), (email || '').toLowerCase())
+        ]
+      }
+    });
+
+    if (duplicateIdentity) {
+      const field = duplicateIdentity.email.toLowerCase() === (email || '').toLowerCase() ? 'email' : 'name';
+      return res.status(409).json({ 
+        message: `Institutional Conflict: A record with this ${field} already exists (case-insensitive).`, 
+        module: 'HR' 
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -393,7 +470,7 @@ router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
       email,
       password: hashedPassword,
       role: 'Employee',
-      name,
+      name: trimmedName,
       deptId: resolvedScope.deptId,
       subDepartment: resolvedScope.subDepartment || normalizeSubDepartmentName(subDepartment || 'General'),
       reportingManagerUid,
@@ -412,21 +489,53 @@ router.post('/employees/onboard', verifyToken, isHR, async (req, res) => {
 router.put('/employees/:uid', verifyToken, isHR, avatarUpload.single('avatar'), async (req, res) => {
   try {
     const { uid } = req.params;
-    const { email, password, name, status, deptId, reportingManagerUid, subDepartment } = req.body;
+    const { email, password, name, status, deptId, reportingManagerUid, subDepartment, phone, dateOfBirth, bio, address, baseSalary, leaveBalance, websiteUrl } = req.body;
 
     const user = await User.findByPk(uid);
     if (!user) {
       return res.status(404).json({ message: "Personnel record not found", module: "HR" });
     }
 
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
+    
+    // Duplicate Identity Guards
+    if (trimmedName || email) {
+      const clash = await User.findOne({
+        where: sequelize.and(
+          { uid: { [Op.ne]: uid } },
+          {
+            [Op.or]: [
+              trimmedName ? sequelize.where(sequelize.fn('LOWER', sequelize.col('name')), trimmedName.toLowerCase()) : null,
+              email ? sequelize.where(sequelize.fn('LOWER', sequelize.col('email')), email.toLowerCase()) : null
+            ].filter(Boolean)
+          }
+        )
+      });
+
+      if (clash) {
+        const field = email && clash.email.toLowerCase() === email.toLowerCase() ? 'email' : 'name';
+        return res.status(409).json({ 
+          message: `Institutional Conflict: Another staff member with this ${field} already exists (case-insensitive).`, 
+          module: 'HR' 
+        });
+      }
+    }
+
     const updates = {
       email: email || user.email,
       role: user.role,
-      name: name || user.name,
+      name: trimmedName || user.name,
       status: status || user.status,
       deptId: deptId === undefined ? user.deptId : deptId,
       reportingManagerUid: reportingManagerUid === undefined ? user.reportingManagerUid : reportingManagerUid,
-      subDepartment: normalizeSubDepartmentName(subDepartment || user.subDepartment)
+      subDepartment: normalizeSubDepartmentName(subDepartment || user.subDepartment),
+      phone: phone === undefined ? user.phone : phone,
+      dateOfBirth: dateOfBirth === undefined ? user.dateOfBirth : dateOfBirth,
+      bio: bio === undefined ? user.bio : bio,
+      address: address === undefined ? user.address : address,
+      baseSalary: baseSalary === undefined ? user.baseSalary : baseSalary,
+      leaveBalance: leaveBalance === undefined ? user.leaveBalance : leaveBalance,
+      websiteUrl: websiteUrl === undefined ? user.websiteUrl : websiteUrl
     };
 
     if (password && password.trim() !== '') {
@@ -454,7 +563,29 @@ router.put('/employees/:uid', verifyToken, isHR, avatarUpload.single('avatar'), 
       }
 
       await transaction.commit();
-      res.json({ message: "Personnel record updated successfully", uid: user.uid });
+
+      const updatedUser = await User.unscoped().findOne({
+        where: { uid: user.uid },
+        include: [{ model: Department.unscoped(), as: 'department', attributes: ['name'], required: false }]
+      });
+
+      res.json({
+        message: "Personnel record updated successfully",
+        uid: user.uid,
+        user: updatedUser ? {
+          uid: updatedUser.uid,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatar: updatedUser.avatar,
+          deptId: updatedUser.deptId,
+          departmentName: updatedUser.department?.name || '',
+          subDepartment: updatedUser.subDepartment,
+          phone: updatedUser.phone,
+          dateOfBirth: updatedUser.dateOfBirth,
+          bio: updatedUser.bio,
+          address: updatedUser.address
+        } : null
+      });
     } catch (updateError) {
       if (transaction) await transaction.rollback();
       throw updateError;
@@ -721,7 +852,7 @@ router.get('/leaves', verifyToken, checkPermissionOrRole('HR_LEAVE_S2', 'read', 
             include: [{ 
               model: User, 
               as: 'employee', 
-              attributes: ['name', 'uid', 'deptId'],
+              attributes: ['name', 'uid', 'deptId', 'email'],
               include: [{ model: Department, as: 'department', attributes: ['name'] }],
               where: combinedFilter,
               required: true
@@ -905,6 +1036,12 @@ router.put('/employee-communications/:id', verifyToken, isHR, async (req, res) =
     const { id } = req.params;
     const { status, hrResponse } = req.body;
 
+    // Institutional Validation Registry Guard
+    const msg = (hrResponse || '').trim();
+    if (msg.length < 6 || msg.length > 200) {
+      return res.status(400).json({ error: 'HR Response Content is required and must be between 6 and 200 characters' });
+    }
+
     const request = await EmployeeHRRequest.findByPk(id, {
       include: [{ model: User, as: 'employee', attributes: ['uid', 'name'] }]
     });
@@ -945,7 +1082,7 @@ const loadLeaveResource = async (req, res, next) => {
         {
           model: User,
           as: 'employee',
-          attributes: ['uid', 'name', 'deptId', 'subDepartment']
+          attributes: ['uid', 'name', 'deptId', 'subDepartment', 'reportingManagerUid']
         }
       ]
     });
@@ -969,6 +1106,9 @@ router.put('/leaves/:id/approve',
     async (req, res) => {
     try {
         const leave = req.resource;
+        if (!(await canPerformHrLeaveFinalApproval(req.user))) {
+            return res.status(403).json({ error: 'Only the HR admin approval chain can finalize leave requests.' });
+        }
         // Logic already checked by middleware
 
         await leave.update({
@@ -981,6 +1121,7 @@ router.put('/leaves/:id/approve',
             // 1. Notify Employee
             await createNotification(req.io, {
                 targetUid: leave.employeeId,
+                panelScope: leave.employee?.role || 'Employee',
                 title: 'Leave Finalized',
                 message: `Your leave request for ${leave.type} (${leave.fromDate} to ${leave.toDate}) has been FULLY APPROVED by HR.`,
                 type: 'success',
@@ -1012,6 +1153,7 @@ router.put('/leaves/:id/approve',
 
                     await createNotification(req.io, {
                         targetUid: targetAdminUid,
+                        panelScope: targetAdmin.role,
                         title: 'Team Leave Finalized',
                         message: `Leave request for ${leave.employee?.name || 'team member'} was FULLY APPROVED by HR.`,
                         type: 'info',
@@ -1028,13 +1170,16 @@ router.put('/leaves/:id/approve',
     }
 });
 
-router.put('/leaves/:id/reject', verifyToken, isHR, async (req, res) => {
+router.put('/leaves/:id/reject', verifyToken, isHR, loadLeaveResource, async (req, res) => {
     try {
-        const { id } = req.params;
         const { remarks } = req.body;
-        
-        const leave = await Leave.findByPk(id, { include: [{ model: User, as: 'employee' }] });
-        if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+        const leave = req.resource;
+        if (!(await canPerformHrLeaveFinalApproval(req.user))) {
+            return res.status(403).json({ error: 'Only the HR admin approval chain can finalize leave requests.' });
+        }
+        if (leave.employeeId === req.user.uid) {
+            return res.status(403).json({ error: 'Governance violation: Institutional actors cannot approve or reject their own requests.' });
+        }
         
         if (leave.status !== 'pending hr') {
             return res.status(400).json({ error: `Cannot reject in current status: ${leave.status}` });
@@ -1048,6 +1193,7 @@ router.put('/leaves/:id/reject', verifyToken, isHR, async (req, res) => {
 
         await createNotification(req.io, {
             targetUid: leave.employeeId,
+            panelScope: leave.employee?.role || 'Employee',
             title: 'Leave Rejected',
             message: `Your leave request for ${leave.type} was rejected by HR.`,
             type: 'error',
@@ -1088,13 +1234,21 @@ router.put('/leaves/:id/step1-approve', verifyToken, async (req, res) => {
         });
 
         // Notify HR of pending oversight action
-        await createNotification(req.io, {
-            targetUid: 'HR_ADMIN_POOL', // System broad-cast to HR role
-            title: 'Oversight Required: Leave Step-2',
-            message: `Leave for ${leave.employee?.name} validated by Dept. Final HR ratification required.`,
-            type: 'info',
-            link: '/dashboard/hr/leaves'
+        const hrApprovers = await User.findAll({
+            where: { role: 'HR Admin', status: 'active' },
+            attributes: ['uid', 'role']
         });
+
+        for (const hrApprover of hrApprovers) {
+            await createNotification(req.io, {
+                targetUid: hrApprover.uid,
+                panelScope: hrApprover.role,
+                title: 'Oversight Required: Leave Step-2',
+                message: `Leave for ${leave.employee?.name} validated by Dept. Final HR ratification required.`,
+                type: 'info',
+                link: '/dashboard/hr/leaves'
+            });
+        }
 
         res.json({ message: 'Step-1 Validation successful. Routed to HR for final oversight.', leave });
     } catch (error) {

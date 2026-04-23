@@ -49,12 +49,12 @@ export const validateTaskAssignment = (assigner, assignee) => {
 
   const assigneeIsAdmin = DEPT_ADMIN_WHITELIST.includes(assigneeRole) || assigneeRole === "organization admin" || assigneeRole === "ceo";
 
-  // 3. CEO Branch: strictly HR Admin only
+  // 3. CEO Branch: Allowed to assign to any Departmental Admin for systemic delegation
   if (assignerRole === "ceo") {
-    if (assigneeRole !== "hr admin") {
-      throw new Error("Invalid task assignment: CEO can only assign tasks to HR Admin");
+    if (DEPT_ADMIN_WHITELIST.includes(assigneeRole) || assigneeRole === "hr admin") {
+      return true;
     }
-    return true;
+    throw new Error("Invalid task assignment: CEO can only delegate to Departmental Administrators");
   }
 
   // 4. Departmental Admin Branch

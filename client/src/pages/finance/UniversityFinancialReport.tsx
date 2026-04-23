@@ -5,11 +5,13 @@ import { clsx } from 'clsx';
 
 export default function UniversityFinancialReport() {
   const [universities, setUniversities] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [selectedUni, setSelectedUni] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchUniversities();
+    fetchAllReports();
   }, []);
 
   const fetchUniversities = async () => {
@@ -19,6 +21,15 @@ export default function UniversityFinancialReport() {
       if (res.data.length > 0) fetchReport(res.data[0].id);
     } catch (error) {
        console.error('Failed to fetch universities');
+    }
+  };
+
+  const fetchAllReports = async () => {
+    try {
+      const res = await api.get('/distribution/reports/universities');
+      setReports(res.data);
+    } catch (error) {
+       console.error('Failed to fetch all uni reports');
     }
   };
 
@@ -35,7 +46,7 @@ export default function UniversityFinancialReport() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       <div className="bg-slate-900 rounded-[32px] p-8 lg:p-12 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
          <div className="absolute top-0 right-0 p-12 opacity-5 translate-x-12 -translate-y-12">
             <BarChart2 className="w-64 h-64" />
@@ -99,6 +110,55 @@ export default function UniversityFinancialReport() {
            </div>
         </div>
       )}
+
+      <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
+         <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-8 ">Institutional Performance Ledger</h3>
+         <div className="overflow-x-auto">
+            <table className="w-full">
+               <thead>
+                  <tr className="text-left border-b border-slate-100">
+                     <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">University</th>
+                     <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Owed</th>
+                     <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Distributed</th>
+                     <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Pending</th>
+                     <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-50">
+                  {reports.map((report) => (
+                     <tr key={report.id} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4">
+                           <p className="font-bold text-slate-900">{report.name}</p>
+                           <p className="text-[10px] font-medium text-slate-400">{report.uid}</p>
+                        </td>
+                        <td className="py-4">
+                           <p className="font-black text-slate-700 tracking-tight">₹{report.totalOwed.toLocaleString()}</p>
+                        </td>
+                        <td className="py-4">
+                           <p className="font-black text-emerald-600 tracking-tight">₹{report.totalPaid.toLocaleString()}</p>
+                        </td>
+                        <td className="py-4">
+                           <p className="font-black text-rose-600 tracking-tight">₹{report.pending.toLocaleString()}</p>
+                        </td>
+                        <td className="py-4 text-right">
+                           <button 
+                              onClick={() => fetchReport(report.id)}
+                              className="px-4 py-1.5 rounded-xl bg-slate-100 text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                           >
+                              Analyze
+                           </button>
+                        </td>
+                     </tr>
+                  ))}
+                  {reports.length === 0 && (
+                     <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">No institutional records found in ledger.</td>
+                     </tr>
+                  )}
+               </tbody>
+            </table>
+         </div>
+      </div>
     </div>
   );
 }

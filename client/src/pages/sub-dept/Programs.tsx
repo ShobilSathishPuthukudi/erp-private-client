@@ -120,8 +120,6 @@ export default function Programs() {
           columns={columns} 
           data={programs} 
           isLoading={isLoading} 
-          searchKey="name" 
-          searchPlaceholder="Identify program..." 
         />
       </div>
     </div>

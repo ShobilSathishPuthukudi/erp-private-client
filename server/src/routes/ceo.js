@@ -6,8 +6,11 @@ import { verifyToken } from '../middleware/verifyToken.js';
 import { applyExecutiveScope } from '../middleware/visibility.js';
 import { augmentTaskCollection } from '../utils/taskAugmentation.js';
 import { SUB_DEPARTMENTS } from '../config/institutionalStructure.js';
+import { createNotification } from './notifications.js';
 
 const ACADEMIC_SUB_DEPT_NAMES = SUB_DEPARTMENTS.map(s => s.name);
+const CENTER_TYPES = ['partner-center', 'partner center', 'partner centers', 'study-center', 'study centers', 'Study centers'];
+const ACTIVE_STUDENT_STATUSES = ['ENROLLED'];
 
 const router = express.Router();
 const { User, Student, Invoice, Task, Leave, Department, AuditLog, CEOPanel, Program, Lead, OrgConfig, IncentivePayout, Target } = models;
@@ -18,6 +21,17 @@ const isCEO = (req, res, next) => {
     return res.status(403).json({ error: 'Access denied: CEO privileges required' });
   }
   next();
+};
+
+const resolveTaskLinkForRole = (role = '') => {
+  const r = (role || '').toLowerCase().trim();
+  if (r === 'employee') return '/dashboard/employee/tasks';
+  if (r === 'hr admin' || r === 'hr') return '/dashboard/hr/dept-tasks';
+  if (r === 'finance admin' || r === 'finance') return '/dashboard/finance/tasks';
+  if (r === 'sales admin' || r === 'sales') return '/dashboard/sales/tasks';
+  if (r.includes('operations') || r.includes('academic')) return '/dashboard/operations/tasks';
+  if (r === 'ceo') return '/dashboard/ceo/escalations';
+  return '/dashboard/tasks';
 };
 
 router.get('/roster', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
@@ -119,38 +133,26 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
     // Institutional departments (top-level: type='departments')
     const univWhere = {
       type: 'universities',
-      status: { [Op.in]: ['active', 'staged'] },
-      ...(restricted ? {
-        [Op.or]: [
-          { id: { [Op.in]: deptIds } },
-          { parentId: { [Op.in]: deptIds } }
-        ]
-      } : {})
+      status: { [Op.in]: ['active', 'staged'] }
     };
     const totalUniversities = await Department.unscoped().count({ where: univWhere });
 
     const totalPrograms = await Program.unscoped().count({
       where: {
-        status: 'active',
-        ...(restricted ? { subDeptId: { [Op.in]: deptIds } } : {})
+        status: 'active'
       }
     });
 
     const centerWhere = {
-      type: { [Op.in]: ['partner-center', 'partner center', 'partner centers'] },
-      status: 'active',
-      ...(restricted ? {
-        [Op.or]: [
-          { id: { [Op.in]: deptIds } },
-          { parentId: { [Op.in]: deptIds } },
-          ...(deptIds?.length > 0 ? [{ id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${deptIds.join(',')}))`) } }] : [])
-        ]
-      } : {})
+      type: { [Op.in]: CENTER_TYPES },
+      status: 'active'
     };
 
     const activeCenters = await Department.unscoped().count({ where: centerWhere });
 
-    const totalStudents = await Student.unscoped().count({ where: whereStudent });
+    const totalStudents = await Student.unscoped().count({
+      where: { status: { [Op.in]: ACTIVE_STUDENT_STATUSES } }
+    });
     
     const isFinance = names.some(n => n?.toLowerCase().includes('finance') || n?.toLowerCase().includes('account'));
 
@@ -291,8 +293,8 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       const monthName = d.toLocaleString('default', { month: 'short' });
       
       // Real trend data would be grouped by month in DB, here we simulate growth curve if no data
-      const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const monthStart = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
       
       const monthEnrolls = await Student.count({
         where: {
@@ -355,6 +357,68 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       centerGrowth.push({ day: dayName, leads, approved });
     }
 
+    // 5. Sales Intelligence (Lead Conversion & Velocity)
+    let salesIntelligence = null;
+    const hasSalesScope = names.some(n => {
+      const l = n?.toLowerCase();
+      return l.includes('sales') || l.includes('crm') || l.includes('lead');
+    });
+
+    if (hasSalesScope) {
+      const siTotalLeads = await Lead.count({ 
+        where: restricted ? {
+          [Op.or]: [
+            { '$assignee.deptId$': { [Op.in]: deptIds } },
+            { '$assignee.subDepartment$': { [Op.in]: names } },
+            { assignedTo: null }
+          ]
+        } : {},
+        include: [{ model: User, as: 'assignee', required: false }]
+      });
+
+      const siConvertedLeads = await Lead.count({ 
+        where: { 
+          status: 'CONVERTED',
+          ...(restricted ? {
+            [Op.or]: [
+              { '$assignee.deptId$': { [Op.in]: deptIds } },
+              { '$assignee.subDepartment$': { [Op.in]: names } },
+              { assignedTo: null }
+            ]
+          } : {})
+        },
+        include: [{ model: User, as: 'assignee', required: false }]
+      });
+
+      const siLeadsForAge = await Lead.findAll({
+        where: { 
+          status: 'CONVERTED',
+          ...(restricted ? {
+            [Op.or]: [
+              { '$assignee.deptId$': { [Op.in]: deptIds } },
+              { '$assignee.subDepartment$': { [Op.in]: names } },
+              { assignedTo: null }
+            ]
+          } : {})
+        },
+        include: [{ model: User, as: 'assignee', required: false }],
+        limit: 100,
+        attributes: ['createdAt', 'updatedAt']
+      });
+
+      let siAvgLeadAge = 5;
+      if (siLeadsForAge && siLeadsForAge.length > 0) {
+        const totalAge = siLeadsForAge.reduce((sum, l) => sum + (new Date(l.updatedAt) - new Date(l.createdAt)), 0);
+        siAvgLeadAge = Math.round(totalAge / siLeadsForAge.length / (1000 * 60 * 60 * 24)) || 1;
+      }
+
+      salesIntelligence = {
+        totalLeads: siTotalLeads,
+        convertedLeads: siConvertedLeads,
+        avgLeadAge: siAvgLeadAge
+      };
+    }
+
     res.json({
       totalStudents,
       totalUniversities,
@@ -376,43 +440,7 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
       revenueTrend,
       growthData,
       centerGrowth,
-      salesIntelligence: names.some(n => n?.toLowerCase().includes('sales & crm admin') || n?.toLowerCase().includes('sales intelligence')) ? {
-        totalLeads: await Lead.count({ 
-          where: restricted ? {
-            [Op.or]: [
-              { '$assignee.deptId$': { [Op.in]: deptIds } },
-              { '$assignee.subDepartment$': { [Op.in]: names } }
-            ]
-          } : {},
-          include: [{ model: User, as: 'assignee', required: true }]
-        }),
-        convertedLeads: await Lead.count({ 
-          where: { 
-            status: 'CONVERTED',
-            ...(restricted ? {
-              [Op.or]: [
-                { '$assignee.deptId$': { [Op.in]: deptIds } },
-                { '$assignee.subDepartment$': { [Op.in]: names } }
-              ]
-            } : {})
-          },
-          include: [{ model: User, as: 'assignee', required: true }]
-        }),
-        avgLeadAge: Math.round((await Lead.findAll({
-          where: { 
-            status: 'CONVERTED',
-            ...(restricted ? {
-              [Op.or]: [
-                { '$assignee.deptId$': { [Op.in]: deptIds } },
-                { '$assignee.subDepartment$': { [Op.in]: names } }
-              ]
-            } : {})
-          },
-          include: [{ model: User, as: 'assignee', required: true }],
-          limit: 100,
-          attributes: ['createdAt', 'updatedAt']
-        })).reduce((sum, l) => sum + (new Date(l.updatedAt) - new Date(l.createdAt)), 0) / 100 / (1000 * 60 * 60 * 24)) || 5
-      } : null,
+      salesIntelligence,
       departmentalBreakdown: await Promise.all((await Department.findAll({ attributes: ['id', 'name'], where: { id: { [Op.in]: deptIds }, name: { [Op.in]: ACADEMIC_SUB_DEPT_NAMES } } })).map(async (dept) => {
         const dId = dept.id;
         const name = dept.name;
@@ -451,8 +479,8 @@ router.get('/metrics', verifyToken, isCEO, applyExecutiveScope, async (req, res)
 // --- System Escalations ---
 router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
   try {
-    const { restricted, deptIds, names } = req.visibility;
-    console.log(`[CEO-DEBUG] UID: ${req.user.uid} | Restricted: ${restricted} | DeptIds: ${deptIds} | Names: ${names}`);
+    const { restricted, deptIds = [], names = [] } = req.visibility;
+    console.log(`[CEO-DEBUG] UID: ${req.user.uid} | Restricted: ${restricted} | DeptIds: ${deptIds?.length || 0} | Names: ${names?.length || 0}`);
     const whereUser = restricted ? {
       [Op.or]: [
         { deptId: { [Op.in]: deptIds } },
@@ -470,7 +498,7 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
     // CEO-level escalations are cross-departmental — no scope restriction on assignee
     const tasksRaw = await Task.findAll({
       where: {
-        status: { [Op.ne]: 'completed' },
+        status: { [Op.notIn]: ['completed', 'resolved_by_ceo', 'reassigned_escalated'] },
         escalationLevel: 'CEO'
       },
       include: [
@@ -551,7 +579,43 @@ router.get('/escalations', verifyToken, isCEO, applyExecutiveScope, async (req, 
       };
     });
 
-    res.json({ tasks, leaves });
+    const whereTask = restricted ? { departmentId: { [Op.in]: deptIds } } : {};
+    console.log(`[CEO-ESCALATIONS] Fetching Resolved - User: ${req.user.uid} | Restricted: ${restricted} | Depts: ${deptIds?.length || 0}`);
+    const resolvedTasksRaw = await Task.unscoped().findAll({
+      where: {
+        escalationLevel: 'CEO',
+        status: { [Op.in]: ['completed', 'reassigned_escalated', 'resolved_by_ceo'] },
+        ...whereTask
+      },
+      include: [
+        {
+          model: User,
+          as: 'assignee',
+          attributes: ['uid', 'name', 'email'],
+          include: [{ 
+            model: Department, 
+            as: 'department', 
+            attributes: ['id', 'name'],
+            include: [{ model: User, as: 'admin', attributes: ['name', 'email'] }]
+          }]
+        }
+      ],
+      order: [['updatedAt', 'DESC']],
+      limit: 50
+    });
+
+    console.log(`[CEO-ESCALATIONS] Found ${resolvedTasksRaw.length} resolved tasks.`);
+
+    const resolvedTasks = resolvedTasksRaw.map(t => {
+      const task = t.toJSON();
+      return {
+        ...task,
+        deptAdmin: task.assignee?.department?.admin,
+        moduleSource: task.module || 'General'
+      };
+    });
+
+    res.json({ tasks, leaves, resolvedTasks });
   } catch (error) {
     console.error('Fetch escalations error:', error);
     res.status(500).json({ error: 'Failed to fetch systemic escalations' });
@@ -734,10 +798,17 @@ router.get('/dept-users/:deptId', verifyToken, isCEO, applyExecutiveScope, async
       return res.status(403).json({ error: 'Access denied: department outside your visibility scope' });
     }
 
+    const DEPT_ADMIN_ROLES = [
+      'HR Admin', 'Finance Admin', 'Academic Operations Admin', 'Operations Admin',
+      'Sales Admin', 'BVoc Admin', 'Online Admin', 'Open School Admin', 'Skill Admin',
+      'Academic Admin', 'Academic Operations Administrator'
+    ];
+
     const users = await User.findAll({
       where: {
         deptId,
-        status: 'active'
+        status: 'active',
+        role: { [Op.in]: DEPT_ADMIN_ROLES }
       },
       attributes: ['uid', 'name', 'email', 'role']
     });
@@ -750,19 +821,64 @@ router.get('/dept-users/:deptId', verifyToken, isCEO, applyExecutiveScope, async
 // --- CEO Actions: Reassign Task ---
 router.post('/reassign-task', verifyToken, isCEO, async (req, res) => {
   try {
-    const { role } = req.user;
-    /* if (role === 'ceo') {
-      return res.status(403).json({ error: 'Access denied: CEO panel is in Read-Only oversight mode' });
-    } */
     const { taskId, newAssigneeId, newDeadline } = req.body;
     const task = await Task.findByPk(taskId);
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
     const oldAssigneeId = task.assignedTo;
-    task.assignedTo = newAssigneeId;
-    if (newDeadline) task.deadline = new Date(newDeadline);
-    task.status = 'pending'; // Reset status to pending for new assignee
-    await task.save();
+    const targetUser = await User.findOne({ where: { uid: newAssigneeId } });
+    if (!targetUser) return res.status(404).json({ error: 'Successor not found' });
+
+    // 1. Terminate current task record for performance tracking
+    await task.update({ 
+      status: 'reassigned_escalated',
+      escalationLevel: 'CEO',
+      remarks: `CEO REASSIGNMENT: Task reassigned to ${newAssigneeId} due to institutional bottleneck.`
+    }, { context: { assigner: req.user } });
+
+    // 1.5 Clear stale notifications GLOBALLY for this task
+    try {
+      const { clearNotifications } = await import('./notifications.js');
+      // Clear for ALL users since this specific task instance is terminated/reassigned
+      await clearNotifications({
+        messagePatterns: [
+          `%${task.title}%`, 
+          `%${task.id}%`,
+          `%CEO has reassigned%${task.title}%` // Catch legacy GOVERNANCE messages
+        ]
+      });
+    } catch (e) {
+      console.error('Clear notifications error:', e);
+    }
+
+    // 2. Create NEW task for the successor
+    const newTask = await Task.create({
+      title: task.title,
+      assignedTo: newAssigneeId,
+      assignedBy: req.user.uid,
+      deadline: newDeadline || task.deadline,
+      priority: task.priority,
+      status: 'pending',
+      departmentId: task.departmentId,
+      subDepartmentId: task.subDepartmentId,
+      isInstitutionalHandover: true,
+      escalationLevel: 'CEO'
+    }, { context: { assigner: req.user } });
+
+    // 3. Notify Successor
+    try {
+      const { createNotification } = await import('./notifications.js');
+      await createNotification(req.io, {
+        targetUid: newAssigneeId,
+        panelScope: targetUser.role,
+        title: 'Institutional Mandate - CEO DIRECTIVE',
+        message: `You have been assigned a high-priority directive: "${task.title}". CEO oversight is active.`,
+        type: 'warning',
+        link: resolveTaskLinkForRole(targetUser.role)
+      });
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
 
     // Log in Audit Trail
     await AuditLog.create({
@@ -771,12 +887,13 @@ router.post('/reassign-task', verifyToken, isCEO, async (req, res) => {
       entity: 'Task',
       module: 'Executive',
       before: { oldAssigneeId },
-      after: { newAssigneeId },
+      after: { newAssigneeId, taskId: task.id, newTaskIds: newTask.id },
       timestamp: new Date()
     });
 
-    res.json({ message: 'Task reassigned successfully' });
+    res.json({ message: 'Task reassigned and new directive issued', newTask });
   } catch (error) {
+    console.error('Reassign task error:', error);
     res.status(500).json({ error: 'Failed to reassign task' });
   }
 });
@@ -792,8 +909,8 @@ router.post('/resolve-task', verifyToken, isCEO, async (req, res) => {
     const task = await Task.findByPk(taskId);
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    task.status = 'completed';
-    task.remarks = `[EXECUTIVE_OVERRIDE]: ${resolutionNotes}`;
+    task.status = 'resolved_by_ceo';
+    task.remarks = `[EXECUTIVE_RESOLUTION]: ${resolutionNotes}`;
     await task.save();
 
     await AuditLog.create({
@@ -929,13 +1046,7 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
         data = await Department.unscoped().findAll({
           where: {
             type: 'universities',
-            status: { [Op.in]: ['active', 'staged'] },
-            ...(restricted ? {
-              [Op.or]: [
-                { id: { [Op.in]: deptIds } },
-                { parentId: { [Op.in]: deptIds } }
-              ]
-            } : {})
+            status: { [Op.in]: ['active', 'staged'] }
           },
           attributes: ['id', 'name', 'type', 'createdAt'],
           include: [{ 
@@ -951,15 +1062,8 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
       case 'centers':
         data = await Department.unscoped().findAll({
           where: {
-            type: { [Op.in]: ['partner-center', 'partner center', 'partner centers'] },
-            status: 'active',
-            ...(restricted ? {
-              [Op.or]: [
-                { id: { [Op.in]: deptIds } },
-                { parentId: { [Op.in]: deptIds } },
-                ...(deptIds?.length > 0 ? [{ id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT centerId FROM center_programs WHERE subDeptId IN (${deptIds.join(',')}))`) } }] : [])
-              ]
-            } : {})
+            type: { [Op.in]: CENTER_TYPES },
+            status: 'active'
           },
           attributes: ['id', 'name', 'type', 'status', 'createdAt'],
           include: [{ 
@@ -975,8 +1079,7 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
       case 'programs':
         data = await Program.unscoped().findAll({
           where: { 
-            status: 'active',
-            ...(restricted ? { subDeptId: { [Op.in]: deptIds } } : {})
+            status: 'active'
           },
           attributes: ['id', 'name', 'type'],
           include: [{ 
@@ -992,7 +1095,9 @@ router.get('/details/:type', verifyToken, isCEO, applyExecutiveScope, async (req
       case 'enrollments':
       case 'students':
         data = await Student.unscoped().findAll({
-          where: whereStudent,
+          where: {
+            status: { [Op.in]: ACTIVE_STUDENT_STATUSES }
+          },
           attributes: ['id', 'name', 'status', 'createdAt'],
           include: [{ 
             model: Department.unscoped(), 
@@ -1459,6 +1564,206 @@ router.get('/incentive-payouts', verifyToken, isCEO, async (req, res) => {
 
 router.put('/incentive-payouts/:id/approve', verifyToken, isCEO, async (req, res) => {
   return res.status(410).json({ error: 'CEO payout approvals are deprecated. Incentives are processed by Finance and shown here as read-only data.' });
+});
+
+// --- CEO Actions: HR Leave Approvals ---
+const isHrScopedLeave = (leave) => {
+  if (!leave?.employee) return false;
+
+  const role = (leave.employee.role || '').toLowerCase();
+  const sub = (leave.employee.subDepartment || '').toLowerCase();
+  const deptName = (leave.employee.department?.name || '').toLowerCase();
+  const email = (leave.employee.email || '').toLowerCase();
+  const name = (leave.employee.name || '').toLowerCase();
+
+  return (
+    role.includes('hr') ||
+    role.includes('human resources') ||
+    sub.includes('hr') ||
+    deptName.includes('hr') ||
+    email.includes('hr') ||
+    name.includes('hr employee')
+  );
+};
+
+const getLeaveStatusLinkForRole = (role = '') => {
+  const normalizedRole = String(role || '').toLowerCase().trim();
+
+  if (normalizedRole.includes('sales')) return '/dashboard/sales/leave-status';
+  if (normalizedRole.includes('finance')) return '/dashboard/finance/leave-status';
+  if (normalizedRole.includes('operations') || normalizedRole.includes('academic')) return '/dashboard/operations/leave-status';
+  if (normalizedRole.includes('open school') || normalizedRole.includes('openschool')) return '/dashboard/subdept/openschool/leave-status';
+  if (normalizedRole.includes('online')) return '/dashboard/subdept/online/leave-status';
+  if (normalizedRole.includes('skill')) return '/dashboard/subdept/skill/leave-status';
+  if (normalizedRole.includes('bvoc')) return '/dashboard/subdept/bvoc/leave-status';
+  if (normalizedRole.includes('hr')) return '/dashboard/hr/dept-leave-status';
+
+  return '/dashboard/tasks';
+};
+
+router.get('/hr-leaves', verifyToken, isCEO, applyExecutiveScope, async (req, res) => {
+  try {
+    const leavesRaw = await Leave.unscoped().findAll({
+      where: {
+        status: { [Op.ne]: 'draft' }
+      },
+      include: [
+        {
+          model: User.unscoped(),
+          as: 'employee',
+          attributes: ['uid', 'name', 'email', 'role', 'subDepartment', 'deptId'],
+          include: [{ model: Department, as: 'department', attributes: ['name'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Semantic filtering performed post-DB to definitively bypass SQL relational quirks
+    const hrLeaves = leavesRaw.filter(isHrScopedLeave);
+    
+    res.json(hrLeaves);
+  } catch (error) {
+    console.error('Fetch CEO HR Leaves Error:', error);
+    res.status(500).json({ error: 'Failed to fetch HR Administrator leaves' });
+  }
+});
+
+router.put('/hr-leaves/:id/approve', verifyToken, isCEO, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const leave = await Leave.findByPk(id, {
+      include: [
+        {
+          model: User.unscoped(),
+          as: 'employee',
+          attributes: ['uid', 'name', 'email', 'role', 'subDepartment', 'deptId'],
+          include: [{ model: Department, as: 'department', attributes: ['name', 'adminId'] }]
+        }
+      ]
+    });
+    if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+    if (!isHrScopedLeave(leave)) {
+      return res.status(403).json({ error: 'This leave request is not eligible for CEO HR leave finalization' });
+    }
+    if (!['pending_step2', 'pending hr', 'pending_step1', 'pending admin'].includes(leave.status)) {
+      return res.status(400).json({ error: `Cannot approve in current status: ${leave.status}` });
+    }
+    if (leave.employeeId === req.user.uid) {
+      return res.status(403).json({ error: 'Governance violation: Institutional actors cannot approve their own requests.' });
+    }
+
+    await leave.update({
+      status: 'approved',
+      step2By: req.user.uid
+    });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'CEO_APPROVE_HR_LEAVE',
+      entity: 'Leave',
+      module: 'Executive',
+      after: { leaveId: id, status: 'approved' },
+      timestamp: new Date()
+    });
+
+    await createNotification(req.io, {
+      targetUid: leave.employeeId,
+      panelScope: leave.employee?.role || 'Employee',
+      title: 'Leave Finalized',
+      message: `Your leave request for ${leave.type} (${leave.fromDate} to ${leave.toDate}) has been approved by the CEO.`,
+      type: 'success',
+      link: '/dashboard/employee/leaves'
+    });
+
+    const targetAdminUid = leave.step1By || leave.employee?.department?.adminId;
+    if (targetAdminUid && targetAdminUid !== req.user.uid) {
+      const targetAdmin = await User.findByPk(targetAdminUid);
+      if (targetAdmin) {
+        await createNotification(req.io, {
+          targetUid: targetAdminUid,
+          panelScope: targetAdmin.role,
+          title: 'HR Leave Finalized',
+          message: `CEO approved the leave request for ${leave.employee?.name || 'team member'}.`,
+          type: 'info',
+          link: getLeaveStatusLinkForRole(targetAdmin.role)
+        });
+      }
+    }
+    
+    res.json(leave);
+  } catch (error) {
+    console.error('Approve HR leave error:', error);
+    res.status(500).json({ error: 'Failed to approve leave via executive override' });
+  }
+});
+
+router.put('/hr-leaves/:id/reject', verifyToken, isCEO, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const leave = await Leave.findByPk(id, {
+      include: [
+        {
+          model: User.unscoped(),
+          as: 'employee',
+          attributes: ['uid', 'name', 'email', 'role', 'subDepartment', 'deptId'],
+          include: [{ model: Department, as: 'department', attributes: ['name', 'adminId'] }]
+        }
+      ]
+    });
+    if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+    if (!isHrScopedLeave(leave)) {
+      return res.status(403).json({ error: 'This leave request is not eligible for CEO HR leave finalization' });
+    }
+    if (!['pending_step2', 'pending hr', 'pending_step1', 'pending admin'].includes(leave.status)) {
+      return res.status(400).json({ error: `Cannot reject in current status: ${leave.status}` });
+    }
+    if (leave.employeeId === req.user.uid) {
+      return res.status(403).json({ error: 'Governance violation: Institutional actors cannot reject their own requests.' });
+    }
+
+    await leave.update({
+      status: 'rejected',
+      step2By: req.user.uid
+    });
+
+    await AuditLog.create({
+      userId: req.user.uid,
+      action: 'CEO_REJECT_HR_LEAVE',
+      entity: 'Leave',
+      module: 'Executive',
+      after: { leaveId: id, status: 'rejected' },
+      timestamp: new Date()
+    });
+
+    await createNotification(req.io, {
+      targetUid: leave.employeeId,
+      panelScope: leave.employee?.role || 'Employee',
+      title: 'Leave Rejected',
+      message: `Your leave request for ${leave.type} (${leave.fromDate} to ${leave.toDate}) was rejected by the CEO.`,
+      type: 'error',
+      link: '/dashboard/employee/leaves'
+    });
+
+    const targetAdminUid = leave.step1By || leave.employee?.department?.adminId;
+    if (targetAdminUid && targetAdminUid !== req.user.uid) {
+      const targetAdmin = await User.findByPk(targetAdminUid);
+      if (targetAdmin) {
+        await createNotification(req.io, {
+          targetUid: targetAdminUid,
+          panelScope: targetAdmin.role,
+          title: 'HR Leave Finalized',
+          message: `CEO rejected the leave request for ${leave.employee?.name || 'team member'}.`,
+          type: 'info',
+          link: getLeaveStatusLinkForRole(targetAdmin.role)
+        });
+      }
+    }
+
+    res.json(leave);
+  } catch (error) {
+    console.error('Reject HR leave error:', error);
+    res.status(500).json({ error: 'Failed to reject leave via executive override' });
+  }
 });
 
 export default router;

@@ -7,6 +7,7 @@ import {
   Activity,
   Filter
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -120,18 +121,11 @@ export default function OnboardingPulse() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <Activity className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Onboarding <span className="text-indigo-600">traceability</span></h1>
-            <p className="text-slate-500 font-medium text-sm flex items-center gap-2">Institutional Audit: Verify student credentials and regional hub status.</p>
-          </div>
-        </div>
-
-      </div>
+      <PageHeader 
+        title="Onboarding traceability" 
+        description="Institutional Audit: Verify student credentials and regional hub status." 
+        icon={Activity} 
+      />
 
       <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
         {[

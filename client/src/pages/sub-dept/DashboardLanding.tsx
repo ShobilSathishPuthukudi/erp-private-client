@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { 
   AreaChart, Area, 
@@ -116,16 +116,6 @@ export default function DashboardLanding() {
       path: '../programs',
       type: 'students',
       details: 'Institutional quality benchmark based on validated student records.'
-    },
-    { 
-      label: 'Enrollment Intakes', 
-      value: stats.totalBatches || 0, 
-      icon: LayoutDashboard, 
-      color: 'bg-indigo-600', 
-      trend: 'Live Batches',
-      path: '../sessions',
-      type: 'students',
-      details: 'Active and upcoming academic batches across jurisdictional centers.'
     },
     { 
       label: 'Jurisdictional Students', 

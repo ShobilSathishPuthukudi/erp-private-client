@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useNavigate } from 'react-router-dom';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Edit2, Trash2, Users, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, X, Eye, EyeOff, ChevronDown, Mail, Building2, ShieldCheck, CalendarDays, UserSquare2, Smartphone, Clock, FileText, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { toSentenceCase } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
 
 interface Employee {
   uid: string;
@@ -22,6 +24,13 @@ interface Employee {
   reportingManagerUid?: string | null;
   vacancyId?: number | null;
   createdAt: string;
+  phone?: string;
+  dateOfBirth?: string;
+  bio?: string;
+  address?: string;
+  baseSalary?: string | number;
+  leaveBalance?: number;
+  manager?: { name: string };
 }
 
 interface Vacancy {
@@ -43,8 +52,12 @@ export default function Employees() {
   const [showPassword, setShowPassword] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  
+  const navigate = useNavigate();
+  const currentUser = useAuthStore(state => state.user);
+  const updateUser = useAuthStore(state => state.updateUser);
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, reset, watch, setError, clearErrors, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       name: '',
       email: '',
@@ -124,10 +137,32 @@ export default function Employees() {
     setIsModalOpen(true);
   };
 
+  const syncCurrentSessionUser = (updatedUser?: Partial<Employee> & { departmentName?: string }) => {
+    if (!currentUser || !updatedUser || currentUser.uid !== updatedUser.uid) return;
+
+    updateUser({
+      name: updatedUser.name,
+      email: updatedUser.email,
+      avatar: updatedUser.avatar || undefined,
+      deptId: updatedUser.deptId ?? undefined,
+      departmentName: updatedUser.departmentName,
+      subDepartment: updatedUser.subDepartment || undefined,
+      phone: updatedUser.phone || undefined,
+      dateOfBirth: updatedUser.dateOfBirth || undefined,
+      bio: updatedUser.bio || undefined,
+      address: updatedUser.address || undefined
+    });
+  };
+
   const onSubmit = async (data: any) => {
     try {
       if (!editingEmployee && !data.password) {
-        return toast.error('Password is required for new employees');
+        setError('password', { type: 'manual', message: 'Password is required for new employees' });
+        return;
+      }
+      if (!editingEmployee && !avatarFile) {
+        setError('avatar' as any, { type: 'manual', message: 'Employee photo is required' });
+        return;
       }
 
       const payload = new FormData();
@@ -145,7 +180,8 @@ export default function Employees() {
       }
 
       if (editingEmployee) {
-        await api.put(`/hr/employees/${editingEmployee.uid}`, payload);
+        const response = await api.put(`/hr/employees/${editingEmployee.uid}`, payload);
+        syncCurrentSessionUser(response.data?.user);
         toast.success('Employee updated');
       } else {
         await api.post('/hr/employees', payload);
@@ -164,7 +200,19 @@ export default function Employees() {
       // Also refresh vacancies to reflect the updated status (e.g. if the role was just filled and closed)
       fetchVacancies();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Operation failed');
+      const status = error.response?.status;
+      const msg = error.response?.data?.error || error.response?.data?.message || 'Operation failed';
+      if (status === 409 && /name/i.test(msg)) {
+        setError('name', { type: 'server', message: msg });
+      } else if (/email/i.test(msg)) {
+        setError('email', { type: 'server', message: msg });
+      } else if (/password/i.test(msg)) {
+        setError('password', { type: 'server', message: msg });
+      } else if (/vacancy/i.test(msg)) {
+        setError('vacancyId', { type: 'server', message: msg });
+      } else {
+        setError('root' as any, { type: 'server', message: msg });
+      }
     }
   };
 
@@ -191,7 +239,22 @@ export default function Employees() {
   };
 
   const columns: ColumnDef<Employee>[] = [
-    { accessorKey: 'name', header: 'Full name' },
+    { 
+      accessorKey: 'name', 
+      header: 'Full name',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-slate-900 overflow-hidden flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow-lg shadow-slate-900/10">
+            {row.original.avatar ? (
+              <img src={row.original.avatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              row.original.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          <span className="font-bold text-slate-900 tracking-tight">{row.original.name}</span>
+        </div>
+      )
+    },
     { accessorKey: 'email', header: 'Email address' },
     { 
       id: 'department',
@@ -224,11 +287,11 @@ export default function Employees() {
       header: 'Status',
       cell: ({ row }) => {
         const status = row.original.status;
-        let color = 'bg-slate-100 text-slate-700';
-        if (status === 'active') color = 'bg-green-100 text-green-700';
-        if (status === 'suspended') color = 'bg-red-100 text-red-700';
+        let color = 'bg-slate-50 text-slate-400 border-slate-100';
+        if (status === 'active') color = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+        if (status === 'suspended') color = 'bg-rose-50 text-rose-600 border-rose-100';
         return (
-          <span className={`px-2 py-1 text-xs rounded-full font-medium ${color}`}>
+          <span className={`px-3 py-1 text-[9px] rounded-full font-black uppercase tracking-widest border ${color}`}>
             {toSentenceCase(status)}
           </span>
         );
@@ -241,10 +304,22 @@ export default function Employees() {
         const emp = row.original;
         return (
           <div className="flex items-center space-x-2">
-            <button onClick={() => openEditModal(emp)} className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                openEditModal(emp);
+              }}
+              className="p-1 hover:bg-slate-100 rounded text-slate-600 transition-colors"
+            >
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={() => handleDelete(emp)} className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDelete(emp);
+              }}
+              className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors"
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -278,6 +353,7 @@ export default function Employees() {
           searchKey="name" 
           searchPlaceholder="Search personnel by name..." 
           exportFileName="Personnel_Directory"
+          onRowClick={(employee) => navigate(`/dashboard/hr/employees/${employee.uid}`)}
         />
       </div>
 
@@ -311,11 +387,21 @@ export default function Employees() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
           <div className="p-8 space-y-6 bg-white overflow-y-auto max-h-[calc(100vh-240px)]">
+            {(errors as any).root && (
+              <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
+                <p className="text-xs font-bold text-rose-700">{(errors as any).root.message}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Identity Group */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Full Name</label>
                 <input
-                  {...register('name', { required: 'Name is required' })}
+                  {...register('name', { 
+                      required: 'Name is required',
+                      minLength: { value: 3, message: 'Must be between 3 to 24 characters' },
+                      maxLength: { value: 24, message: 'Must be between 3 to 24 characters' }
+                  })}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="John Smith"
                 />
@@ -326,76 +412,120 @@ export default function Employees() {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Email Address</label>
                 <input
                   type="email"
-                  {...register('email', { required: 'Email is required' })}
+                  {...register('email', { 
+                      required: 'Email is required',
+                      maxLength: { value: 50, message: 'Must be below 50 characters' }
+                  })}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="j.smith@erp.com"
                 />
                 {errors.email && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.email.message as string}</p>}
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {!editingEmployee && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Vacancy (Required)</label>
-                  <select
-                    {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
-                  >
-                    <option value="">-- Select Open Vacancy --</option>
-                    {vacancies.filter(v => v.status === 'OPEN').map((v) => (
-                      <option key={v.id} value={v.id}>{v.title}</option>
-                    ))}
-                  </select>
-                  {errors.vacancyId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.vacancyId.message as string}</p>}
-                </div>
-              )}
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Employee Photo <span className="text-slate-400 font-normal normal-case">(Optional)</span></label>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-200 flex items-center justify-center text-slate-500 font-black text-lg">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Password {editingEmployee && <span className="text-slate-400 font-normal normal-case ">(Leave blank to keep current)</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register('password', { 
+                        required: !editingEmployee ? 'Password is required for new hires' : false,
+                        minLength: { value: 6, message: 'Must be between 6 to 20 characters' },
+                        maxLength: { value: 20, message: 'Must be between 6 to 20 characters' }
+                    })}
+                    autoComplete="new-password"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium pr-12 text-slate-900"
+                    placeholder={editingEmployee ? "Enter new password" : "Required password"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 transition-all"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.password.message as string}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Employee Photo</label>
+                <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-2 min-h-[52px]">
+                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center text-slate-500 font-black text-xs shrink-0">
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
                     ) : (
                       (watch('name') || editingEmployee?.name || 'U').charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 space-y-0.5 mt-0.5">
                     <input
+                      id="employee-photo-upload"
                       type="file"
                       accept="image/*"
                       onChange={(event) => {
                         const file = event.target.files?.[0] || null;
+                        if (file && file.size > 5 * 1024 * 1024) {
+                            (event.target as any).value = null;
+                            setError('avatar' as any, { type: 'manual', message: 'Employee photo must be below 5mb' });
+                            setAvatarFile(null);
+                            setAvatarPreview(editingEmployee?.avatar || '');
+                            return;
+                        }
+                        clearErrors('avatar' as any);
                         setAvatarFile(file);
                         setAvatarPreview(file ? URL.createObjectURL(file) : (editingEmployee?.avatar || ''));
                       }}
-                      className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:bg-slate-800"
+                      className="hidden"
                     />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">PNG, JPG, or WebP up to 5MB</p>
+                    <label 
+                      htmlFor="employee-photo-upload"
+                      className="flex items-center gap-2 cursor-pointer w-fit mb-1"
+                    >
+                      <span className="block rounded-md bg-slate-900 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors shadow-sm">
+                        Choose File
+                      </span>
+                      <span className="text-xs text-slate-600 font-medium truncate max-w-[140px]">
+                        {avatarFile ? avatarFile.name : (editingEmployee?.avatar ? 'Existing photo' : 'No file chosen')}
+                      </span>
+                    </label>
+                    <div className="flex items-center justify-between pr-2">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mt-1">PNG/JPG/WebP &lt; 5MB</p>
+                      {(errors as any).avatar && <p className="text-[8px] font-bold text-rose-600 uppercase tracking-tight mt-1">{(errors as any).avatar.message}</p>}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {!editingEmployee && selectedVacancy && (
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Vacancy Scope</p>
-                <p className="mt-2 text-sm font-bold text-slate-900">
-                  {selectedVacancy.title}
-                </p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Department assignment is inherited from the selected vacancy{selectedVacancy.subDepartment && selectedVacancy.subDepartment !== 'General' ? ` (${selectedVacancy.subDepartment})` : ''}, and all new registrations are created as `Employee`.
-                </p>
-              </div>
-            )}
+              <div className="col-span-1 md:col-span-2 h-px bg-slate-100 my-2" />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+              {/* Role Group */}
+              {!editingEmployee && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Vacancy (Required)</label>
+                  <div className="relative group">
+                  <select
+                    {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
+                    className="w-full min-h-[52px] px-4 pr-10 py-3 appearance-none bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
+                  >
+                    <option value="">-- Select Open Vacancy --</option>
+                    {vacancies.filter(v => v.status === 'OPEN').map((v) => (
+                      <option key={v.id} value={v.id}>{v.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none mt-0.5" />
+                  </div>
+                  {errors.vacancyId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.vacancyId.message as string}</p>}
+                </div>
+              )}
+
+              <div className={`space-y-2 ${editingEmployee ? 'col-span-1 md:col-span-2' : ''}`}>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Reporting Manager</label>
+                <div className="relative group mt-1">
                 <select
                   {...register('reportingManagerUid', { required: 'Reporting manager is required' })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
+                  className="w-full min-h-[52px] px-4 pr-10 py-3 appearance-none bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium cursor-pointer hover:bg-white text-slate-900"
                 >
                   <option value="">-- No Direct Manager --</option>
                   {allEmployees
@@ -408,31 +538,23 @@ export default function Employees() {
                     <option key={e.uid} value={e.uid}>{e.name} ({toSentenceCase(e.role || '')})</option>
                   ))}
                 </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
                 {errors.reportingManagerUid && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.reportingManagerUid.message as string}</p>}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Password {editingEmployee && <span className="text-slate-400 font-normal normal-case ">(Leave blank to keep current)</span>}
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  {...register('password', { required: !editingEmployee ? 'Password is required for new hires' : false })}
-                  autoComplete="new-password"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium pr-12 text-slate-900"
-                  placeholder={editingEmployee ? "Enter new password" : "Required password"}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 transition-all"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.password.message as string}</p>}
+              {!editingEmployee && selectedVacancy && (
+                <div className="col-span-1 md:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 w-full">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Vacancy Scope</p>
+                  <p className="mt-2 text-sm font-bold text-slate-900">
+                    {selectedVacancy.title}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Department assignment is inherited from the selected vacancy{selectedVacancy.subDepartment && selectedVacancy.subDepartment !== 'General' ? ` (${selectedVacancy.subDepartment})` : ''}, and all new registrations are created as `Employee`.
+                  </p>
+                </div>
+              )}
+
             </div>
           </div>
 
