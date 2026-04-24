@@ -61,7 +61,7 @@ export default function SalesAchievement() {
 
   const cards = [
     {
-      title: 'Awaiting Approval',
+      title: 'Awaiting approval',
       value: targets.filter((target) => target.workflowStatus === 'pending_sales_admin').length,
       subtitle: 'Targets waiting for Sales Admin verification',
       icon: Clock3,
@@ -70,7 +70,7 @@ export default function SalesAchievement() {
       data: targets.filter((target) => target.workflowStatus === 'pending_sales_admin')
     },
     {
-      title: 'Assigned Targets',
+      title: 'Assigned targets',
       value: targets.filter((target) => target.workflowStatus === 'assigned').length,
       subtitle: 'Targets already assigned to sales employees',
       icon: Users,
@@ -79,7 +79,7 @@ export default function SalesAchievement() {
       data: targets.filter((target) => target.workflowStatus === 'assigned')
     },
     {
-      title: 'Completed Targets',
+      title: 'Completed targets',
       value: targets.filter((target) => target.workflowStatus === 'completed').length,
       subtitle: 'Targets fully completed and ready for oversight',
       icon: CheckCircle2,
@@ -107,7 +107,7 @@ export default function SalesAchievement() {
             </div>
 
             <p className="text-4xl font-black tracking-tighter text-slate-900">{card.value}</p>
-            <p className="mt-3 text-sm font-bold uppercase tracking-[0.2em] text-slate-500">{card.title}</p>
+            <p className="mt-3 text-sm font-bold tracking-[0.2em] text-slate-500">{card.title}</p>
             <p className="mt-2 text-sm leading-6 text-slate-500">{card.subtitle}</p>
           </div>
         );

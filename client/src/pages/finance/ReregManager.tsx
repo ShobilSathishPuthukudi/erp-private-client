@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { RefreshCw, CheckCircle, XCircle, User, Calendar, CreditCard, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface ReregRequest {
   id: number;
@@ -48,21 +49,17 @@ export default function ReregManager() {
   if (loading) return <div className="animate-pulse h-64 bg-slate-50 rounded-2xl" />;
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
-              <RefreshCw className="w-7 h-7 text-blue-600" />
-              Re-Registration Queue
-           </h2>
-           <p className="text-slate-500 mt-1">Verify payment proofs and authorize academic progression for the next cycle.</p>
-        </div>
-        <div className="flex gap-4">
-           <div className="bg-amber-50 text-amber-600 px-4 py-2 rounded-xl border border-amber-100 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-              <AlertTriangle className="w-4 h-4" /> 12 Carryforward
-           </div>
-        </div>
-      </div>
+    <div className="p-2 space-y-8">
+      <PageHeader 
+        title="Re-Registration Queue"
+        description="Verify payment proofs and authorize academic progression for the next cycle."
+        icon={RefreshCw}
+        action={
+          <div className="bg-amber-50 text-amber-600 px-4 py-2 rounded-xl border border-amber-100 flex items-center gap-2 text-xs font-bold uppercase tracking-widest whitespace-nowrap">
+            <AlertTriangle className="w-4 h-4" /> 12 Carryforward
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4">
         {queue.map((req) => (

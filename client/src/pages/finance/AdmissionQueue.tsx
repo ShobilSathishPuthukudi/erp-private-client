@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
 import { RemarkModal } from '@/components/shared/RemarkModal';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '@/components/shared/PageHeader';
 import toast from 'react-hot-toast';
 
 interface Student {
@@ -87,16 +88,12 @@ export default function AdmissionQueue() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-6">
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <CheckCircle className="w-6 h-6 text-emerald-500" />
-            Finance Admission Queue (Step 4/5)
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">Perform final financial verification on student fee proofs for institutional activation.</p>
-        </div>
-      </div>
+    <div className="space-y-6 max-w-7xl mx-auto p-2">
+      <PageHeader 
+        title="Finance Admission Queue (Step 4/5)"
+        description="Perform final financial verification on student fee proofs for institutional activation."
+        icon={CheckCircle}
+      />
 
       <DataTable columns={columns} data={students} isLoading={isLoading} searchKey="name" />
 

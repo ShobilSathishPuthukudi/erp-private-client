@@ -11,6 +11,7 @@ import {
   Lock,
   Link
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function SettingsIntegrations() {
   const [showMask, setShowMask] = useState<Record<string, boolean>>({});
@@ -70,16 +71,12 @@ export default function SettingsIntegrations() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-          <Link className="w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Infrastructure gateway hub</h1>
-          <p className="text-slate-500 mt-1 font-medium">Securely connect the ERP system to external messaging and payment services.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Infrastructure gateway hub"
+        description="Securely connect the ERP system to external messaging and payment services."
+        icon={Link}
+      />
 
       <div className="grid grid-cols-1 gap-8">
         {/* Email Gateway */}

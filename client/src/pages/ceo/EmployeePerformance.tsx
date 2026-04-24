@@ -92,46 +92,41 @@ export default function EmployeePerformance() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <Award className="w-6 h-6" />
+      <PageHeader 
+        title="Workforce performance"
+        description="Individual productivity index and institutional contribution telemetry."
+        icon={Award}
+        action={
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search identity..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:bg-white transition-all w-64 shadow-sm"
+              />
+            </div>
+            <select 
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:bg-white transition-all shadow-sm appearance-none cursor-pointer"
+            >
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Workforce performance</h1>
-            <p className="text-slate-500 font-medium text-sm">Individual Productivity Index & Institutional contribution Telemetry.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search Identity..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:bg-white transition-all w-64 shadow-sm"
-            />
-          </div>
-          <select 
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:bg-white transition-all shadow-sm appearance-none cursor-pointer"
-          >
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        }
+      />
 
       {/* Statistics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 p-8 rounded-[40px] text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[100px]"></div>
            <div className="relative z-10">
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Elite Cohort</p>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Elite cohort</p>
               <div className="flex items-baseline gap-2">
                 <h4 className="text-5xl font-black">
                   {employees.filter(e => e.productivityScore >= 90).length}
@@ -142,23 +137,23 @@ export default function EmployeePerformance() {
         </div>
         <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-bl-[100px]"></div>
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Risk Attention</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Risk attention</p>
            <div className="flex items-baseline gap-2">
              <h4 className="text-5xl font-black text-slate-900">
                {employees.filter(e => e.productivityScore < 60).length}
              </h4>
              <span className="text-rose-500 font-black text-sm uppercase tracking-tighter self-end mb-1 flex items-center gap-1">
-               <TrendingDown className="w-4 h-4" /> Critical Watch
+               <TrendingDown className="w-4 h-4" /> Critical watch
              </span>
            </div>
         </div>
         <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Aggregate Pulse</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Aggregate pulse</p>
            <div className="flex items-baseline gap-2">
              <h4 className="text-5xl font-black text-slate-900">
                {employees.length > 0 ? Math.round(employees.reduce((sum, e) => sum + e.productivityScore, 0) / employees.length) : 0}%
              </h4>
-             <span className="text-slate-400 font-black text-sm uppercase tracking-tighter">Avg Score</span>
+             <span className="text-slate-400 font-black text-sm uppercase tracking-tighter">Avg score</span>
            </div>
         </div>
       </div>
@@ -198,7 +193,7 @@ export default function EmployeePerformance() {
                   }`}>
                     {employee.productivityScore}%
                   </div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Efficiency</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">efficiency</p>
                 </div>
               </div>
 
@@ -209,7 +204,7 @@ export default function EmployeePerformance() {
                   <div className="flex flex-col items-center">
                     <span className="text-sm font-black text-slate-900">{employee.metrics.taskScore}%</span>
                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded leading-none mt-1 ${employee.metrics.overdueTasks > 0 ? 'text-rose-600 bg-rose-50' : 'text-emerald-600 bg-emerald-50'}`}>
-                      {employee.metrics.overdueTasks} Overdue
+                      {employee.metrics.overdueTasks} overdue
                     </span>
                   </div>
                 </div>
@@ -219,19 +214,19 @@ export default function EmployeePerformance() {
                   <div className="flex flex-col items-center">
                     <span className="text-sm font-black text-slate-900">{employee.metrics.leaveScore}%</span>
                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded leading-none mt-1 ${employee.metrics.agedLeaves > 0 ? 'text-rose-600 bg-rose-50' : 'text-emerald-600 bg-emerald-50'}`}>
-                      {employee.metrics.agedLeaves} Aged
+                      {employee.metrics.agedLeaves} aged
                     </span>
                   </div>
                 </div>
 
                 <div className="text-center px-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Lead Pulse</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Lead pulse</p>
                   <div className="flex flex-col items-center">
                     {(employee.dept?.toLowerCase().includes('sales') || employee.metrics.leadCount > 0) ? (
                       <>
                         <span className="text-sm font-black text-slate-900">{employee.metrics.salesScore}%</span>
                         <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded leading-none mt-1">
-                          {employee.metrics.leadCount} Leads
+                          {employee.metrics.leadCount} leads
                         </span>
                       </>
                     ) : (
@@ -252,13 +247,13 @@ export default function EmployeePerformance() {
                       employee.productivityScore >= 75 ? 'bg-blue-400' : 
                       employee.productivityScore >= 60 ? 'bg-amber-400' : 'bg-rose-400'
                     }`}></div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Telemetry Verified</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Telemetry verified</span>
                  </div>
                  <button
                    onClick={() => openDrillDown(employee)}
                    className="text-[10px] font-black text-slate-900 uppercase tracking-widest hover:text-blue-600 transition-all flex items-center gap-1.5 p-1 hover:-translate-x-1"
                  >
-                    Audit Report <ChevronRight className="w-3.5 h-3.5" />
+                    Audit report <ChevronRight className="w-3.5 h-3.5" />
                  </button>
               </div>
             </div>
@@ -284,14 +279,14 @@ export default function EmployeePerformance() {
               <Users className="w-10 h-10 text-slate-200" />
            </div>
            <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Telemetry Matches</h3>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">No telemetry matches</h3>
               <p className="text-sm font-bold text-slate-400 mt-2">Adjust your governance filters or check access partition status.</p>
            </div>
            <button
              onClick={() => { setSearchQuery(''); setDepartmentFilter('All'); }}
              className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-all"
            >
-             Reset Identity Filters
+             Reset identity filters
            </button>
         </div>
       )}

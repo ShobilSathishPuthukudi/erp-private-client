@@ -27,6 +27,7 @@ import {
   List,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 // ---------------------------------------------------------------------------
 // Shared infrastructure
@@ -124,25 +125,26 @@ const MonitorHeader = ({
   isFetching?: boolean;
   refetch?: () => void;
 }) => (
-  <div className="flex items-start justify-between mb-6">
-    <div>
-      <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{title}</h1>
-      <p className="text-sm text-slate-500 font-medium mt-1">{subtitle}</p>
-    </div>
-    <div className="flex items-center gap-3">
-      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-        <div>Live · auto-refresh 15s</div>
-        {generatedAt && <div className="text-slate-500">Snapshot {new Date(generatedAt).toLocaleTimeString()}</div>}
+  <PageHeader 
+    title={title}
+    description={subtitle}
+    icon={Globe}
+    action={
+      <div className="flex items-center gap-3">
+        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+          <div>Live · auto-refresh 15s</div>
+          {generatedAt && <div className="text-slate-500">Snapshot {new Date(generatedAt).toLocaleTimeString()}</div>}
+        </div>
+        <button
+          onClick={() => refetch && refetch()}
+          className="p-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition shadow-lg shadow-slate-900/20 active:scale-95"
+          title="Refresh now"
+        >
+          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+        </button>
       </div>
-      <button
-        onClick={() => refetch && refetch()}
-        className="p-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition"
-        title="Refresh now"
-      >
-        <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-      </button>
-    </div>
-  </div>
+    }
+  />
 );
 
 const EmptyRow = ({ label }: { label: string }) => (
@@ -198,7 +200,7 @@ export function GlobalMonitorOverview() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="p-2 space-y-8">
       <MonitorHeader
         title="Global Monitor"
         subtitle="Live snapshot of every panel in the institution — Organization Admin only."
@@ -393,7 +395,7 @@ export function HRMarketingMonitor() {
   }, [data, q]);
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="HR & Marketing — Live Monitor"
         subtitle="Workforce telemetry and institutional survey signals."
@@ -525,7 +527,7 @@ export function FinanceAccountingMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('finance', 'finance');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Finance & Accounting — Live Monitor"
         subtitle="Revenue pipeline, account verification and institutional audit trails."
@@ -648,7 +650,7 @@ export function SalesIntelligenceMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('sales', 'sales');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Sales Intelligence — Live Monitor"
         subtitle="Performance analytics for leads, deals and institutional referral growth."
@@ -748,7 +750,7 @@ export function AcademicEnrollmentMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('academic', 'academic');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Academic & Enrollment — Live Monitor"
         subtitle="Unified lifecycle tracking for universities, programs, centers and student enrollment."
@@ -843,7 +845,7 @@ export function CEOMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('ceo', 'ceo');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="CEO Panels — Live Monitor"
         subtitle="Every provisioned CEO, their scope, and governance activity."
@@ -945,7 +947,7 @@ export function SubDeptMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('subdepts', 'subdepts');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Sub-Departments — Live Monitor"
         subtitle="BVoc / Online / Skill / Open School — unit-level telemetry."
@@ -1004,7 +1006,7 @@ export function AdminAssignmentsMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('admin-assignments', 'admin-assignments');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Admin Assignments — Live Monitor"
         subtitle="Who heads what — Org Admins, Dept Admins, Sub-Dept Admins, CEOs."
@@ -1118,7 +1120,7 @@ export function TeamsMonitor() {
   const [q, setQ] = useState('');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Teams — Live Monitor"
         subtitle="Every department and sub-department roster."
@@ -1189,7 +1191,7 @@ export function DirectivesMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('directives', 'directives');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Directives & Surveys — Live Monitor"
         subtitle="All institutional communications and feedback cycles."
@@ -1256,7 +1258,7 @@ export function OperationsMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('operations', 'operations');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Operations & Regional — Live Monitor"
         subtitle="Tracking sub-department units and regional center audit maturity."
@@ -1344,7 +1346,7 @@ export function SecurityMonitor() {
   const { data, isLoading, isFetching, refetch } = useMonitor<any>('security', 'security');
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-2 space-y-6">
       <MonitorHeader
         title="Security Telemetry — Live Monitor"
         subtitle="Institutional audit trails, high-risk events and access density."

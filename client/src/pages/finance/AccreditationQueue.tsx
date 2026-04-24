@@ -3,8 +3,9 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { AlertCircle, RefreshCw, Eye, FileText, Landmark, GraduationCap, Calendar, Info } from 'lucide-react';
+import { AlertCircle, RefreshCw, Eye, FileText, Landmark, GraduationCap, Calendar, Info, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function AccreditationQueue() {
   const [accredTab, setAccredTab] = useState<'finance_pending'|'approved'>('finance_pending');
@@ -81,12 +82,13 @@ export default function AccreditationQueue() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-2">
       <div className="flex flex-col gap-6 shrink-0">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Accreditation audits</h1>
-           <p className="text-slate-500 text-sm font-medium">Verify structural pipelines and authorize program initialization.</p>
-        </div>
+      <PageHeader 
+        title="Accreditation audits"
+        description="Verify structural pipelines and authorize program initialization."
+        icon={ShieldCheck}
+      />
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit gap-2">
             <button onClick={() => setAccredTab('finance_pending')} className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2 ${accredTab === 'finance_pending' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500'}`}>
               Request Pending

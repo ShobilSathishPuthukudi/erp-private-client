@@ -54,21 +54,17 @@ export default function PayoutApproval() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
-      <div className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
-        <h2 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-          <Award className="h-7 w-7 text-amber-500" />
-          Incentive Payout Oversight
-        </h2>
-        <p className="mt-1 text-slate-500">
-          This panel is now read-only. Finance creates and processes incentive payouts after Sales Admin assignment and employee task completion.
-        </p>
-      </div>
+      <PageHeader 
+        title="Incentive payout oversight"
+        description="This panel is now read-only. Finance creates and processes incentive payouts after Sales Admin assignment and employee task completion."
+        icon={Award}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Total Payouts" value={summary.totalPayouts} icon={BarChart3} />
-        <Kpi label="Processed Payouts" value={summary.totalProcessed} icon={Award} />
-        <Kpi label="Total Value" value={`₹${Number(summary.totalValue || 0).toLocaleString()}`} icon={Coins} />
-        <Kpi label="Processed Value" value={`₹${Number(summary.processedValue || 0).toLocaleString()}`} icon={Coins} />
+        <Kpi label="Total payouts" value={summary.totalPayouts} icon={BarChart3} />
+        <Kpi label="Processed payouts" value={summary.totalProcessed} icon={Award} />
+        <Kpi label="Total value" value={`₹${Number(summary.totalValue || 0).toLocaleString()}`} icon={Coins} />
+        <Kpi label="Processed value" value={`₹${Number(summary.processedValue || 0).toLocaleString()}`} icon={Coins} />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -98,7 +94,7 @@ export default function PayoutApproval() {
         {payouts.length === 0 && (
           <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-20 text-center">
             <Award className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-900">No Incentive Records</h3>
+            <h3 className="text-lg font-bold text-slate-900">No incentive records</h3>
             <p className="mt-1 text-sm text-slate-500">Processed finance incentive data will appear here for CEO oversight.</p>
           </div>
         )}

@@ -22,6 +22,7 @@ import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface MappedRole {
   id: number;
@@ -178,62 +179,54 @@ export default function RoleMapping() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-10 pb-32">
-      {/* Premium Institutional Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50 group-hover:bg-blue-100 transition-colors duration-700"></div>
-        
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="bg-slate-900 p-4 rounded-3xl shadow-2xl shadow-slate-900/20 transform group-hover:rotate-6 transition-transform duration-500">
-            <UserCog className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">Admin role mapping</h1>
-            <p className="text-slate-500 mt-1 max-w-xl font-medium">HR assigns department/sub-department admin panels to eligible employees. Institutional governance excluded.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 relative z-10">
-          <button 
-            onClick={handleShare}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-            title="Share Registry Link"
-          >
-            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          <button 
-            onClick={handlePrint}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-            title="Print Registry"
-          >
-            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          <div className="relative group/export">
+    <div className="p-2 space-y-10 pb-32">
+      <PageHeader 
+        title="Admin role mapping"
+        description="HR assigns department/sub-department admin panels to eligible employees. Institutional governance excluded."
+        icon={UserCog}
+        action={
+          <div className="flex items-center gap-3 relative z-10">
             <button 
-              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-              title="Download/Export Registry"
+              onClick={handleShare}
+              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-slate-200"
+              title="Share Registry Link"
             >
-              <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
-              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 cursor-pointer">
-                <button 
-                  onClick={handleExportExcel}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
-                >
-                  Excel (.xlsx) Manifest
-                </button>
-                <button 
-                  onClick={handleExportPDF}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
-                >
-                   PDF (.pdf) Document
-                </button>
+            <button 
+              onClick={handlePrint}
+              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-slate-200"
+              title="Print Registry"
+            >
+              <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+            <div className="relative group/export">
+              <button 
+                className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-slate-200"
+                title="Download/Export Registry"
+              >
+                <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+              <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
+                <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 cursor-pointer">
+                  <button 
+                    onClick={handleExportExcel}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
+                  >
+                    Excel (.xlsx) Manifest
+                  </button>
+                  <button 
+                    onClick={handleExportPDF}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                     PDF (.pdf) Document
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="space-y-6">
         {/* Shadowed Search & Controls */}
@@ -275,7 +268,7 @@ export default function RoleMapping() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-             <p className="text-[10px] font-black text-slate-400 tracking-widest mt-4 uppercase">Syncing Role Registry...</p>
+             <p className="text-[10px] font-black text-slate-400 tracking-widest mt-4">Syncing role registry...</p>
           </div>
         ) : filteredRoles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-200 border-dashed text-slate-400">
@@ -303,7 +296,7 @@ export default function RoleMapping() {
                         }`}>
                           {role.status}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-bold tracking-wider pt-1 uppercase">Mapped Admin</span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-wider pt-1">Mapped admin</span>
                       </div>
                     </div>
                     <div className={`flex-shrink-0 p-4 rounded-3xl border transition-all duration-500 shadow-sm ${
@@ -321,7 +314,7 @@ export default function RoleMapping() {
                         <Building2 className="w-5 h-5" />
                       </div>
                       <div>
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sector Pillar</p>
+                         <p className="text-[10px] font-black text-slate-400 tracking-widest">Sector pillar</p>
                          <p className="text-sm font-bold text-slate-900">{role.department}</p>
                       </div>
                     </div>
@@ -362,11 +355,11 @@ export default function RoleMapping() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-200">
-                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role Identifier</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sector Pillar</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assigned Admin</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Role identifier</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Sector pillar</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Assigned admin</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Status</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -438,7 +431,7 @@ export default function RoleMapping() {
       <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl relative overflow-hidden group">
         <Shield className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 text-white/5 rotate-12 transition-transform duration-1000 group-hover:rotate-45" />
         <div className="max-w-2xl relative z-10">
-          <h4 className="text-2xl font-black mb-4 tracking-tight">Institutional Infrastructure & Governance</h4>
+          <h4 className="text-2xl font-black mb-4 tracking-tight">Institutional infrastructure & governance</h4>
           <p className="text-slate-400 font-medium leading-relaxed">
             Admin role mappings establish the primary lines of departmental oversight. 
             HR administrators maintain jurisdictional authority over these assignments. 
@@ -447,9 +440,9 @@ export default function RoleMapping() {
         </div>
         <button 
           onClick={() => setIsPolicyModalOpen(true)}
-          className="px-8 py-4 bg-white text-slate-900 font-black rounded-2xl shadow-xl hover:scale-105 transition-all relative z-10 text-[10px] uppercase tracking-[0.2em] cursor-pointer"
+          className="px-8 py-4 bg-white text-slate-900 font-black rounded-2xl shadow-xl hover:scale-105 transition-all relative z-10 text-[10px] tracking-[0.2em] cursor-pointer"
         >
-          Security Policy
+          Security policy
         </button>
       </div>
 
@@ -461,9 +454,9 @@ export default function RoleMapping() {
       >
         <div className="space-y-8">
           <div className="bg-blue-50 border border-blue-100 p-8 rounded-[2rem] cursor-pointer">
-            <h3 className="text-blue-900 font-black flex items-center gap-3 mb-3 text-[10px] uppercase tracking-widest">
+            <h3 className="text-blue-900 font-black flex items-center gap-3 mb-3 text-[10px] tracking-widest">
               <Shield className="w-5 h-5" />
-              Organizational Visibility Guard
+              Organizational visibility guard
             </h3>
             <p className="text-blue-800 text-sm leading-relaxed font-medium">
               The 'Visibility Guard' is a centralized security middleware that strictly isolates departmental data. 
@@ -521,18 +514,18 @@ export default function RoleMapping() {
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Institutional Pillar</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">Institutional pillar</p>
                 <p className="text-sm font-bold text-slate-900 mt-1">{selectedRole.department}</p>
               </div>
             </div>
 
             <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Role Definition</p>
+              <p className="text-[10px] font-black tracking-widest text-slate-400 mb-2">Role definition</p>
               <p className="text-sm text-slate-600 leading-relaxed font-medium">{selectedRole.description || 'Institutional administrative oversight role.'}</p>
             </div>
 
             <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Assigned Sovereignty</p>
+              <p className="text-[10px] font-black tracking-widest text-slate-400 mb-4">Assigned sovereignty</p>
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-slate-500 text-xl font-black">
                   {selectedRole.assignedUser?.avatar ? (
@@ -577,7 +570,7 @@ export default function RoleMapping() {
             <div className="p-6 rounded-3xl bg-slate-900 text-white relative overflow-hidden group">
               <Shield className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 text-white/5 rotate-12 transition-transform group-hover:rotate-45" />
               <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-2">Target Registry</p>
+                <p className="text-[10px] font-black tracking-[0.2em] text-white/50 mb-2">Target registry</p>
                 <h3 className="text-xl font-black tracking-tight mb-4">{assignRole.name}</h3>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2 text-white/70">
@@ -594,7 +587,7 @@ export default function RoleMapping() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Select Candidate Employee</label>
+              <label className="text-[10px] font-black tracking-widest text-slate-500 px-1">Select candidate employee</label>
               <div className="relative group/select">
                 <select
                   value={selectedUserUid}

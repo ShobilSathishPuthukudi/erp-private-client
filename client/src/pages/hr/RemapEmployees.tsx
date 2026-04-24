@@ -194,7 +194,7 @@ export default function RemapEmployees() {
         return (
           <div className="flex flex-col gap-1">
             {mappedRoles.map((role) => (
-              <span key={role.id} className="inline-flex w-fit px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-100">
+              <span key={role.id} className="inline-flex w-fit px-2 py-1 rounded-full text-[10px] font-black tracking-widest bg-amber-50 text-amber-700 border border-amber-100">
                 {toSentenceCase(role.name)}
               </span>
             ))}
@@ -208,7 +208,7 @@ export default function RemapEmployees() {
       cell: ({ row }) => (
         <button
           onClick={() => openRemapModal(row.original)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black tracking-widest hover:bg-blue-600 transition-all active:scale-95"
         >
           <RefreshCcw className="w-3.5 h-3.5" />
           Remap
@@ -221,7 +221,7 @@ export default function RemapEmployees() {
   const selectedEmployeeHasAdminMapping = Boolean(selectedEmployee?.assignedAdminRoles?.length);
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader
         title="Employee remap"
         description="Move existing employees into a different department or unit and clear any seeded admin mapping automatically."
@@ -242,13 +242,13 @@ export default function RemapEmployees() {
       <Modal
         isOpen={isModalOpen}
         onClose={closeRemapModal}
-        title="Remap Employee"
+        title="Remap employee"
         maxWidth="lg"
       >
         <div className="space-y-5">
           {selectedEmployee && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected employee</p>
+              <p className="text-[10px] font-black tracking-widest text-slate-400">Selected employee</p>
               <p className="mt-2 text-base font-bold text-slate-900">{selectedEmployee.name}</p>
               <p className="text-xs text-slate-500">{selectedEmployee.email}</p>
             </div>
@@ -256,7 +256,7 @@ export default function RemapEmployees() {
 
           {selectedEmployeeHasAdminMapping && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Admin mapping detected</p>
+              <p className="text-[10px] font-black tracking-widest text-amber-600">Admin mapping detected</p>
               <p className="mt-2 text-sm text-amber-900 font-medium">
                 This employee is currently mapped to a seeded admin role. Remapping will clear that admin assignment, revert the employee role to <span className="font-black">Employee</span>, and restore the default seeded admin fallback profile.
               </p>
@@ -264,7 +264,7 @@ export default function RemapEmployees() {
           )}
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Target department</label>
+            <label className="text-xs font-bold text-slate-500 tracking-widest">Target department</label>
             <select
               value={targetDepartmentId}
               onChange={(event) => setTargetDepartmentId(event.target.value)}
@@ -280,7 +280,7 @@ export default function RemapEmployees() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Reporting manager</label>
+            <label className="text-xs font-bold text-slate-500 tracking-widest">Reporting manager</label>
             <select
               value={targetManagerUid}
               onChange={(event) => setTargetManagerUid(event.target.value)}
@@ -297,7 +297,7 @@ export default function RemapEmployees() {
 
           {selectedDepartment && (
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Resolved target scope</p>
+              <p className="text-[10px] font-black tracking-widest text-blue-600">Resolved target scope</p>
               <p className="mt-2 text-sm font-bold text-slate-900">
                 {selectedDepartment.parent?.name ? `${selectedDepartment.parent.name} / ${selectedDepartment.name}` : selectedDepartment.name}
               </p>

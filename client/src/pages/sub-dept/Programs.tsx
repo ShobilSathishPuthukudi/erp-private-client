@@ -5,6 +5,7 @@ import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Program {
   id: number;
@@ -58,7 +59,7 @@ export default function Programs() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
             <span className="font-bold text-slate-900">{row.original.offeringCenters?.length || 0}</span>
-            <span className="text-[10px] text-slate-400 uppercase font-medium">Nodes</span>
+            <span className="text-[10px] text-slate-400 font-medium">Nodes</span>
         </div>
       )
     },
@@ -79,7 +80,7 @@ export default function Programs() {
         
         return (
           <div className="flex items-center gap-3">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${color}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${color}`}>
               {s}
             </span>
           </div>
@@ -95,25 +96,22 @@ export default function Programs() {
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-end shrink-0">
-        <div>
-           <div className="flex items-center gap-2 text-blue-600 mb-1 font-black uppercase tracking-[0.2em] text-[10px]">
-               <BookOpen className="w-4 h-4" />
-               Academic Architecture
-           </div>
-           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Assigned <span className="text-blue-600 font-outline-1">Programs</span></h1>
-           <p className="text-slate-500 font-medium">Read-only portfolio from Academic (Operations) Architecture</p>
-        </div>
-        <div className="flex gap-2">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <PageHeader 
+        title={`Assigned programs (${unit?.toUpperCase()})`}
+        description="Read-only portfolio from academic (operations) architecture."
+        icon={BookOpen}
+        action={
+          <div className="flex gap-2">
             {getUniqueUniversities().map(u => u && (
-                <span key={u.id} className="bg-white border border-slate-200 px-3 py-1 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm flex items-center gap-2">
+                <span key={u.id} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-600 shadow-sm flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     {u.name}
                 </span>
             ))}
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100 rounded-[2rem] flex flex-col overflow-hidden">
         <DataTable 

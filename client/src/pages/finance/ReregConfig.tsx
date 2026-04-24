@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Settings, ShieldCheck } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function ReregConfig() {
   const [configs, setConfigs] = useState<any[]>([]);
@@ -63,16 +64,12 @@ export default function ReregConfig() {
   if (loading) return <div className="animate-pulse h-64 bg-slate-50 rounded-2xl" />;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
-              <Settings className="w-7 h-7 text-blue-600" />
-              Re-Registration Configuration
-           </h2>
-           <p className="text-slate-500 mt-1">Configure institutional billing cycles, deadlines, and auto-approval thresholds.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Re-Registration Configuration"
+        description="Configure institutional billing cycles, deadlines, and auto-approval thresholds."
+        icon={Settings}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm h-fit">

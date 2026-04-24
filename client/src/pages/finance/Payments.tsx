@@ -180,7 +180,7 @@ export default function Payments() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="p-2 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
         title="Student payment pipelines"
         description="Review pending student transfers and securely generate fully tax-compliant PDF invoices instantly."

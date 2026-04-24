@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
-import { Building2, CheckCircle2, Coins, XCircle } from 'lucide-react';
+import { Building2, CheckCircle2, Coins, XCircle, Landmark } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 type ApiError = { response?: { data?: { error?: string } } };
 
@@ -79,16 +80,12 @@ export default function UniversityChanges() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight text-slate-900">
-          <Coins className="h-8 w-8 text-blue-600" />
-          University Change Finance Queue
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Finance approves operations-cleared center university changes, assigns the new fee structure, and updates the active center-program record.
-        </p>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="University Change Finance Queue"
+        description="Finance approves operations-cleared center university changes, assigns the new fee structure, and updates the active center-program record."
+        icon={Landmark}
+      />
 
       <div className="space-y-4">
         {requests.length === 0 && (

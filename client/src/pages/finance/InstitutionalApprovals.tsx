@@ -3,9 +3,10 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 
 
@@ -252,12 +253,13 @@ export default function InstitutionalApprovals() {
 
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-2">
       <div className="flex flex-col gap-6 shrink-0">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Student audit & approvals</h1>
-           <p className="text-slate-500 text-sm font-medium">Review finance-bound student verification and final enrollment decisions.</p>
-        </div>
+      <PageHeader 
+        title="Student audit & approvals"
+        description="Review finance-bound student verification and final enrollment decisions."
+        icon={Users}
+      />
         <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto w-fit">
             <button 
                 onClick={() => setActiveTab('enrollment')}

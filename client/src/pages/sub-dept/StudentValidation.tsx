@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DataTable } from '@/components/shared/DataTable';
+import { PageHeader } from '@/components/shared/PageHeader';
 import type { ColumnDef } from '@tanstack/react-table';
 
 interface Student {
@@ -206,20 +207,17 @@ export default function StudentValidation() {
   ];
 
   return (
-    <div className="p-8 space-y-10 max-w-[1600px] mx-auto">
-      <div className="flex flex-col gap-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
-            <Users className="w-8 h-8 text-blue-600" />
-            Student <span className="text-blue-600 font-outline-1">Validation</span> Hub
-          </h1>
-          <p className="text-slate-500 font-medium tracking-tight">Multi-stage review and routing terminal for institutional admissions.</p>
-        </div>
+    <div className="p-2 space-y-10 max-w-[1600px] mx-auto">
+      <PageHeader 
+        title="Student validation hub"
+        description="Multi-stage review and routing terminal for institutional admissions."
+        icon={Users}
+      />
 
         <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 w-fit">
           <button 
             onClick={() => setActiveTab('PENDING')}
-            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all ${
               activeTab === 'PENDING' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -230,7 +228,7 @@ export default function StudentValidation() {
           </button>
           <button 
             onClick={() => setActiveTab('VALIDATED')}
-            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all ${
               activeTab === 'VALIDATED' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -241,7 +239,7 @@ export default function StudentValidation() {
           </button>
           <button 
             onClick={() => setActiveTab('APPROVED')}
-            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all ${
               activeTab === 'APPROVED' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -252,7 +250,7 @@ export default function StudentValidation() {
           </button>
           <button 
             onClick={() => setActiveTab('REJECTED')}
-            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all ${
               activeTab === 'REJECTED' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -262,7 +260,6 @@ export default function StudentValidation() {
             </span>
           </button>
         </div>
-      </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable 

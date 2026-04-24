@@ -190,17 +190,22 @@ export default function Escalations() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
+      <PageHeader 
+        title="Critical inbox"
+        description="Protracted deadlocks requiring executive intervention."
+        icon={AlertTriangle}
+      />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <AlertTriangle className="w-6 h-6" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Critical inbox</h1>
+              <p className="text-slate-500 font-medium text-sm">Protracted deadlocks requiring executive intervention.</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Critical Inbox</h1>
-            <p className="text-slate-500 font-medium text-sm">Protracted deadlocks requiring executive intervention.</p>
-          </div>
-        </div>
 
 
 
@@ -225,11 +230,11 @@ export default function Escalations() {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="bg-white border border-slate-200 text-slate-900 text-[11px] font-bold px-4 py-2 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all outline-none h-10 min-w-[150px]"
           >
-            <option value="all">All Records</option>
-            <option value="pending">Active Pending</option>
+            <option value="all">All records</option>
+            <option value="pending">Active pending</option>
             <option value="completed">Completed</option>
-            <option value="resolved">CEO Resolved</option>
-            <option value="granted">Grace Period</option>
+            <option value="resolved">CEO resolved</option>
+            <option value="granted">Grace period</option>
           </select>
         </div>
       </div>
@@ -240,7 +245,7 @@ export default function Escalations() {
         <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-white">
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'tasks' ? 'Critical Escalation Inbox' : 'Aged Leave Pending'}
+              {activeTab === 'tasks' ? 'Critical escalation inbox' : 'Aged leave pending'}
             </h2>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
               Protracted deadlocks requiring executive intervention
@@ -250,11 +255,11 @@ export default function Escalations() {
              {isReadOnly && (
                <div className="flex items-center gap-2 px-4 py-2 bg-slate-900/5 border border-slate-900/10 rounded-xl mr-2">
                  <ShieldCheck className="w-4 h-4 text-slate-400" />
-                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monitoring Mode</span>
+                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monitoring mode</span>
                </div>
              )}
-              <span className={`text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider ${activeTab === 'tasks' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
-                {(activeTab === 'tasks' ? filteredTasks : leaves).length} System Records
+               <span className={`text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider ${activeTab === 'tasks' ? 'bg-red-500 shadow-red-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
+                {(activeTab === 'tasks' ? filteredTasks : leaves).length} system records
               </span>
           </div>
         </div>
@@ -264,9 +269,9 @@ export default function Escalations() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-50">
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  {activeTab === 'tasks' ? 'Task Objective' : 'Employee / Leave Type'}
+                  {activeTab === 'tasks' ? 'Task objective' : 'Employee / leave type'}
                 </th>
-                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental Chain</th>
+                <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Departmental chain</th>
                 <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">
                   {activeTab === 'tasks' ? 'Status' : 'Inertia'}
                 </th>
@@ -303,11 +308,11 @@ export default function Escalations() {
                     <td className="px-10 py-6">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned By:</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned by:</span>
                           <span className="font-bold text-slate-700">{task.assigner?.name || 'System Generated'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned To:</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase w-[70px] shrink-0">Assigned to:</span>
                           <span className="font-bold text-slate-600 ">{task.assignee?.name}</span>
                         </div>
                       </div>
@@ -327,7 +332,7 @@ export default function Escalations() {
                       ) : (
                         <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ring-2 ring-transparent transition-all ${getUrgencyColor(task.daysOverdue)}`}>
                           <Clock className="w-3.5 h-3.5" />
-                          {task.daysOverdue} Days Overdue
+                          {task.daysOverdue} days overdue
                         </div>
                       )}
                     </td>
@@ -341,7 +346,7 @@ export default function Escalations() {
                               className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all whitespace-nowrap border border-emerald-100"
                               title="Resolve Escalation"
                             >
-                              Resolve Escalation
+                              Resolve escalation
                             </button>
                             <button 
                               onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalMode('reassign'); }}
@@ -378,7 +383,7 @@ export default function Escalations() {
                         <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${leave.daysOverdue > 7 ? 'bg-red-500' : 'bg-amber-500'}`} />
                         <div>
                           <div className="font-black text-slate-900 leading-tight mb-1">{leave.employee?.name}</div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{leave.type} Request</div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{leave.type} request</div>
                         </div>
                       </div>
                     </td>
@@ -391,7 +396,7 @@ export default function Escalations() {
                     <td className="px-10 py-6 text-center">
                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs ${getUrgencyColor(leave.daysOverdue)}`}>
                         <Clock className="w-3.5 h-3.5" />
-                        {leave.daysOverdue} Days Pending
+                        {leave.daysOverdue} days pending
                       </div>
                     </td>
                     <td className="px-10 py-6">
@@ -403,17 +408,17 @@ export default function Escalations() {
                        {isReadOnly ? (
                          <button 
                           onClick={() => { setSelectedLeave(leave); setModalMode('chain'); }}
-                          className="px-4 py-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-slate-600 transition-all"
-                         >
-                           View Audit
-                         </button>
+                           className="px-4 py-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-slate-600 transition-all"
+                          >
+                            View audit
+                          </button>
                        ) : (
                          <button 
                           onClick={() => { setSelectedLeave(leave); setModalMode('override_leave'); }}
-                          className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg hover:shadow-slate-900/20 transition-all"
-                         >
-                           Executive Decision
-                         </button>
+                           className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg hover:shadow-slate-900/20 transition-all"
+                          >
+                            Executive decision
+                          </button>
                        )}
                     </td>
                   </tr>

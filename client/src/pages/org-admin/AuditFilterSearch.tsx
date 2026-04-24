@@ -23,6 +23,7 @@ import {
 import { api } from '@/lib/api';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function AuditFilterSearch() {
   const [filters, setFilters] = useState({
@@ -107,46 +108,41 @@ export default function AuditFilterSearch() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32">
-      {/* Premium Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <SearchCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Forensic search intelligence</h1>
-            <p className="text-slate-500 mt-1 font-medium text-sm tracking-tight text-[11px] uppercase opacity-70">Isolate behavioral patterns and institutional data mutations.</p>
-          </div>
-        </div>
-        <div className="flex gap-3 items-center">
-          <button 
-            onClick={handleShare}
-            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
-            title="Share Forensic Query"
-          >
-            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          
-          <button 
-            onClick={handlePrint}
-            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
-            title="Print Forensic Report"
-          >
-            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+    <div className="p-2 space-y-6 pb-32">
+      <PageHeader 
+        title="Forensic search intelligence"
+        description="Isolate behavioral patterns and institutional data mutations."
+        icon={SearchCheck}
+        action={
+          <div className="flex gap-3 items-center">
+            <button 
+              onClick={handleShare}
+              className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
+              title="Share forensic query"
+            >
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+            
+            <button 
+              onClick={handlePrint}
+              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
+              title="Print forensic report"
+            >
+              <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
 
-          <div className="w-px h-6 bg-slate-200 mx-1"></div>
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
-          <button 
-            onClick={handleSearch}
-            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/20 group cursor-pointer"
-          >
-            <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
-            Search
-          </button>
-        </div>
-      </div>
+            <button 
+              onClick={handleSearch}
+              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/20 group cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
+              Search
+            </button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Primary Search Filters */}

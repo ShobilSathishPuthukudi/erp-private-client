@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Request {
   id: number;
@@ -161,25 +162,21 @@ export default function CredentialRequests() {
   ];
 
   return (
-    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto auto-">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Credential reveal protocols</h1>
-            <p className="text-slate-500 font-medium text-sm">Securely request and audit credential reveals.</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => { reset(); setIsModalOpen(true); }}
-          className="relative z-10 flex items-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-black uppercase tracking-widest text-[10px]"
-        >
-          <Key className="w-4 h-4 text-indigo-400" />
-          <span>Initialize Reveal Request</span>
-        </button>
-      </div>
+    <div className="p-2 space-y-6 max-w-[1600px] mx-auto">
+      <PageHeader 
+        title="Credential reveal protocols"
+        description="Securely request and audit credential reveals."
+        icon={ShieldAlert}
+        action={
+          <button 
+            onClick={() => { reset(); setIsModalOpen(true); }}
+            className="flex items-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 font-black text-[10px]"
+          >
+            <Key className="w-4 h-4 text-indigo-400" />
+            <span>Initialize reveal request</span>
+          </button>
+        }
+      />
 
       {revealedCreds && (
         <div className="bg-indigo-900 text-white p-6 rounded-3xl border-4 border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-900/40 relative overflow-hidden animate-bounce-subtle">

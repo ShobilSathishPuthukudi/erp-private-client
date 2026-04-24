@@ -130,7 +130,7 @@ export default function Attendance() {
           return (
             <div className="flex items-center space-x-2 bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-lg w-fit">
               <MinusCircle className="w-4 h-4 text-rose-500" />
-              <span className="text-xs font-black uppercase tracking-wider text-rose-700">On Leave</span>
+              <span className="text-xs font-black tracking-wider text-rose-700">On leave</span>
             </div>
           );
         }
@@ -176,7 +176,7 @@ export default function Attendance() {
   };
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Institutional presence"
         description="Daily registry and historical attendance audit for staff and administrators."
@@ -189,7 +189,7 @@ export default function Attendance() {
              <UserCheck className="w-6 h-6" />
            </div>
            <div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Today's Presence</p>
+             <p className="text-[10px] font-black tracking-widest text-slate-400 mb-0.5">Today's presence</p>
              <h3 className="text-2xl font-black text-slate-900">
                {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}%
              </h3>
@@ -201,9 +201,9 @@ export default function Attendance() {
              <Clock className="w-6 h-6" />
            </div>
            <div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Tardiness Rate</p>
+             <p className="text-[10px] font-black tracking-widest text-slate-400 mb-0.5">Tardiness rate</p>
              <h3 className="text-2xl font-black text-slate-900">
-               {stats.late} <span className="text-sm text-slate-400 font-bold ml-1 uppercase">Staff</span>
+               {stats.late} <span className="text-sm text-slate-400 font-bold ml-1">Staff</span>
              </h3>
            </div>
         </div>
@@ -225,7 +225,7 @@ export default function Attendance() {
            <div className="inline-flex bg-slate-50 p-1 rounded-xl shadow-inner border border-slate-200/50">
              <button 
                onClick={() => setActiveTab('employees')}
-               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+               className={`py-2 px-6 rounded-lg text-[10px] font-black tracking-widest transition-all duration-200 ${
                  activeTab === 'employees' 
                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
                    : 'text-slate-400 hover:text-slate-600'
@@ -235,7 +235,7 @@ export default function Attendance() {
              </button>
              <button 
                onClick={() => setActiveTab('admins')}
-               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+               className={`py-2 px-6 rounded-lg text-[10px] font-black tracking-widest transition-all duration-200 ${
                  activeTab === 'admins' 
                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
                    : 'text-slate-400 hover:text-slate-600'
@@ -247,7 +247,7 @@ export default function Attendance() {
         </div>
 
         <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center space-x-6 shrink-0 overflow-x-auto">
-          <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 mr-2">Registry Legend:</span>
+          <span className="text-[10px] font-black tracking-tighter text-slate-400 mr-2">Registry legend:</span>
           {[
             { label: 'Present', color: 'text-emerald-500', icon: CheckCircle2 },
             { label: 'Absent', color: 'text-red-500', icon: XCircle },

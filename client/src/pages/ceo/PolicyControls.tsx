@@ -63,27 +63,29 @@ export default function PolicyControls() {
 
   return (
     <div className="p-2 space-y-8 flex flex-col">
+      <PageHeader 
+        title="Governance framework"
       <div className="max-w-4xl space-y-8 pb-20">
       
       <div className="flex items-center justify-between">
-         <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Governance framework</h2>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional SLA & Risk Threshold Management</p>
-         </div>
+          <div>
+             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Governance framework</h2>
+             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional SLA & risk threshold management</p>
+          </div>
          {user?.role === 'CEO' || user?.role === 'Organization Admin' ? (
-           <button 
-             onClick={handleSave}
-             disabled={saving}
-             className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm hover:shadow-2xl hover:shadow-slate-900/40 transition-all active:scale-95 disabled:opacity-50"
-           >
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Commit Framework
-           </button>
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm hover:shadow-2xl hover:shadow-slate-900/40 transition-all active:scale-95 disabled:opacity-50"
+            >
+               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+               Commit framework
+            </button>
          ) : (
-           <div className="flex items-center gap-2 bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-slate-200">
-             <Lock className="w-4 h-4" />
-             Read-Only Policy Monitor
-           </div>
+            <div className="flex items-center gap-2 bg-slate-100 text-slate-400 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-slate-200">
+              <Lock className="w-4 h-4" />
+              Read-only policy monitor
+            </div>
          )}
       </div>
 
@@ -96,12 +98,12 @@ export default function PolicyControls() {
               <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-600/20">
                  <Clock className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">SLA Performance Thresholds</h3>
+               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">SLA performance thresholds</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Defines critical escalation triggers</p>
            
               <div className="mt-8 space-y-6">
-                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Leave Approval SLA (Days)</label>
+                  <div>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Leave approval SLA (days)</label>
                     <input 
                       type="number" 
                       value={policies.leaveSlaDays}
@@ -109,8 +111,8 @@ export default function PolicyControls() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-black focus:ring-2 focus:ring-blue-600/10 outline-none"
                     />
                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Task Completion SLA (Days)</label>
+                   <div>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Task completion SLA (days)</label>
                     <input 
                       type="number" 
                       value={policies.taskSlaDays}
@@ -118,9 +120,9 @@ export default function PolicyControls() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-black focus:ring-2 focus:ring-blue-600/10 outline-none"
                     />
                  </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Task Escalation Grace (Hrs)</label>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Task escalation grace (hrs)</label>
                         <input 
                           type="number" 
                           value={policies.taskEscalationGraceHours}
@@ -128,8 +130,8 @@ export default function PolicyControls() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-black focus:ring-2 focus:ring-blue-600/10 outline-none"
                         />
                     </div>
-                    <div>
-                        <label className="block text-[10px) font-black text-slate-400 uppercase tracking-widest mb-3">Leave Escalation Grace (Hrs)</label>
+                     <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Leave escalation grace (hrs)</label>
                         <input 
                           type="number" 
                           value={policies.leaveEscalationGraceHours}
@@ -149,12 +151,12 @@ export default function PolicyControls() {
               <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-rose-600/20">
                  <Shield className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Institutional Risk Guard</h3>
+               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Institutional risk guard</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Financial & Security telemetry triggers</p>
            
               <div className="mt-8 space-y-6">
-                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">High-Value Invoice Alert (INR)</label>
+                  <div>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">High-value invoice alert (INR)</label>
                     <div className="relative">
                        <input 
                         type="number" 
@@ -165,9 +167,8 @@ export default function PolicyControls() {
                        <Wallet className="absolute left-4 top-4 w-4 h-4 text-slate-400" />
                     </div>
                  </div>
-                 
-                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Active Compliance Triggers</label>
+                                  <div>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Active compliance triggers</label>
                     <div className="space-y-3">
                        {[
                          { id: 'CREDENTIAL_REVEAL', label: 'Credential Reveal Auditing', icon: ShieldCheck },
@@ -194,16 +195,16 @@ export default function PolicyControls() {
 
       <div className="bg-slate-900 p-10 rounded-[40px] text-white shadow-2xl relative overflow-hidden">
          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-bl-[200px] -z-0"></div>
-         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="max-w-md">
-               <h4 className="text-xl font-black mb-2">Governance Sync Active</h4>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+             <div className="max-w-md">
+                <h4 className="text-xl font-black mb-2">Governance sync active</h4>
                <p className="text-white/50 text-xs font-bold uppercase tracking-widest leading-relaxed">
                   Changes to this framework are broadcasted to all departmental governors in real-time. Policy overrides are permanently logged in the institutional audit ledger.
                </p>
             </div>
-            <div className="flex items-center gap-4">
-               <div className="text-right">
-                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Framework Status</p>
+             <div className="flex items-center gap-4">
+                <div className="text-right">
+                   <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Framework status</p>
                   <p className="text-lg font-black">L-II Secured</p>
                </div>
                <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 flex items-center justify-center">

@@ -79,18 +79,18 @@ export default function Students() {
   }, [students, activeFilter]);
 
   return (
-    <div className="p-4 md:p-8 space-y-10 max-w-[1700px] mx-auto min-h-screen bg-slate-50/30">
+    <div className="p-2 space-y-10 max-w-[1700px] mx-auto min-h-screen bg-slate-50/30">
       {/* Executive Page Header */}
       <PageHeader 
-        title="Institutional Structure"
-        description={`Real-time execution monitoring for the ${unit?.toUpperCase()} student roster.`}
+        title="Institutional structure"
+        description={`Real-time execution monitoring for the ${unit} student roster.`}
         icon={Layers}
         action={
           <div className="flex items-center gap-3 bg-blue-50/50 p-1.5 rounded-2xl border border-blue-100">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
               <ShieldCheck className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-black uppercase text-blue-700 tracking-widest pr-3">Read-Only Mode</span>
+            <span className="text-[10px] font-black text-blue-700 tracking-widest pr-3">Read-only mode</span>
           </div>
         }
       />
@@ -100,7 +100,7 @@ export default function Students() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white/50 backdrop-blur-md p-3 rounded-[2rem] border border-slate-200/60 shadow-sm">
          <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto overflow-y-hidden no-scrollbar p-1">
             {[
-               { id: 'all', label: 'Complete Roster', count: stats.total },
+               { id: 'all', label: 'Complete roster', count: stats.total },
                { id: 'ENROLLED', label: 'Enrolled', count: stats.enrolled },
                { id: 'PENDING', label: 'Pending', count: stats.pending },
                { id: 'REJECTED', label: 'Rejected', count: stats.rejected },
@@ -108,7 +108,7 @@ export default function Students() {
                <button
                   key={chip.id}
                   onClick={() => setActiveFilter(chip.id as any)}
-                  className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 whitespace-nowrap ${
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all flex items-center gap-3 whitespace-nowrap ${
                      activeFilter === chip.id 
                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' 
                      : 'hover:bg-white text-slate-500 border border-transparent hover:border-slate-100'
@@ -206,14 +206,14 @@ export default function Students() {
                     <div className="flex-1 min-w-0 space-y-5">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                          <h3 className="font-black text-slate-900 text-2xl leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tighter mb-1 truncate">{student.name}</h3>
+                          <h3 className="font-black text-slate-900 text-2xl leading-tight group-hover:text-blue-600 transition-colors tracking-tighter mb-1 truncate">{student.name}</h3>
                           <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-500 uppercase tracking-widest">ARCH-{student.id}</span>
+                            <span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-500 tracking-widest">ARCH-{student.id}</span>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{unit?.toUpperCase()} JURISDICTION</span>
+                            <span className="text-[10px] font-bold text-slate-400 tracking-tight truncate">{unit} jurisdiction</span>
                           </div>
                         </div>
-                        <span className={`shrink-0 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border shadow-sm ${
+                        <span className={`shrink-0 px-4 py-1.5 text-[10px] font-black tracking-widest rounded-full border shadow-sm ${
                           student.status === 'ENROLLED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                           student.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                           'bg-amber-50 text-amber-700 border-amber-200'
@@ -228,8 +228,8 @@ export default function Students() {
                             <GraduationCap className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Program</p>
-                            <p className="text-[12px] font-bold text-slate-700 truncate leading-tight uppercase">{student.program?.name || 'Unassigned'}</p>
+                            <p className="text-[9px] font-black text-slate-400 tracking-widest leading-none mb-1">Program</p>
+                            <p className="text-[12px] font-bold text-slate-700 truncate leading-tight">{student.program?.name || 'Unassigned'}</p>
                           </div>
                         </div>
 
@@ -238,8 +238,8 @@ export default function Students() {
                             <MapPin className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Center</p>
-                            <p className="text-[12px] font-bold text-slate-700 truncate leading-tight uppercase">{student.center?.name || 'Pending'}</p>
+                            <p className="text-[9px] font-black text-slate-400 tracking-widest leading-none mb-1">Center</p>
+                            <p className="text-[12px] font-bold text-slate-700 truncate leading-tight">{student.center?.name || 'Pending'}</p>
                           </div>
                         </div>
                       </div>
@@ -247,21 +247,21 @@ export default function Students() {
                       <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                          <div className="flex items-center gap-6">
                             <div className="space-y-1">
-                               <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage</p>
+                               <p className="text-[9px] font-black text-slate-400 tracking-widest">Stage</p>
                                <div className="flex items-center gap-2">
                                   <div className={`h-2 w-2 rounded-full ${
                                      stage === 'FINANCE' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.3)]' : 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.3)]'
                                   } animate-pulse`} />
-                                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">{stage}</span>
+                                  <span className="text-[11px] font-black tracking-wider text-slate-700">{stage}</span>
                                </div>
                             </div>
                             <div className="space-y-1">
-                               <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Fee</p>
+                               <p className="text-[9px] font-black text-slate-400 tracking-widest">Fee</p>
                                <div className="flex items-center gap-2">
                                   {student.feeStatus === 'paid' ? <ShieldCheck className="w-4 h-4 text-indigo-600" /> : <Clock className="w-4 h-4 text-amber-500" />}
-                                  <span className={`text-[11px] font-black uppercase tracking-widest ${
+                                  <span className={`text-[11px] font-black tracking-widest ${
                                       student.feeStatus === 'paid' ? 'text-indigo-600' : 'text-slate-500'
-                                  }`}>{student.feeStatus?.toUpperCase() || 'UNPAID'}</span>
+                                  }`}>{student.feeStatus || 'unpaid'}</span>
                                </div>
                             </div>
                          </div>
@@ -281,11 +281,11 @@ export default function Students() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Identify</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Program & Center</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Status</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Stage</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Fee</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 tracking-widest">Identify</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 tracking-widest">Program & center</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 tracking-widest text-center">Status</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 tracking-widest text-center">Stage</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 tracking-widest text-right">Fee</th>
                       <th className="px-6 py-4"></th>
                     </tr>
                   </thead>
@@ -300,8 +300,8 @@ export default function Students() {
                                 <Users className="w-5 h-5" />
                               </div>
                               <div>
-                                <p className="font-black text-slate-900 uppercase tracking-tighter text-sm leading-none mb-1">{student.name}</p>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ARCH-{student.id}</p>
+                                <p className="font-black text-slate-900 tracking-tighter text-sm leading-none mb-1">{student.name}</p>
+                                <p className="text-[9px] font-black text-slate-400 tracking-widest">ARCH-{student.id}</p>
                               </div>
                             </div>
                           </td>
@@ -309,16 +309,16 @@ export default function Students() {
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">
                                 <GraduationCap className="w-3 h-3 text-slate-300" />
-                                <span className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[200px]">{student.program?.name || 'Unassigned'}</span>
+                                <span className="text-[11px] font-bold text-slate-600 truncate max-w-[200px]">{student.program?.name || 'Unassigned'}</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <MapPin className="w-3 h-3 text-slate-300" />
-                                <span className="text-[10px] font-medium text-slate-400 uppercase truncate max-w-[200px]">{student.center?.name || 'Pending'}</span>
+                                <span className="text-[10px] font-medium text-slate-400 truncate max-w-[200px]">{student.center?.name || 'Pending'}</span>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-5 text-center">
-                            <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${
+                            <span className={`px-3 py-1 text-[9px] font-black tracking-widest rounded-full border ${
                               student.status === 'ENROLLED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                               student.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                               'bg-amber-50 text-amber-700 border-amber-200'
@@ -337,9 +337,9 @@ export default function Students() {
                           <td className="px-6 py-5 text-right">
                              <div className="flex items-center gap-1.5 justify-end">
                                 {student.feeStatus === 'paid' ? <ShieldCheck className="w-3 h-3 text-indigo-600" /> : <Clock className="w-3 h-3 text-amber-500" />}
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                <span className={`text-[10px] font-black tracking-widest ${
                                     student.feeStatus === 'paid' ? 'text-indigo-600' : 'text-slate-500'
-                                }`}>{student.feeStatus?.toUpperCase() || 'UNPAID'}</span>
+                                }`}>{student.feeStatus || 'unpaid'}</span>
                              </div>
                           </td>
                           <td className="px-6 py-5 text-right">
@@ -373,14 +373,14 @@ export default function Students() {
                </div>
             </div>
             <div className="space-y-3">
-               <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Zero Roster Matches</h3>
+               <h3 className="text-3xl font-black text-slate-900 tracking-tighter">Zero roster matches</h3>
                <p className="text-slate-400 max-w-md mx-auto font-medium text-lg leading-relaxed lowercase tracking-tight italic">the institutional structure seems disconnected for this specific query. <span className="font-bold text-blue-600 not-italic uppercase text-sm">Action required:</span> check another unit or refine identity filters.</p>
             </div>
             <button 
                onClick={() => { setActiveFilter('all'); }}
-               className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all"
+               className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] tracking-[0.2em] shadow-2xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all"
             >
-               Reset Architecture View
+               Reset architecture view
             </button>
         </div>
       )}

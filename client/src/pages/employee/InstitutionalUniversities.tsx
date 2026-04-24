@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   SlidersHorizontal,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 type University = {
   id: number;
@@ -105,30 +106,24 @@ export default function InstitutionalUniversities() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold ring-1 ring-blue-100 mb-3">
-            <Building2 className="w-3.5 h-3.5" />
-            Institutional directory
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Institutional universities"
+        description="Authorized partner institutions you can reference during recruitment and enrollment conversations."
+        icon={Building2}
+        action={
+          <div className="relative w-full lg:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by name or short code"
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Institutional universities</h1>
-          <p className="text-slate-500 text-sm mt-1.5 max-w-xl">
-            Authorized partner institutions you can reference during recruitment and
-            enrollment conversations.
-          </p>
-        </div>
-        <div className="relative w-full lg:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name or short code"
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex items-center gap-2 flex-wrap">
         <SlidersHorizontal className="w-4 h-4 text-slate-400" />
@@ -144,7 +139,7 @@ export default function InstitutionalUniversities() {
                   : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
               }`}
             >
-              <span className="capitalize">{key}</span>
+              <span className="">{key}</span>
               <span
                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                   active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
@@ -186,12 +181,12 @@ export default function InstitutionalUniversities() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ring-1 ${statusStyle.chip}`}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ring-1 ${statusStyle.chip}`}
                       >
                         {statusStyle.label}
                       </span>
                       {uni.shortName && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-[10px] font-bold tracking-wider text-slate-400">
                           {uni.shortName}
                         </span>
                       )}
@@ -206,7 +201,7 @@ export default function InstitutionalUniversities() {
                   <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="flex items-center gap-1 text-slate-500 mb-0.5">
                       <BookOpen className="w-3 h-3" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">
+                      <span className="text-[9px] font-bold tracking-wider">
                         Programs
                       </span>
                     </div>
@@ -215,7 +210,7 @@ export default function InstitutionalUniversities() {
                   <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
                     <div className="flex items-center gap-1 text-emerald-600 mb-0.5">
                       <Activity className="w-3 h-3" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">
+                      <span className="text-[9px] font-bold tracking-wider">
                         Active
                       </span>
                     </div>
@@ -224,7 +219,7 @@ export default function InstitutionalUniversities() {
                   <div className="p-2.5 rounded-xl bg-sky-50/60 border border-sky-100">
                     <div className="flex items-center gap-1 text-sky-600 mb-0.5">
                       <GraduationCap className="w-3 h-3" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">Open</span>
+                      <span className="text-[9px] font-bold tracking-wider">Open</span>
                     </div>
                     <p className="text-base font-bold text-sky-700 leading-none">{open}</p>
                   </div>
@@ -233,11 +228,11 @@ export default function InstitutionalUniversities() {
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/60 border border-slate-100">
                   <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    <p className="text-[9px] font-bold tracking-wider text-slate-400">
                       Accreditation
                     </p>
                     <p className="text-xs font-semibold text-slate-800 truncate">
-                      {uni.accreditation || 'UGC Approved'}
+                      {uni.accreditation || 'UGC approved'}
                     </p>
                   </div>
                 </div>

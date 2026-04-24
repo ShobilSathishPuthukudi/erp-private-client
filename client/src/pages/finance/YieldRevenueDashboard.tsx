@@ -2,17 +2,18 @@ import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { 
-  TrendingUp, 
-  Target, 
-  Users, 
-  DollarSign, 
-  ArrowUpRight, 
-  ArrowDownRight, 
+  PieChart,
+  TrendingUp,
+  Target,
+  Users,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
   Activity,
   Zap,
-  Building2,
-  PieChart
+  Building2
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { 
   AreaChart, 
   Area, 
@@ -120,15 +121,15 @@ export default function YieldRevenueDashboard() {
   }, []);
 
   if (loading || !stats) {
-    return <div className="p-12 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Calculating Institutional Yield...</div>;
+    return <div className="p-12 text-center text-slate-400 font-black animate-pulse tracking-widest">Calculating institutional yield...</div>;
   }
 
   return (
-    <div className="p-8 space-y-10 min-h-screen bg-slate-50/50">
-      <DashboardGreeting 
-        role="Institutional Yield Analyst"
-        name="Finance Command"
-        subtitle="Yield Revenue Protocol: Forensic analysis of revenue achievement against institutional growth targets and node performance."
+    <div className="p-2 space-y-10 min-h-screen bg-slate-50/50">
+      <PageHeader 
+        title="Yield Revenue Protocol"
+        description="Forensic analysis of revenue achievement against institutional growth targets and node performance."
+        icon={Activity}
       />
 
       {/* Yield HUD */}
@@ -172,12 +173,12 @@ export default function YieldRevenueDashboard() {
         <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/40">
            <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Yield Velocity Profile</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Institutional Revenue Projection</p>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Yield velocity profile</h3>
+                <p className="text-xs text-slate-500 font-bold tracking-widest mt-1">Institutional revenue projection</p>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl">
                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                 <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Real-time HUD</span>
+                 <span className="text-[10px] font-black text-indigo-600 tracking-widest">Real-time HUD</span>
               </div>
            </div>
            <div className="h-[350px] w-full">
@@ -204,7 +205,7 @@ export default function YieldRevenueDashboard() {
                   />
                   <Tooltip 
                     contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', padding: '20px'}}
-                    itemStyle={{fontWeight: 900, textTransform: 'uppercase', fontSize: '12px'}}
+                    itemStyle={{fontWeight: 900, fontSize: '12px'}}
                   />
                   <Area 
                     type="monotone" 
@@ -223,15 +224,15 @@ export default function YieldRevenueDashboard() {
         <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl shadow-slate-900/40 text-white flex flex-col h-full">
             <div className="flex items-center gap-3 mb-8">
                 <PieChart className="w-6 h-6 text-indigo-400" />
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Node Yield Leaderboard</h3>
+                <h3 className="text-sm font-black tracking-[0.2em] text-slate-400">Node yield leaderboard</h3>
             </div>
             <div className="flex-1 space-y-6">
                {stats.topPerformingCenters.map((center, i) => (
                  <div key={i} className="group">
                     <div className="flex justify-between items-end mb-2">
                        <div>
-                          <p className="text-xs font-black uppercase tracking-tight text-white group-hover:text-indigo-400 transition-colors">{center.name}</p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">₹{(center.revenue/1000).toFixed(1)}K Realized</p>
+                          <p className="text-xs font-black tracking-tight text-white group-hover:text-indigo-400 transition-colors">{center.name}</p>
+                          <p className="text-[10px] font-bold text-slate-500 tracking-widest">₹{(center.revenue/1000).toFixed(1)}K realized</p>
                        </div>
                        <p className="text-xs font-black text-indigo-400">{center.yield.toFixed(0)}%</p>
                     </div>
@@ -246,7 +247,7 @@ export default function YieldRevenueDashboard() {
             </div>
             <div className="mt-8 pt-8 border-t border-white/10">
                 <div className="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20">
-                   <p className="text-[10px] font-black uppercase text-indigo-300 tracking-[0.2em] mb-1">Yield Efficiency Target</p>
+                   <p className="text-[10px] font-black text-indigo-300 tracking-[0.2em] mb-1">Yield efficiency target</p>
                    <p className="text-xs font-bold text-slate-300">Achieve 95% Yield across top 10 nodes by Q2 end.</p>
                 </div>
             </div>
@@ -273,7 +274,7 @@ function YieldCard({ title, value, subtitle, icon: Icon, color, trend }: any) {
         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-current/10 ${colorStyles[color]}`}>
           <Icon className="w-6 h-6" />
         </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</p>
+        <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-1">{title}</p>
         <h3 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">{value}</h3>
         <div className="flex items-center justify-between">
            <p className="text-xs font-bold text-slate-500 tracking-tight">{subtitle}</p>

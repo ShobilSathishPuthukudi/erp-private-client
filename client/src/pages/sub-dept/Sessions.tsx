@@ -4,6 +4,7 @@ import { Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { DataTable } from '@/components/shared/DataTable';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { api } from '@/lib/api';
 
 interface Session {
@@ -140,20 +141,12 @@ export default function SubDeptSessions() {
   ];
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-4 lg:p-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Institutional sessions</h1>
-          </div>
-          <p className="text-slate-500 font-medium ml-15">
-            Admission batches are created in partner center and shown here as read-only.
-          </p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6 max-w-[1600px] mx-auto">
+      <PageHeader 
+        title="Institutional sessions"
+        description="Admission batches are created in partner center and shown here as read-only."
+        icon={Calendar}
+      />
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <DataTable

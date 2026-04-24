@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { ShieldCheck, User, Terminal, XCircle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Request {
   id: number;
@@ -44,16 +45,12 @@ export default function CredentialReviewTab() {
   if (loading) return <div className="p-12 text-center text-slate-300 font-black uppercase animate-pulse">Syncing VPC Queue...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tighter">
-              <ShieldCheck className="w-8 h-8 text-blue-600" />
-              Security Authorization Control
-           </h2>
-           <p className="text-slate-500 mt-1 font-medium ">High-protocol review for Study Center credential reveals. All decisions are physically Grounded and audited.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Security Authorization Control"
+        description="High-protocol review for Study Center credential reveals. All decisions are physically Grounded and audited."
+        icon={ShieldCheck}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {requests.map(req => (

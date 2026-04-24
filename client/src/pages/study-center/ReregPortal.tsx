@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { RefreshCw, Users, FileText, AlertCircle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Student {
   uid: string;
@@ -50,22 +51,18 @@ export default function ReregPortal() {
   if (loading) return <div className="animate-pulse h-64 bg-slate-50 rounded-2xl" />;
 
   return (
-    <div className="space-y-8">
-      <div className="bg-slate-900 rounded-[32px] p-8 lg:p-12 text-white relative overflow-hidden shadow-2xl shadow-slate-200">
-         <div className="absolute top-0 right-0 p-12 opacity-5">
-            <RefreshCw className="w-64 h-64" />
-         </div>
-         <div className="relative z-10 max-w-2xl">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Academic re-registration</h2>
-            <p className="text-slate-400 font-medium mb-8 leading-relaxed ">Initiate the next academic cycle for your students. Ensure payment proofs are forensic and amounts match the program's fee schema for auto-approval.</p>
-         </div>
-      </div>
+    <div className="p-2 space-y-8">
+      <PageHeader 
+        title="Academic re-registration"
+        description="Initiate the next academic cycle for your students. Ensure payment proofs are forensic and amounts match the program's fee schema for auto-approval."
+        icon={RefreshCw}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-6 flex items-center gap-2">
+            <h3 className="text-xl font-black text-slate-900 tracking-tighter mb-6 flex items-center gap-2">
                <Users className="w-6 h-6 text-blue-600" />
-               Select Student
+               Select student
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {students.map((student) => (
@@ -77,8 +74,8 @@ export default function ReregPortal() {
                    }}
                    className={`p-6 rounded-2xl border-2 transition-all text-left group ${selectedStudent === student.uid ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 hover:border-blue-200'}`}
                  >
-                    <p className="font-black text-slate-900 uppercase tracking-tight">{student.name}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    <p className="font-black text-slate-900 tracking-tight">{student.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">
                       {student.program.name} | Sem {student.semester}
                     </p>
                  </button>
@@ -87,14 +84,14 @@ export default function ReregPortal() {
          </div>
 
          <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm h-fit">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-6 flex items-center gap-2">
+            <h3 className="text-xl font-black text-slate-900 tracking-tighter mb-6 flex items-center gap-2">
                <FileText className="w-6 h-6 text-blue-600" />
-               REREG Submission
+               Re-registration submission
             </h3>
             {selectedStudent ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Semester</label>
+                    <label className="text-[10px] font-black tracking-widest text-slate-400">Target semester</label>
                     <input 
                       type="number"
                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm font-bold"
@@ -103,7 +100,7 @@ export default function ReregPortal() {
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Amount Paid (₹)</label>
+                    <label className="text-[10px] font-black tracking-widest text-slate-400">Amount paid (₹)</label>
                     <input 
                       type="number"
                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 ring-blue-500 transition-all font-bold"
@@ -113,7 +110,7 @@ export default function ReregPortal() {
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Proof URL</label>
+                    <label className="text-[10px] font-black tracking-widest text-slate-400">Payment proof URL</label>
                     <input 
                       type="text"
                       className="w-full bg-slate-50 border-transparent rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 ring-blue-500 transition-all font-mono"
@@ -124,15 +121,15 @@ export default function ReregPortal() {
                  </div>
                  <button 
                    type="submit"
-                   className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                   className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
                  >
-                   Verify & Submit
+                   Verify & submit
                  </button>
               </form>
             ) : (
               <div className="text-center py-20 grayscale opacity-30">
                  <AlertCircle className="w-12 h-12 mx-auto mb-4" />
-                 <p className="text-xs font-black uppercase tracking-widest">Select a student to initiate</p>
+                 <p className="text-xs font-black tracking-widest">Select a student to initiate</p>
               </div>
             )}
          </div>

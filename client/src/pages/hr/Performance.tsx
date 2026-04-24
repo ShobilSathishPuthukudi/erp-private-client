@@ -153,7 +153,7 @@ export default function Performance() {
   );
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Performance metrics"
         description="Real-time oversight of institutional productivity and task accountability"
@@ -174,7 +174,7 @@ export default function Performance() {
            <div className="inline-flex bg-slate-50 p-1 rounded-xl shadow-inner border border-slate-200/50">
              <button 
                onClick={() => setActiveTab('employees')}
-               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:scale-105 active:scale-95 ${
+               className={`py-2 px-6 rounded-lg text-[10px] font-black tracking-widest transition-all duration-200 hover:scale-105 active:scale-95 ${
                  activeTab === 'employees' 
                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
                    : 'text-slate-400 hover:text-slate-600'
@@ -184,7 +184,7 @@ export default function Performance() {
              </button>
              <button 
                onClick={() => setActiveTab('admins')}
-               className={`py-2 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:scale-105 active:scale-95 ${
+               className={`py-2 px-6 rounded-lg text-[10px] font-black tracking-widest transition-all duration-200 hover:scale-105 active:scale-95 ${
                  activeTab === 'admins' 
                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
                    : 'text-slate-400 hover:text-slate-600'

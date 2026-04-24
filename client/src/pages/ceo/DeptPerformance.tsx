@@ -49,15 +49,20 @@ export default function DeptPerformance() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
+      <PageHeader 
+        title="Departmental performance"
+        description="Sector analytics and comparative institutional health monitoring."
+        icon={Target}
+      />
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
       <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Departmental benchmarking</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">SLA Compliance • Revenue Targets • Resource Efficiency</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">SLA compliance • revenue targets • resource efficiency</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
           <Target className="w-4 h-4 text-slate-400" />
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Global Target: 85%</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Global target: 85%</span>
         </div>
       </div>
 
@@ -66,8 +71,8 @@ export default function DeptPerformance() {
           <thead>
             <tr className="bg-slate-50">
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Division</th>
-              <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">KPI Score</th>
-              <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">SLA Compliance</th>
+              <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">KPI score</th>
+              <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">SLA compliance</th>
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Efficiency</th>
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Revenue</th>
               <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Trend</th>
@@ -106,13 +111,13 @@ export default function DeptPerformance() {
                 <td className="px-10 py-6">
                   <div className="flex items-center gap-2 text-slate-600">
                     <Clock className="w-3.5 h-3.5" />
-                    <span className="text-xs font-bold">{dept.leaveUtil}% Util</span>
+                    <span className="text-xs font-bold">{dept.leaveUtil}% util</span>
                   </div>
                 </td>
                 <td className="px-10 py-6">
                    <div className="flex items-center gap-2 text-slate-600">
                     <Zap className="w-3.5 h-3.5" />
-                    <span className="text-xs font-bold">{dept.revAchievement}% Achv</span>
+                    <span className="text-xs font-bold">{dept.revAchievement}% achv</span>
                   </div>
                 </td>
                 <td className="px-10 py-6 text-right">

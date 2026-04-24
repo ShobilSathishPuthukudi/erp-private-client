@@ -7,6 +7,7 @@ import { MapPin, Building2, GraduationCap, Zap, Mail, Phone, ArrowUpRight } from
 import toast from 'react-hot-toast';
 import { toSentenceCase } from '@/lib/utils';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Center {
   id: number;
@@ -127,17 +128,12 @@ export default function Centers() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-           <div className="flex items-center gap-2 text-blue-600 mb-1 font-black uppercase tracking-[0.2em] text-[10px]">
-               <MapPin className="w-4 h-4" />
-               Jurisdictional Network
-           </div>
-           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Mapped <span className="text-blue-600 font-outline-1">Centers ({unit ? unit.toUpperCase() : 'UNIT'})</span></h1>
-           <p className="text-slate-500 font-medium tracking-tight">Monitor and manage the performance of centers mapped to your operational unit</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <PageHeader 
+        title={`Mapped centers (${unit ? unit.toUpperCase() : 'UNIT'})`}
+        description="Monitor and manage the performance of centers mapped to your operational unit."
+        icon={MapPin}
+      />
 
       <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100 rounded-[2rem] flex flex-col overflow-hidden">
         <DataTable 

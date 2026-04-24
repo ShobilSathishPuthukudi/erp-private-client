@@ -87,7 +87,7 @@ export default function EmployeeCards() {
   );
 
   return (
-    <div className="space-y-8 max-w-[1600px] mx-auto p-4 lg:p-8 animate-in fade-in duration-700">
+    <div className="p-2 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       <PageHeader 
         title="Employee identity hub"
         description="Unique 'Click to Fill' access nodes for institutional staff portals"
@@ -134,15 +134,15 @@ export default function EmployeeCards() {
                     {emp.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900 tracking-tight leading-tight group-hover:text-blue-600 transition-colors uppercase text-sm">
+                    <h3 className="font-black text-slate-900 tracking-tight leading-tight group-hover:text-blue-600 transition-colors text-sm">
                       {emp.name}
                     </h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">
+                    <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] mt-0.5">
                       Node: <span className="text-slate-600">{emp.uid}</span>
                     </p>
                   </div>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                <div className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest ${
                   emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'
                 }`}>
                   {emp.status}
@@ -153,7 +153,7 @@ export default function EmployeeCards() {
               <div className="space-y-4 mb-8 bg-slate-50/50 p-4 rounded-[1.5rem] border border-slate-100 flex-1">
                 <div className="flex items-center gap-3 text-slate-600">
                   <ShieldCheck className="w-4 h-4 opacity-40 shrink-0" />
-                  <span className="text-xs font-bold uppercase tracking-tight truncate">{emp.role || 'Personnel'}</span>
+                  <span className="text-xs font-bold tracking-tight truncate">{emp.role || 'Personnel'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600">
                   <Building2 className="w-4 h-4 opacity-40 shrink-0" />
@@ -177,10 +177,10 @@ export default function EmployeeCards() {
               <div className="flex gap-3 relative z-10">
                 <button 
                   onClick={() => copyPortalLink(emp.uid)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10"
+                  className="flex-1 flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 rounded-2xl font-black text-[10px] tracking-widest hover:bg-blue-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  Click to Fill
+                  Click to fill
                 </button>
                 <a 
                   href={`/dashboard/tasks?target=${emp.uid}`}

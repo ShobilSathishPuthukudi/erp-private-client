@@ -31,6 +31,7 @@ import {
 import toast from 'react-hot-toast';
 import { toSentenceCase } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Employee {
   uid: string;
@@ -162,7 +163,7 @@ export default function EmployeeDetails() {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-        <p className="text-xs font-black uppercase tracking-widest text-slate-400">Synchronizing Personnel Ledger...</p>
+        <p className="text-xs font-black tracking-widest text-slate-400">Synchronizing personnel ledger...</p>
       </div>
     );
   }
@@ -171,39 +172,31 @@ export default function EmployeeDetails() {
 
   return (
     <>
-      <div className="p-4 space-y-6 max-w-7xl mx-auto">
-      {/* Navigation Header */}
-      <div className="flex items-center justify-between gap-4 mb-2">
-        <button 
-          onClick={() => navigate('/dashboard/hr/employees')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl border border-slate-800 font-bold text-sm hover:bg-slate-800 transition-all group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Directory
-        </button>
-        
-        <div className="flex items-center gap-3">
-          <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all border border-slate-200">
-            <Printer className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all border border-slate-200">
-            <Share2 className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-black border border-slate-800 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <UserSquare2 className="w-6 h-6" />
+      <div className="p-2 space-y-6 max-w-7xl mx-auto">
+      <PageHeader 
+        title="Personnel details"
+        description="Identity Verification & Institutional Lifecycle Management"
+        icon={UserSquare2}
+        action={
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/dashboard/hr/employees')}
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl border border-slate-800 font-bold text-sm hover:bg-slate-800 transition-all group"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              Back to Directory
+            </button>
+            <div className="flex items-center gap-3">
+              <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all border border-slate-200">
+                <Printer className="w-5 h-5" />
+              </button>
+              <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-all border border-slate-200">
+                <Share2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-0.5">Personnel details</h1>
-            <p className="text-slate-400 font-medium text-sm">Identity Verification & Institutional Lifecycle Management</p>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Content Area */}
@@ -243,7 +236,7 @@ export default function EmployeeDetails() {
                         <Camera className="w-5 h-5 text-slate-900" />
                       )}
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Change</span>
+                    <span className="text-[10px] font-black tracking-widest text-slate-900">Change</span>
                   </div>
                 </button>
                 <div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-white ${
@@ -253,7 +246,7 @@ export default function EmployeeDetails() {
 
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">{employee.name}</h2>
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8 text-[10px] font-black uppercase tracking-[0.1em]">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-8 text-[10px] font-black tracking-[0.1em]">
                   <span className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg border border-slate-100 flex items-center gap-2">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
                     {employee.role || 'Personnel'}
@@ -293,12 +286,12 @@ export default function EmployeeDetails() {
                       });
                       setIsEditModalOpen(true);
                     }}
-                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-700 transition-all active:scale-95 group"
+                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-700 transition-all active:scale-95 group"
                   >
                     <Edit2 className="w-4 h-4" />
                     Edit Profile
                   </button>
-                  <button className="flex items-center gap-2 px-8 py-3 bg-white text-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest border border-blue-600 hover:bg-blue-50 transition-all">
+                  <button className="flex items-center gap-2 px-8 py-3 bg-white text-blue-600 rounded-2xl font-black text-xs tracking-widest border border-blue-600 hover:bg-blue-50 transition-all">
                     Generate ID Card
                   </button>
                 </div>
@@ -317,7 +310,7 @@ export default function EmployeeDetails() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-6 py-6 text-[10px] font-black uppercase tracking-widest transition-all relative ${
+                  className={`flex items-center gap-2 px-6 py-6 text-[10px] font-black tracking-widest transition-all relative ${
                     activeTab === tab.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
@@ -342,7 +335,7 @@ export default function EmployeeDetails() {
                       <UserSquare2 className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Primary Identity</p>
+                        <p className="text-[11px] font-black tracking-[0.2em] text-slate-400">Primary identity</p>
                         <h4 className="font-bold text-slate-900">Personnel Fundamentals</h4>
                     </div>
                   </div>
@@ -352,7 +345,7 @@ export default function EmployeeDetails() {
                         <Mail className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Corporate Relay</p>
+                        <p className="text-[11px] font-bold tracking-widest text-slate-400 mb-1">Corporate relay</p>
                         <p className="text-base font-black text-slate-800 break-all">{employee.email}</p>
                       </div>
                     </div>
@@ -365,7 +358,7 @@ export default function EmployeeDetails() {
                       <Clock className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Temporal Data</p>
+                        <p className="text-[11px] font-black tracking-[0.2em] text-slate-400">Temporal data</p>
                         <h4 className="font-bold text-slate-900">Lifecycle Tracking</h4>
                     </div>
                   </div>
@@ -375,7 +368,7 @@ export default function EmployeeDetails() {
                         <CalendarDays className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Enlistment Date</p>
+                        <p className="text-[11px] font-bold tracking-widest text-slate-400 mb-1">Enlistment date</p>
                         <p className="text-base font-black text-slate-800">
                           {employee.createdAt ? new Date(employee.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Pending Synchronization'}
                         </p>
@@ -386,7 +379,7 @@ export default function EmployeeDetails() {
                         <UserSquare2 className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Identity Node UID</p>
+                        <p className="text-[11px] font-bold tracking-widest text-slate-400 mb-1">Identity node UID</p>
                         <p className="text-base font-bold text-slate-500 font-mono tracking-tight cursor-copy hover:text-blue-600 transition-colors"
                            onClick={() => {
                              navigator.clipboard.writeText(employee.uid);
@@ -408,43 +401,43 @@ export default function EmployeeDetails() {
                       <FileText className="w-7 h-7" />
                     </div>
                     <div>
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight uppercase">Personal Portfolio</h4>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Metadata & Identity Context</p>
+                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Personal portfolio</h4>
+                      <p className="text-[11px] font-bold text-slate-400 tracking-[0.2em]">Metadata & identity context</p>
                     </div>
                   </div>
 
                   <div className="grid gap-12 md:grid-cols-2">
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Biological Date of Birth</p>
+                      <p className="text-[11px] font-black tracking-widest text-slate-400 ml-1">Biological date of birth</p>
                       <p className="text-base font-bold text-slate-800 bg-slate-50 p-5 rounded-2xl border border-slate-100">
                         {employee.dateOfBirth ? (
                           employee.dateOfBirth
                         ) : (
-                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase">
+                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">
                             Set date of birth...
                           </button>
                         )}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Logistics Hub (Address)</p>
+                      <p className="text-[11px] font-black tracking-widest text-slate-400 ml-1">Logistics hub (address)</p>
                       <p className="text-base font-bold text-slate-800 bg-slate-50 p-5 rounded-2xl border border-slate-100">
                         {employee.address ? (
                           employee.address
                         ) : (
-                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase">
+                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">
                             Registry address missing - Add now
                           </button>
                         )}
                       </p>
                     </div>
                     <div className="md:col-span-2 space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Professional Byte (Bio)</p>
+                      <p className="text-[11px] font-black tracking-widest text-slate-400 ml-1">Professional byte (bio)</p>
                       <div className="text-base font-medium text-slate-600 leading-[1.8] bg-slate-50 p-8 rounded-[2rem] border border-slate-100 italic">
                         {employee.bio ? (
                           `"${employee.bio}"`
                         ) : (
-                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase not-italic">
+                          <button onClick={() => setIsEditModalOpen(true)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors not-italic">
                             Click to add professional byte...
                           </button>
                         )}
@@ -463,18 +456,18 @@ export default function EmployeeDetails() {
                       <Building2 className="w-7 h-7" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Organizational Grid</p>
-                        <h4 className="text-xl font-black text-slate-900 tracking-tight uppercase">Structural Hierarchy</h4>
+                        <p className="text-[11px] font-black tracking-[0.2em] text-slate-400">Organizational grid</p>
+                        <h4 className="text-xl font-black text-slate-900 tracking-tight">Structural hierarchy</h4>
                     </div>
                   </div>
                   
                   <div className="grid gap-8 md:grid-cols-2">
                     <div className="p-6 bg-slate-50 rounded-[1.75rem] border border-slate-100">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Primary Department</p>
+                      <p className="text-[11px] font-bold tracking-widest text-slate-400 mb-2">Primary department</p>
                       <p className="text-lg font-black text-slate-800">{employee.department?.name || 'Central Command'}</p>
                     </div>
                     <div className="p-6 bg-slate-50 rounded-[1.75rem] border border-slate-100">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Vertical Sub-Unit</p>
+                      <p className="text-[11px] font-bold tracking-widest text-slate-400 mb-2">Vertical sub-unit</p>
                       <p className="text-lg font-black text-slate-800">
                         {employee.subDepartment && employee.subDepartment.toLowerCase() !== 'general' 
                           ? toSentenceCase(employee.subDepartment) 
@@ -483,9 +476,9 @@ export default function EmployeeDetails() {
                     </div>
                     <div className="md:col-span-2 p-6 bg-blue-600/5 rounded-[1.75rem] border border-blue-600/10 flex items-center justify-between">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-blue-500 mb-2">Reporting Authority</p>
+                        <p className="text-[11px] font-bold tracking-widest text-blue-500 mb-2">Reporting authority</p>
                         <p className="text-lg font-black text-slate-900">{employee.manager?.name || 'No Direct Oversight'}</p>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase mt-1 tracking-widest">Chain of Command verified</p>
+                        <p className="text-[10px] font-medium text-slate-400 mt-1 tracking-widest">Chain of command verified</p>
                       </div>
                       <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200/50">
                         <ShieldCheck className="w-7 h-7 text-blue-600" />
@@ -505,14 +498,14 @@ export default function EmployeeDetails() {
         <div className="lg:col-span-4 space-y-8">
           {/* Quick Contacts */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Primary Contacts</h3>
+            <h3 className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-8">Primary contacts</h3>
             <div className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
                   <Mail className="w-5 h-5 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Corporate Pipeline</p>
+                  <p className="text-[10px] font-black text-slate-500 mb-1">Corporate pipeline</p>
                   {employee.email ? (
                     <p className="text-sm font-bold text-slate-900 break-all">{employee.email}</p>
                   ) : (
@@ -526,7 +519,7 @@ export default function EmployeeDetails() {
                   <Smartphone className="w-5 h-5 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Voice Protocol</p>
+                  <p className="text-[10px] font-black text-slate-500 mb-1">Voice protocol</p>
                   {employee.phone ? (
                     <p className="text-sm font-bold text-slate-900">{employee.phone}</p>
                   ) : (
@@ -540,7 +533,7 @@ export default function EmployeeDetails() {
                   <Globe className="w-5 h-5 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Institutional Portfolio</p>
+                  <p className="text-[10px] font-black text-slate-500 mb-1">Institutional portfolio</p>
                   {employee.websiteUrl ? (
                     <a href={employee.websiteUrl} target="_blank" className="text-sm font-bold text-blue-600 flex items-center gap-1.5 hover:underline decoration-2">
                        {employee.websiteUrl?.replace('https://', '').replace('http://', '')}
@@ -557,7 +550,7 @@ export default function EmployeeDetails() {
                   <MapPin className="w-5 h-5 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Geographic Origin</p>
+                  <p className="text-[10px] font-black text-slate-500 mb-1">Geographic origin</p>
                   {employee.address ? (
                     <p className="text-xs font-medium text-slate-600 leading-normal">{employee.address}</p>
                   ) : (
@@ -570,19 +563,19 @@ export default function EmployeeDetails() {
 
           {/* Personnel Stats */}
           <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-slate-900/30">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Academics & Population</h3>
+            <h3 className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-8">Academics & population</h3>
             <div className="grid grid-cols-1 gap-4">
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
-                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Base Salary</p>
+                <p className="text-[10px] font-black text-indigo-400 tracking-widest mb-2">Base salary</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black">₹{employee.baseSalary ? parseFloat(employee.baseSalary as string).toLocaleString() : '0'}</span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">/mo</span>
+                  <span className="text-[10px] font-bold text-slate-500">/mo</span>
                 </div>
               </div>
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
-                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Leave Balance</p>
+                <p className="text-[10px] font-black text-emerald-400 tracking-widest mb-2">Leave balance</p>
                 <p className="text-3xl font-black">{employee.leaveBalance || 0}</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Available Days</p>
+                <p className="text-[10px] font-bold text-slate-500 mt-1">Available days</p>
               </div>
             </div>
           </div>
@@ -593,27 +586,27 @@ export default function EmployeeDetails() {
 	    <Modal 
 	      isOpen={isEditModalOpen} 
       onClose={() => setIsEditModalOpen(false)} 
-      title="Modify Personnel Record"
+      title="Modify personnel record"
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit(onEditSubmit)} className="p-8 space-y-8 bg-white">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Section: Identity */}
           <div className="md:col-span-2">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 mb-6 flex items-center gap-3">
-              Institutional Identity
+            <h3 className="text-[10px] font-black tracking-[0.3em] text-blue-500 mb-6 flex items-center gap-3">
+              Institutional identity
               <span className="h-px flex-1 bg-blue-100" />
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Identity Name</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Full identity name</label>
                 <input 
                   {...register('name', { required: true })}
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-900"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Corporate Email Address</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Corporate email address</label>
                 <input 
                   {...register('email', { required: true })}
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-900"
@@ -624,13 +617,13 @@ export default function EmployeeDetails() {
 
           {/* Section: Contact & Personal */}
           <div className="md:col-span-2">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 flex items-center gap-3">
+            <h3 className="text-[10px] font-black tracking-[0.3em] text-slate-400 mb-6 flex items-center gap-3">
               Communication & Lifecycle
               <span className="h-px flex-1 bg-slate-100" />
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Contact Relay (Phone)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Contact relay (phone)</label>
                 <input 
                   {...register('phone')}
                   placeholder="+x xxxx xxxx"
@@ -638,7 +631,7 @@ export default function EmployeeDetails() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Biological Date of Birth</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Biological date of birth</label>
                 <input 
                   type="date"
                   {...register('dateOfBirth')}
@@ -646,7 +639,7 @@ export default function EmployeeDetails() {
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Institutional Portfolio (Website/URL)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Institutional portfolio (website/URL)</label>
                 <input 
                   {...register('websiteUrl')}
                   placeholder="https://linkedin.com/in/..."
@@ -654,14 +647,14 @@ export default function EmployeeDetails() {
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Logistics Hub (Address)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Logistics hub (address)</label>
                 <input 
                   {...register('address')}
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-900"
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Professional Portfolio (Bio)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Professional portfolio (bio)</label>
                 <textarea 
                   {...register('bio')}
                   rows={3}
@@ -673,13 +666,13 @@ export default function EmployeeDetails() {
 
           {/* Section: Operational Data */}
           <div className="md:col-span-2">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 mb-6 flex items-center gap-3">
+            <h3 className="text-[10px] font-black tracking-[0.3em] text-emerald-500 mb-6 flex items-center gap-3">
               Operational & Financial Protocols
               <span className="h-px flex-1 bg-emerald-50" />
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Base Monthly Salary (₹)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Base monthly salary (₹)</label>
                 <input 
                   type="number"
                   {...register('baseSalary')}
@@ -687,7 +680,7 @@ export default function EmployeeDetails() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Leave Balance Cap</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Leave balance cap</label>
                 <input 
                   type="number"
                   {...register('leaveBalance')}
@@ -695,7 +688,7 @@ export default function EmployeeDetails() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Operational Status</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Operational status</label>
                 <select 
                   {...register('status')}
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-900 appearance-none"
@@ -706,7 +699,7 @@ export default function EmployeeDetails() {
                 </select>
               </div>
               <div className="space-y-2 text-white">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 text-slate-400">Chain of Command (Manager)</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 text-slate-400">Chain of command (manager)</label>
                 <select 
                   {...register('reportingManagerUid')}
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-900 appearance-none"
@@ -725,14 +718,14 @@ export default function EmployeeDetails() {
           <button 
             type="button"
             onClick={() => setIsEditModalOpen(false)}
-            className="px-8 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
+            className="px-8 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-600 font-bold text-xs tracking-widest hover:bg-slate-50 transition-all active:scale-95"
           >
             Discard
           </button>
           <button 
             type="submit"
             disabled={isSubmitting}
-            className="px-10 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+            className="px-10 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs tracking-widest shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
           >
             {isSubmitting ? 'Syncing...' : 'Update Record'}
           </button>

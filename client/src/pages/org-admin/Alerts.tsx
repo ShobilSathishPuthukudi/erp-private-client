@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ShieldAlert, ArrowRight, Activity, Clock, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Activity, Clock, AlertCircle, Loader2, ShieldCheck, Bell } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Modal } from '@/components/shared/Modal';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -44,13 +45,12 @@ export default function Alerts() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Escalated task hub</h1>
-          <p className="text-slate-500 mt-1 font-medium">Critical personnel tasks and institutional deadlines requiring immediate executive oversight.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Escalated task hub"
+        description="Critical personnel tasks and institutional deadlines requiring immediate executive oversight."
+        icon={Bell}
+      />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 animate-pulse">

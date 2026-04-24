@@ -89,8 +89,8 @@ export function DataTable<TData, TValue>({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 pt-4">
+    <div className="space-y-4 h-full flex flex-col min-h-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 pt-4 shrink-0">
         {searchKey && (
           <div className="relative w-full md:max-w-72">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -119,10 +119,10 @@ export function DataTable<TData, TValue>({
         {headerAction}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
+        <div className="overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 bg-slate-50 border-b border-[var(--card-border)] tracking-wider">
+            <thead className="text-xs text-slate-500 bg-slate-50 border-b border-[var(--card-border)] tracking-wider sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -190,7 +190,7 @@ export function DataTable<TData, TValue>({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--card-border)] bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--card-border)] bg-slate-50 shrink-0">
           <div className="text-sm text-slate-500">
             Page <span className="font-medium text-slate-900">{table.getState().pagination.pageIndex + 1}</span> of{' '}
             <span className="font-medium text-slate-900">{table.getPageCount() || 1}</span>

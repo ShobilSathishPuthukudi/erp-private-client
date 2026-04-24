@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Exam {
   id: number;
@@ -172,31 +173,25 @@ export default function Exams() {
 
   return (
     <div className="p-2 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/20">
-              <ClipboardCheck className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Examination engine</h1>
-          </div>
-          <p className="text-slate-500 font-medium ml-15">Schedule institutional assessments and manage academic transcript entry protocols.</p>
-        </div>
-        {!isLoading && programs.length > 0 && !isReadOnly && (
-           <button 
-              onClick={() => { reset(); setIsModalOpen(true); }}
-              className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
-           >
-              <ClipboardCheck className="w-4 h-4" />
-              Schedule New Exam
-           </button>
+      <PageHeader 
+        title="Examination engine"
+        description="Schedule institutional assessments and manage academic transcript entry protocols."
+        icon={ClipboardCheck}
+        action={!isLoading && programs.length > 0 && !isReadOnly && (
+          <button 
+            onClick={() => { reset(); setIsModalOpen(true); }}
+            className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Schedule new exam
+          </button>
         )}
-      </div>
+      />
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Program</span>
+            <span className="text-[10px] font-black text-slate-400 tracking-widest">Program</span>
             <select
               value={selectedProgramId}
               onChange={(e) => setSelectedProgramId(e.target.value)}
@@ -268,7 +263,7 @@ export default function Exams() {
           <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Assessment Name</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Assessment name</label>
                 <input
                     {...register('name', { required: true })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium text-slate-900"
@@ -277,7 +272,7 @@ export default function Exams() {
                 </div>
 
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Target Program Architecture</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Target program architecture</label>
                 <select
                     {...register('programId', { required: true })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
@@ -290,7 +285,7 @@ export default function Exams() {
                 </div>
 
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Active Admission Intake</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Active admission intake</label>
                 <select
                     {...register('sessionId', { required: true })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-bold text-slate-900"
@@ -303,7 +298,7 @@ export default function Exams() {
                 </div>
 
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Commencement Date</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Commencement date</label>
                 <input
                     type="date"
                     {...register('date', { required: true })}
@@ -324,7 +319,7 @@ export default function Exams() {
             <button
               type="submit"
               disabled={isSubmitting || !isFormValid}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Scheduling...' : 'Execute Schedule'}
             </button>

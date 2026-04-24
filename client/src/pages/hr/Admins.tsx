@@ -84,7 +84,7 @@ export default function Admins() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Administrators list"
         description="Read-only view of structural system administrators and department heads."

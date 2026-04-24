@@ -202,8 +202,8 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
         
         {/* Program Selection */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-            <GraduationCap className="w-3 h-3" /> Select Program framework
+          <label className="text-[10px] font-black tracking-widest text-slate-400 flex items-center gap-2">
+            <GraduationCap className="w-3 h-3" /> Select program framework
           </label>
           <select 
             className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-slate-900/5 transition-all"
@@ -215,7 +215,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
                 setMarksData({});
             }}
           >
-            <option value="">Choose Program...</option>
+            <option value="">Choose program...</option>
             {programs.map(p => (
               <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
             ))}
@@ -224,7 +224,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
 
         {/* Batch Selection */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+          <label className="text-[10px] font-black tracking-widest text-slate-400 flex items-center gap-2">
             <Calendar className="w-3 h-3" /> Admission batch
           </label>
           <select 
@@ -233,14 +233,14 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             disabled={!selectedProgram}
             onChange={(e) => setSelectedSession(parseInt(e.target.value))}
           >
-            <option value="">Choose Batch...</option>
+            <option value="">Choose batch...</option>
             {sessions.map(s => <option key={s.id} value={s.id}>{s.name || s.id}</option>)}
           </select>
         </div>
 
         {/* Subject Selection */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+          <label className="text-[10px] font-black tracking-widest text-slate-400 flex items-center gap-2">
             <BookOpen className="w-3 h-3" /> Subject context
           </label>
           <select 
@@ -249,7 +249,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             disabled={!selectedProgram}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
-            <option value="">Choose Subject...</option>
+            <option value="">Choose subject...</option>
             {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
         </div>
@@ -263,7 +263,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white rounded-2xl shadow-sm"><Users className="w-5 h-5 text-blue-600" /></div>
                 <div>
-                   <p className="text-xs font-black uppercase tracking-widest text-slate-400">Grading Roster</p>
+                   <p className="text-xs font-black tracking-widest text-slate-400">Grading roster</p>
                    <h3 className="text-lg font-bold text-slate-800">{selectedSubject}</h3>
                 </div>
               </div>
@@ -271,9 +271,9 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
                 <button 
                   onClick={submitMarks}
                   disabled={isSaving}
-                  className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs tracking-widest hover:bg-black transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {isSaving ? "Publishing..." : <>Publish Marks <ChevronRight className="w-4 h-4" /></>}
+                  {isSaving ? "Publishing..." : <>Publish marks <ChevronRight className="w-4 h-4" /></>}
                 </button>
               )}
             </div>
@@ -282,9 +282,9 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 bg-white z-10">
                   <tr className="border-b border-slate-100">
-                    <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">UID</th>
-                    <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Student Name</th>
-                    <th className="px-8 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">{readOnly ? "Score" : "Internal Score (Max 100)"}</th>
+                    <th className="px-8 py-4 text-left text-[10px] font-black tracking-widest text-slate-400">UID</th>
+                    <th className="px-8 py-4 text-left text-[10px] font-black tracking-widest text-slate-400">Student name</th>
+                    <th className="px-8 py-4 text-right text-[10px] font-black tracking-widest text-slate-400">{readOnly ? "Score" : "Internal score (max 100)"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -326,7 +326,7 @@ export default function InternalMarksManager({ title, subtitle, role, readOnly =
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
               <AlertCircle className="w-10 h-10 text-slate-300" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Grading Context Required</h3>
+            <h3 className="text-xl font-bold text-slate-900">Grading context required</h3>
             <p className="text-slate-500 max-w-sm mt-2">Select a program, batch, and subject above to generate the student assessment roster.</p>
           </div>
         )}

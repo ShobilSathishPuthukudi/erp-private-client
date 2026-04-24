@@ -102,45 +102,41 @@ export default function PermissionAudit() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Permission change audit</h1>
-            <p className="text-slate-500 mt-1 font-medium">Historic records of every modification made to the institutional permission matrix.</p>
-          </div>
-        </div>
-        <div className="flex gap-3 items-center">
-          <button 
-            onClick={handleShare}
-            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
-            title="Share Audit Report"
-          >
-            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          
-          <button 
-            onClick={handlePrint}
-            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
-            title="Print Audit Report"
-          >
-            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+    <div className="p-2 space-y-6 pb-32">
+      <PageHeader 
+        title="Permission change audit"
+        description="Historic records of every modification made to the institutional permission matrix."
+        icon={ShieldCheck}
+        action={
+          <div className="flex gap-3 items-center">
+            <button 
+              onClick={handleShare}
+              className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
+              title="Share audit report"
+            >
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+            
+            <button 
+              onClick={handlePrint}
+              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
+              title="Print audit report"
+            >
+              <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
 
-          <div className="w-px h-6 bg-slate-200 mx-1"></div>
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
-          <button 
-            onClick={handleExport}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-slate-200"
-            title="Download/Export Log"
-          >
-            <Download className="w-5 h-5 group-hover:scale-125 transition-transform" />
-          </button>
-        </div>
-      </div>
+            <button 
+              onClick={handleExport}
+              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-slate-200"
+              title="Download/export log"
+            >
+              <Download className="w-5 h-5 group-hover:scale-125 transition-transform" />
+            </button>
+          </div>
+        }
+      />
 
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-2 rounded-3xl border border-slate-200 shadow-sm">
         <div className="relative flex-1 group w-full">

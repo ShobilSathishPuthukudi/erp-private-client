@@ -118,7 +118,7 @@ export default function FeeConfig() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-6">
+    <div className="p-2 space-y-6 max-w-7xl mx-auto">
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Layout className="w-6 h-6 text-blue-600" />

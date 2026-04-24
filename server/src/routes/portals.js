@@ -639,7 +639,8 @@ router.post('/partner-center/admission', verifyToken, requireRole('Partner Cente
         marks,
         verificationLogs: [
           { step: 'Center', time: new Date(), status: 'PENDING_REVIEW', by: req.user.uid }
-        ]
+        ],
+        pendingAmount: program.totalFee || 0
       }, { transaction: t });
 
       // 2. Identify First Installment for Invoice

@@ -70,9 +70,9 @@ export default function Dashboard() {
   }, []);
 
   const kpis = [
-    { label: 'Enrolled Students', value: stats.totalStudents, icon: Users, color: 'blue', type: 'totalStudents', trend: 'Live Active' },
-    { label: 'In Review', value: stats.pendingAdmissions, icon: Clock, color: 'amber', type: 'pendingAdmissions', trend: 'Pipeline' },
-    { label: 'Sanctioned Progs', value: stats.activePrograms, icon: Layout, color: 'emerald', type: 'programs', trend: 'Authorized' },
+    { label: 'Enrolled students', value: stats.totalStudents, icon: Users, color: 'blue', type: 'totalStudents', trend: 'Live active' },
+    { label: 'In review', value: stats.pendingAdmissions, icon: Clock, color: 'amber', type: 'pendingAdmissions', trend: 'Pipeline' },
+    { label: 'Sanctioned programs', value: stats.activePrograms, icon: Layout, color: 'emerald', type: 'programs', trend: 'Authorized' },
     { label: 'Universities', value: stats.totalUniversities, icon: Building2, color: 'rose', type: 'universities', trend: 'Sanctioned' },
   ];
 
@@ -84,7 +84,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8 p-6 lg:p-10 animate-in fade-in duration-700">
+    <div className="p-2 space-y-8 animate-in fade-in duration-700">
       {/* Premium Welcome Header */}
       <DashboardGreeting 
         role="Partner Center - Institutional Node"
@@ -93,12 +93,12 @@ export default function Dashboard() {
         subtitle={`Your portal for institutional governance and student lifecycle management is fully synchronized with our central framework for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
         actions={[
           {
-            label: 'Initiate Admission',
+            label: 'Initiate admission',
             onClick: () => setIsAdmissionModalOpen(true),
             icon: UserPlus
           },
           {
-            label: 'Browse Programs',
+            label: 'Browse programs',
             link: 'programs',
             icon: Sparkles
           }
@@ -125,13 +125,13 @@ export default function Dashboard() {
                           <kpi.icon className="w-7 h-7" />
                       </div>
                       <div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1">{kpi.label}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Real-time Data</p>
+                        <h3 className="text-[11px] font-black text-slate-400 tracking-[0.15em] leading-none mb-1">{kpi.label}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 tracking-tight">Real-time data</p>
                       </div>
                   </div>
                   <div className="flex items-baseline gap-2">
                      <span className="text-4xl font-black text-slate-900 tracking-tight">{isLoading ? '...' : kpi.value}</span>
-                     <span className={`${theme.text} text-[10px] font-black uppercase tracking-widest ${theme.bg} px-2 py-0.5 rounded-md border ${theme.border}`}>{kpi.trend}</span>
+                     <span className={`${theme.text} text-[10px] font-black tracking-widest ${theme.bg} px-2 py-0.5 rounded-md border ${theme.border}`}>{kpi.trend}</span>
                   </div>
                 </div>
             </div>
@@ -148,14 +148,14 @@ export default function Dashboard() {
                 </div>
                 <div>
                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Institutional directives</h2>
-                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Academic & HR Operations</p>
+                   <p className="text-slate-500 text-[10px] font-bold tracking-widest mt-0.5">Academic & HR operations</p>
                 </div>
             </div>
             <button 
               onClick={() => navigate('announcements')}
-              className="text-blue-600 text-xs font-black uppercase tracking-widest hover:text-blue-700 underline-offset-4 hover:underline"
+              className="text-blue-600 text-xs font-black tracking-widest hover:text-blue-700 underline-offset-4 hover:underline"
             >
-                View Full Board
+                View full board
             </button>
         </div>
         <div className="p-4 bg-white">
@@ -166,7 +166,7 @@ export default function Dashboard() {
       <Modal
         isOpen={isAdmissionModalOpen}
         onClose={() => setIsAdmissionModalOpen(false)}
-        title="Institutional Admission Wizard"
+        title="Institutional admission wizard"
         maxWidth="2xl"
       >
         <AdmissionWizard 

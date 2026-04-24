@@ -21,6 +21,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Modal } from '@/components/shared/Modal';
 import { useOrgStore } from '@/store/orgStore';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function SettingsGeneral() {
   const updateOrgStore = useOrgStore(state => state.updateConfig);
@@ -163,18 +164,12 @@ export default function SettingsGeneral() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-12">
-      <div className="flex justify-between items-end">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Institutional profile card</h1>
-            <p className="text-slate-500 mt-1 font-medium">Global institutional configuration and primary branch branding hub.</p>
-          </div>
-        </div>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Institutional profile card"
+        description="Global institutional configuration and primary branch branding hub."
+        icon={Building2}
+      />
 
       {!isProfileSet ? (
         <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-16 text-center shadow-sm">

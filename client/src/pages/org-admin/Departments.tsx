@@ -9,6 +9,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toSentenceCase } from '@/lib/utils';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Building2 } from 'lucide-react';
 
 interface Department {
   id: number;
@@ -131,20 +133,21 @@ export default function Departments() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Departments</h1>
-          <p className="text-slate-500">Manage organizational departments and divisions</p>
-        </div>
-        <button 
-          onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Department</span>
-        </button>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Departments"
+        description="Manage organizational departments and divisions"
+        icon={Building2}
+        action={
+          <button 
+            onClick={openCreateModal}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New department</span>
+          </button>
+        }
+      />
 
       <DataTable 
         columns={columns} 

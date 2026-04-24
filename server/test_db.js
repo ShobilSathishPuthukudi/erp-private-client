@@ -1,13 +1,18 @@
 import sequelize from './src/config/db.js';
-import Department from './src/models/Department.js';
-
-async function test() {
-  const depts = await Department.findAll({
-    order: [['id', 'DESC']],
-    limit: 5,
-    attributes: ['id', 'name', 'type']
-  });
-  console.log(depts.map(d => d.toJSON()));
-  process.exit();
-}
-test();
+import { models } from './src/models/index.js';
+(async () => {
+    try {
+        const users = await models.User.findAll({
+            where: { email: { [sequelize.Sequelize.Op.like]: '%hr%' } },
+            include: [{ model: models.Department, as: 'department' }]
+        });
+        const usersMapped = users.map(u => ({
+            name: u.name,
+            role: u.role,
+            dept: u.department?.name,
+            subDept: u.subDepartment
+        }));
+        console.log(JSON.stringify(usersMapped, null, 2));
+    } catch(e) { }
+    process.exit(0);
+})();

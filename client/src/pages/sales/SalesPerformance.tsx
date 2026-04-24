@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Building, DollarSign, TrendingUp, Copy, Search, ShieldCheck, Users } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
@@ -76,26 +77,21 @@ export default function SalesPerformance() {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
-          <div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
-                  {isAdmin ? 'Global Sales Intelligence' : 'Performance DNA'}
-              </h2>
-              <p className="text-slate-500 font-medium">
-                  {isAdmin ? 'Holistic institutional acquisition and revenue telemetry.' : 'Your personal institutional expansion and yield metrics.'}
-              </p>
+    <div className="p-2 space-y-8">
+      <PageHeader 
+        title={isAdmin ? 'Global sales intelligence' : 'Performance DNA'}
+        description={isAdmin ? 'Holistic institutional acquisition and revenue telemetry' : 'Your personal institutional expansion and yield metrics'}
+        icon={TrendingUp}
+        action={isAdmin ? (
+          <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest border border-blue-100 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4" /> Administrative oversight active
           </div>
-          {isAdmin && (
-              <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" /> Administrative Oversight Active
-              </div>
-          )}
-      </div>
+        ) : undefined}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        <StatCard icon={Building} label="Centers Referred" value={performance?.centerCount || 0} color="blue" onClick={() => openDrillDown('centers', 'Centers Referred')} />
-        <StatCard icon={Users} label="Total Students Enrolled" value={(performance?.studentCount || 0).toLocaleString()} color="indigo" onClick={() => openDrillDown('students', 'Total Students Enrolled')} />
+        <StatCard icon={Building} label="Centers referred" value={performance?.centerCount || 0} color="blue" onClick={() => openDrillDown('centers', 'Centers referred')} />
+        <StatCard icon={Users} label="Total students enrolled" value={(performance?.studentCount || 0).toLocaleString()} color="indigo" onClick={() => openDrillDown('students', 'Total students enrolled')} />
       </div>
 
       <DrillDownModal 
@@ -109,8 +105,8 @@ export default function SalesPerformance() {
       <div className="bg-white border-2 border-slate-100 rounded-[3rem] overflow-hidden shadow-2xl shadow-slate-100/50">
         <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
             <div>
-               <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter ">Referral Acquisition Pipeline</h3>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Forensic Yield Tracking per Institutional Node</p>
+               <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Referral acquisition pipeline</h3>
+               <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">Forensic yield tracking per institutional node</p>
             </div>
             <div className="relative">
                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -119,24 +115,24 @@ export default function SalesPerformance() {
         </div>
         <div className="overflow-x-auto">
             <table className="w-full text-left">
-                <thead className="bg-slate-900 text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                <thead className="bg-slate-900 text-[10px] font-black text-white tracking-[0.2em]">
                     <tr>
-                        <th className="px-10 py-6">Institutional Entity</th>
+                        <th className="px-10 py-6">Institutional entity</th>
                         <th className="px-10 py-6">Acquisition</th>
                         <th className="px-10 py-6">Verification</th>
-                        <th className="px-10 py-6 text-right">Revenue Yield</th>
+                        <th className="px-10 py-6 text-right">Revenue yield</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-sm">
                     {performance?.centers?.map((c: Referral) => (
                         <tr key={c.id} className="hover:bg-blue-50/30 transition-all group">
                             <td className="px-10 py-6">
-                               <div className="font-black text-slate-900 uppercase tracking-tighter text-base">{c.name}</div>
+                               <div className="font-black text-slate-900 tracking-tighter text-base">{c.name}</div>
                                {/* Node ID display removed for consistency */}
                             </td>
                             <td className="px-10 py-6 text-slate-500 font-mono font-bold">{new Date(c.createdAt).toLocaleDateString()}</td>
                             <td className="px-10 py-6">
-                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${(c.status === 'active' || c.status === 'CONVERTED' || c.status === 'converted') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest border-2 ${(c.status === 'active' || c.status === 'CONVERTED' || c.status === 'converted') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                     {c.status}
                                 </span>
                             </td>
@@ -149,7 +145,7 @@ export default function SalesPerformance() {
                                <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner">
                                   <Building className="w-10 h-10 text-slate-200" />
                                </div>
-                               <h4 className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] ">No active referrals synchronized</h4>
+                               <h4 className="text-sm font-black text-slate-300 tracking-[0.2em] ">No active referrals synchronized</h4>
                             </td>
                         </tr>
                     )}
@@ -187,7 +183,7 @@ function StatCard({ icon: Icon, label, value, color, onClick }: any) {
                 <div className={`w-14 h-14 ${colors[color]} border rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform`}>
                     <Icon className="w-7 h-7" />
                 </div>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{label}</p>
+                <p className="text-[11px] font-black text-slate-400 tracking-[0.15em] mb-1">{label}</p>
                 <p className="text-3xl font-black text-slate-900 tracking-tight">{value}</p>
             </div>
         </div>

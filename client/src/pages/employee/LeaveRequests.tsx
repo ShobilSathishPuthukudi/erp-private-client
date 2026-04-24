@@ -7,6 +7,7 @@ import { Plus, Trash2, Calendar, FileText, CheckCircle, Info, ChevronDown, Alert
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Leave {
   id: number;
@@ -234,12 +235,12 @@ export default function LeaveRequests() {
   const columns: ColumnDef<Leave>[] = [
     { 
       accessorKey: 'type', 
-      header: 'Leave Type',
+      header: 'Leave type',
       cell: ({ row }) => <span className="font-semibold text-slate-800">{row.original.type}</span>
     },
     { 
       id: 'dates', 
-      header: 'Given Duration',
+      header: 'Given duration',
       cell: ({ row }) => (
         <span className="text-sm">
           {formatLeaveDate(row.original.fromDate)} - {formatLeaveDate(row.original.toDate)}
@@ -248,12 +249,12 @@ export default function LeaveRequests() {
     },
     { 
       id: 'submitted', 
-      header: 'Applied On',
+      header: 'Applied on',
       cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString()
     },
     { 
       accessorKey: 'status', 
-      header: 'Approval Status',
+      header: 'Approval status',
       cell: ({ row }) => {
         const s = row.original.status;
         let color = 'bg-slate-100 text-slate-700';
@@ -262,7 +263,7 @@ export default function LeaveRequests() {
         if (s.includes('pending')) color = 'bg-orange-100 text-orange-700';
         
         return (
-          <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
+          <span className={`px-2 py-1 text-[10px] rounded-full font-bold ${color}`}>
             {['pending_step1', 'pending admin'].includes(s) ? 'pending admin' : 
              (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.department?.name === 'HR Department' || row.original.employee?.department?.name === 'HR' ? 'forwarded to workforce control' : 'pending hr') : 
              s.replace('_', ' '))}
@@ -282,7 +283,7 @@ export default function LeaveRequests() {
                 handleDelete(row.original.id);
               }}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Delete Request"
+              title="Delete request"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -293,7 +294,7 @@ export default function LeaveRequests() {
               handleRowClick(row.original);
             }}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            title="View Details"
+            title="View details"
           >
             <Info className="w-4 h-4" />
           </button>
@@ -303,22 +304,23 @@ export default function LeaveRequests() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">My leave requests</h1>
-          <p className="text-slate-500">Submit and track your history of physical absences</p>
-        </div>
-        <button 
-          onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-lg transition-all shadow-lg shadow-slate-200 font-black text-xs uppercase tracking-widest active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Request Leave</span>
-        </button>
-      </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <PageHeader 
+        title="My leave requests"
+        description="Submit and track your history of physical absences."
+        icon={Calendar}
+        action={
+          <button 
+            onClick={openCreateModal}
+            className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-xl shadow-slate-900/20 font-black text-xs active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Request leave</span>
+          </button>
+        }
+      />
 
-      <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-lg flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-200 rounded-3xl flex flex-col overflow-hidden">
         <DataTable 
           columns={columns} 
           data={leaves} 
@@ -333,18 +335,18 @@ export default function LeaveRequests() {
       <Modal
         isOpen={showDetails}
         onClose={() => setShowDetails(false)}
-        title="Leave Request Details"
+        title="Leave request details"
         maxWidth="md"
       >
         {selectedLeave && (
           <div className="space-y-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Leave Category</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">Leave category</p>
                 <p className="text-lg font-bold text-slate-900">{selectedLeave.type}</p>
               </div>
               <div className="text-right space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">Status</p>
                 <div className="flex justify-end">
                   {(() => {
                     const s = selectedLeave.status;
@@ -353,7 +355,7 @@ export default function LeaveRequests() {
                     if (s.includes('rejected')) color = 'bg-red-100 text-red-700';
                     if (s.includes('pending')) color = 'bg-orange-100 text-orange-700';
                     return (
-                      <span className={`px-3 py-1 text-[10px] rounded-full font-black uppercase tracking-wider ${color}`}>
+                      <span className={`px-3 py-1 text-[10px] rounded-full font-black tracking-wider ${color}`}>
                         {['pending_step1', 'pending admin'].includes(s) ? 'pending admin' : 
                          (['pending_step2', 'pending hr'].includes(s) ? (selectedLeave.employee?.department?.name === 'HR Department' || selectedLeave.employee?.department?.name === 'HR' ? 'forwarded' : 'pending hr') : 
                          s.replace('_', ' '))}
@@ -366,14 +368,14 @@ export default function LeaveRequests() {
 
             <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 border border-slate-100 rounded-xl">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Starting From</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">Starting from</p>
                 <div className="flex items-center gap-2 text-slate-700">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   <span className="font-bold">{formatLeaveDate(selectedLeave.fromDate)}</span>
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ending On</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">Ending on</p>
                 <div className="flex items-center gap-2 text-slate-700">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   <span className="font-bold">{formatLeaveDate(selectedLeave.toDate)}</span>
@@ -382,7 +384,7 @@ export default function LeaveRequests() {
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Detailed Reason</p>
+              <p className="text-[10px] font-black tracking-widest text-slate-400">Detailed reason</p>
               <div className="p-4 bg-white border border-slate-200 rounded-xl">
                 <p className="text-sm text-slate-600 leading-relaxed italic">
                   "{selectedLeave.reason || 'No specific reason provided.'}"
@@ -393,7 +395,7 @@ export default function LeaveRequests() {
             <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-[11px] font-black uppercase tracking-widest">Calculated Duration</span>
+                <span className="text-[11px] font-black tracking-widest">Calculated duration</span>
               </div>
               <span className="text-sm font-black italic">
                 {(() => {
@@ -408,7 +410,7 @@ export default function LeaveRequests() {
             <div className="pt-4 border-t border-slate-100 flex justify-end">
               <button
                 onClick={() => setShowDetails(false)}
-                className="px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95"
+                className="px-6 py-2.5 text-xs font-black tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95"
               >
                 Close
               </button>
@@ -425,8 +427,8 @@ export default function LeaveRequests() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Leave type */}
           <div className="space-y-1">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-              Leave Category
+            <label className="block text-[10px] font-black tracking-[0.2em] text-slate-400">
+              Leave category
             </label>
             <div className="relative group">
               <select
@@ -439,33 +441,33 @@ export default function LeaveRequests() {
                 <option value="">Select a category</option>
                 <option value="Annual Leave">Annual leave</option>
                 <option value="Sick Leave">Sick leave</option>
-                <option value="Maternity / Paternity">Maternity / Paternity</option>
+                <option value="Maternity / Paternity">Maternity / paternity</option>
                 <option value="Unpaid Leave">Unpaid leave</option>
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                 <ChevronDown className="w-4 h-4" />
               </div>
             </div>
-            {errors.type && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.type.message as string}</p>}
+            {errors.type && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.type.message as string}</p>}
           </div>
 
           <div className="space-y-3">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-              Absence Period
+            <label className="block text-[10px] font-black tracking-[0.2em] text-slate-400">
+              Absence period
             </label>
             {activeLeaves.length > 0 && (
               <div className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-3">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 text-slate-500 shrink-0" />
                   <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                      Unavailable Leave Dates
+                    <p className="text-[10px] font-black tracking-[0.18em] text-slate-500">
+                      Unavailable leave dates
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {getUnavailableDateRanges().map((range) => (
                         <span
                           key={range}
-                          className="rounded-full border border-slate-300 bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600"
+                          className="rounded-full border border-slate-300 bg-slate-200 px-3 py-1 text-[10px] font-black tracking-wider text-slate-600"
                         >
                           {range}
                         </span>
@@ -480,7 +482,7 @@ export default function LeaveRequests() {
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Starting From</p>
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest pl-1">Starting from</p>
                 <div className="relative group">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   <input
@@ -497,11 +499,11 @@ export default function LeaveRequests() {
                     )}
                   />
                 </div>
-                {errors.fromDate && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.fromDate.message as string}</p>}
+                {errors.fromDate && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.fromDate.message as string}</p>}
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Ending On</p>
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest pl-1">Ending on</p>
                 <div className="relative group">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   <input
@@ -519,14 +521,14 @@ export default function LeaveRequests() {
                     )}
                   />
                 </div>
-                {errors.toDate && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.toDate.message as string}</p>}
+                {errors.toDate && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.toDate.message as string}</p>}
               </div>
             </div>
 
             {overlappingLeave && (
               <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-600">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-widest">
+                <span className="text-[11px] font-black tracking-widest">
                   This range overlaps with an existing leave from {formatLeaveDate(overlappingLeave.fromDate)} to {formatLeaveDate(overlappingLeave.toDate)}.
                 </span>
               </div>
@@ -535,8 +537,8 @@ export default function LeaveRequests() {
             {durationDays !== null && (
               <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 animate-in fade-in slide-in-from-top-1">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-[11px] font-black uppercase tracking-widest">
-                  Total Duration: {durationDays} {durationDays === 1 ? 'Day' : 'Days'}
+                <span className="text-[11px] font-black tracking-widest">
+                  Total duration: {durationDays} {durationDays === 1 ? 'Day' : 'Days'}
                 </span>
               </div>
             )}
@@ -544,11 +546,11 @@ export default function LeaveRequests() {
 
           <div className="space-y-1">
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Detailed Reason
+              <label className="block text-[10px] font-black tracking-[0.2em] text-slate-400">
+                Detailed reason
               </label>
               <span className={clsx(
-                "text-[10px] font-black uppercase tracking-widest",
+                "text-[10px] font-black tracking-widest",
                 reasonValue.length > 30 ? "text-rose-600" : "text-slate-400"
               )}>
                 {reasonValue.length} / 30
@@ -570,7 +572,7 @@ export default function LeaveRequests() {
                 placeholder="Briefly explain your leave request..."
               />
             </div>
-            {errors.reason && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.reason.message as string}</p>}
+            {errors.reason && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.reason.message as string}</p>}
           </div>
 
           <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
@@ -585,16 +587,16 @@ export default function LeaveRequests() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+              className="px-6 py-2.5 text-xs font-bold tracking-widest text-slate-600 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !!overlappingLeave}
-              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
+              className="px-6 py-2.5 text-xs font-bold tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:grayscale"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              {isSubmitting ? 'Submitting...' : 'Submit request'}
             </button>
           </div>
         </form>

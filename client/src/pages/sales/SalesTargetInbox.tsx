@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { Activity, Target } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 type SalesTarget = {
   id: number;
@@ -51,21 +52,17 @@ export default function SalesTargetInbox() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight text-slate-900">
-          <Target className="h-8 w-8 text-amber-600" />
-          Sales Incentive Progress
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Live visibility into incentive plans already verified by Operations and currently running across the sales team.
-        </p>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Sales incentive progress"
+        description="Live visibility into incentive plans already verified by Operations and currently running across the sales team"
+        icon={Target}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatBlock label="Live Plans" value={stats.livePlans} />
-        <StatBlock label="Finance Review" value={stats.underReview} />
-        <StatBlock label="Closed Cycles" value={stats.closedCycles} />
+        <StatBlock label="Live plans" value={stats.livePlans} />
+        <StatBlock label="Finance review" value={stats.underReview} />
+        <StatBlock label="Closed cycles" value={stats.closedCycles} />
       </div>
 
       <div className="space-y-4">
@@ -90,7 +87,7 @@ export default function SalesTargetInbox() {
                   <span>Window: <strong className="text-slate-900">{formatDate(target.startDate)} to {formatDate(target.endDate)}</strong></span>
                 </div>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-slate-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-black tracking-[0.2em] text-slate-700">
                 <Activity className="h-3 w-3" />
                 {target.assignments?.length || 0} assignments
               </div>
@@ -121,7 +118,7 @@ export default function SalesTargetInbox() {
 function StatBlock({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <p className="text-xs font-black tracking-[0.2em] text-slate-400">{label}</p>
       <p className="mt-3 text-3xl font-black text-slate-900">{value}</p>
     </div>
   );
@@ -138,7 +135,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+    <span className={`rounded-full px-3 py-1 text-xs font-black tracking-[0.18em] ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
       {status.replaceAll('_', ' ')}
     </span>
   );

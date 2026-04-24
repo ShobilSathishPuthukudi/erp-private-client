@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface RoleNode {
   id: string | number;
@@ -227,56 +228,51 @@ export default function RoleHierarchyView() {
         className="fixed bottom-8 right-8 z-[100] flex flex-col gap-2 items-center bg-white/90 backdrop-blur-md border border-slate-200 p-2 rounded-2xl shadow-xl animate-in slide-in-from-right-10 duration-500"
         onDoubleClick={(e) => e.stopPropagation()}
       >
-         <button onClick={zoomIn} title="Zoom In" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Plus className="w-4 h-4" /></button>
+         <button onClick={zoomIn} title="Zoom in" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Plus className="w-4 h-4" /></button>
          <div className="w-8 h-[1px] bg-slate-100"></div>
-         <button onClick={resetView} title="Fit to Screen" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><RotateCcw className="w-4 h-4" /></button>
+         <button onClick={resetView} title="Fit to screen" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><RotateCcw className="w-4 h-4" /></button>
          <div className="w-8 h-[1px] bg-slate-100"></div>
-         <button onClick={zoomOut} title="Zoom Out" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Minus className="w-4 h-4" /></button>
+         <button onClick={zoomOut} title="Zoom out" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Minus className="w-4 h-4" /></button>
       </div>
 
       <div 
-        className="relative z-10 p-8 flex-1 flex flex-col gap-8"
+        className="relative z-10 p-2 flex-1 flex flex-col gap-8"
         onDoubleClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center">
+        <PageHeader 
+          title="Institutional role hierarchy"
+          description="Governing authority & structural chain"
+          icon={Layout}
+          action={
             <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
-                      <Layout className="w-6 h-6 text-indigo-600" />
-                 </div>
-                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional role hierarchy</h1>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Governing Authority & Structural Chain</p>
-                 </div>
-            </div>
-            <div className="flex items-center gap-4">
-                {/* Minimalist Switch */}
-                <div className="bg-white/50 backdrop-blur-sm border border-slate-200 p-1 rounded-2xl flex items-center shadow-sm">
-                    <button 
-                      onClick={() => isCompact && toggleCompactView()}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${!isCompact ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
-                    >
-                        <Layout className="w-3.5 h-3.5" />
-                        Detailed
-                    </button>
-                    <button 
-                      onClick={() => !isCompact && toggleCompactView()}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isCompact ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
-                    >
-                        <AlignLeft className="w-3.5 h-3.5" />
-                        Minimalist
-                    </button>
-                </div>
+              <div className="bg-white/50 backdrop-blur-sm border border-slate-200 p-1 rounded-2xl flex items-center shadow-sm">
+                  <button 
+                    onClick={() => isCompact && toggleCompactView()}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${!isCompact ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
+                  >
+                      <Layout className="w-3.5 h-3.5" />
+                      Detailed
+                  </button>
+                  <button 
+                    onClick={() => !isCompact && toggleCompactView()}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isCompact ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
+                  >
+                      <AlignLeft className="w-3.5 h-3.5" />
+                      Minimalist
+                  </button>
+              </div>
 
-                {selectedId && (
-                    <button 
-                      onClick={() => setSelectedId(null)}
-                      className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all border border-indigo-100 shadow-sm"
-                    >
-                      Clear Selection
-                    </button>
-                )}
+              {selectedId && (
+                  <button 
+                    onClick={() => setSelectedId(null)}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all border border-indigo-100 shadow-sm"
+                  >
+                    Clear selection
+                  </button>
+              )}
             </div>
-        </div>
+          }
+        />
 
         <div 
           className={`flex-1 relative flex items-start justify-center pt-20 will-change-transform h-full w-full pointer-events-none ${(isPanning || isZooming || !isAnimating) ? '' : 'transition-transform duration-500 ease-out'}`}

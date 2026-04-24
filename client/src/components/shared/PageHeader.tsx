@@ -16,7 +16,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, icon
           <Icon className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5 uppercase">{title}</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">{title}</h1>
           <p className="text-slate-500 font-medium text-sm">{description}</p>
         </div>
       </div>

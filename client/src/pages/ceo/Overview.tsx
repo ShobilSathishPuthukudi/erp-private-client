@@ -189,7 +189,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   const instAnalysis = analyzeInstitutionalGrowth();
 
   const KPIStore = [
-    { type: 'universities', title: 'Total Universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university', 'hr', 'finance', 'operations', 'all'], inlineDetails: (
+    { type: 'universities', title: 'Total universities', value: metrics?.totalUniversities || 0, icon: Building2, target: 5, suffix: '', color: 'slate', scopes: ['academic', 'university', 'hr', 'finance', 'operations', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -198,7 +198,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'programs', title: 'Total Programs', value: metrics?.totalPrograms || 0, icon: BookOpen, target: 50, suffix: '', color: 'slate', scopes: ['academic', 'university', 'program'], inlineDetails: (
+    { type: 'programs', title: 'Total programs', value: metrics?.totalPrograms || 0, icon: BookOpen, target: 50, suffix: '', color: 'slate', scopes: ['academic', 'university', 'program'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -207,7 +207,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'students', title: 'Enrolled Students', value: metrics?.totalStudents || 0, icon: Users, target: 1000, suffix: '', color: getStatusColor(metrics?.totalStudents || 0, 1000), scopes: ['academic', 'student', 'university', 'admission'], inlineDetails: (
+    { type: 'students', title: 'Enrolled students', value: metrics?.totalStudents || 0, icon: Users, target: 1000, suffix: '', color: getStatusColor(metrics?.totalStudents || 0, 1000), scopes: ['academic', 'student', 'university', 'admission'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -216,7 +216,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'revenue', title: 'Fees Collected (MTD)', value: metrics?.revenueMTD || 0, icon: IndianRupee, target: 500000, suffix: '₹', color: getStatusColor(metrics?.revenueMTD || 0, 500000), scopes: ['finance', 'account'], inlineDetails: (
+    { type: 'revenue', title: 'Fees collected (MTD)', value: metrics?.revenueMTD || 0, icon: IndianRupee, target: 500000, suffix: '₹', color: getStatusColor(metrics?.revenueMTD || 0, 500000), scopes: ['finance', 'account'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
           <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -225,7 +225,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'revenue', title: 'Fees Collected (YTD)', value: metrics?.revenueYTD || 0, icon: IndianRupee, target: 5000000, suffix: '₹', color: getStatusColor(metrics?.revenueYTD || 0, 5000000), scopes: ['finance', 'account'], inlineDetails: (
+    { type: 'revenue', title: 'Fees collected (YTD)', value: metrics?.revenueYTD || 0, icon: IndianRupee, target: 5000000, suffix: '₹', color: getStatusColor(metrics?.revenueYTD || 0, 5000000), scopes: ['finance', 'account'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
           <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -234,7 +234,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'revenue', title: 'Total Fund Acquired', value: metrics?.totalFundAcquired || 0, icon: IndianRupee, target: 10000000, suffix: '₹', color: 'indigo', scopes: ['finance'], inlineDetails: (
+    { type: 'revenue', title: 'Total fund acquired', value: metrics?.totalFundAcquired || 0, icon: IndianRupee, target: 10000000, suffix: '₹', color: 'indigo', scopes: ['finance'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
           <p className="text-[11px] text-indigo-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -243,7 +243,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'centers', title: 'Active Partner Centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20), scopes: ['operations', 'regional', 'academic'], inlineDetails: (
+    { type: 'centers', title: 'Active partner centers', value: metrics?.activeCenters || 0, icon: MapPin, target: 20, suffix: '', color: getStatusColor(metrics?.activeCenters || 0, 20), scopes: ['operations', 'regional', 'academic'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -255,7 +255,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   ].filter(card => card.scopes.includes('all') || checkScope(card.scopes));
 
   const PerformanceStore = [
-    { type: 'perf_prod', title: 'Productivity Score', value: metrics?.productivityScore || 0, icon: Activity, target: 90, suffix: '%', color: (metrics?.productivityScore || 0) >= 85 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+    { type: 'perf_prod', title: 'Productivity score', value: metrics?.productivityScore || 0, icon: Activity, target: 90, suffix: '%', color: (metrics?.productivityScore || 0) >= 85 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
           <p className="text-[11px] text-emerald-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -274,7 +274,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'perf_task', title: 'Task Completion', value: metrics?.taskCompletionRate || 0, icon: CheckCircle2, target: 95, suffix: '%', color: (metrics?.taskCompletionRate || 0) >= 90 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+    { type: 'perf_task', title: 'Task completion', value: metrics?.taskCompletionRate || 0, icon: CheckCircle2, target: 95, suffix: '%', color: (metrics?.taskCompletionRate || 0) >= 90 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
           <p className="text-[11px] text-blue-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -283,7 +283,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'perf_avg', title: 'Avg Completion', value: metrics?.avgTaskTime || 0, icon: Clock, target: 24, suffix: 'h', color: (metrics?.avgTaskTime || 0) <= 24 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+    { type: 'perf_avg', title: 'Avg completion', value: metrics?.avgTaskTime || 0, icon: Clock, target: 24, suffix: 'h', color: (metrics?.avgTaskTime || 0) <= 24 ? 'emerald' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
           <p className="text-[11px] text-indigo-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -292,7 +292,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'perf_cycle', title: 'Center Acquisition', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 14 ? 'emerald' : 'amber', scopes: ['academic', 'sales', 'operations', 'all'], inlineDetails: (
+    { type: 'perf_cycle', title: 'Center acquisition', value: metrics?.avgCycleTime || 0, icon: TrendingUp, target: 7, suffix: 'd', color: (metrics?.avgCycleTime || 0) <= 14 ? 'emerald' : 'amber', scopes: ['academic', 'sales', 'operations', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
           <p className="text-[11px] text-slate-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -304,7 +304,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
   ].filter(card => checkScope(card.scopes));
 
   const RiskStore = [
-    { type: 'risk_highval', title: 'High-Value Pending', value: metrics?.highValuePending || 0, icon: Wallet, target: 0, suffix: '', color: (metrics?.highValuePending || 0) > 0 ? 'red' : 'emerald', scopes: ['finance', 'account'], inlineDetails: (
+    { type: 'risk_highval', title: 'High-value pending', value: metrics?.highValuePending || 0, icon: Wallet, target: 0, suffix: '', color: (metrics?.highValuePending || 0) > 0 ? 'red' : 'emerald', scopes: ['finance', 'account'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
           <p className="text-[11px] text-rose-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -313,7 +313,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'risk_security', title: 'Security Reveals', value: metrics?.revealRequests || 0, icon: ShieldAlert, target: 0, suffix: '', color: (metrics?.revealRequests || 0) > 0 ? 'red' : 'emerald', scopes: ['security'], inlineDetails: (
+    { type: 'risk_security', title: 'Security reveals', value: metrics?.revealRequests || 0, icon: ShieldAlert, target: 0, suffix: '', color: (metrics?.revealRequests || 0) > 0 ? 'red' : 'emerald', scopes: ['security'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
           <p className="text-[11px] text-amber-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -322,7 +322,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'risk_audit', title: 'Audit Exceptions', value: metrics?.auditExceptions || 0, icon: AlertTriangle, target: 0, suffix: '', color: (metrics?.auditExceptions || 0) > 10 ? 'red' : 'amber', scopes: ['security'], inlineDetails: (
+    { type: 'risk_audit', title: 'Audit exceptions', value: metrics?.auditExceptions || 0, icon: AlertTriangle, target: 0, suffix: '', color: (metrics?.auditExceptions || 0) > 10 ? 'red' : 'amber', scopes: ['security'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
           <p className="text-[11px] text-red-800 font-bold leading-relaxed uppercase tracking-wide">
@@ -331,7 +331,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
         </div>
       </div>
     )},
-    { type: 'risk_aged', title: 'Governance Escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
+    { type: 'risk_aged', title: 'Governance escalations', value: metrics?.overdueTasks || 0, icon: Clock, target: 5, suffix: '', color: (metrics?.overdueTasks || 0) > 5 ? 'red' : 'amber', scopes: ['academic', 'finance', 'operations', 'hr', 'marketing', 'all'], inlineDetails: (
       <div className="space-y-4 py-4">
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex gap-3">
           <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -367,10 +367,10 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           </div>
           <div className="flex items-center gap-3">
              <button onClick={() => navigate('/dashboard/ceo/performance')} className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all text-xs font-bold whitespace-nowrap">
-                <Activity className="w-4 h-4" /> Workforce Analytics
+                <Activity className="w-4 h-4" /> Workforce analytics
              </button>
              <button onClick={() => navigate('/dashboard/ceo/escalations')} className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all text-xs font-bold whitespace-nowrap">
-                <AlertTriangle className="w-4 h-4" /> Escalation Inbox
+                <AlertTriangle className="w-4 h-4" /> Escalation inbox
              </button>
           </div>
         </div>
@@ -381,12 +381,12 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
               <Zap className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Active Governance Scope</p>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Active governance scope</p>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-slate-900 uppercase tracking-tight">
                   {metrics.visibilityScope.join(' • ')}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 ">(Partitioned Executive Identity)</span>
+                <span className="text-[10px] font-bold text-slate-400 ">(Partitioned executive identity)</span>
               </div>
             </div>
           </div>
@@ -434,14 +434,14 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           <div className="mt-12 pt-12 border-t border-slate-100/50">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Employee Performance Suite</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-Functional Efficiency & Cycle Monitoring</p>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Employee performance suite</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-functional efficiency & cycle monitoring</p>
               </div>
               <button 
                 onClick={() => navigate('/dashboard/ceo/performance')}
                 className="flex items-center gap-2 text-[10px] font-black bg-slate-900 text-white px-4 py-2 rounded-full uppercase tracking-widest hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-slate-900/20"
               >
-                Workforce Analytics <ArrowRight className="w-3.5 h-3.5" />
+                Workforce analytics <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -476,11 +476,11 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           <div className="mt-12 pt-12 border-t border-slate-100/50">
            <div className="flex items-center justify-between mb-8">
              <div>
-               <h3 className="text-xl font-black text-slate-900 tracking-tight">Systemic Risk & Compliance</h3>
-               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional Vulnerability & Security Telemetry</p>
+               <h3 className="text-xl font-black text-slate-900 tracking-tight">Systemic risk & compliance</h3>
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional vulnerability & security telemetry</p>
              </div>
              <button onClick={() => navigate('/dashboard/ceo/escalations')} className="text-[10px] font-black bg-rose-50 text-rose-600 px-4 py-2 rounded-full uppercase tracking-widest hover:bg-rose-600 hover:text-white hover:scale-105 active:scale-95 transition-all">
-               Escalation Inbox
+               Escalation inbox
              </button>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -516,10 +516,10 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                  Sector Intelligence: Sales
-                  <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] rounded-md font-black uppercase tracking-widest">Strictly Added</span>
+                  Sector intelligence: Sales
+                  <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] rounded-md font-black uppercase tracking-widest">Strictly added</span>
                 </h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Lead Conversion Analytics & Revenue Pipeline Velocity</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Lead conversion analytics & revenue pipeline velocity</p>
               </div>
             </div>
             
@@ -544,7 +544,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                         style={{ width: `${metrics.salesIntelligence.totalLeads > 0 ? (metrics.salesIntelligence.convertedLeads / metrics.salesIntelligence.totalLeads) * 100 : 0}%` }}
                       ></div>
                     </div>
-                    <span className="text-[10px] font-black text-white/40">{metrics.salesIntelligence.convertedLeads}/{metrics.salesIntelligence.totalLeads} Converted</span>
+                    <span className="text-[10px] font-black text-white/40">{metrics.salesIntelligence.convertedLeads}/{metrics.salesIntelligence.totalLeads} converted</span>
                   </div>
                 </div>
               </div>
@@ -565,7 +565,7 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
                   <div className="mt-8 p-4 bg-rose-50 rounded-2xl border border-rose-100">
                     <div className="flex items-center gap-3">
                       <AlertTriangle className="w-4 h-4 text-rose-600" />
-                      <span className="text-[10px] font-bold text-rose-700 uppercase tracking-tight">SLA Guard: 7 Days Max</span>
+                      <span className="text-[10px] font-bold text-rose-700 uppercase tracking-tight">SLA guard: 7 days max</span>
                     </div>
                   </div>
                 </div>
@@ -606,8 +606,8 @@ export default function Overview({ view }: { view: 'kpis' | 'trends' }) {
           <div className="mt-12 space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Departmental Pulse</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Comparative Analysis • Permitted Governance Data</p>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Departmental pulse</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Comparative analysis • Permitted governance data</p>
               </div>
               <div className="text-[10px] font-black bg-slate-900 text-white px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-slate-900/20">
                 Deep Dive: {metrics.departmentalBreakdown.length} Sectors

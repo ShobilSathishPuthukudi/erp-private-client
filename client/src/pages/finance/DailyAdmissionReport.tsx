@@ -87,7 +87,7 @@ export default function DailyAdmissionReport() {
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8">
+    <div className="p-2 space-y-6 max-w-7xl mx-auto">
       <PageHeader 
         title="Daily admission intelligence"
         description="Monitor institutional growth in real-time. Branded PDF export enabled for executive reporting."

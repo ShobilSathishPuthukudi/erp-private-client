@@ -89,7 +89,7 @@ export default function Holidays() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-2 space-y-6">
       <PageHeader 
         title="Holiday synchronization"
         description="Coordinate organization-wide breaks across all departmental pods."
@@ -97,7 +97,7 @@ export default function Holidays() {
         action={
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2 whitespace-nowrap"
+            className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             Certify Holiday
@@ -121,7 +121,7 @@ export default function Holidays() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Certify Institutional Holiday">
          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Holiday Designation</label>
+                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-1">Holiday designation</label>
                 <input 
                     required
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 font-bold"
@@ -130,7 +130,7 @@ export default function Holidays() {
                 />
             </div>
             <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Calendar Date</label>
+                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-1">Calendar date</label>
                 <input 
                     type="date"
                     required
@@ -139,7 +139,7 @@ export default function Holidays() {
                 />
             </div>
             <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contextual Description</label>
+                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-1">Contextual description</label>
                 <textarea 
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 font-medium"
                     placeholder="Optional directive details..."
@@ -148,8 +148,8 @@ export default function Holidays() {
                 />
             </div>
             <div className="flex justify-end pt-4">
-                <button type="submit" className="bg-slate-900 text-white px-10 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                    Synchronize Globally
+                <button type="submit" className="bg-slate-900 text-white px-10 py-2 rounded-xl font-black text-[10px] tracking-widest">
+                  Register holiday
                 </button>
             </div>
          </form>
@@ -166,19 +166,19 @@ export default function Holidays() {
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900">{toSentenceCase(selectedHoliday.name)}</h4>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    ID: #{selectedHoliday.id} · Verified Global Break
+                  <p className="text-[10px] font-black tracking-widest text-slate-400">
+                    ID: #{selectedHoliday.id} · Verified global break
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-widest">
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black tracking-widest">
                 Certified
               </span>
             </div>
 
             <div className="space-y-4">
               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/50">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Contextual Description</div>
+                <div className="text-[10px] font-black text-slate-400 tracking-widest mb-3">Contextual description</div>
                 <p className="text-slate-700 text-sm font-medium leading-relaxed">
                   {selectedHoliday.description || "No specific administrative directive provided for this holiday."}
                 </p>
@@ -186,7 +186,7 @@ export default function Holidays() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl border border-slate-100 bg-white">
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Calendar Timestamp</div>
+                  <div className="text-[10px] font-black text-slate-400 tracking-widest mb-2">Calendar timestamp</div>
                   <div className="flex items-center text-xs text-slate-900 font-black">
                     <Clock className="w-4 h-4 mr-2 text-slate-400" />
                     {new Date(selectedHoliday.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
@@ -194,7 +194,7 @@ export default function Holidays() {
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-100 bg-white">
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Scope of Break</div>
+                  <div className="text-[10px] font-black text-slate-400 tracking-widest mb-2">Scope of break</div>
                   <div className="flex items-center text-xs text-slate-900 font-black">
                     <MapPin className="w-4 h-4 mr-2 text-slate-400" />
                     All Departments
@@ -211,13 +211,13 @@ export default function Holidays() {
                     setIsDetailOpen(false);
                   }
                 }}
-                className="px-6 py-2.5 text-red-500 hover:bg-red-50 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                className="px-6 py-2.5 text-red-500 hover:bg-red-50 rounded-xl text-xs font-black tracking-widest transition-all"
               >
                 Revoke Holiday
               </button>
               <button 
                 onClick={() => setIsDetailOpen(false)}
-                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
               >
                 Dismiss Detail
               </button>

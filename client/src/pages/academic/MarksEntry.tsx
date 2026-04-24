@@ -173,10 +173,10 @@ export default function MarksEntry() {
             <div className="space-y-4">
                 <button 
                   onClick={() => navigate(examsBasePath)}
-                  className="flex items-center gap-2 text-indigo-400 font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                  className="flex items-center gap-2 text-indigo-400 font-black tracking-widest text-[10px] hover:text-white transition-colors"
                 >
                     <ArrowLeft className="w-3 h-3" />
-                    Exit Terminal
+                    Exit terminal
                 </button>
                 <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
@@ -184,7 +184,7 @@ export default function MarksEntry() {
                     </div>
                     <div>
                         <h1 className="text-3xl font-black tracking-tight">{exam?.name}</h1>
-                        <p className="text-slate-400 font-bold uppercase text-[11px] tracking-widest flex items-center gap-2">
+                        <p className="text-slate-400 font-bold text-[11px] tracking-widest flex items-center gap-2">
                             <BookOpen className="w-3.5 h-3.5" />
                             {exam?.program?.name} • Academic Batch {exam?.batch}
                         </p>
@@ -194,7 +194,7 @@ export default function MarksEntry() {
 
             <div className="flex flex-wrap gap-4 pt-4 md:pt-0">
                 <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl min-w-[180px]">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Program</p>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400 mb-1">Program</p>
                     <select
                       value={currentProgramLabel}
                       disabled
@@ -204,7 +204,7 @@ export default function MarksEntry() {
                     </select>
                 </div>
                 <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl min-w-[180px]">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Subject</p>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400 mb-1">Subject</p>
                     <select
                       value={subjectName}
                       onChange={(e) => setSubjectName(e.target.value)}
@@ -226,10 +226,10 @@ export default function MarksEntry() {
                 <button 
                   onClick={handleSaveAll}
                   disabled={isSaving}
-                  className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/30 active:scale-95 font-black uppercase tracking-widest text-xs"
+                  className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-8 py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/30 active:scale-95 font-black tracking-widest text-xs"
                 >
                     <Save className="w-4 h-4" />
-                    {isSaving ? 'Reconciling...' : 'Sync to Result Engine'}
+                    {isSaving ? 'Reconciling...' : 'Sync to result engine'}
                 </button>
             </div>
         </div>
@@ -241,7 +241,7 @@ export default function MarksEntry() {
       <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Program:</span>
+                <span className="text-[10px] font-black text-slate-400 tracking-widest">Program:</span>
                 <select
                     value={currentProgramLabel}
                     disabled
@@ -251,7 +251,7 @@ export default function MarksEntry() {
                 </select>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jurisdictional Center:</span>
+                <span className="text-[10px] font-black text-slate-400 tracking-widest">Jurisdictional center:</span>
                 <select 
                     value={selectedCenterId}
                     onChange={(e) => setSelectedCenterId(e.target.value)}
@@ -262,7 +262,7 @@ export default function MarksEntry() {
                 </select>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student:</span>
+                <span className="text-[10px] font-black text-slate-400 tracking-widest">Student:</span>
                 <select
                     value={selectedStudentId}
                     onChange={(e) => setSelectedStudentId(e.target.value)}
@@ -277,7 +277,7 @@ export default function MarksEntry() {
                 </select>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject:</span>
+                <span className="text-[10px] font-black text-slate-400 tracking-widest">Subject:</span>
                 <select
                     value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
@@ -300,12 +300,12 @@ export default function MarksEntry() {
       {/* Main Roster Grid */}
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
         <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3">
+            <h3 className="text-xs font-black text-slate-400 tracking-[0.2em] flex items-center gap-3">
                 <Users className="w-4 h-4" />
-                Enrollment Roster Analysis
+                Enrollment roster analysis
             </h3>
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg uppercase tracking-tighter">
-                {students.filter((student) => student.subjectMarks[subjectName]?.isSaved).length} / {students.length} Synchronized
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg tracking-tighter">
+                {students.filter((student) => student.subjectMarks[subjectName]?.isSaved).length} / {students.length} synchronized
             </span>
         </div>
         
@@ -313,12 +313,12 @@ export default function MarksEntry() {
             <table className="w-full text-left">
                 <thead className="bg-slate-50/50 px-8">
                     <tr>
-                        <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Identity</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Theory (70)</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Practical (20)</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Internal (10)</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aggregated</th>
-                        <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                        <th className="px-10 py-5 text-[10px] font-black text-slate-400 tracking-widest">Student identity</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 tracking-widest text-center">Theory (70)</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 tracking-widest text-center">Practical (20)</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 tracking-widest text-center">Internal (10)</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 tracking-widest text-center">Aggregated</th>
+                        <th className="px-10 py-5 text-[10px] font-black text-slate-400 tracking-widest text-right">Status</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -377,12 +377,12 @@ export default function MarksEntry() {
                                 {markSet.isSaved ? (
                                     <div className="flex items-center justify-end gap-1.5 text-emerald-500">
                                         <CheckCircle2 className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Synced</span>
+                                        <span className="text-[10px] font-black tracking-widest">Synced</span>
                                     </div>
                                 ) : (
                                     <div className="flex items-center justify-end gap-1.5 text-amber-500 animate-pulse">
                                         <Zap className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Pending Sync</span>
+                                        <span className="text-[10px] font-black tracking-widest">Pending sync</span>
                                     </div>
                                 )}
                             </td>
@@ -397,7 +397,7 @@ export default function MarksEntry() {
       <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 flex items-start gap-4">
           <AlertCircle className="w-6 h-6 text-indigo-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
-              <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Assessment Reconciliation Protocol</p>
+              <p className="text-xs font-black text-slate-900 tracking-widest">Assessment reconciliation protocol</p>
               <p className="text-sm text-slate-600 font-medium leading-relaxed">Ensure all parameters (Theory/Practical/Internal) are audited against physical transcripts before synchronization. Total marks are aggregated in real-time. Once synced to the result engine, scores are locked for transcript generation.</p>
           </div>
       </div>

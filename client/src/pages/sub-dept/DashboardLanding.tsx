@@ -22,6 +22,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { DrillDownModal } from '@/components/shared/DrillDownModal';
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 const COLORS = ['#3b82f6', '#10b981', '#6366f1', '#f43f5e', '#f59e0b'];
 
@@ -78,51 +79,51 @@ export default function DashboardLanding() {
 
   const kpis = [
     { 
-      label: 'Assigned Universities', 
+      label: 'Assigned universities', 
       value: stats.totalUniversities || 0, 
       icon: Building2, 
       color: 'bg-rose-500', 
-      trend: 'Institutional Partners',
+      trend: 'Institutional partners',
       path: '../programs',
       type: 'universities',
       details: 'Comprehensive registry of partner universities assigned to this unit.'
     },
     { 
-      label: 'Academic Programs', 
+      label: 'Academic programs', 
       value: stats.activePrograms || 0, 
       icon: BookOpen, 
       color: 'bg-violet-600', 
-      trend: 'Syllabus Registry',
+      trend: 'Syllabus registry',
       path: '../programs',
       type: 'activePrograms',
       details: 'Total active degree and certificate programs within the jurisdictional syllabus.'
     },
     { 
-      label: 'Pending Student Reviews', 
+      label: 'Pending student reviews', 
       value: stats.pendingReviews || 0, 
       icon: Users, 
       color: 'bg-amber-500', 
-      trend: 'Admission Execution',
+      trend: 'Admission execution',
       path: '../validation',
       type: 'pendingAdmissions',
       details: 'High-priority appraisal queue for staff & student academic eligibility.'
     },
     { 
-      label: 'Unit Approval Rate', 
+      label: 'Unit approval rate', 
       value: `${stats.approvalRate || 0}%`, 
       icon: CheckSquare, 
       color: 'bg-blue-500', 
-      trend: 'Academic Quality',
+      trend: 'Academic quality',
       path: '../programs',
       type: 'students',
       details: 'Institutional quality benchmark based on validated student records.'
     },
     { 
-      label: 'Jurisdictional Students', 
+      label: 'Jurisdictional students', 
       value: stats.totalStudents || 0, 
       icon: GraduationCap, 
       color: 'bg-emerald-500', 
-      trend: 'Unit Growth',
+      trend: 'Unit growth',
       path: '../students',
       type: 'students',
       details: 'Total centralized student registry for the current academic unit.'
@@ -138,23 +139,23 @@ export default function DashboardLanding() {
     'bg-violet-600': { bg: 'bg-violet-50', text: 'text-violet-600' }
   };
 
-  if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Syncing Jurisdictional Hub...</div>;
+  if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Syncing jurisdictional hub...</div>;
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="p-2 space-y-10 pb-12">
       {/* Identity Header */}
       <DashboardGreeting 
-        role={`${portalName} Unit - Jurisdictional Hub`}
+        role={`${portalName} admin`}
         name={user?.name || 'Administrator'}
         subtitle={`Monitoring real-time jurisdictional telemetry, institutional admission velocity, and structural academic architecture for the ${portalName} unit.`}
         actions={[
           {
-            label: 'Programs Catalog',
+            label: 'Programs catalog',
             link: '../programs',
             icon: BookOpen
           },
           {
-            label: 'Student Validation',
+            label: 'Student validation',
             link: '../validation',
             icon: CheckSquare
           }
@@ -187,7 +188,7 @@ export default function DashboardLanding() {
                 </div>
                 
                 <div>
-                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-0.5">
+                  <h3 className="text-[11px] font-bold text-slate-400 tracking-wider mb-1 px-0.5">
                     {kpi.label}
                   </h3>
                   <p className="text-3xl font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">
@@ -196,8 +197,8 @@ export default function DashboardLanding() {
                 </div>
 
                 <div className="pt-5 border-t border-slate-50 flex items-center justify-between mt-6">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">{kpi.trend}</span>
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">View Details</span>
+                  <span className="text-[10px] font-black text-slate-500 tracking-widest leading-none">{kpi.trend}</span>
+                  <span className="text-[9px] font-bold text-slate-300">View details</span>
                 </div>
               </div>
             </div>
@@ -210,11 +211,11 @@ export default function DashboardLanding() {
         {/* Admission Velocity Trend */}
         <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900 uppercase flex items-center gap-3 tracking-tight">
+            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
               <Activity className="w-6 h-6 text-blue-500" />
-              Admission Velocity Trend
+              Admission velocity trend
             </h3>
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] bg-slate-50 px-3 py-1 rounded-full">Last 6 Months</span>
+            <span className="text-[10px] font-black text-slate-400 tracking-[0.2em] bg-slate-50 px-3 py-1 rounded-full">Last 6 months</span>
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -239,9 +240,9 @@ export default function DashboardLanding() {
 
         {/* Status Distribution */}
         <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900 uppercase flex items-center gap-3 tracking-tight mb-8">
+          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 tracking-tight mb-8">
             <PieChart className="w-6 h-6 text-indigo-500" />
-            Unit Status Distribution
+            Unit status distribution
           </h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -260,13 +261,13 @@ export default function DashboardLanding() {
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" formatter={(value) => <span className="text-[10px] font-black uppercase tracking-tight text-slate-500">{value}</span>} />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" formatter={(value) => <span className="text-[10px] font-black tracking-tight text-slate-500">{value}</span>} />
               </RePieChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-8 pt-8 border-t border-slate-50">
              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">System Health Monitoring: <span className="text-blue-600">Active</span></span>
+                <span className="text-[10px] font-black text-slate-400 tracking-widest leading-relaxed">System health monitoring: <span className="text-blue-600">Active</span></span>
              </div>
           </div>
         </div>
@@ -274,11 +275,11 @@ export default function DashboardLanding() {
         {/* Top Centers Performance */}
         <div className="lg:col-span-3 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900 uppercase flex items-center gap-3 tracking-tight">
+            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
               <BarChart3 className="w-6 h-6 text-emerald-500" />
-              Jurisdictional Center Performance
+              Jurisdictional center performance
             </h3>
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Based on Active Student Enrollment</span>
+            <span className="text-[10px] font-black text-slate-400 tracking-[0.2em]">Based on active student enrollment</span>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">

@@ -14,6 +14,7 @@ import {
   User,
   Check,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 const ACTION_REGISTRY = [
   {
@@ -309,22 +310,12 @@ export default function PermissionMatrix() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 pb-32 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Permission matrix</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Configure what each role can do across institutional actions.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="p-2 space-y-6 min-h-screen bg-slate-50">
+      <PageHeader 
+        title="Permission matrix"
+        description="Configure what each role can do across institutional actions."
+        icon={Shield}
+      />
 
         {/* Role selector */}
         <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -552,7 +543,7 @@ export default function PermissionMatrix() {
             );
           })}
         </div>
-      </div>
+
 
       {/* Sticky save bar */}
       {hasChanges && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { BookOpen, TrendingUp, DollarSign, Calendar, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function UniversityFinancialReport() {
   const [universities, setUniversities] = useState<any[]>([]);
@@ -46,25 +47,23 @@ export default function UniversityFinancialReport() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      <div className="bg-slate-900 rounded-[32px] p-8 lg:p-12 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
-         <div className="absolute top-0 right-0 p-12 opacity-5 translate-x-12 -translate-y-12">
-            <BarChart2 className="w-64 h-64" />
-         </div>
-         <div className="relative z-10">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 ">Institutional cash flow intelligence</h2>
-            <p className="text-slate-400 font-medium ">Forensic 90-day projections and University-partner distribution analytics.</p>
-         </div>
-
-         <div className="relative z-10 bg-white/5 border border-white/10 p-2 rounded-2xl backdrop-blur-xl">
+    <div className="p-2 space-y-8 pb-12">
+      <PageHeader 
+        title="Institutional cash flow intelligence"
+        description="Forensic 90-day projections and University-partner distribution analytics."
+        icon={BarChart2}
+        action={
+          <div className="bg-slate-900 p-2 rounded-2xl shadow-lg shadow-slate-900/20">
             <select 
-              className="bg-transparent border-none text-white font-black uppercase text-xs tracking-widest focus:ring-0 w-64"
-              onChange={(e) => fetchReport(Number(e.target.value))}
+               className="bg-transparent border-none text-white font-black uppercase text-xs tracking-widest focus:ring-0 cursor-pointer w-64"
+               onChange={(e) => fetchReport(Number(e.target.value))}
             >
+               <option value="" className="text-slate-900">Select University</option>
                {universities.map(u => <option key={u.id} value={u.id} className="text-slate-900">{u.name}</option>)}
             </select>
-         </div>
-      </div>
+          </div>
+        }
+      />
 
       {loading ? (
          <div className="p-32 text-center animate-pulse text-slate-300 font-black uppercase tracking-widest">Generating High-Fidelity Projection...</div>

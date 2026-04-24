@@ -12,6 +12,7 @@ import {
   XCircle,
   ArrowRight
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useApplyTheme } from '@/hooks/useApplyTheme';
 
 type TabType = 'pending' | 'finance_pending' | 'approved' | 'rejected' | 'all';
@@ -82,24 +83,25 @@ export default function MyCenters() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic leading-none" style={{ color: 'var(--page-text)' }}>Partnership ledger</h1>
-          <p className="text-slate-500 font-medium mt-2">Direct track of institutional nodes registered via your referral identity.</p>
-        </div>
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            type="text"
-            placeholder="Search your centers..."
-            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-transparent transition-all shadow-sm font-medium"
-            style={{ background: 'var(--card-bg)', color: 'var(--page-text)', borderColor: 'var(--card-border)' }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
+    <div className="p-2 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <PageHeader 
+        title="Partnership ledger"
+        description="Direct track of institutional nodes registered via your referral identity."
+        icon={Building2}
+        action={
+          <div className="relative max-w-md w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text"
+              placeholder="Search your centers..."
+              className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-transparent transition-all shadow-sm font-medium"
+              style={{ background: 'var(--card-bg)', color: 'var(--page-text)', borderColor: 'var(--card-border)' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        }
+      />
 
       <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit" style={{ background: 'var(--theme-soft)', borderColor: 'var(--card-border)' }}>
         {[
@@ -113,7 +115,7 @@ export default function MyCenters() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
             className={`
-              flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200
+              flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black tracking-widest transition-all duration-200
               ${activeTab === tab.id 
                 ? 'bg-white shadow-lg ring-1 ring-slate-200' 
                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}
@@ -133,10 +135,10 @@ export default function MyCenters() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/50 border-b border-slate-100" style={{ background: 'var(--theme-soft)', borderBottomColor: 'var(--card-border)' }}>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Institutional Node</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Referral Track</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Audit Status</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lifecycle</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Institutional node</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Referral track</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Audit status</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 tracking-widest">Lifecycle</th>
               <th className="px-8 py-5"></th>
             </tr>
           </thead>
@@ -150,25 +152,25 @@ export default function MyCenters() {
                     </div>
                     <div>
                       <p className="font-black text-slate-900 leading-none mb-1" style={{ color: 'var(--page-text)' }}>{center.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{center.shortName || 'CTR'}</p>
+                      <p className="text-[10px] font-bold text-slate-400 tracking-widest">{center.shortName || 'CTR'}</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-8 py-6">
-                   <div className="flex flex-col gap-1">
-                      <p className="text-xs font-bold text-slate-600" style={{ color: 'var(--page-text)', opacity: 0.8 }}>{center.metadata?.referralCode || 'DIRECT'}</p>
-                      <p className="text-[10px] font-medium text-slate-400 italic">ONBOARDED: {new Date(center.createdAt).toLocaleDateString()}</p>
-                   </div>
+                    <div className="flex flex-col gap-1">
+                       <p className="text-xs font-bold text-slate-600" style={{ color: 'var(--page-text)', opacity: 0.8 }}>{center.metadata?.referralCode || 'DIRECT'}</p>
+                       <p className="text-[10px] font-medium text-slate-400 italic">Onboarded: {new Date(center.createdAt).toLocaleDateString()}</p>
+                    </div>
                 </td>
                 <td className="px-8 py-6">
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${
+                   <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${
                     (center.auditStatus || '').toLowerCase() === 'approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                     (center.auditStatus || '').toLowerCase() === 'rejected' ? 'bg-red-50 border-red-100 text-red-600' :
                     (center.auditStatus || '').toLowerCase() === 'pending_finance' ? 'bg-blue-50 border-blue-100 text-blue-600' :
                     'bg-amber-50 border-amber-100 text-amber-600'
                   }`}>
-                    <span className="text-[10px] font-black uppercase tracking-widest">
-                      {(center.auditStatus || '').toLowerCase() === 'pending_finance' ? 'FINANCE PENDING' : (center.auditStatus || 'PENDING')}
+                    <span className="text-[10px] font-black tracking-widest">
+                      {(center.auditStatus || '').toLowerCase() === 'pending_finance' ? 'Finance pending' : (center.auditStatus || 'Pending')}
                     </span>
                   </div>
                 </td>
@@ -178,7 +180,7 @@ export default function MyCenters() {
                     center.status === 'staged' || center.status === 'draft' ? 'bg-blue-50 border-blue-100 text-blue-600' :
                     'bg-amber-50 border-amber-100 text-amber-600'
                   }`}>
-                    <span className="text-[10px] font-black uppercase tracking-widest">{center.status}</span>
+                    <span className="text-[10px] font-black tracking-widest">{center.status}</span>
                   </div>
                 </td>
                 <td className="px-8 py-6 text-right">
@@ -194,8 +196,8 @@ export default function MyCenters() {
         {filteredCenters.length === 0 && (
           <div className="py-24 text-center">
             <Filter className="w-16 h-16 text-slate-100 mx-auto mb-6" />
-            <h3 className="text-2xl font-black text-slate-900 uppercase italic" style={{ color: 'var(--page-text)' }}>No Centers Found</h3>
-            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-2 max-w-sm mx-auto">Try adjusting your filter or search term.</p>
+            <h3 className="text-2xl font-black text-slate-900 italic" style={{ color: 'var(--page-text)' }}>No centers found</h3>
+            <p className="text-slate-400 font-bold text-sm tracking-widest mt-2 max-w-sm mx-auto">Try adjusting your filter or search term.</p>
           </div>
         )}
       </div>

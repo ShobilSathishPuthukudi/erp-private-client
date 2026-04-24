@@ -11,6 +11,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function AuditAllActions() {
   const [audits, setAudits] = useState<any[]>([]);
@@ -58,24 +59,18 @@ export default function AuditAllActions() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-end">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Activity className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System-wide audit trail</h1>
-            <p className="text-slate-500 mt-1 font-medium">Immutable history of every entity state change across all modules.</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="System-wide audit trail"
+        description="Immutable history of every entity state change across all modules."
+        icon={Activity}
+        action={
           <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 flex flex-col items-end">
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Ledger Status</span>
-             <span className="text-xs font-bold text-slate-900">{(totalCount || 0).toLocaleString()} Verified Events</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global ledger status</span>
+             <span className="text-xs font-bold text-slate-900">{(totalCount || 0).toLocaleString()} Verified events</span>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4">

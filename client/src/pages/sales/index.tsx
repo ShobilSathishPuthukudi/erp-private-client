@@ -18,7 +18,7 @@ export default function SalesDashboard() {
   return (
     <Routes>
       <Route path="/" element={
-        <div className="space-y-10">
+        <div className="p-2 space-y-10">
           <DashboardGreeting 
             role="Director - Growth & CRM"
             name={user?.name || 'Academic Administrator'}
@@ -30,7 +30,7 @@ export default function SalesDashboard() {
                 icon: TrendingUp
               },
               {
-                label: 'Target Workflow',
+                label: 'Target workflow',
                 link: '/dashboard/sales/targets',
                 icon: Target
               }

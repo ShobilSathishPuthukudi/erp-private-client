@@ -17,6 +17,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Modal } from '../../components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface SubDepartmentRecord {
   id: number;
@@ -131,59 +132,54 @@ export default function SubDepartmentsList() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Premium Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Layers className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Sub-departments</h1>
-            <p className="text-slate-500 mt-1">Divisional units and specialized sectors managed under core departments.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleShare}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-            title="Share Registry Link"
-          >
-            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          <button 
-            onClick={handlePrint}
-            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-            title="Print Registry"
-          >
-            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          <div className="relative group/export">
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Sub-departments"
+        description="Divisional units and specialized sectors managed under core departments."
+        icon={Layers}
+        action={
+          <div className="flex items-center gap-3">
             <button 
+              onClick={handleShare}
               className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
-              title="Download/Export Registry"
+              title="Share registry link"
             >
-              <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
-              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl cursor-pointer overflow-hidden animate-in fade-in slide-in-from-top-2">
-                <button 
-                  onClick={handleExportExcel}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
-                >
-                  Excel (.xlsx) Manifest
-                </button>
-                <button 
-                  onClick={handleExportPDF}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
-                >
-                  PDF (.pdf) Document
-                </button>
+            <button 
+              onClick={handlePrint}
+              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+              title="Print registry"
+            >
+              <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+            <div className="relative group/export">
+              <button 
+                className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer"
+                title="Download/export registry"
+              >
+                <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+              <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
+                <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl cursor-pointer overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <button 
+                    onClick={handleExportExcel}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer"
+                  >
+                    Excel (.xlsx) manifest
+                  </button>
+                  <button 
+                    onClick={handleExportPDF}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    PDF (.pdf) document
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Control Bar */}
       <div className="space-y-6">

@@ -109,6 +109,11 @@ export default function Reports() {
 
   return (
     <div className="p-2 space-y-8 flex flex-col">
+      <PageHeader 
+        title="Executive reports"
+        description="Access strategic institutional analysis packages and forensic data dumps."
+        icon={FileText}
+      />
       <div className="space-y-8">
       
       {/* Report Customizer */}
@@ -129,7 +134,7 @@ export default function Reports() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reporting Month</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reporting month</label>
             <select 
               value={selectedMonth.toISOString()}
               onChange={(e) => setSelectedMonth(new Date(e.target.value))}
@@ -152,7 +157,7 @@ export default function Reports() {
            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
              <FileText className="w-7 h-7" />
            </div>
-           <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">Institutional Summary</h3>
+            <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">Institutional summary</h3>
            <p className="text-xs font-bold text-slate-400 leading-relaxed mb-8">
              Board-ready PDF encompassing revenue trends, enrollment cycles, and governance adherence.
            </p>
@@ -164,10 +169,10 @@ export default function Reports() {
              {isGenerating ? (
                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
              ) : (
-               <>
-                 <Download className="w-4 h-4" />
-                 Download PDF (Board)
-               </>
+                <>
+                  <Download className="w-4 h-4" />
+                  Download PDF (board)
+                </>
              )}
            </button>
         </div>
@@ -177,16 +182,16 @@ export default function Reports() {
            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
              <FileSpreadsheet className="w-7 h-7" />
            </div>
-           <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">XLSX Data Dump</h3>
+            <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">XLSX data dump</h3>
            <p className="text-xs font-bold text-slate-400 leading-relaxed mb-8">
              Raw multi-sheet dataset for offline multi-variate analysis and external auditing tools.
            </p>
-           <button 
-            disabled={true}
-            className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-dashed border-slate-100 cursor-not-allowed"
-           >
-             Download Excel (Raw)
-           </button>
+            <button 
+             disabled={true}
+             className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-dashed border-slate-100 cursor-not-allowed"
+            >
+              Download Excel (raw)
+            </button>
         </div>
 
         {/* Compliance Statement */}
@@ -197,15 +202,15 @@ export default function Reports() {
            <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
              <PieChart className="w-7 h-7" />
            </div>
-           <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">Audit Checklist</h3>
+            <h3 className="text-lg font-black text-slate-900 mb-2 tracking-tight">Audit checklist</h3>
            <p className="text-xs font-bold text-slate-400 leading-relaxed mb-8">
              Visual breakdown of internal compliance gaps and unauthorized access attempts in period.
            </p>
-           <button 
-            className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-dashed border-slate-100"
-           >
-             Generate Audit Vis
-           </button>
+            <button 
+             className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-dashed border-slate-100"
+            >
+              Generate audit vis
+            </button>
         </div>
 
       </div>

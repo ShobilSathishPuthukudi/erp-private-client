@@ -3,8 +3,9 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import type { ColumnDef } from '@tanstack/react-table';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface AdmissionSession {
   id: number;
@@ -81,12 +82,13 @@ export default function AdmissionSessionsQueue() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-6">
+    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] p-2">
       <div className="flex flex-col gap-6 shrink-0">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Admission sessions</h1>
-           <p className="text-slate-500 text-sm font-medium">Verify financial viability and unlock operational intake windows.</p>
-        </div>
+      <PageHeader 
+        title="Admission sessions"
+        description="Verify financial viability and unlock operational intake windows."
+        icon={Calendar}
+      />
       </div>
 
       <div className="flex-1 min-h-0 bg-white shadow-sm border border-slate-200 rounded-3xl flex flex-col overflow-hidden">

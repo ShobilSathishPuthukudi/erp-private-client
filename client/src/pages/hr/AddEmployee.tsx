@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useForm } from 'react-hook-form';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -110,34 +111,26 @@ export default function AddEmployee() {
   }, [watchedName, watchedEmail, watchedPassword, watchedDeptId, watchedRole]);
 
   return (
-    <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.25em] mb-3">
-            <UserPlus className="w-3 h-3" />
-            Personnel Intake
+    <div className="p-2 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <PageHeader 
+        title="Institutional staff intake"
+        description="Onboard new personnel into the institutional framework. Records enter a pending sanction queue by default."
+        icon={UserPlus}
+        action={
+          <div className="flex items-center gap-3 shrink-0 bg-white p-3 rounded-2xl border border-slate-200">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] font-black tracking-widest text-slate-400">Form completion</span>
+              <span className="text-sm font-black text-slate-900 tabular-nums">{completion}%</span>
+            </div>
+            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
           </div>
-          <h1 className="text-3xl md:text-[2.2rem] font-black text-slate-900 tracking-tight leading-tight">
-            Register a new <span className="text-blue-600">institutional</span> staff member
-          </h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-xl font-medium">
-            Onboarded records enter a <span className="font-bold text-slate-700">pending sanction</span> queue. Department admins ratify before activation.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Form completion</span>
-            <span className="text-sm font-black text-slate-900 tabular-nums">{completion}%</span>
-          </div>
-          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
-              style={{ width: `${completion}%` }}
-            />
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -148,7 +141,7 @@ export default function AddEmployee() {
             <div className="absolute -right-10 -top-10 w-44 h-44 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -left-16 -bottom-20 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-5">Identity preview</p>
+              <p className="text-[10px] font-black tracking-[0.3em] text-slate-400 mb-5">Identity preview</p>
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xl font-black shadow-lg shadow-blue-900/30 border border-white/10">
                   {initials}
@@ -161,19 +154,19 @@ export default function AddEmployee() {
 
               <div className="space-y-2.5 text-[11px]">
                 <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-2 text-slate-400 font-bold tracking-wider">
                     <Building2 className="w-3 h-3" /> Dept
                   </span>
                   <span className="font-black text-right truncate">{selectedDept?.name || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-2 text-slate-400 font-bold tracking-wider">
                     <Sparkles className="w-3 h-3" /> Sub
                   </span>
                   <span className="font-black text-right truncate">{watchedSubDept || 'Universal'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-2 text-slate-400 font-bold tracking-wider">
                     <ShieldCheck className="w-3 h-3" /> Role
                   </span>
                   <span className="font-black text-right truncate">{watchedRole || '—'}</span>
@@ -183,7 +176,7 @@ export default function AddEmployee() {
               <div className="mt-5 pt-5 border-t border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">Pending sanction</span>
+                  <span className="text-[10px] font-bold tracking-wider text-amber-300">Pending sanction</span>
                 </div>
                 <Briefcase className="w-3.5 h-3.5 text-slate-500" />
               </div>
@@ -196,7 +189,7 @@ export default function AddEmployee() {
                 <ShieldAlert className="w-4 h-4 text-amber-700" />
               </div>
               <div>
-                <h4 className="text-[11px] font-black uppercase tracking-wider text-amber-900">Governance rail</h4>
+                <h4 className="text-[11px] font-black tracking-wider text-amber-900">Governance rail</h4>
                 <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-1.5">
                   Non-HR enrollments require jurisdictional sign-off. The record is created but inactive until the targeted department admin sanctions it.
                 </p>
@@ -248,7 +241,7 @@ export default function AddEmployee() {
                   <button
                     type="button"
                     onClick={() => setValue('email', suggestedEmail)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm animate-in fade-in slide-in-from-right-1"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-[9px] font-black hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm animate-in fade-in slide-in-from-right-1"
                   >
                     Use · {suggestedEmail.split('@')[0]}
                   </button>
@@ -345,14 +338,14 @@ export default function AddEmployee() {
               <button
                 type="button"
                 onClick={() => reset()}
-                className="px-5 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 transition-colors"
+                className="px-5 py-2.5 text-[11px] font-black tracking-wider text-slate-500 hover:text-slate-900 transition-colors"
               >
                 Reset form
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || isLoading}
-                className="group px-6 py-2.5 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group px-6 py-2.5 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-[11px] font-black tracking-wider flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Finalizing…' : (
                   <>
@@ -385,7 +378,7 @@ function FieldWrap({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between ml-0.5">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{label}</label>
+        <label className="text-[10px] font-black text-slate-500 tracking-wider">{label}</label>
         {hint && !error && <span className="text-[10px] text-slate-400 font-medium">{hint}</span>}
       </div>
       <div className="relative">

@@ -13,6 +13,8 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { LayoutDashboard } from 'lucide-react';
 import { 
   Trophy, 
   Target, 
@@ -112,10 +114,10 @@ export default function EmployeePortal() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 leading-tight">{task.title}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ref: {task.id} • Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">Ref: {task.id} • Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest ${
                   task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                   task.status === 'overdue' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-600'
                 }`}>
@@ -136,11 +138,11 @@ export default function EmployeePortal() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 leading-tight">{center.name}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Alias: {center.alias} • Registered: {new Date(center.createdAt).toLocaleDateString()}</p>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">Alias: {center.alias} • Registered: {new Date(center.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 bg-slate-900 text-white rounded-full">
+                  <span className="text-[10px] font-black tracking-widest px-4 py-1.5 bg-slate-900 text-white rounded-full">
                     {center.centerStatus}
                   </span>
                 </div>
@@ -159,7 +161,7 @@ export default function EmployeePortal() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 leading-tight">{uni.name}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Status: {uni.status} • Accreditation: {uni.accreditation || 'UGC Approved'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">Status: {uni.status} • Accreditation: {uni.accreditation || 'UGC Approved'}</p>
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:text-blue-600 transition-colors">
@@ -180,11 +182,11 @@ export default function EmployeePortal() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 leading-tight">{prog.name}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{prog.university?.name || 'Institutional Program'} • Type: {prog.type}</p>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">{prog.university?.name || 'Institutional Program'} • Type: {prog.type}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Investment</p>
+                  <p className="text-[10px] font-black tracking-widest text-slate-400 mb-0.5">Investment</p>
                   <p className="text-sm font-black text-slate-900">₹{prog.totalFee?.toLocaleString()}</p>
                 </div>
               </div>
@@ -211,11 +213,11 @@ export default function EmployeePortal() {
             <div className={`p-3 rounded-xl ${color.bg} shadow-inner`}>
               <Icon className={`w-6 h-6 ${color.text}`} />
             </div>
-            <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${color.text} transition-opacity duration-300`}>{title}</span>
+            <span className={`text-[10px] font-black tracking-[0.2em] ${color.text} transition-opacity duration-300`}>{title}</span>
           </div>
           <div>
             <p className="text-3xl font-black text-slate-900 tracking-tight">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1 px-0.5">{label}</p>
+            <p className="text-[11px] font-bold text-slate-400 tracking-wider mt-1 px-0.5">{label}</p>
           </div>
         </div>
       </div>
@@ -226,24 +228,24 @@ export default function EmployeePortal() {
     if (isLoading) return <div className="p-8 text-center animate-pulse font-mono font-bold text-slate-400">SYNCING PERFORMANCE TELEMETRY...</div>;
 
     return (
-      <div className="max-w-6xl mx-auto p-6 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="p-2 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header Section */}
-        <DashboardGreeting 
-          role="Staff Terminal - Performance Node"
-          name={user?.name || 'Academic Administrator'}
-          subtitle={`Institutional workforce identity: ${user?.uid}. Operational telemetry and performance analytics synchronized for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
-          actions={[
-            {
-              label: 'Execution Desk',
-              link: 'tasks',
-              icon: Briefcase
-            },
-            {
-              label: 'Presence Request',
-              link: 'leaves',
-              icon: Calendar
-            }
-          ]}
+        <PageHeader 
+          title={`Staff terminal - ${user?.name || 'Academic Administrator'}`}
+          description={`Institutional workforce identity: ${user?.uid}. Operational telemetry and performance analytics synchronized for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
+          icon={LayoutDashboard}
+          action={
+            <div className="flex gap-2">
+              <Link to="tasks" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl text-xs font-black hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  Execution desk
+              </Link>
+              <Link to="leaves" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20">
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  Presence request
+              </Link>
+            </div>
+          }
         />
 
         {/* Stats Grid */}
@@ -334,10 +336,10 @@ export default function EmployeePortal() {
               <div className="relative z-10">
                  <h2 className="text-3xl font-black mb-2">My desk</h2>
                  <p className="text-slate-400 font-medium max-w-xs">Access your assigned operational deliverables and upload execution evidence.</p>
-                 <div className="mt-8 flex items-center gap-3 text-blue-400 font-black uppercase text-xs tracking-[0.2em]">
-                    <span>Enter Terminal</span>
-                    <ArrowRight className="w-4 h-4" />
-                 </div>
+                  <div className="mt-8 flex items-center gap-3 text-blue-400 font-black text-xs tracking-[0.2em]">
+                     <span>Enter terminal</span>
+                     <ArrowRight className="w-4 h-4" />
+                  </div>
               </div>
            </Link>
 
@@ -348,10 +350,10 @@ export default function EmployeePortal() {
               <div className="relative z-10">
                  <h2 className="text-3xl font-black mb-2 text-slate-900">Leave console</h2>
                  <p className="text-slate-500 font-medium max-w-xs">Manage your institutional presence and request administrative time-off.</p>
-                 <div className="mt-8 flex items-center gap-3 text-blue-600 font-black uppercase text-xs tracking-[0.2em]">
-                    <span>Open Requests</span>
-                    <ArrowRight className="w-4 h-4" />
-                 </div>
+                  <div className="mt-8 flex items-center gap-3 text-blue-600 font-black text-xs tracking-[0.2em]">
+                     <span>Open requests</span>
+                     <ArrowRight className="w-4 h-4" />
+                  </div>
               </div>
            </Link>
 
@@ -362,10 +364,10 @@ export default function EmployeePortal() {
               <div className="relative z-10">
                  <h2 className="text-3xl font-black mb-2 text-slate-900">Contact HR</h2>
                  <p className="text-slate-500 font-medium max-w-xs">Send payroll, attendance, leave, document, or policy questions directly to Human Resources.</p>
-                 <div className="mt-8 flex items-center gap-3 text-emerald-600 font-black uppercase text-xs tracking-[0.2em]">
-                    <span>Open HR Desk</span>
-                    <ArrowRight className="w-4 h-4" />
-                 </div>
+                  <div className="mt-8 flex items-center gap-3 text-emerald-600 font-black text-xs tracking-[0.2em]">
+                     <span>Open HR desk</span>
+                     <ArrowRight className="w-4 h-4" />
+                  </div>
               </div>
            </Link>
         </div>
@@ -390,10 +392,10 @@ export default function EmployeePortal() {
                       navigator.clipboard.writeText(link);
                       toast.success('Partnership link copied to clipboard!');
                     }}
-                    className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+                    className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
                   >
                     <Zap className="w-4 h-4 text-blue-600" />
-                    Copy Share Link
+                    Copy share link
                   </button>
 
               </div>
@@ -407,8 +409,8 @@ export default function EmployeePortal() {
                   <div className="relative z-10">
                     <h2 className="text-2xl font-black mb-2 text-slate-900">Partnered universities</h2>
                     <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">View all institutional affiliations and accreditation data for partner enrollment.</p>
-                    <div className="mt-6 flex items-center gap-3 text-blue-600 font-black uppercase text-[10px] tracking-widest">
-                        <span>View University Roster</span>
+                    <div className="mt-6 flex items-center gap-3 text-blue-600 font-black text-[10px] tracking-widest">
+                        <span>View university roster</span>
                         <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
@@ -421,8 +423,8 @@ export default function EmployeePortal() {
                   <div className="relative z-10">
                     <h2 className="text-2xl font-black mb-2 text-slate-900">Academic catalog</h2>
                     <p className="text-slate-500 text-sm font-medium max-w-xs leading-relaxed">Access the full list of degree programs, vocational streams, and fee structures.</p>
-                    <div className="mt-6 flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-widest">
-                        <span>Search Programs</span>
+                    <div className="mt-6 flex items-center gap-3 text-indigo-600 font-black text-[10px] tracking-widest">
+                        <span>Search programs</span>
                         <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>

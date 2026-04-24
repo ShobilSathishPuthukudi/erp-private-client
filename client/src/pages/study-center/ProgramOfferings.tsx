@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { CheckCircle, Layout, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -100,23 +101,18 @@ export default function Programs() {
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex-1">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <Layout className="w-8 h-8 text-blue-600" />
-            Assigned Academic Programs
-          </h1>
-          <p className="text-slate-500 mt-2 text-sm leading-relaxed max-w-2xl">
-            These programs are currently authorized for your center. If you need to move a mapped program to a proposed university,
-            submit a university change request here and it will route through Operations and then Finance.
-          </p>
-        </div>
-        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col items-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Active Mappings</p>
-          <p className="text-4xl font-black text-slate-900">{programs.length}</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <PageHeader 
+        title="Assigned academic programs"
+        description="These programs are currently authorized for your center. If you need to move a mapped program to a proposed university, submit a university change request here and it will route through operations and then finance."
+        icon={Layout}
+        action={
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
+            <p className="text-[10px] font-black text-slate-400 tracking-widest mb-1">Active mappings</p>
+            <p className="text-2xl font-black text-slate-900 leading-none">{programs.length}</p>
+          </div>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr] flex-1 min-h-0">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-auto p-6 space-y-4">
@@ -132,7 +128,7 @@ export default function Programs() {
             <article key={mapping.id} className="rounded-2xl border border-slate-200 p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 w-fit">
+                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 w-fit">
                     <CheckCircle className="w-3 h-3" />
                     Authorized
                   </div>
@@ -140,15 +136,15 @@ export default function Programs() {
                   <p className="text-sm text-slate-500">
                     {mapping.program?.university?.name || 'University N/A'} • {mapping.program?.type || 'Program'}
                   </p>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">
-                    Fee Structure: {mapping.feeSchema?.name || 'Not Assigned'}
+                  <p className="text-xs font-bold text-slate-500 tracking-[0.2em]">
+                    Fee structure: {mapping.feeSchema?.name || 'Not assigned'}
                   </p>
                 </div>
                 <button
                   onClick={() => openRequestModal(mapping)}
                   className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
                 >
-                  Request University Change
+                  Request university change
                 </button>
               </div>
             </article>
@@ -157,8 +153,8 @@ export default function Programs() {
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-auto p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-black text-slate-900">Recent Requests</h2>
-            <p className="text-sm text-slate-500">Track the latest Operations and Finance decisions.</p>
+            <h2 className="text-lg font-black text-slate-900">Recent requests</h2>
+            <p className="text-sm text-slate-500">Track the latest operations and finance decisions.</p>
           </div>
 
           {requests.length === 0 && (
@@ -181,14 +177,14 @@ export default function Programs() {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Request Center University Change">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Request center university change">
         <div className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Current mapping: <span className="font-bold text-slate-900">{selectedMapping?.program?.name}</span> at <span className="font-bold text-slate-900">{selectedMapping?.program?.university?.name}</span>
           </div>
 
           <label className="space-y-2 block">
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Proposed University</span>
+            <span className="text-xs font-black tracking-[0.2em] text-slate-500">Proposed university</span>
             <select
               value={requestedUniversityId}
               onChange={(event) => {
@@ -205,7 +201,7 @@ export default function Programs() {
           </label>
 
           <label className="space-y-2 block">
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Requested Program</span>
+            <span className="text-xs font-black tracking-[0.2em] text-slate-500">Requested program</span>
             <select
               value={requestedProgramId}
               onChange={(event) => setRequestedProgramId(event.target.value)}
@@ -220,7 +216,7 @@ export default function Programs() {
           </label>
 
           <label className="space-y-2 block">
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Reason</span>
+            <span className="text-xs font-black tracking-[0.2em] text-slate-500">Reason</span>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -257,8 +253,8 @@ function StatusPill({ status }: { status: string }) {
   };
 
   return (
-    <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
-      {status.replaceAll('_', ' ')}
+    <span className={`rounded-full px-3 py-1 text-[10px] font-black tracking-[0.18em] ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+      {status.replaceAll('_', ' ').toLowerCase()}
     </span>
   );
 }

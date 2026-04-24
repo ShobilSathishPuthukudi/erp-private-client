@@ -19,6 +19,7 @@ import {
   Eye,
   ShieldCheck,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { clsx } from 'clsx';
 import { Modal } from '@/components/shared/Modal';
 
@@ -241,21 +242,13 @@ export default function TeamLeaveStatus() {
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-              <CalendarDays className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Team leave status</h1>
-              <p className="text-slate-500 font-medium text-sm">
-              {isHrApprovalView
-                ? 'Review finance-bound leave verification and final administrative decisions.'
-                : 'Monitor team leave requests and execute departmental approvals.'}
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader 
+        title="Team leave status"
+        description={isHrApprovalView
+          ? 'Review finance-bound leave verification and final administrative decisions'
+          : 'Monitor team leave requests and execute departmental approvals'}
+        icon={CalendarDays}
+      />
 
         {/* Tabs */}
         <div className="flex bg-slate-50/80 p-1 rounded-2xl border border-[var(--card-border)] w-fit">

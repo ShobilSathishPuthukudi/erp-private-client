@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Activity, Server, Database, MemoryStick, History, Shield, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable } from '@/components/shared/DataTable';
@@ -94,21 +95,22 @@ export default function SystemHealth() {
   if (loading && !stats) return <div className="p-12 text-center animate-pulse text-slate-400">Loading platform telemetry...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">System health & audits</h1>
-          <p className="text-slate-500 text-sm">Real-time telemetry and architectural oversight console.</p>
-        </div>
-        <button 
-          onClick={fetchEverything}
-          disabled={isRefreshing}
-          className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Syncing...' : 'Sync Metrics'}
-        </button>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="System health & audits"
+        description="Real-time telemetry and architectural oversight console."
+        icon={Activity}
+        action={
+          <button 
+            onClick={fetchEverything}
+            disabled={isRefreshing}
+            className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Syncing...' : 'Sync metrics'}
+          </button>
+        }
+      />
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

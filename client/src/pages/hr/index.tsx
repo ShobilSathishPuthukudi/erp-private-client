@@ -91,7 +91,7 @@ function DashboardLanding() {
   ];
 
   return (
-    <div className="space-y-10 max-w-none mx-auto p-4 lg:p-8">
+    <div className="p-2 space-y-10 max-w-none mx-auto">
       <DashboardGreeting 
         role="Director - Human Capital"
         name={user?.name || 'Academic Administrator'}
@@ -126,9 +126,9 @@ function DashboardLanding() {
               <div className={`w-14 h-14 rounded-2xl ${kpi.color} flex items-center justify-center text-white mb-6 shadow-lg shadow-current/20 group-hover:scale-110 transition-transform`}>
                 <kpi.icon className="w-7 h-7" />
               </div>
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{kpi.label}</p>
+              <p className="text-[11px] font-black text-slate-400 tracking-[0.15em] mb-1">{kpi.label}</p>
               <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2">{(kpi.value ?? 0).toLocaleString()}</h3>
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest mt-4">
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 tracking-widest mt-4">
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                   {kpi.trend}
               </div>
@@ -142,9 +142,9 @@ function DashboardLanding() {
         {/* Governance Hub */}
         <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tight">
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
                     <LayoutDashboard className="w-5 h-5 text-rose-600" />
-                    Operational Shortcuts
+                    Operational shortcuts
                 </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,19 +173,19 @@ function DashboardLanding() {
 
         {/* System Integrity (Compliance Cards) */}
         <div className="space-y-6">
-            <h3 className="text-xl font-black text-slate-900 px-2 uppercase tracking-tight">Compliance & Health</h3>
+            <h3 className="text-xl font-black text-slate-900 px-2 tracking-tight">Compliance & health</h3>
             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-900/30 space-y-6 relative overflow-hidden">
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-6">
                         <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                        <h4 className="font-black text-sm uppercase tracking-widest">Attendance Shield</h4>
+                        <h4 className="font-black text-sm tracking-widest">Attendance shield</h4>
                     </div>
                     <p className="text-slate-400 text-sm font-medium leading-relaxed mb-6">
                         Biometric & IP-fenced attendance tracking. Real-time logging of institutional workforce presence.
                     </p>
                     <Link 
                         to="attendance"
-                        className="block w-full py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl text-center font-black text-xs transition-all border border-white/10 uppercase tracking-widest"
+                        className="block w-full py-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl text-center font-black text-xs transition-all border border-white/10 tracking-widest"
                     >
                         Review Attendance
                     </Link>
@@ -196,7 +196,7 @@ function DashboardLanding() {
                         <Users className="w-5 h-5 text-rose-400" />
                    </div>
                    <div>
-                        <p className="text-[10px] font-black uppercase text-white tracking-widest">Policy Engine v2</p>
+                        <p className="text-[10px] font-black text-white tracking-widest">Policy engine v2</p>
                         <p className="text-xs text-slate-400 font-medium tracking-tight">Hierarchical Control Engaged</p>
                    </div>
                 </div>

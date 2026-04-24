@@ -3,6 +3,7 @@ import { Shield, Save, Plus, Trash2, Edit3, Lock, Landmark, ShieldCheck } from '
 import { toast } from 'react-hot-toast';
 import { Modal } from '../../components/shared/Modal';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function SettingsGovernance() {
   const [loading, setLoading] = useState(true);
@@ -83,16 +84,12 @@ export default function SettingsGovernance() {
     selectedPolicy === 'governance_policy' ? 'indigo' : 'emerald';
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-          <Shield className="w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Governance & security policies</h1>
-          <p className="text-slate-500 mt-1 text-sm">Select a policy framework to review or modify institutional oversight protocols.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6 pb-32">
+      <PageHeader 
+        title="Governance & security policies"
+        description="Select a policy framework to review or modify institutional oversight protocols."
+        icon={Shield}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* Security Policy Card */}

@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function AuditComplianceReport() {
   const [reportData, setReportData] = useState<any>(null);
@@ -142,34 +143,30 @@ export default function AuditComplianceReport() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center shadow-xl shadow-slate-900/20 border-2 border-white/10">
-            <ShieldCheck className="w-8 h-8 text-white" />
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Governance compliance suite"
+        description="Monthly board-level auditing reports for regulatory filings and internal reviews."
+        icon={ShieldCheck}
+        action={
+          <div className="flex gap-4">
+            <select 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
+            </select>
+            <select 
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Governance compliance suite</h1>
-            <p className="text-slate-500 mt-1 font-medium">Monthly board-level auditing reports for regulatory filings and internal reviews.</p>
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <select 
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
-          </select>
-          <select 
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-white border-2 border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-      </div>
+        }
+      />
 
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

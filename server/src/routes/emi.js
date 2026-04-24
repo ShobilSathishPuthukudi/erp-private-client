@@ -77,6 +77,19 @@ router.post('/:id/pay', verifyToken, isFinanceOrAdmin, async (req, res) => {
             paidAt: new Date()
         });
 
+        // Sync Student Financial Telemetry
+        const student = await Student.findByPk(emi.studentId);
+        if (student) {
+            const amountVal = parseFloat(emi.amount);
+            const currentPaid = parseFloat(student.paidAmount || 0);
+            const currentPending = parseFloat(student.pendingAmount || 0);
+            
+            await student.update({
+                paidAmount: currentPaid + amountVal,
+                pendingAmount: Math.max(0, currentPending - amountVal)
+            });
+        }
+
         await logAction({
             userId: req.user.uid,
             action: 'PAY_EMI',

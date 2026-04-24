@@ -52,6 +52,8 @@ export default function HRContact() {
 
   useEffect(() => {
     fetchRequests();
+    const interval = setInterval(fetchRequests, 15000); // Institutional background sync (15s)
+    return () => clearInterval(interval);
   }, []);
 
   const onSubmit = async (data: typeof emptyForm) => {
@@ -72,8 +74,14 @@ export default function HRContact() {
     return 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
+  const getStatusLabel = (status: string) => {
+    if (status === 'resolved') return 'Resolved';
+    if (status === 'in_review') return 'In-Review';
+    return 'Pending';
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="p-2 space-y-6">
       <PageHeader
         title="Contact HR"
         description="Send policy, payroll, leave, attendance, or document queries directly to Human Resources."
@@ -81,10 +89,10 @@ export default function HRContact() {
         action={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center shadow-sm whitespace-nowrap"
+            className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-blue-700 transition-all active:scale-95 flex items-center shadow-xl shadow-blue-100 whitespace-nowrap"
           >
             <Send className="w-4 h-4 mr-2" />
-            New HR Request
+            New HR request
           </button>
         }
       />
@@ -108,11 +116,11 @@ export default function HRContact() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-blue-400 transition-colors">{request.category}</p>
+                  <p className="text-[10px] font-black tracking-[0.2em] text-slate-400 group-hover:text-blue-400 transition-colors">{request.category}</p>
                   <h3 className="text-lg font-bold text-slate-900 mt-1">{request.subject}</h3>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusTone(request.status)}`}>
-                  {request.status.replace('_', ' ')}
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${getStatusTone(request.status)}`}>
+                  {getStatusLabel(request.status)}
                 </span>
               </div>
 
@@ -122,18 +130,18 @@ export default function HRContact() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-1">
                     {request.status === 'resolved' ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Clock3 className="w-4 h-4 text-amber-600" />}
-                    HR Response
+                    HR response
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-1 italic">Click to view full response</p>
                 </div>
               )}
 
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <p className="text-[10px] font-bold tracking-widest text-slate-400">
                   Sent {new Date(request.createdAt).toLocaleDateString()}
                 </p>
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  View Details
+                <span className="text-[10px] font-black tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                  View details
                 </span>
               </div>
             </button>
@@ -145,24 +153,24 @@ export default function HRContact() {
       <Modal 
         isOpen={!!selectedRequest} 
         onClose={() => setSelectedRequest(null)} 
-        title="Request Details"
+        title="Request details"
       >
         {selectedRequest && (
           <div className="space-y-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{selectedRequest.category}</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400">{selectedRequest.category}</p>
                 <h2 className="text-xl font-black text-slate-900 mt-1">{selectedRequest.subject}</h2>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusTone(selectedRequest.status)}`}>
-                {selectedRequest.status.replace('_', ' ')}
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${getStatusTone(selectedRequest.status)}`}>
+                {getStatusLabel(selectedRequest.status)}
               </span>
             </div>
 
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Your Message</p>
+              <p className="text-xs font-black tracking-widest text-slate-400 mb-3">Your message</p>
               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedRequest.message}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4 border-t border-slate-200 pt-3">
+              <p className="text-[10px] font-bold tracking-widest text-slate-400 mt-4 border-t border-slate-200 pt-3">
                 Applied on {new Date(selectedRequest.createdAt).toLocaleString()}
               </p>
             </div>
@@ -174,15 +182,15 @@ export default function HRContact() {
                     {selectedRequest.status === 'resolved' ? <CheckCircle className="w-5 h-5" /> : <Clock3 className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">HR Resolution</h3>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Response provided by {selectedRequest.responder?.name || 'Authorized Personnel'}</p>
+                    <h3 className="font-bold text-slate-900">HR resolution</h3>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400">Response provided by {selectedRequest.responder?.name || 'Authorized Personnel'}</p>
                   </div>
                 </div>
                 <div className="bg-slate-50/50 p-4 rounded-xl text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                   {selectedRequest.hrResponse}
                 </div>
                 {selectedRequest.respondedAt && (
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4 text-right">
+                  <p className="text-[10px] font-bold tracking-widest text-slate-400 mt-4 text-right">
                     Last updated {new Date(selectedRequest.respondedAt).toLocaleString()}
                   </p>
                 )}
@@ -193,7 +201,7 @@ export default function HRContact() {
                   <Clock3 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-blue-900">Awaiting HR Review</h3>
+                  <h3 className="font-bold text-blue-900">Awaiting HR review</h3>
                   <p className="text-xs text-blue-600/70">Your request is in the queue. You'll be notified once HR provides a response.</p>
                 </div>
               </div>
@@ -202,7 +210,7 @@ export default function HRContact() {
             <div className="flex justify-end pt-4 border-t border-slate-100">
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95"
+                className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black tracking-widest hover:bg-slate-800 transition-all active:scale-95"
               >
                 Close
               </button>
@@ -211,10 +219,10 @@ export default function HRContact() {
         )}
       </Modal>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New HR Request">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New HR request">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Subject *</label>
+            <label className="block text-xs font-bold text-slate-500 tracking-widest">Subject *</label>
             <input
               type="text"
               {...register('subject', { 
@@ -228,11 +236,11 @@ export default function HRContact() {
               )}
               placeholder="Payroll clarification, leave issue..."
             />
-            {errors.subject && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.subject.message as string}</p>}
+            {errors.subject && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.subject.message as string}</p>}
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Category *</label>
+            <label className="block text-xs font-bold text-slate-500 tracking-widest">Category *</label>
             <select
               {...register('category', { required: 'Category is required' })}
               className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -247,7 +255,7 @@ export default function HRContact() {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Message *</label>
+            <label className="block text-xs font-bold text-slate-500 tracking-widest">Message *</label>
             <textarea
               rows={5}
               {...register('message', { 
@@ -261,21 +269,21 @@ export default function HRContact() {
               )}
               placeholder="Write the details HR should review..."
             />
-            {errors.message && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.message.message as string}</p>}
+            {errors.message && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.message.message as string}</p>}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex justify-end space-x-3">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
+              className="px-6 py-2.5 text-xs font-bold tracking-widest text-slate-600 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+              className="px-8 py-3 text-xs font-black tracking-widest text-white bg-slate-900 hover:bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Sending...' : 'Send to HR'}
             </button>

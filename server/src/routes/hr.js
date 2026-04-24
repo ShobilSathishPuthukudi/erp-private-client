@@ -1059,11 +1059,17 @@ router.put('/employee-communications/:id', verifyToken, isHR, async (req, res) =
       respondedAt: new Date()
     });
 
+    const statusLabels = {
+      open: 'Pending',
+      in_review: 'In Administrative Review',
+      resolved: 'Resolved'
+    };
+
     await createNotification(req.io, {
       targetUid: request.employeeId,
-      title: 'HR Response Update',
-      message: `HR updated your request "${request.subject}" to ${nextStatus.replace('_', ' ')}.`,
-      type: nextStatus === 'resolved' ? 'success' : 'info',
+      title: `HR Request Update: ${statusLabels[nextStatus] || nextStatus}`,
+      message: `HR has updated the status of your inquiry "${request.subject}" to ${statusLabels[nextStatus] || nextStatus}.`,
+      type: nextStatus === 'resolved' ? 'success' : (nextStatus === 'in_review' ? 'info' : 'info'),
       link: '/dashboard/employee/hr-contact'
     });
 

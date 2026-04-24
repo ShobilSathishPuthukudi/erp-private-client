@@ -85,30 +85,25 @@ export default function CEOAnnouncements() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">Institutional directives</h1>
-            <p className="text-slate-500 font-medium text-sm">Issue high-level mandates and operational instructions directly to the HR Administration team.</p>
-          </div>
-        </div>
-
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-1 active:scale-95 shadow-xl shadow-slate-900/20"
-        >
-          <Sparkles className="w-4 h-4 text-amber-500 group-hover:animate-spin-slow" />
-          Issue New Directive
-        </button>
-      </div>
+      <PageHeader 
+        title="Institutional directives"
+        description="Issue high-level mandates and operational instructions directly to the HR administration team."
+        icon={ShieldCheck}
+        action={
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="group flex items-center gap-3 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-1 active:scale-95 shadow-xl shadow-slate-900/20"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500 group-hover:animate-spin-slow" />
+            Issue new directive
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-8">
         <div className="flex items-center gap-4 mb-2">
            <History className="w-5 h-5 text-slate-400" />
-           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Directive History</h3>
+           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Directive history</h3>
            <div className="h-[1px] flex-1 bg-slate-100"></div>
         </div>
 
@@ -134,7 +129,7 @@ export default function CEOAnnouncements() {
               >
                 <div className="flex justify-between items-start mb-6">
                   <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityStyles[ann.priority as keyof typeof priorityStyles]}`}>
-                    {ann.priority} Mode
+                    {ann.priority} mode
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                     <Clock className="w-3.5 h-3.5" />
@@ -251,7 +246,7 @@ export default function CEOAnnouncements() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityStyles[selectedDirective.priority as keyof typeof priorityStyles]}`}>
-                 {selectedDirective.priority} Mode
+                 {selectedDirective.priority} mode
                </div>
                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                  <Clock className="w-4 h-4" />

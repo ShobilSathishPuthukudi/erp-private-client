@@ -119,7 +119,7 @@ export default function Vacancies() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-2 space-y-6">
       <PageHeader 
         title="Workforce planning"
         description="Manage institutional vacancies and hiring quotas"
@@ -161,8 +161,8 @@ export default function Vacancies() {
               <Briefcase className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
-                Institutional Workforce
+              <p className="text-xs text-slate-400 font-bold tracking-widest leading-none mb-1">
+                Human resources
               </p>
               <h2 className="text-xl font-bold tracking-tight">Open New Vacancy</h2>
             </div>
@@ -178,7 +178,7 @@ export default function Vacancies() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
           <div className="p-8 space-y-6 bg-white overflow-y-auto max-h-[calc(100vh-240px)]">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Position Title</label>
+              <label className="text-xs font-bold text-slate-500 tracking-widest">Position title</label>
               <input 
                 {...register('title', { 
                   required: 'Position title is required',
@@ -191,12 +191,12 @@ export default function Vacancies() {
                 )}
                 placeholder="Senior Admissions Officer"
               />
-              {errors.title && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.title.message as string}</p>}
+              {errors.title && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.title.message as string}</p>}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Department</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Department</label>
                 <div className="relative group mt-1">
                   <select 
                     {...register('departmentId', { required: 'Department is required' })}
@@ -210,10 +210,10 @@ export default function Vacancies() {
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
-                {errors.departmentId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.departmentId.message as string}</p>}
+                {errors.departmentId && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.departmentId.message as string}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Positions (Quota)</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Total positions (quota)</label>
                 <input 
                   type="number"
                   {...register('count', { 
@@ -226,12 +226,12 @@ export default function Vacancies() {
                   )}
                   defaultValue={1}
                 />
-                {errors.count && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.count.message as string}</p>}
+                {errors.count && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.count.message as string}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Requirements / Remarks</label>
+              <label className="text-xs font-bold text-slate-500 tracking-widest">Requirements / remarks</label>
               <textarea 
                 {...register('requirements', {
                   required: 'Requirements are required',
@@ -245,7 +245,7 @@ export default function Vacancies() {
                 rows={3}
                 placeholder="Specify key qualifications or job responsibilities..."
               />
-              {errors.requirements && <p className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">{errors.requirements.message as string}</p>}
+              {errors.requirements && <p className="text-[10px] font-bold text-rose-600 tracking-tight">{errors.requirements.message as string}</p>}
             </div>
           </div>
 
@@ -253,14 +253,14 @@ export default function Vacancies() {
             <button 
               type="button" 
               onClick={() => setIsModalOpen(false)} 
-              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
               Discard
             </button>
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Processing...' : 'Deploy Vacancy'}
             </button>
@@ -283,8 +283,8 @@ export default function Vacancies() {
                   <Briefcase className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
-                    Institutional Vacancy Details
+                  <p className="text-xs text-slate-400 font-bold tracking-widest leading-none mb-1">
+                    Human resources
                   </p>
                   <h2 className="text-xl font-bold tracking-tight">{toSentenceCase(selectedVacancy.title)}</h2>
                 </div>
@@ -304,7 +304,7 @@ export default function Vacancies() {
                   <div className={`w-3 h-3 rounded-full animate-pulse ${selectedVacancy.status === 'OPEN' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
                   <span className="text-sm font-bold text-slate-700 tracking-tight">System Status: {toSentenceCase(selectedVacancy.status)}</span>
                 </div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <div className="text-xs font-bold text-slate-400 tracking-widest">
                   Ref ID: #VAC-{selectedVacancy.id.toString().padStart(4, '0')}
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function Vacancies() {
               {/* Grid Information */}
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Department</label>
+                  <label className="text-[10px] font-black text-slate-400 tracking-[0.2em]">Department</label>
                   <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
                     <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg shrink-0"><Briefcase className="w-4 h-4" /></span>
                     <span className="truncate" title={selectedVacancy.department?.name}>
@@ -321,14 +321,14 @@ export default function Vacancies() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Quota Utilization</label>
+                  <label className="text-[10px] font-black text-slate-400 tracking-[0.2em]">Quota utilization</label>
                   <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
                     <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg shrink-0"><Briefcase className="w-4 h-4" /></span>
                     <span className="truncate">{selectedVacancy.filledCount} of {selectedVacancy.count} Filled</span>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Vacancy ID</label>
+                  <label className="text-[10px] font-black text-slate-400 tracking-[0.2em]">Vacancy ID</label>
                   <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
                     <span className="p-1.5 bg-slate-50 text-slate-600 rounded-lg shrink-0"><Briefcase className="w-4 h-4" /></span>
                     <span className="truncate">{selectedVacancy.id}</span>
@@ -340,7 +340,7 @@ export default function Vacancies() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="h-px bg-slate-200 flex-grow" />
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Institutional Requirements</label>
+                  <label className="text-[10px] font-black text-slate-400 tracking-[0.2em] whitespace-nowrap">Institutional requirements</label>
                   <div className="h-px bg-slate-200 flex-grow" />
                 </div>
                 <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 text-slate-600 leading-relaxed min-h-[120px]">
@@ -358,7 +358,7 @@ export default function Vacancies() {
             <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0 rounded-b-3xl">
               <button 
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-10 py-3 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/20"
+                className="px-10 py-3 bg-slate-900 text-white font-bold text-xs tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/20"
               >
                 Close View
               </button>

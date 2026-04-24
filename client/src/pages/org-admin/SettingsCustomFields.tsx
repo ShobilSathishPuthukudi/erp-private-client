@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Info
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function SettingsCustomFields() {
   const [selectedEntity, setSelectedEntity] = useState('Student');
@@ -73,38 +74,34 @@ export default function SettingsCustomFields() {
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-end">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <Database className="w-6 h-6" />
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="Entity schema extension"
+        description="Dynamically add custom attributes to core system entities."
+        icon={Database}
+        action={
+          <div className="flex gap-4 p-1 bg-slate-100 rounded-2xl relative">
+            <button 
+              onClick={() => setSelectedEntity('Student')}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center ${
+                selectedEntity === 'Student' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Student schema
+            </button>
+            <button 
+              onClick={() => setSelectedEntity('Employee')}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center ${
+                selectedEntity === 'Employee' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Employee schema
+            </button>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">Entity schema extension</h1>
-            <p className="text-slate-500 mt-1 font-medium">Dynamically add custom attributes to core system entities.</p>
-          </div>
-        </div>
-        <div className="flex gap-4 p-1 bg-slate-100 rounded-2xl relative">
-          <button 
-            onClick={() => setSelectedEntity('Student')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center ${
-              selectedEntity === 'Student' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4 mr-2" />
-            Student Schema
-          </button>
-          <button 
-            onClick={() => setSelectedEntity('Employee')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center ${
-              selectedEntity === 'Employee' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Employee Schema
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Field Builder Form */}

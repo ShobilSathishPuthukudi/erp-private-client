@@ -6,6 +6,7 @@ import { UserPlus, Clock, CheckCircle, Search, Filter, Edit } from 'lucide-react
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import { Modal } from '@/components/shared/Modal';
+import { PageHeader } from '@/components/shared/PageHeader';
 import AdmissionWizard from './AdmissionWizard';
 import { Link } from 'react-router-dom';
 
@@ -75,7 +76,7 @@ export default function Students() {
     { accessorKey: 'id', header: 'ID' },
     { 
       accessorKey: 'name', 
-      header: 'Full Name',
+      header: 'Full name',
       cell: ({ row }) => <Link to={`/dashboard/study-center/students/${row.original.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">{row.original.name}</Link>
     },
     { 
@@ -85,7 +86,7 @@ export default function Students() {
     },
     { 
       accessorKey: 'status', 
-      header: 'Review Status',
+      header: 'Review status',
       cell: ({ row }) => {
         const s = row.original.status;
         let color = 'bg-slate-100 text-slate-700';
@@ -97,18 +98,18 @@ export default function Students() {
         if (s === 'ENROLLED') color = 'bg-green-600 text-white';
         if (s === 'REJECTED') color = 'bg-red-100 text-red-700';
         if (row.original.enrollStatus === 'correction_requested') color = 'bg-amber-100 text-amber-800 border border-amber-300';
-        return <span className={`px-2 py-1 text-[9px] rounded-full font-black uppercase tracking-tighter ${color}`}>
+        return <span className={`px-2 py-1 text-[9px] rounded-full font-black tracking-tighter ${color}`}>
             {row.original.enrollStatus === 'correction_requested'
-              ? 'Correction Requested'
+              ? 'Correction requested'
               : s === 'FINANCE_PENDING'
-                ? 'Awaiting Finance'
-                : s?.replace('_', ' ')}
+                ? 'Awaiting finance'
+                : s?.replace('_', ' ').toLowerCase()}
         </span>;
       }
     },
     {
       id: 'remarks',
-      header: 'Review Remarks',
+      header: 'Review remarks',
       cell: ({ row }) => (
         <span className="text-xs text-slate-600 line-clamp-2 max-w-[260px]">
           {row.original.lastRejectionReason || 'No pending remarks'}
@@ -119,7 +120,7 @@ export default function Students() {
       id: 'type',
       header: 'Type',
       cell: ({ row }) => (
-        <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+        <span className="text-[10px] font-black tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
           {row.original.program?.type || 'N/A'}
         </span>
       )
@@ -148,14 +149,14 @@ export default function Students() {
                   ? "hover:bg-blue-50 text-blue-600 active:scale-95"
                   : "text-slate-300 cursor-not-allowed"
               )}
-              title={canEdit ? "Edit Student Data" : "Editing locked after Academic Operations verification"}
+              title={canEdit ? "Edit student data" : "Editing locked after academic operations verification"}
             >
               <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
             </button>
             {canResubmit && (
               <button
                 onClick={() => handleResubmit(row.original)}
-                className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all active:scale-95"
+                className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-black tracking-widest hover:bg-amber-600 transition-all active:scale-95"
                 title="Resubmit Student Application"
               >
                 Resubmit
@@ -168,32 +169,33 @@ export default function Students() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-end shrink-0">
-        <div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institutional student roster</h1>
-           <p className="text-slate-500 text-sm mt-1">Manage and monitor student enrollments for your center</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add Student
-        </button>
-      </div>
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+      <PageHeader 
+        title="Institutional student roster"
+        description="Manage and monitor student enrollments for your center"
+        icon={UserPlus}
+        action={
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add student
+          </button>
+        }
+      />
 
       <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit shrink-0">
         <button
           onClick={() => setActiveTab('pending')}
           className={clsx(
-            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black tracking-widest transition-all",
             activeTab === 'pending' ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-500 hover:text-slate-700"
           )}
         >
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Pending Admissions
+            Pending admissions
           </div>
           <span className={clsx(
             "px-2 py-0.5 rounded-md text-[10px] font-black",
@@ -205,13 +207,13 @@ export default function Students() {
         <button
           onClick={() => setActiveTab('enrolled')}
           className={clsx(
-            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+            "flex items-center gap-3 px-6 py-2 rounded-lg text-xs font-black tracking-widest transition-all",
             activeTab === 'enrolled' ? "bg-white text-emerald-600 shadow-sm border border-slate-100" : "text-slate-500 hover:text-slate-700"
           )}
         >
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
-            Enrolled Roster
+            Enrolled roster
           </div>
           <span className={clsx(
             "px-2 py-0.5 rounded-md text-[10px] font-black",
@@ -226,7 +228,7 @@ export default function Students() {
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-2">
                 <div className="p-2 bg-slate-100 rounded-lg"><Filter className="w-4 h-4 text-slate-500" /></div>
-                <span className="font-bold text-slate-700 capitalize">{activeTab} List</span>
+                <span className="font-bold text-slate-700 capitalize">{activeTab} list</span>
             </div>
             <div className="flex items-center gap-3">
                  <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"><Search className="w-4 h-4" /></button>
@@ -249,7 +251,7 @@ export default function Students() {
           setIsModalOpen(false);
           setEditingStudent(null);
         }}
-        title={editingStudent ? `Refine Admission: ${editingStudent.name}` : "Institutional Admission Wizard"}
+        title={editingStudent ? `Refine admission: ${editingStudent.name}` : "Institutional admission wizard"}
         maxWidth="2xl"
       >
         <AdmissionWizard 

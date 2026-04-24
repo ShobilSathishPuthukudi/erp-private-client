@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import { getNormalizedRole } from '@/lib/roles';
 import { AlertCircle, CalendarDays, CheckCircle2, Clock3, RefreshCcw, Search, XCircle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface UserInfo {
   uid: string;
@@ -104,10 +105,10 @@ export default function DepartmentLeaves() {
   const scopedDeptId = user?.deptId;
   const isSubDeptRole = ['openschool', 'online', 'skill', 'bvoc'].includes(userRole);
 
-  const title = isSubDeptRole ? 'Unit Leave Requests' : 'Team Leave Requests';
+  const title = isSubDeptRole ? 'Unit leave requests' : 'Team leave requests';
   const description = isSubDeptRole
-    ? 'Review leave requests, HR-pending cases, and final outcomes for your unit.'
-    : 'Review leave requests, HR-pending cases, and final outcomes for your team.';
+    ? 'Review unit leave requests, pending cases, and outcomes.'
+    : 'Review team leave requests, pending cases, and outcomes.';
 
   const fetchLeaves = useCallback(async () => {
     if (!scopedDeptId) {
@@ -228,13 +229,11 @@ export default function DepartmentLeaves() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">{title}</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">{description}</p>
-          </div>
-
+      <PageHeader 
+        title={title}
+        description={description}
+        icon={CalendarDays}
+        action={
           <button
             onClick={fetchLeaves}
             disabled={isLoading}
@@ -243,9 +242,10 @@ export default function DepartmentLeaves() {
             <RefreshCcw className={clsx('h-4 w-4', isLoading && 'animate-spin')} />
             Refresh
           </button>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-4">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -257,15 +257,15 @@ export default function DepartmentLeaves() {
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white'
               )}
             >
-              <p className={clsx('text-[11px] font-black uppercase tracking-[0.18em]', activeTab === tab.id ? 'text-slate-300' : 'text-slate-400')}>
+              <p className={clsx('text-xs font-semibold', activeTab === tab.id ? 'text-slate-300' : 'text-slate-400')}>
                 {tab.name}
               </p>
-              <p className="mt-2 text-3xl font-black tracking-tight">{tab.count}</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight">{tab.count}</p>
             </button>
           ))}
         </div>
 
-        <div className="mt-6 relative max-w-md">
+        <div className="relative max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={searchTerm}
@@ -274,7 +274,6 @@ export default function DepartmentLeaves() {
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           />
         </div>
-      </section>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
@@ -292,7 +291,7 @@ export default function DepartmentLeaves() {
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
               <CalendarDays className="h-8 w-8 text-slate-400" />
             </div>
-            <h2 className="mt-5 text-lg font-black text-slate-900">{emptyCopy[activeTab].title}</h2>
+            <h2 className="mt-5 text-lg font-bold text-slate-900">{emptyCopy[activeTab].title}</h2>
             <p className="mt-2 max-w-md text-sm font-medium text-slate-500">{emptyCopy[activeTab].description}</p>
           </div>
         ) : (
@@ -308,7 +307,7 @@ export default function DepartmentLeaves() {
                     <div className="space-y-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center">
                         <div>
-                          <h3 className="text-lg font-black tracking-tight text-slate-900">
+                          <h3 className="text-lg font-bold text-slate-900">
                             {leave.employee?.name || leave.employeeId}
                           </h3>
                           <p className="text-sm font-medium text-slate-500">
@@ -316,7 +315,7 @@ export default function DepartmentLeaves() {
                           </p>
                         </div>
 
-                        <span className={clsx('inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.15em]', meta.color)}>
+                        <span className={clsx('inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', meta.color)}>
                           <StatusIcon className="h-3.5 w-3.5" />
                           {meta.label}
                         </span>

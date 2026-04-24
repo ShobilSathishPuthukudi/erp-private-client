@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { ArrowLeft, Receipt, User, ShieldCheck } from 'lucide-react';
-import AgingPanel from '@/components/finance/AgingPanel';
+import NextPaymentsPanel from '@/components/finance/NextPaymentsPanel';
+import EMISchedule from '@/components/finance/EMISchedule';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
@@ -55,7 +56,9 @@ export default function StudentFinancials() {
         header: 'Status',
         cell: ({ row }) => (
             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                row.original.status === 'issued' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
+                row.original.status === 'issued' ? 'bg-blue-50 text-blue-600' : 
+                row.original.status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
+                'bg-slate-100 text-slate-500'
             }`}>
                 {row.original.status}
             </span>
@@ -66,7 +69,7 @@ export default function StudentFinancials() {
   if (isLoading) return <div className="p-20 text-center font-mono animate-pulse uppercase tracking-widest text-slate-400 font-bold">Hydrating Institutional Ledger...</div>;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 max-w-7xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-6">
                 <Link to="/dashboard/finance/invoices" className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
@@ -87,22 +90,23 @@ export default function StudentFinancials() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
             <div className="md:col-span-2">
-                <AgingPanel type="student" id={id!} />
+                <NextPaymentsPanel studentId={id!} />
             </div>
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start">
-                    <div className="p-3 bg-slate-100 rounded-2xl">
-                        <User className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-emerald-100">
-                        {student?.feeStatus || 'Verified'}
-                    </span>
-                </div>
+            <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm flex flex-col justify-center space-y-4">
                 <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Enrollment Status</p>
-                   <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{student?.enrollStatus.replace('_', ' ')}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Institutional Paid</p>
+                    <p className="text-2xl font-black text-emerald-600 tracking-tighter">₹{parseFloat(student?.paidAmount as any || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div className="h-px bg-slate-100 w-full" />
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Forensic Pending</p>
+                    <p className="text-2xl font-black text-rose-600 tracking-tighter">₹{parseFloat(student?.pendingAmount as any || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
             </div>
+        </div>
+
+        <div className="shrink-0">
+            <EMISchedule studentId={id!} />
         </div>
 
         <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-3xl shadow-sm flex flex-col overflow-hidden">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { PieChart, Settings, Download, Save } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 export default function DistributionDashboard() {
   const [data, setData] = useState<any>(null);
@@ -44,19 +45,17 @@ export default function DistributionDashboard() {
   if (loading) return <div className="p-12 text-center text-slate-300 font-black animate-pulse uppercase">Syncing Partner Ledgers...</div>;
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tighter">
-              <PieChart className="w-8 h-8 text-blue-600" />
-              Partner Revenue Distributions
-           </h2>
-           <p className="text-slate-500 mt-1 font-medium ">Configure program-based fee splits and monitor partner-based payout queues forensically.</p>
-        </div>
-        <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
-           <Download className="w-4 h-4" /> Export Ledger
-        </button>
-      </div>
+    <div className="p-2 space-y-8">
+      <PageHeader 
+        title="Partner Revenue Distributions"
+        description="Configure program-based fee splits and monitor partner-based payout queues forensically."
+        icon={PieChart}
+        action={
+          <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20 whitespace-nowrap">
+            <Download className="w-4 h-4" /> Export Ledger
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {data.stats.map((stat: any) => (

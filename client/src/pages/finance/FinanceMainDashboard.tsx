@@ -104,7 +104,7 @@ export default function FinanceMainDashboard() {
   if (loading) return <div className="p-12 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Synchronizing Institutional Ledger...</div>;
 
   return (
-    <div className="p-8 space-y-10 min-h-screen">
+    <div className="p-2 space-y-10 min-h-screen">
       <DashboardGreeting 
         role="Chief - Financial Governance"
         name={user?.name || 'Administrator'}

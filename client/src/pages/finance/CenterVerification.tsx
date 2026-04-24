@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Center {
   id: number;
@@ -235,19 +236,13 @@ export default function CenterVerification() {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+    <div className="p-2 space-y-8 max-w-[1600px] mx-auto">
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">Center verification queue</h1>
-              <p className="text-slate-500 font-medium text-sm mt-1">Perform secondary financial audit and provision institutional credentials.</p>
-            </div>
-          </div>
-        </div>
+      <PageHeader 
+        title="Center verification queue"
+        description="Perform secondary financial audit and provision institutional credentials."
+        icon={Building2}
+      />
 
         <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit gap-1">
            {[

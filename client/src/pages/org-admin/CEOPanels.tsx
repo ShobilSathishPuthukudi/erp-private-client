@@ -6,6 +6,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CEOPanelCreate from './CEOPanelCreate';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Users } from 'lucide-react';
 
 interface CEOPanelData {
   id: string;
@@ -138,20 +140,21 @@ export default function CEOPanels() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">CEO panels</h1>
-          <p className="text-slate-500">Manage executive CEO accounts and dashboard access</p>
-        </div>
-        <button 
-          onClick={openCreateModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add CEO</span>
-        </button>
-      </div>
+    <div className="p-2 space-y-6">
+      <PageHeader 
+        title="CEO panels"
+        description="Manage executive CEO accounts and dashboard access"
+        icon={Users}
+        action={
+          <button 
+            onClick={openCreateModal}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add CEO</span>
+          </button>
+        }
+      />
 
       <DataTable 
         columns={columns} 

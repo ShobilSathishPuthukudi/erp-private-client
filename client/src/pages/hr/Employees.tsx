@@ -41,6 +41,7 @@ interface Vacancy {
   status: 'OPEN' | 'CLOSED';
 }
 
+
 export default function Employees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
@@ -291,7 +292,7 @@ export default function Employees() {
         if (status === 'active') color = 'bg-emerald-50 text-emerald-600 border-emerald-100';
         if (status === 'suspended') color = 'bg-rose-50 text-rose-600 border-rose-100';
         return (
-          <span className={`px-3 py-1 text-[9px] rounded-full font-black uppercase tracking-widest border ${color}`}>
+          <span className={`px-3 py-1 text-[9px] rounded-full font-black tracking-widest border ${color}`}>
             {toSentenceCase(status)}
           </span>
         );
@@ -329,7 +330,7 @@ export default function Employees() {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Personnel directory"
         description="Create employees from approved vacancies and maintain workforce records"
@@ -369,11 +370,11 @@ export default function Employees() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
-                Human Resources
+              <p className="text-xs text-slate-400 font-bold tracking-widest leading-none mb-1">
+                Human resources
               </p>
               <h2 className="text-xl font-bold tracking-tight">
-                {editingEmployee ? "Edit Personnel Details" : "Register New Employee"}
+                {editingEmployee ? "Edit personnel details" : "Register new employee"}
               </h2>
             </div>
           </div>
@@ -395,7 +396,7 @@ export default function Employees() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Identity Group */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Full Name</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Full name</label>
                 <input
                   {...register('name', { 
                       required: 'Name is required',
@@ -405,11 +406,11 @@ export default function Employees() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="John Smith"
                 />
-                {errors.name && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.name.message as string}</p>}
+                {errors.name && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.name.message as string}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Email Address</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Email address</label>
                 <input
                   type="email"
                   {...register('email', { 
@@ -419,11 +420,11 @@ export default function Employees() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900"
                   placeholder="j.smith@erp.com"
                 />
-                {errors.email && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.email.message as string}</p>}
+                {errors.email && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.email.message as string}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <label className="text-xs font-bold text-slate-500 tracking-widest">
                   Password {editingEmployee && <span className="text-slate-400 font-normal normal-case ">(Leave blank to keep current)</span>}
                 </label>
                 <div className="relative">
@@ -446,11 +447,11 @@ export default function Employees() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {errors.password && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.password.message as string}</p>}
+                {errors.password && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.password.message as string}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Employee Photo</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Employee photo</label>
                 <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-2 min-h-[52px]">
                   <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center text-slate-500 font-black text-xs shrink-0">
                     {avatarPreview ? (
@@ -483,16 +484,16 @@ export default function Employees() {
                       htmlFor="employee-photo-upload"
                       className="flex items-center gap-2 cursor-pointer w-fit mb-1"
                     >
-                      <span className="block rounded-md bg-slate-900 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors shadow-sm">
-                        Choose File
+                      <span className="block rounded-md bg-slate-900 px-2 py-1 text-[9px] font-black tracking-widest text-white hover:bg-slate-800 transition-colors shadow-sm">
+                        Choose file
                       </span>
                       <span className="text-xs text-slate-600 font-medium truncate max-w-[140px]">
                         {avatarFile ? avatarFile.name : (editingEmployee?.avatar ? 'Existing photo' : 'No file chosen')}
                       </span>
                     </label>
                     <div className="flex items-center justify-between pr-2">
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mt-1">PNG/JPG/WebP &lt; 5MB</p>
-                      {(errors as any).avatar && <p className="text-[8px] font-bold text-rose-600 uppercase tracking-tight mt-1">{(errors as any).avatar.message}</p>}
+                      <p className="text-[8px] font-bold tracking-widest text-slate-400 mt-1">PNG/JPG/WebP &lt; 5MB</p>
+                      {(errors as any).avatar && <p className="text-[8px] font-bold text-rose-600 tracking-tight mt-1">{(errors as any).avatar.message}</p>}
                     </div>
                   </div>
                 </div>
@@ -503,7 +504,7 @@ export default function Employees() {
               {/* Role Group */}
               {!editingEmployee && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Vacancy (Required)</label>
+                  <label className="text-xs font-bold text-slate-500 tracking-widest">Select vacancy (required)</label>
                   <div className="relative group">
                   <select
                     {...register('vacancyId', { required: 'Vacancy is required for new hires' })}
@@ -516,12 +517,12 @@ export default function Employees() {
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none mt-0.5" />
                   </div>
-                  {errors.vacancyId && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.vacancyId.message as string}</p>}
+                  {errors.vacancyId && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.vacancyId.message as string}</p>}
                 </div>
               )}
 
               <div className={`space-y-2 ${editingEmployee ? 'col-span-1 md:col-span-2' : ''}`}>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Reporting Manager</label>
+                <label className="text-xs font-bold text-slate-500 tracking-widest">Reporting manager</label>
                 <div className="relative group mt-1">
                 <select
                   {...register('reportingManagerUid', { required: 'Reporting manager is required' })}
@@ -540,12 +541,12 @@ export default function Employees() {
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
-                {errors.reportingManagerUid && <p className="text-[10px] font-bold text-rose-600 mt-1 uppercase tracking-tight">{errors.reportingManagerUid.message as string}</p>}
+                {errors.reportingManagerUid && <p className="text-[10px] font-bold text-rose-600 mt-1 tracking-tight">{errors.reportingManagerUid.message as string}</p>}
               </div>
 
               {!editingEmployee && selectedVacancy && (
                 <div className="col-span-1 md:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 w-full">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Vacancy Scope</p>
+                  <p className="text-[10px] font-black tracking-widest text-blue-500">Vacancy scope</p>
                   <p className="mt-2 text-sm font-bold text-slate-900">
                     {selectedVacancy.title}
                   </p>
@@ -562,14 +563,14 @@ export default function Employees() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
+              className="px-8 py-3.5 bg-white text-slate-600 font-bold text-xs tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
             >
               Discard
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
             >
               {isSubmitting ? 'Processing...' : (editingEmployee ? 'Save Updates' : 'Register')}
             </button>
@@ -589,7 +590,7 @@ export default function Employees() {
             <Trash2 className="w-10 h-10 text-rose-600" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Confirm</h3>
+            <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Confirm</h3>
             <p className="text-slate-500 font-medium px-4 text-sm leading-relaxed">
               Are you sure you want to eliminate the personnel record for <span className="text-rose-600 font-bold">{employeeToDelete?.name}</span>? This action is permanent and will be logged in the audit trail.
             </p>
@@ -597,13 +598,13 @@ export default function Employees() {
           <div className="flex gap-4 pt-4">
             <button 
               onClick={() => setEmployeeToDelete(null)}
-              className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+              className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 font-black text-[10px] tracking-widest rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
             >
               Cancel
             </button>
             <button 
               onClick={confirmDelete}
-              className="flex-1 px-6 py-3 bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95"
+              className="flex-1 px-6 py-3 bg-rose-600 text-white font-black text-[10px] tracking-widest rounded-xl shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all active:scale-95"
             >
               Confirm
             </button>

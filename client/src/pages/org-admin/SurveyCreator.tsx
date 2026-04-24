@@ -149,7 +149,7 @@ export default function SurveyCreator() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-2 space-y-6">
       <PageHeader 
         title="Institutional feedback"
         description="Design and deploy quality assurance surveys across the organization."

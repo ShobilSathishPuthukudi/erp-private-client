@@ -88,7 +88,7 @@ export default function Announcements() {
   };
 
   return (
-    <div className="p-2 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
+    <div className="p-2 space-y-4 max-w-[1600px] mx-auto">
       <PageHeader 
         title="Global announcements"
         description="Push real-time company-wide broadcasts and urgent notices."
@@ -109,7 +109,7 @@ export default function Announcements() {
         <button
           onClick={() => setActiveTab('hr')}
           className={clsx(
-            "flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-widest",
+            "flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-widest",
             activeTab === 'hr' 
               ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200" 
               : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
@@ -127,7 +127,7 @@ export default function Announcements() {
         <button
           onClick={() => setActiveTab('ceo')}
           className={clsx(
-            "flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-widest",
+            "flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-widest",
             activeTab === 'ceo' 
               ? "bg-white text-red-600 shadow-sm ring-1 ring-slate-200" 
               : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
@@ -177,7 +177,7 @@ export default function Announcements() {
               )}></div>
 
               <div className="flex justify-between items-start mb-4 mt-2">
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityColors[ann.priority as keyof typeof priorityColors]}`}>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest border ${priorityColors[ann.priority as keyof typeof priorityColors]}`}>
                   {ann.priority} Priority
                 </span>
                 <div className="flex items-center text-xs text-slate-400">
@@ -223,7 +223,7 @@ export default function Announcements() {
           </div>
           
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Priority Level *</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2 tracking-tighter">Priority level *</label>
             <select
               className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})}
@@ -234,7 +234,7 @@ export default function Announcements() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-tighter">Expiry Timestamp *</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2 tracking-tighter">Expiry timestamp *</label>
             <input 
               type="datetime-local" 
               required
@@ -289,11 +289,11 @@ export default function Announcements() {
                         <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
                             {selectedAnn.priority === 'urgent' ? <ShieldAlert className="w-6 h-6 text-white" /> : <Megaphone className="w-6 h-6 text-white" />}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">
+                        <span className="text-[10px] font-black tracking-[0.2em] text-white/60">
                           {selectedAnn.author?.role?.toLowerCase() === 'ceo' ? 'Executive Directive' : 'Global Broadcast'}
                         </span>
                     </div>
-                    <h2 className="text-3xl font-black tracking-tight leading-none uppercase">{selectedAnn.title}</h2>
+                    <h2 className="text-3xl font-black tracking-tight leading-none">{selectedAnn.title}</h2>
                 </div>
                 <button 
                   type="button"
@@ -309,23 +309,23 @@ export default function Announcements() {
                     <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
                         <Clock className="w-4 h-4 text-slate-400" />
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Broadcast Date</span>
+                            <span className="text-[8px] font-black text-slate-400 tracking-widest leading-none mb-1">Broadcast date</span>
                             <span className="text-[11px] font-black text-slate-900">{format(new Date(selectedAnn.createdAt), 'PPP')}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
                         <User className="w-4 h-4 text-slate-400" />
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Author Identity</span>
-                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">{selectedAnn.author?.name || 'HR Admin'}</span>
+                            <span className="text-[8px] font-black text-slate-400 tracking-widest leading-none mb-1">Author identity</span>
+                            <span className="text-[11px] font-black text-slate-900 tracking-tighter">{selectedAnn.author?.name || 'HR Admin'}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
                         <ShieldAlert className="w-4 h-4 text-slate-400" />
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Priority Level</span>
+                            <span className="text-[8px] font-black text-slate-400 tracking-widest leading-none mb-1">Priority level</span>
                             <span className={clsx(
-                              "text-[11px] font-black uppercase tracking-tighter",
+                              "text-[11px] font-black tracking-tighter",
                               selectedAnn.priority === 'urgent' ? "text-red-600" : "text-slate-900"
                             )}>{selectedAnn.priority}</span>
                         </div>
@@ -333,7 +333,7 @@ export default function Announcements() {
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">Broadcast Context</h3>
+                    <h3 className="text-[10px] font-black text-indigo-500 tracking-[0.2em]">Broadcast context</h3>
                     <p className="text-lg font-medium text-slate-700 leading-relaxed max-w-2xl whitespace-pre-wrap">
                       {selectedAnn.message}
                     </p>
@@ -343,7 +343,7 @@ export default function Announcements() {
                   <div className="pt-6 border-t border-slate-100">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Clock className="w-4 h-4" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Notice Expiry: {format(new Date(selectedAnn.expiryDate), 'PPP p')}</span>
+                      <span className="text-[10px] font-black tracking-widest">Notice expiry: {format(new Date(selectedAnn.expiryDate), 'PPP p')}</span>
                     </div>
                   </div>
                 )}
@@ -352,7 +352,7 @@ export default function Announcements() {
             <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0 flex justify-end">
               <button 
                 onClick={() => setIsDetailOpen(false)}
-                className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2"
+                className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2"
               >
                 Close View
               </button>

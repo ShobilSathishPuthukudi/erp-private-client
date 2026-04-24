@@ -8,6 +8,7 @@ import { Calendar, BookOpen, Users, ShieldCheck, History, Timer, CheckCircle2, A
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/store/authStore';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 
 interface Session {
@@ -230,26 +231,20 @@ export default function Sessions() {
 
   return (
     <div className="p-2 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Session management</h1>
-          </div>
-          <p className="text-slate-500 font-medium ml-15">Govern academic batches, temporal windows, and intake capacity safeguards.</p>
-        </div>
-        {!isLoading && programs.length > 0 && !isReadOnly && (
-           <button 
-              onClick={openCreateModal}
-              className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
-           >
-              <Calendar className="w-4 h-4" />
-              Deploy New Batch
-           </button>
+      <PageHeader 
+        title="Session management"
+        description="Govern academic batches, temporal windows, and intake capacity safeguards."
+        icon={Calendar}
+        action={!isLoading && programs.length > 0 && !isReadOnly && (
+          <button 
+            onClick={openCreateModal}
+            className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 text-[10px] font-black tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] hover:scale-[1.02]"
+          >
+            <Calendar className="w-4 h-4" />
+            Deploy new batch
+          </button>
         )}
-      </div>
+      />
 
       {!isLoading && programs.length === 0 ? (
         <div className="max-w-xl mx-auto py-20">
@@ -302,7 +297,7 @@ export default function Sessions() {
           <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-0 custom-scrollbar">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Session / Batch Designation</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Session / batch designation</label>
                 <div className="relative group">
                     <History className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
@@ -319,7 +314,7 @@ export default function Sessions() {
                 </div>
 
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Program Specification</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Program specification</label>
                 <div className="relative group">
                     <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <select
@@ -336,7 +331,7 @@ export default function Sessions() {
 
                 {!isPartnerCenter && (
                   <div className="col-span-2">
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Contextual Study Center</label>
+                  <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Contextual study center</label>
                   <div className="relative group">
                       <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                       <select
@@ -353,7 +348,7 @@ export default function Sessions() {
                 )}
 
                 <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (Start)</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Activation window (start)</label>
                 <input
                     type="date"
                     {...register('startDate', { required: true })}
@@ -362,7 +357,7 @@ export default function Sessions() {
                 </div>
 
                 <div>
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Activation Window (End)</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Activation window (end)</label>
                 <input
                     type="date"
                     {...register('endDate', { required: true })}
@@ -373,7 +368,7 @@ export default function Sessions() {
                 </div>
 
                 <div className="col-span-2">
-                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Batch Seating Capacity</label>
+                <label className="block text-xs font-black text-slate-500 tracking-widest mb-1.5 ml-1">Batch seating capacity</label>
                 <div className="relative group">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                     <input
@@ -408,7 +403,7 @@ export default function Sessions() {
             <button
               type="submit"
               disabled={isSubmitting || !isFormValid}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold text-xs tracking-widest rounded-2xl shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
             >
               {isSubmitting ? 'Syncing...' : (editingItem ? 'Serialize Changes' : 'Execute Generation')}
             </button>

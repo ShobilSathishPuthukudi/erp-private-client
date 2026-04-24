@@ -3,9 +3,10 @@ import { api } from '@/lib/api';
 import { DataTable } from '@/components/shared/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import toast from 'react-hot-toast';
-import { Download } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Invoice {
   id: number;
@@ -127,13 +128,12 @@ export default function Invoices() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tax invoice master ledger</h1>
-          <p className="text-slate-500 mt-1">A consolidated log of all automatically and manually generated GST bills containing historical retrieval modules.</p>
-        </div>
-      </div>
+    <div className="p-2 space-y-6 max-w-7xl mx-auto">
+      <PageHeader 
+        title="Tax invoice master ledger"
+        description="A consolidated log of all automatically and manually generated GST bills containing historical retrieval modules."
+        icon={FileText}
+      />
 
       <DataTable 
         columns={columns} 

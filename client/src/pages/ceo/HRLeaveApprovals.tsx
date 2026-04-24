@@ -124,7 +124,7 @@ export default function HRLeaveApprovals() {
         return (
           <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase ${color}`}>
             {['pending_step1', 'pending admin'].includes(s) ? 'Pending admin' : 
-             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.role?.toLowerCase()?.includes('hr admin') ? 'Awaiting CEO Finalization' : 'Pending hr') : 
+             (['pending_step2', 'pending hr'].includes(s) ? (row.original.employee?.role?.toLowerCase()?.includes('hr admin') ? 'Awaiting CEO finalization' : 'Pending hr') : 
              toSentenceCase(s.replace('_', ' ')))}
           </span>
         );
@@ -234,8 +234,8 @@ export default function HRLeaveApprovals() {
               {confirmModal?.action === 'approve' ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 uppercase tracking-tight font-mono">HR Authorization required</p>
-              <p className="text-xs text-slate-500 font-medium ">Administrative Protocol v5.0</p>
+               <p className="text-sm font-bold text-slate-900 uppercase tracking-tight font-mono">HR authorization required</p>
+               <p className="text-xs text-slate-500 font-medium ">Administrative protocol v5.0</p>
             </div>
           </div>
 
@@ -280,9 +280,9 @@ export default function HRLeaveApprovals() {
             : status.includes('rejected')
               ? 'Rejected'
               : ['pending_step1', 'pending admin'].includes(status)
-                ? 'Pending admin'
-                : ['pending_step2', 'pending hr'].includes(status)
-                  ? 'Pending HR'
+                 ? 'Pending admin'
+                 : ['pending_step2', 'pending hr'].includes(status)
+                   ? 'Pending HR'
                   : toSentenceCase(status.replace('_', ' '));
           const statusTone = status === 'approved'
             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -355,11 +355,11 @@ export default function HRLeaveApprovals() {
                                     navigator.clipboard.writeText(selectedLeave.employee!.email!);
                                     toast.success('Email copied to clipboard');
                                 }}
-                                className="p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"
-                                title="Copy Email Address"
-                            >
-                                <Copy className="w-3 h-3" />
-                            </button>
+                                 className="p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700"
+                                 title="Copy email address"
+                             >
+                                 <Copy className="w-3 h-3" />
+                             </button>
                         )}
                       </div>
                     </div>

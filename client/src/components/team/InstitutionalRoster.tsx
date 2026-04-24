@@ -202,7 +202,7 @@ export default function InstitutionalRoster() {
     { id: 'centers', name: 'Partner Centers', icon: Building2, count: users.filter(u => ['partner center', 'partner-center'].includes((u.role || '').toLowerCase().trim())).length },
   ];
 
-  const title = currentRole === 'ceo' ? 'Executive Structure' : 'Institutional Structure';
+  const title = currentRole === 'ceo' ? 'Executive structure' : 'Institutional structure';
   const description = isRestricted
     ? `Read-only personnel visibility for your authorized scope: ${scope.join(', ') || 'No scope assigned'}`
     : 'Read-only institution-wide personnel visibility';
@@ -252,18 +252,12 @@ export default function InstitutionalRoster() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white px-6 py-5 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20 shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-0.5">{title}</h1>
-            <p className="text-slate-500 font-medium text-sm">{description}</p>
-          </div>
-        </div>
-        {headerIcons && <div>{headerIcons}</div>}
-      </div>
+      <PageHeader 
+        title={title}
+        description={description}
+        icon={Users}
+        action={headerIcons}
+      />
 
       <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200 w-fit">
         {tabs.map((tab) => (

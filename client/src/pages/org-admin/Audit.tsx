@@ -23,6 +23,7 @@ import { toSentenceCase } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface AuditLogEntry {
   id: number;
@@ -136,72 +137,68 @@ export default function AuditLogs() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 pb-32">
+    <div className="p-2 space-y-6 pb-32">
       {/* Premium Header - Sourced from RolesList */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-            <History className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-display tracking-tight">System audit ledger</h1>
-            <p className="text-slate-500 mt-1">Immutable record of high-authority institutional modifications.</p>
-          </div>
-        </div>
-        <div className="flex gap-3 items-center">
-          <button 
-            onClick={handleShare}
-            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
-            title="Share Audit Report"
-          >
-            <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-          
-          <button 
-            onClick={handlePrint}
-            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
-            title="Print Audit Report"
-          >
-            <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
-
-          <div className="w-px h-6 bg-slate-200 mx-1"></div>
-
-          <div className="relative group/export">
+      <PageHeader 
+        title="System audit ledger"
+        description="Immutable record of high-authority institutional modifications."
+        icon={History}
+        action={
+          <div className="flex gap-3 items-center">
             <button 
-              className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-slate-200"
-              title="Download/Export Ledger"
+              onClick={handleShare}
+              className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-blue-100"
+              title="Share audit report"
             >
-              <Download className="w-5 h-5 group-hover:scale-125 transition-transform" />
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
-              <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                <button 
-                  onClick={handleExportExcel}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer uppercase tracking-tight"
-                >
-                  Excel (.xlsx) Manifest
-                </button>
-                <button 
-                  onClick={handleExportPDF}
-                  className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer uppercase tracking-tight"
-                >
-                  PDF (.pdf) Document
-                </button>
+            
+            <button 
+              onClick={handlePrint}
+              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-indigo-100"
+              title="Print audit report"
+            >
+              <Printer className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+            <div className="relative group/export">
+              <button 
+                className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all active:scale-95 group cursor-pointer border border-transparent hover:border-slate-200"
+                title="Download/export ledger"
+              >
+                <Download className="w-5 h-5 group-hover:scale-125 transition-transform" />
+              </button>
+              <div className="absolute right-0 top-full pt-2 hidden group-hover/export:block z-50">
+                <div className="w-48 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <button 
+                    onClick={handleExportExcel}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all border-b border-slate-100 cursor-pointer uppercase tracking-tight"
+                  >
+                    Excel (.xlsx) manifest
+                  </button>
+                  <button 
+                    onClick={handleExportPDF}
+                    className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer uppercase tracking-tight"
+                  >
+                    PDF (.pdf) document
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <button 
-            onClick={fetchLogs}
-            disabled={isLoading}
-            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/20 group cursor-pointer"
-          >
-            <RotateCcw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+            <button 
+              onClick={fetchLogs}
+              disabled={isLoading}
+              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/20 group cursor-pointer"
+            >
+              <RotateCcw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        }
+      />
 
       {/* Control Bar - Sourced from RolesList */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-2 rounded-3xl border border-slate-200 shadow-sm">

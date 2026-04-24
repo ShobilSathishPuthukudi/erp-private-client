@@ -12,7 +12,7 @@ import { checkPermission, checkPermissionOrRole } from '../middleware/rbac.js';
 import { clearNotifications } from './notifications.js';
 
 const router = express.Router();
-const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution, Target, TargetAssignment, Task } = models;
+const { Payment, Invoice, Student, AuditLog, ChangeRequest, AdmissionSession, Department, Program, User, CenterProgram, ProgramFee, AcademicActionRequest, Subject, Module, CredentialRequest, Role, Notification, ReregRequest, IncentiveRule, IncentivePayout, PaymentDistribution, Target, TargetAssignment, Task, EMI } = models;
 
 const isFinanceOrAdmin = (req, res, next) => {
   const userRole = req.user.role?.toLowerCase()?.trim();
@@ -281,6 +281,20 @@ router.post('/payments/:id/verify', verifyToken, checkPermissionOrRole('FIN_PAY_
         // Update existing invoice status if needed
         if (invoice.status === 'issued') {
             await invoice.update({ status: 'paid' });
+            
+            // Sync Student Financial Telemetry
+            const student = await Student.findByPk(invoice.studentId);
+            if (student) {
+                const amountVal = parseFloat(invoice.total);
+                const currentPaid = parseFloat(student.paidAmount || 0);
+                const currentPending = parseFloat(student.pendingAmount || 0);
+                
+                await student.update({
+                    paidAmount: currentPaid + amountVal,
+                    pendingAmount: Math.max(0, currentPending - amountVal),
+                    feeStatus: (currentPending - amountVal) <= 0 ? 'paid' : 'partial'
+                });
+            }
         }
     }
 
@@ -325,6 +339,19 @@ router.post('/payments/:id/verify', verifyToken, checkPermissionOrRole('FIN_PAY_
     console.error('Payment verification error:', error);
     res.status(500).json({ error: 'Failed to verify payment and process invoice' });
   }
+});
+
+router.get('/students/:id/emis', verifyToken, isFinanceOrAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const emis = await EMI.findAll({
+            where: { studentId: id },
+            order: [['installmentNo', 'ASC']]
+        });
+        res.json(emis);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch payment schedule' });
+    }
 });
 
 // --- Institutional Adjustments & Recalculation ---

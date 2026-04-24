@@ -88,7 +88,7 @@ export default function HRTasks() {
       header: 'Ownership (From -> To)',
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+          <span className="text-[10px] text-slate-400 font-bold tracking-widest">
             {row.original.assigner?.name || 'SYSTEM'}
           </span>
           <span className="font-bold text-slate-700">
@@ -108,7 +108,7 @@ export default function HRTasks() {
       cell: ({ row }) => {
         const s = row.original.status;
         const color = s === 'overdue' ? 'bg-red-100 text-red-700 font-bold animate-pulse' : 'bg-slate-100';
-        return <span className={`px-2 py-1 rounded text-xs uppercase ${color}`}>{s}</span>;
+        return <span className={`px-2 py-1 rounded text-xs ${color}`}>{s}</span>;
       }
     },
     {
@@ -127,7 +127,7 @@ export default function HRTasks() {
   ];
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="p-2 space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader 
         title="Global task control"
         description="Monitor and escalate institutional deliverables"
@@ -217,7 +217,7 @@ export default function HRTasks() {
             </div>
           </div>
           <div className="pt-4 flex justify-end gap-3 border-t">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium font-mono uppercase text-xs">Abandom</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium font-mono text-xs">Abandom</button>
             <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 shadow-md">Assign Task</button>
           </div>
         </form>

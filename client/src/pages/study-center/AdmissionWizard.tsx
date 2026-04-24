@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Check, GraduationCap, DollarSign, UserPlus, Plus } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 
@@ -202,29 +203,37 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
     };
 
     return (
-        <form onSubmit={handleSubmit(onFinalSubmit)} className="space-y-6">
+        <div className="p-2 space-y-6">
+            {!onClose && (
+                <PageHeader 
+                    title="Institutional admission wizard"
+                    description="Initiate student enrollment and provision academic nodes."
+                    icon={UserPlus}
+                />
+            )}
+            <form onSubmit={handleSubmit(onFinalSubmit)} className="space-y-6">
             {(errors as any).root && (
               <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
                 <p className="text-xs font-bold text-rose-700">{(errors as any).root.message}</p>
               </div>
             )}
             <div className="flex items-center justify-between mb-8 px-2">
-                <StepIndicator current={step} target={1} label="Program" icon={<GraduationCap className="w-4 h-4" />} />
+                <StepIndicator current={step} target={1} label="program" icon={<GraduationCap className="w-4 h-4" />} />
                 <div className="flex-1 h-px bg-slate-200 mx-2" />
-                <StepIndicator current={step} target={2} label="Batch" icon={<Check className="w-4 h-4" />} />
+                <StepIndicator current={step} target={2} label="batch" icon={<Check className="w-4 h-4" />} />
                 <div className="flex-1 h-px bg-slate-200 mx-2" />
-                <StepIndicator current={step} target={3} label="Fees" icon={<DollarSign className="w-4 h-4" />} />
+                <StepIndicator current={step} target={3} label="fees" icon={<DollarSign className="w-4 h-4" />} />
                 <div className="flex-1 h-px bg-slate-200 mx-2" />
-                <StepIndicator current={step} target={4} label="Data" icon={<UserPlus className="w-4 h-4" />} />
+                <StepIndicator current={step} target={4} label="data" icon={<UserPlus className="w-4 h-4" />} />
                 <div className="flex-1 h-px bg-slate-200 mx-2" />
-                <StepIndicator current={step} target={5} label="Pay" icon={<DollarSign className="w-4 h-4" />} />
+                <StepIndicator current={step} target={5} label="pay" icon={<DollarSign className="w-4 h-4" />} />
             </div>
 
             {/* Step 1: Program Selection */}
             {step === 1 && (
                 <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Academic Program</label>
+                        <label className="text-[10px] font-black text-slate-400 tracking-widest">Select academic program</label>
                         <select 
                             onChange={(e) => handleProgramSelect(Number(e.target.value))}
                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer"
@@ -244,7 +253,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             {step === 2 && (
                 <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Active Intake</label>
+                        <label className="text-[10px] font-black text-slate-400 tracking-widest">Select active intake</label>
                         <select 
                             onChange={(e) => handleSessionSelect(Number(e.target.value))}
                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer"
@@ -256,7 +265,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             ))}
                         </select>
                     </div>
-                    <button onClick={() => setStep(1)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">← Back to Programs</button>
+                    <button onClick={() => setStep(1)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">← Back to programs</button>
                     {sessions.length === 0 && <p className="text-center text-xs text-amber-600 font-bold bg-amber-50 p-4 rounded-xl">No active intakes located for this program.</p>}
                 </div>
             )}
@@ -265,7 +274,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             {step === 3 && (
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Select Billing Manifest</label>
+                        <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-3 ml-1">Select billing manifest</label>
                         <select 
                             value={selectedFee || ''}
                             onChange={(e) => handleFeeSelect(e.target.value)}
@@ -289,26 +298,26 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         <div className="bg-slate-900 rounded-2xl p-6 text-white animate-in fade-in slide-in-from-top-4 duration-300">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-1">Fee Breakdown</h4>
+                                    <h4 className="text-[10px] font-black tracking-[0.2em] text-blue-400 mb-1">Fee breakdown</h4>
                                     <p className="text-xl font-black">{selectedFeeSchema.name}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Plan Frequency</p>
-                                    <p className="text-xs font-bold uppercase">{selectedFeeSchema.schema?.type}</p>
+                                    <p className="text-[10px] font-black tracking-widest text-slate-500 mb-1">Plan frequency</p>
+                                    <p className="text-xs font-bold">{selectedFeeSchema.schema?.type}</p>
                                 </div>
                             </div>
                             
                             <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                                 {selectedFeeSchema.schema?.installments?.map((inst: any, idx: number) => (
                                     <div key={idx} className="flex justify-between items-center py-2 border-b border-white/10 last:border-0">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inst.label}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 tracking-tight">{inst.label}</span>
                                         <span className="text-xs font-black">₹{parseFloat(inst.amount).toLocaleString()}</span>
                                     </div>
                                 ))}
                             </div>
 
                             <div className="mt-6 pt-6 border-t border-white/20 flex justify-between items-center">
-                                <span className="text-xs font-black uppercase tracking-widest">Aggregate Liability</span>
+                                <span className="text-xs font-black tracking-widest">Aggregate liability</span>
                                 <span className="text-2xl font-black text-blue-400">
                                     ₹{selectedFeeSchema.schema?.installments?.reduce((sum: number, i: any) => sum + parseFloat(i.amount), 0).toLocaleString()}
                                 </span>
@@ -321,11 +330,11 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             type="button"
                             onClick={handleFinalStep}
                             disabled={!selectedFee}
-                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 text-xs"
+                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 text-xs"
                         >
-                            Continue to Candidate Info <Plus className="w-4 h-4 ml-1" />
+                            Continue to candidate info <Plus className="w-4 h-4 ml-1" />
                         </button>
-                        <button type="button" onClick={() => setStep(2)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to Batches</button>
+                        <button type="button" onClick={() => setStep(2)} className="text-[10px] font-black text-slate-400 tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to batches</button>
                     </div>
                 </div>
             )}
@@ -334,7 +343,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             <div className={`space-y-6 ${step === 4 ? 'block' : 'hidden'}`}>
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                         <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Legal Name</label>
+                            <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Student legal name</label>
                             <input 
                                 {...register('name', { 
                                     required: "Full name is required",
@@ -345,13 +354,13 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                 placeholder="As per 10th certificate"
                             />
                             {errors.name && (
-                                <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <p className="text-[9px] font-black text-rose-600 tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                     {errors.name.message as string}
                                 </p>
                             )}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Institutional Email Address</label>
+                            <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Institutional email address</label>
                             <input 
                                 type="email"
                                 {...register('email', { 
@@ -363,14 +372,14 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                 placeholder="student@example.com"
                             />
                             {errors.email && (
-                                <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <p className="text-[9px] font-black text-rose-600 tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                     {errors.email.message as string}
                                 </p>
                             )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className={watch('lastExam') === 'Custom' ? 'col-span-2' : ''}>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Qualified Exam</label>
+                                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Last qualified exam</label>
                                 <select 
                                     {...register('lastExam', { required: "Academic qualification is required" })}
                                     className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.lastExam ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
@@ -396,7 +405,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
 
                             {watch('lastExam') === 'Custom' && (
                                 <div className="col-span-2 animate-in slide-in-from-top-2 duration-300">
-                                    <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Specify Custom Qualification</label>
+                                    <label className="block text-[10px] font-black text-blue-500 tracking-widest mb-2">Specify custom qualification</label>
                                     <input 
                                         {...register('customExamName', { required: { value: watch('lastExam') === 'Custom', message: "Enter qualification name" } })}
                                         className={`w-full px-4 py-3 bg-blue-50 border rounded-xl outline-none transition-all font-bold text-slate-900 shadow-sm shadow-blue-100/50 ${errors.customExamName ? 'border-rose-400' : 'border-blue-100 focus:ring-blue-500/10 focus:border-blue-500'}`}
@@ -407,7 +416,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             )}
 
                             <div className={watch('lastExam') === 'Custom' ? 'col-span-2' : ''}>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Qualified Exam %</label>
+                                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Last qualified exam %</label>
                                 <input 
                                     type="number"
                                     step="0.01"
@@ -416,14 +425,14 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                     placeholder="0.00"
                                 />
                                 {errors.lastExamScore && (
-                                    <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <p className="text-[9px] font-black text-rose-600 tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                         {errors.lastExamScore.message as string}
                                     </p>
                                 )}
                             </div>
 
                             <div className="col-span-2">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Exam Certificate / Marksheet</label>
+                                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Exam certificate / marksheet</label>
                                 <div className="relative">
                                     <input 
                                         type="file"
@@ -453,14 +462,14 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                     />
                                     {marksProofName && !uploading && (
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight truncate max-w-[200px] block">
+                                            <span className="text-[10px] font-black text-slate-700 tracking-tight truncate max-w-[200px] block">
                                                 {marksProofName}
                                             </span>
                                         </div>
                                     )}
                                     {uploading && (
                                         <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center">
-                                            <span className="text-[10px] font-black text-blue-600 animate-pulse uppercase tracking-widest">Uploading Proof...</span>
+                                            <span className="text-[10px] font-black text-blue-600 animate-pulse tracking-widest">Uploading proof...</span>
                                         </div>
                                     )}
                                     {marksProof && !uploading && (
@@ -469,7 +478,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-[8px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">PDF, JPG, PNG up to 5MB are accepted</p>
+                                <p className="text-[8px] text-slate-400 mt-2 font-bold tracking-tighter">PDF, JPG, PNG up to 5MB are accepted</p>
                             </div>
                         </div>
                     </div>
@@ -478,11 +487,11 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         <button 
                             type="button" 
                             onClick={handleDataStep}
-                            className={`w-full py-4 rounded-xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${marksProof && watch('name') && watch('email') ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                            className={`w-full py-4 rounded-xl font-black tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${marksProof && watch('name') && watch('email') ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                         >
-                            Continue to Payment <DollarSign className="w-4 h-4" />
+                            Continue to payment <DollarSign className="w-4 h-4" />
                         </button>
-                        <button type="button" onClick={() => setStep(3)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to Fees</button>
+                        <button type="button" onClick={() => setStep(3)} className="text-[10px] font-black text-slate-400 tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to fees</button>
                     </div>
             </div>
 
@@ -490,16 +499,16 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
             <div className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 ${step === 5 ? 'block' : 'hidden'}`}>
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Initial Liability</h4>
+                            <h4 className="text-[10px] font-black text-slate-400 tracking-widest mb-2">Initial liability</h4>
                             <p className="text-2xl font-black text-slate-900">
                                 ₹{parseFloat(selectedFeeSchema?.schema?.installments?.[0]?.amount || '0').toLocaleString()}
                             </p>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">First Installment (+ Institutional GST 18%)</p>
+                            <p className="text-[10px] font-bold text-slate-500 mt-1">First installment (+ institutional GST 18%)</p>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Collection Mode</label>
+                                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Collection mode</label>
                                 <select 
                                     {...register('paymentMode', { required: "Select a payment collection mode" })}
                                     className={`w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none transition-all font-bold text-slate-900 ${errors.paymentMode ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
@@ -515,7 +524,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                             {watch('paymentMode') && watch('paymentMode') !== 'Cash' && (
                                 <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Transaction / UTR Number</label>
+                                        <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">Transaction / UTR number</label>
                                         <input 
                                             {...register('transactionId', { 
                                                 required: { value: watch('paymentMode') !== 'Cash', message: "Transaction ID is required for digital payments" },
@@ -526,7 +535,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                             placeholder="Enter reference ID..."
                                         />
                                         {errors.transactionId && (
-                                            <p className="text-[9px] font-black text-rose-600 uppercase tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <p className="text-[9px] font-black text-rose-600 tracking-tighter mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                                 {errors.transactionId.message as string}
                                             </p>
                                         )}
@@ -534,8 +543,8 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                 </div>
                             )}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                     Payment Receipt / Deposit Proof (Image/PDF)
+                                <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-2">
+                                     Payment receipt / deposit proof (image/pdf)
                                 </label>
                                 <div className="relative">
                                     <input 
@@ -565,14 +574,14 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                     />
                                     {paymentReceiptName && !uploadingReceipt && (
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight truncate max-w-[240px] block">
+                                            <span className="text-[10px] font-black text-slate-700 tracking-tight truncate max-w-[240px] block">
                                                 {paymentReceiptName}
                                             </span>
                                         </div>
                                     )}
                                     {uploadingReceipt && (
                                         <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center">
-                                            <span className="text-[10px] font-black text-blue-600 animate-pulse uppercase tracking-widest">Processing...</span>
+                                            <span className="text-[10px] font-black text-blue-600 animate-pulse tracking-widest">Processing...</span>
                                         </div>
                                     )}
                                     {paymentReceipt && !uploadingReceipt && (
@@ -582,7 +591,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                     )}
                                 </div>
                                 <div className="mt-2 flex items-center justify-between gap-3">
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
+                                    <p className="text-[8px] text-slate-400 font-bold tracking-tighter">
                                         Upload the collected receipt, challan, cash slip, or transfer proof for Finance review.
                                     </p>
                                     {paymentReceipt && !uploadingReceipt && (
@@ -592,7 +601,7 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                                             rel="noopener noreferrer"
                                             className="text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 whitespace-nowrap"
                                         >
-                                            View Proof
+                                            View proof
                                         </a>
                                     )}
                                 </div>
@@ -604,14 +613,15 @@ export default function AdmissionWizard({ onClose, onSuccess, initialData }: {
                         <button 
                             type="submit" 
                             disabled={isLoading || uploadingReceipt || !isValid || !paymentReceipt}
-                            className={`w-full py-4 rounded-xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${isValid && paymentReceipt ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                            className={`w-full py-4 rounded-xl font-black tracking-widest transition-all flex items-center justify-center gap-2 text-xs ${isValid && paymentReceipt ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                         >
-                            {isLoading ? "Provisioning..." : <><Check className="w-4 h-4" /> Finalize Enrollment & Billing</>}
+                            {isLoading ? "Provisioning..." : <><Check className="w-4 h-4" /> Finalize enrollment & billing</>}
                         </button>
-                        <button type="button" onClick={() => setStep(4)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to Candidate Info</button>
+                        <button type="button" onClick={() => setStep(4)} className="text-[10px] font-black text-slate-400 tracking-widest hover:text-slate-600 transition-colors text-center w-full">Back to candidate info</button>
                     </div>
             </div>
         </form>
+        </div>
     );
 }
 
