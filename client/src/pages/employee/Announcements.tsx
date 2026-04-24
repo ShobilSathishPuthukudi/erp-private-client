@@ -21,7 +21,8 @@ export default function StaffAnnouncements() {
     const fetchHolidays = async () => {
       try {
         const res = await api.get('/holidays');
-        setHolidays(res.data.filter((h: any) => new Date(h.date) >= new Date()));
+        const todayStr = new Date().toISOString().split('T')[0];
+        setHolidays(res.data.filter((h: any) => h.date >= todayStr));
       } catch (error) {
         toast.error('Failed to sync institutional schedule');
       } finally {
@@ -63,9 +64,14 @@ export default function StaffAnnouncements() {
         <div className="space-y-6">
             <h2 className="text-xs font-black text-slate-400 tracking-[0.2em]">Holiday synchronization</h2>
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                    <Calendar className="w-5 h-5 text-slate-400" />
-                    <h3 className="font-black text-slate-900 tracking-tighter">Scheduled breaks</h3>
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-slate-400" />
+                        <h3 className="font-black text-slate-900 tracking-tighter">Scheduled breaks</h3>
+                    </div>
+                    <Link to="../holidays" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                        View All
+                    </Link>
                 </div>
                 
                 {isLoadingHolidays ? (
@@ -100,7 +106,7 @@ export default function StaffAnnouncements() {
                     <h3 className="font-black text-xl mb-2 leading-tight">Need to request a break?</h3>
                     <p className="text-indigo-100 text-xs font-medium mb-6 opacity-80">Submit your leave request through the HR portal for departmental approval.</p>
                     <Link to="../leaves">
-                      <button className="bg-white text-indigo-600 px-6 py-2 rounded-xl text-[10px] font-black tracking-widest hover:scale-105 transition-transform">
+                      <button className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black tracking-widest hover:scale-105 transition-transform">
                           Launch leave portal
                       </button>
                     </Link>

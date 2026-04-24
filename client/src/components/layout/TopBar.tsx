@@ -157,9 +157,9 @@ export default function TopBar({ toggleSidebar }: { toggleSidebar: () => void })
                             </span>
                         </div>
                         <h5>{user?.name || 'User'}</h5>
-                        <p>{user?.email || 'user@example.com'}</p>
+                        <p className="break-words">{user?.email || 'user@example.com'}</p>
                         {(user?.role || user?.departmentName) && (
-                          <div className="mt-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase inline-block">
+                          <div className="mt-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-bold uppercase inline-block max-w-full break-words leading-tight">
                             {user?.role === 'Organization Admin' ? 'Organization Admin' : (user?.departmentName || user?.role?.replace('-', ' '))}
                           </div>
                         )}

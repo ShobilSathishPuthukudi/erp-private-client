@@ -9,6 +9,7 @@ import HRContact from './HRContact';
 import MyCenters from './MyCenters';
 import InstitutionalUniversities from './InstitutionalUniversities';
 import InstitutionalPrograms from './InstitutionalPrograms';
+import Holidays from './Holidays';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
@@ -230,22 +231,22 @@ export default function EmployeePortal() {
     return (
       <div className="p-2 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header Section */}
-        <PageHeader 
-          title={`Staff terminal - ${user?.name || 'Academic Administrator'}`}
-          description={`Institutional workforce identity: ${user?.uid}. Operational telemetry and performance analytics synchronized for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`}
-          icon={LayoutDashboard}
-          action={
-            <div className="flex gap-2">
-              <Link to="tasks" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl text-xs font-black hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                  <Briefcase className="w-4 h-4 text-blue-600" />
-                  Execution desk
-              </Link>
-              <Link to="leaves" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20">
-                  <Calendar className="w-4 h-4 text-amber-400" />
-                  Presence request
-              </Link>
-            </div>
-          }
+        <DashboardGreeting 
+          role="Institutional Personnel"
+          name={user?.name || 'Academic Staff'}
+          subtitle={`Institutional workforce identity: ${user?.uid}. Operational telemetry and performance analytics synchronized for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. System integrity verified.`}
+          actions={[
+            {
+              label: 'Execution desk',
+              link: '/dashboard/employee/tasks',
+              icon: Briefcase
+            },
+            {
+              label: 'Presence request',
+              link: '/dashboard/employee/leaves',
+              icon: Calendar
+            }
+          ]}
         />
 
         {/* Stats Grid */}
@@ -392,9 +393,9 @@ export default function EmployeePortal() {
                       navigator.clipboard.writeText(link);
                       toast.success('Partnership link copied to clipboard!');
                     }}
-                    className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-[10px] tracking-widest border border-slate-200 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+                    className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center gap-3 active:scale-95"
                   >
-                    <Zap className="w-4 h-4 text-blue-600" />
+                    <Zap className="w-4 h-4 text-blue-400" />
                     Copy share link
                   </button>
 
@@ -452,6 +453,7 @@ export default function EmployeePortal() {
       <Route path="leaves" element={<LeaveRequests />} />
       <Route path="hr-contact" element={<HRContact />} />
       <Route path="announcements" element={<Announcements />} />
+      <Route path="holidays" element={<Holidays />} />
       {(user?.role === 'Sales & CRM Admin' || user?.departmentName?.toLowerCase().includes('sales')) && (
         <>
           <Route path="centers" element={<MyCenters />} />

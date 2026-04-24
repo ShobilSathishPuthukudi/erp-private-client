@@ -76,7 +76,7 @@ export const DashboardGreeting: React.FC<DashboardGreetingProps> = ({
         {actions.length > 0 && (
           <div className="flex flex-wrap items-center gap-4">
             {actions.map((action, i) => {
-              const baseStyles = "flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-sm hover:bg-blue-600 hover:text-white hover:scale-105 hover:shadow-lg hover:shadow-blue-600/10 transition-all active:scale-95 group";
+              const baseStyles = "flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-sm hover:bg-slate-50 hover:scale-105 hover:shadow-lg transition-all active:scale-95 group";
 
               if (action.onClick) {
                 return (
