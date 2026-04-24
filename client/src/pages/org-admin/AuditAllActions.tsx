@@ -11,9 +11,11 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
+import { useAuthStore } from '@/store/authStore';
 
 export default function AuditAllActions() {
+  const { user } = useAuthStore();
   const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,16 +62,17 @@ export default function AuditAllActions() {
 
   return (
     <div className="p-2 space-y-6">
-      <PageHeader 
-        title="System-wide audit trail"
-        description="Immutable history of every entity state change across all modules."
-        icon={Activity}
-        action={
-          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 flex flex-col items-end">
-             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global ledger status</span>
-             <span className="text-xs font-bold text-slate-900">{(totalCount || 0).toLocaleString()} Verified events</span>
-          </div>
-        }
+      <DashboardGreeting 
+        role="System auditor"
+        name={user?.name || 'Administrator'}
+        subtitle="Forensic ledger monitoring: Every data mutation and state transition is captured with high-fidelity telemetry."
+        actions={[
+          {
+            label: 'Refresh Trail',
+            onClick: () => fetchAudits(),
+            icon: Activity
+          }
+        ]}
       />
 
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-200 overflow-hidden">

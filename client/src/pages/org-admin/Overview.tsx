@@ -20,7 +20,6 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Modal } from '@/components/shared/Modal';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { DashboardGreeting } from '@/components/shared/DashboardGreeting';
 import { 
   AreaChart, 
@@ -271,20 +270,22 @@ export default function Overview() {
 
   return (
     <div className="p-2 space-y-6 flex flex-col">
-      <PageHeader 
-        title="Institutional intelligence"
-        description={`Institutional performance and telemetry overview for ${formattedDate}. Governance & monitoring protocols active.`}
-        icon={ShieldCheck}
-        action={
-          <div className="flex items-center gap-3">
-             <button onClick={() => navigate('/dashboard/org-admin/audit/compliance')} className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all text-xs font-bold whitespace-nowrap">
-                <ShieldCheck className="w-4 h-4" /> Compliance report
-             </button>
-             <button onClick={() => navigate('/dashboard/org-admin/permissions/roles')} className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-xs font-bold whitespace-nowrap">
-                <Users className="w-4 h-4" /> Manage roles
-             </button>
-          </div>
-        }
+      <DashboardGreeting 
+        role="Organization administrator"
+        name={user?.name || 'Administrator'}
+        subtitle={`Institutional performance and telemetry overview for ${formattedDate}. Governance & monitoring protocols active.`}
+        actions={[
+          {
+            label: 'Compliance report',
+            onClick: () => navigate('/dashboard/org-admin/audit/compliance'),
+            icon: ShieldCheck
+          },
+          {
+            label: 'Manage roles',
+            onClick: () => navigate('/dashboard/org-admin/permissions/roles'),
+            icon: Users
+          }
+        ]}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
